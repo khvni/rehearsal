@@ -13,7 +13,8 @@ function orchestrator(): Orchestrator {
 
 export async function POST(req: Request) {
   try {
-    const body = (await req.json()) as { targetUrl?: string; goal?: string; config?: object };
+    const body = (await req.json()) as { targetUrl?: string; url?: string; goal?: string; config?: object };
+    body.targetUrl ??= body.url;
     if (!body.targetUrl || !body.goal) {
       return NextResponse.json({ error: "targetUrl and goal are required" }, { status: 400 });
     }

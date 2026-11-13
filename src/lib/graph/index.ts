@@ -68,6 +68,14 @@ export class GraphBuilder {
     return { states: [...this.states.values()], edges: this.edges };
   }
 
+  get full(): boolean {
+    return this.states.size >= this.maxStates;
+  }
+
+  has(stateId: string): boolean {
+    return [...this.states.values()].some((s) => s.stateId === stateId);
+  }
+
   get depthLimit(): number {
     return this.maxDepth;
   }

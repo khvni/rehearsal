@@ -21,6 +21,13 @@ eval cases.** `npm run check:skill-sync` fails the build otherwise.
 ## Eval cases (tests/evals/, gated by evals.config.json thresholds)
 
 - `core.eval.ts` — extraction coverage, simulation determinism/scale, Jev mapping validity, rubric coverage, stale-date finding (Scenario B), spec completeness, variant idempotency, SSRF guards
+- `invariants.eval.ts` — behavioral invariants on fixture HTML + fixture adapters:
+  - profile shaping — on a journey graph (AIE home → schedule hub → day pages, every other action a detour leaf), `impatient` mean actions-to-goal ≤ `exploratory`, pooled over seeds 1337/2026/7 (`maxImpatientToExploratoryStepRatio`, `minGoalReachedPerProfile`, `profileTrajectoriesPerSeed`). The file mocks `randomUUID` with a counter because FixtureJevClient's tiebreak jitter is keyed by actionId — without it outcomes drift run to run
+  - verification ranking — `rankForVerification` keeps every trajectory incl. goal-reached; `selectTrajectories` keeps ≥1 goal-reached for every N on an adversarial pool and a simulated pool, and never fabricates one (`minGoalRetentionRate`)
+  - spec ordering — `generateSpec` orders changes by severity desc (stable within a tier), critical/high changes land in phase 1, markdown emits `## Rebuild plan` with one `### <phase>` per phase (`minRebuildPhases`)
+  - graph dedup — `GraphBuilder` collapses identical-stateHash states (same page, reordered/recased actions) into one node; viewport change makes a new node (`maxStatesPerStateHash`)
+  - vague labels — finding on `fixtures/vague-labels.html` names exactly the vague labels found; no finding on the AIE fixture (`minVagueLabelsDetected`)
+  - stale date — finding description cites every detected past date; no finding before the event ends (`minPastDatesDetected`, `requireStaleDateEvidence`)
 
 ## Unit tests (tests/unit/)
 

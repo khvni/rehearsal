@@ -1,0 +1,52 @@
+#cloud-config
+package_update: true
+packages:
+  - git
+  - curl
+  - xz-utils
+  - caddy
+
+users:
+  - default
+  - name: rehearsal
+    system: true
+    shell: /bin/bash
+    homedir: /opt/rehearsal
+
+write_files:
+  - path: /etc/rehearsal/env
+    permissions: "0600"
+    content: ${jsonencode("${env_file}\n")}
+  - path: /etc/systemd/system/rehearsal.service
+    content: |
+      [Unit]
+      Description=Rehearsal (Next.js)
+      After=network-online.target
+      Wants=network-online.target
+
+      [Service]
+      User=rehearsal
+      WorkingDirectory=/opt/rehearsal/app
+      EnvironmentFile=/etc/rehearsal/env
+      ExecStart=/usr/local/bin/npm start -- -H 127.0.0.1 -p 3000
+      Restart=always
+
+      [Install]
+      WantedBy=multi-user.target
+  - path: /etc/caddy/Caddyfile
+    content: |
+      ${site} {
+        reverse_proxy 127.0.0.1:3000
+      }
+
+runcmd:
+  - curl -fsSL https://nodejs.org/dist/v22.21.0/node-v22.21.0-linux-x64.tar.xz | tar -xJ --strip-components=1 -C /usr/local
+  - mkdir -p /opt/rehearsal && chown rehearsal:rehearsal /opt/rehearsal
+  - sudo -u rehearsal git clone --depth 1 --branch ${git_ref} https://github.com/${github_repo}.git /opt/rehearsal/app
+  - cd /opt/rehearsal/app && sudo -u rehearsal -H npm ci
+  - cd /opt/rehearsal/app && npx playwright install-deps chromium
+  - cd /opt/rehearsal/app && sudo -u rehearsal -H npx playwright install chromium
+  - cd /opt/rehearsal/app && sudo -u rehearsal -H npm run build
+  - systemctl daemon-reload
+  - systemctl enable --now rehearsal
+  - systemctl restart caddy
