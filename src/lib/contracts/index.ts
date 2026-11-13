@@ -415,6 +415,69 @@ export const Experiment = z.object({
 });
 export type Experiment = z.infer<typeof Experiment>;
 
+/** Headless live-site run digest written by scripts/run-site.ts to docs/runs/<host>/summary.json. */
+export const SitePreflight = z.object({
+  status: z.number().int().nullable(),
+  finalUrl: z.string(),
+  title: z.string(),
+  blocked: z.boolean(),
+  blockReason: z.string().optional(),
+  error: z.string().optional(),
+});
+export type SitePreflight = z.infer<typeof SitePreflight>;
+
+export const SiteRunSummary = z.object({
+  site: z.string(),
+  url: z.string().url(),
+  targetUrl: z.string().url(),
+  goal: z.string(),
+  status: z.enum(["complete", "blocked", "timeout", "error"]),
+  failureReason: z.string().optional(),
+  error: z.string().optional(),
+  runner: z.string(),
+  config: z.object({
+    maxStates: z.number().int(),
+    trajectories: z.number().int(),
+    verifyCount: z.number().int(),
+    maxDepth: z.number().int(),
+    viewports: z.array(Viewport.shape.name),
+    seed: z.number().int(),
+  }),
+  preflight: SitePreflight,
+  robotsAllowsTarget: z.boolean(),
+  assertions: z.array(Assertion),
+  discover: z.object({
+    states: z.number().int(),
+    edges: z.number().int(),
+    pageFailures: z.number().int(),
+    pageFailureSamples: z.array(z.object({ url: z.string().optional(), error: z.string().optional() })),
+    urls: z.array(z.string()),
+  }),
+  simulate: z.object({
+    trajectories: z.number().int(),
+    goalReachPct: z.number(),
+    outcomes: z.record(z.string(), z.number().int()),
+  }),
+  verify: z.object({
+    runs: z.number().int(),
+    passed: z.number().int(),
+    failed: z.number().int(),
+    assertionsPassed: z.number().int(),
+    runsWithConsoleErrors: z.number().int(),
+    runErrors: z.array(z.string()),
+  }),
+  compare: Comparison.shape.deltas.nullable(),
+  findings: z.object({
+    total: z.number().int(),
+    bySeverity: z.record(z.string(), z.number().int()),
+    byEvidence: z.record(z.string(), z.number().int()),
+    titles: z.array(z.string()),
+  }),
+  durationsMs: z.record(z.string(), z.number()),
+  ranAt: z.string(),
+});
+export type SiteRunSummary = z.infer<typeof SiteRunSummary>;
+
 export * from "./browser";
 export * from "./metrics";
 export * from "./ports";

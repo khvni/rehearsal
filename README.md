@@ -44,6 +44,15 @@ Then: paste the target URL + goal → Rehearse → watch the stages → open `sp
 (`PIPELINE_STAGES` in `src/lib/orchestrator.ts`; documented in
 `.devin/skills/rehearsal-testing/SKILL.md` — CI-enforced sync.)
 
+## Live-site runs
+
+`npm run site -- <url> --goal "find pricing"` runs the full pipeline headless (no Next server)
+and writes `docs/runs/<host>/{spec.md,summary.json}`; `npm run site -- --all` sweeps
+`docs/runs/sites.json` and rebuilds the cross-site table in `docs/runs/README.md`.
+Flags: `--max-states 15 --trajectories 300 --verify 4 --max-depth 3 --viewports desktop --timeout-min 5`.
+Sites that block local Playwright (bot walls, captchas, hung renderers) are recorded as `blocked`
+with the reason — those are the cases the Bright Data runner exists for.
+
 ## API
 
 `POST /api/experiments` `{targetUrl, goal}` → `POST /api/experiments/:id/{discover|simulate|verify|analyze|compare|spec|run}` → `GET /api/experiments/:id` → `GET /api/experiments/:id/spec` (markdown). `GET /api/experiments` lists experiments. Full catalog: [docs/api.md](docs/api.md).

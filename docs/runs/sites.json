@@ -1,0 +1,13 @@
+[
+  { "url": "https://www.keysight.com", "goal": "find pricing or request a quote for an oscilloscope" },
+  { "url": "https://mtc.so", "goal": "find how to join or start a chapter" },
+  { "url": "https://brightdata.com", "goal": "find pricing for the Web Unlocker" },
+  { "url": "https://devpost.com", "goal": "find an upcoming hackathon to join" },
+  { "url": "https://mlh.io", "goal": "find the upcoming hackathon schedule" },
+  { "url": "https://www.tigerdata.com", "goal": "find pricing and sign up" },
+  { "url": "https://sentry.io", "goal": "find pricing and start a trial" },
+  { "url": "https://www.snowflake.com", "goal": "start a free trial" },
+  { "url": "https://www.digitalocean.com", "goal": "find droplet pricing" },
+  { "url": "https://hyperframes.studio", "goal": "understand what the product does and request a demo" },
+  { "url": "https://www.heygen.com", "goal": "find pricing and sign up" }
+]

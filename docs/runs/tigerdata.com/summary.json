@@ -1,0 +1,124 @@
+{
+  "site": "tigerdata.com",
+  "url": "https://www.tigerdata.com",
+  "targetUrl": "https://www.tigerdata.com/",
+  "goal": "find pricing and sign up",
+  "status": "complete",
+  "runner": "local-playwright",
+  "config": {
+    "maxStates": 15,
+    "trajectories": 300,
+    "verifyCount": 4,
+    "maxDepth": 3,
+    "viewports": [
+      "desktop"
+    ],
+    "seed": 1337
+  },
+  "preflight": {
+    "status": 200,
+    "finalUrl": "https://www.tigerdata.com/",
+    "title": "Time-Series PostgreSQL at Petabyte Scale",
+    "blocked": false
+  },
+  "robotsAllowsTarget": true,
+  "assertions": [
+    {
+      "kind": "url-matches",
+      "value": "pricing"
+    }
+  ],
+  "discover": {
+    "states": 15,
+    "edges": 136,
+    "pageFailures": 0,
+    "pageFailureSamples": [],
+    "urls": [
+      "https://www.tigerdata.com/",
+      "https://www.tigerdata.com/pricing",
+      "https://www.tigerdata.com/legal/privacy",
+      "https://www.tigerdata.com/cloud",
+      "https://www.tigerdata.com/timescaledb-enterprise",
+      "https://www.tigerdata.com/timescaledb",
+      "https://www.tigerdata.com/search",
+      "https://www.tigerdata.com/data-centers",
+      "https://www.tigerdata.com/energy-utilities",
+      "https://www.tigerdata.com/oilfield-services",
+      "https://www.tigerdata.com/smart-manufacturing",
+      "https://www.tigerdata.com/crypto",
+      "https://www.tigerdata.com/docs",
+      "https://www.tigerdata.com/docs/about/latest/changelog/",
+      "https://www.tigerdata.com/benchmarks"
+    ]
+  },
+  "simulate": {
+    "trajectories": 300,
+    "goalReachPct": 44.3,
+    "outcomes": {
+      "goal-reached": 133,
+      "dead-end": 55,
+      "repetition-limit": 112
+    }
+  },
+  "verify": {
+    "runs": 4,
+    "passed": 0,
+    "failed": 4,
+    "assertionsPassed": 1,
+    "runsWithConsoleErrors": 4,
+    "runErrors": []
+  },
+  "compare": {
+    "goalCompleted": {
+      "baseline": false,
+      "variant": false
+    },
+    "interactionCount": {
+      "baseline": 6,
+      "variant": 6
+    },
+    "backtracks": {
+      "baseline": 6,
+      "variant": 6
+    },
+    "failedInteractions": {
+      "baseline": 0,
+      "variant": 0
+    },
+    "runtimeErrors": {
+      "baseline": 7,
+      "variant": 7
+    },
+    "findingReproduces": true
+  },
+  "findings": {
+    "total": 5,
+    "bySeverity": {
+      "critical": 0,
+      "high": 2,
+      "medium": 3,
+      "low": 0
+    },
+    "byEvidence": {
+      "verified-failure": 1,
+      "reproducible-concern": 4
+    },
+    "titles": [
+      "[high] Assertion failed in browser: url-matches \"pricing\"",
+      "[medium] Dense link surface increases scan cost",
+      "[high] Post-event page still invites registration",
+      "[medium] Ambiguous link labels (1)",
+      "[medium] Ambiguous link labels (3)"
+    ]
+  },
+  "durationsMs": {
+    "discover": 32315,
+    "simulate": 17,
+    "verify": 4883,
+    "analyze": 3,
+    "compare": 1275,
+    "spec": 2,
+    "total": 40828
+  },
+  "ranAt": "2026-11-13T21:21:02.936Z"
+}

@@ -1,0 +1,121 @@
+{
+  "site": "snowflake.com",
+  "url": "https://www.snowflake.com",
+  "targetUrl": "https://www.snowflake.com/en/",
+  "goal": "start a free trial",
+  "status": "complete",
+  "runner": "local-playwright",
+  "config": {
+    "maxStates": 15,
+    "trajectories": 300,
+    "verifyCount": 4,
+    "maxDepth": 3,
+    "viewports": [
+      "desktop"
+    ],
+    "seed": 1337
+  },
+  "preflight": {
+    "status": 200,
+    "finalUrl": "https://www.snowflake.com/en/",
+    "title": "Snowflake AI Data Cloud",
+    "blocked": false
+  },
+  "robotsAllowsTarget": true,
+  "assertions": [
+    {
+      "kind": "url-matches",
+      "value": "trial"
+    }
+  ],
+  "discover": {
+    "states": 15,
+    "edges": 143,
+    "pageFailures": 0,
+    "pageFailureSamples": [],
+    "urls": [
+      "https://www.snowflake.com/en/",
+      "https://www.snowflake.com/en/startup-challenge/",
+      "https://www.snowflake.com/en/expedition/",
+      "https://www.snowflake.com/en/pricing-options/",
+      "https://www.snowflake.com/ja/",
+      "https://www.snowflake.com/ko/",
+      "https://www.snowflake.com/zh_cn/",
+      "https://www.snowflake.com/pt_br/",
+      "https://www.snowflake.com/de/",
+      "https://www.snowflake.com/fr/",
+      "https://www.snowflake.com/es/",
+      "https://www.snowflake.com/it/",
+      "https://www.snowflake.com/en/contact-sales/",
+      "https://www.snowflake.com/en/blog/expedition-26/",
+      "https://www.snowflake.com/en/why-snowflake/"
+    ]
+  },
+  "simulate": {
+    "trajectories": 300,
+    "goalReachPct": 0,
+    "outcomes": {
+      "repetition-limit": 300
+    }
+  },
+  "verify": {
+    "runs": 4,
+    "passed": 0,
+    "failed": 4,
+    "assertionsPassed": 0,
+    "runsWithConsoleErrors": 4,
+    "runErrors": []
+  },
+  "compare": {
+    "goalCompleted": {
+      "baseline": false,
+      "variant": false
+    },
+    "interactionCount": {
+      "baseline": 6,
+      "variant": 6
+    },
+    "backtracks": {
+      "baseline": 6,
+      "variant": 6
+    },
+    "failedInteractions": {
+      "baseline": 0,
+      "variant": 0
+    },
+    "runtimeErrors": {
+      "baseline": 9,
+      "variant": 8
+    },
+    "findingReproduces": true
+  },
+  "findings": {
+    "total": 4,
+    "bySeverity": {
+      "critical": 0,
+      "high": 2,
+      "medium": 2,
+      "low": 0
+    },
+    "byEvidence": {
+      "verified-failure": 1,
+      "reproducible-concern": 3
+    },
+    "titles": [
+      "[high] Assertion failed in browser: url-matches \"trial\"",
+      "[high] Post-event page still invites registration",
+      "[medium] Dense link surface increases scan cost",
+      "[medium] Ambiguous link labels (1)"
+    ]
+  },
+  "durationsMs": {
+    "discover": 45292,
+    "simulate": 46,
+    "verify": 7677,
+    "analyze": 6,
+    "compare": 1790,
+    "spec": 4,
+    "total": 57452
+  },
+  "ranAt": "2026-11-13T21:22:57.827Z"
+}

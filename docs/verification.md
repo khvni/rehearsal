@@ -17,7 +17,7 @@ Each issue carries a precise path (`file:line` or `file#json.path`).
 
 | Check | Sources compared |
 |---|---|
-| `contracts` | `data/experiments/**/*.json`, `tests/fixtures/experiments/**/*.json`, `docs/runs/**/summary.json` ↔ `Experiment` / `SpecReport` zod contracts. Fails on parse errors and on unknown keys the contract would silently strip. |
+| `contracts` | `data/experiments/**/*.json`, `tests/fixtures/experiments/**/*.json`, `docs/runs/**/summary.json` ↔ `Experiment` / `SpecReport` / `SiteRunSummary` zod contracts. Fails on parse errors and on unknown keys the contract would silently strip. |
 | `env` | `process.env.X` / `env.X` reads in `src/**` + root Next/Sentry config ↔ `.env.example` ↔ README.md + docs/ ↔ `terraform/*/variables.tf` + the `ENV = var.env` mapping in each stack. |
 | `catalog` | Krug slugs (`krugPrinciple: "…"`) and `K<n>` ids in `src/lib/analysis/**` + `src/lib/intents/**` ↔ docs/krug-principles.md ↔ `KrugPrinciple` enum; `KrugDimension` ↔ the dimensions table; every stable finding rule id (`findingId: \`f_<rule>_…\``, metric `finding("<rule>", …)`) ↔ at least one reference in `tests/**`. |
 | `api` | `export function GET/POST/…` in `src/app/api/**/route.ts` ↔ rows in docs/api.md (both directions); `PIPELINE_STAGES` ↔ `case`s in the stage route ↔ stage list in docs/api.md. |

@@ -1,0 +1,122 @@
+{
+  "site": "heygen.com",
+  "url": "https://www.heygen.com",
+  "targetUrl": "https://www.heygen.com/",
+  "goal": "find pricing and sign up",
+  "status": "complete",
+  "runner": "local-playwright",
+  "config": {
+    "maxStates": 15,
+    "trajectories": 300,
+    "verifyCount": 4,
+    "maxDepth": 3,
+    "viewports": [
+      "desktop"
+    ],
+    "seed": 1337
+  },
+  "preflight": {
+    "status": 200,
+    "finalUrl": "https://www.heygen.com/",
+    "title": "HeyGen: Create AI Videos with Your Personal Avatar",
+    "blocked": false
+  },
+  "robotsAllowsTarget": true,
+  "assertions": [
+    {
+      "kind": "url-matches",
+      "value": "pricing"
+    }
+  ],
+  "discover": {
+    "states": 15,
+    "edges": 255,
+    "pageFailures": 0,
+    "pageFailureSamples": [],
+    "urls": [
+      "https://www.heygen.com/",
+      "https://www.heygen.com/pricing",
+      "https://www.heygen.com/enterprise",
+      "https://www.heygen.com/research",
+      "https://www.heygen.com/contact-us/sales",
+      "https://www.heygen.com/heygen-voice",
+      "https://www.heygen.com/avatars/avatar-v",
+      "https://www.heygen.com/research/avatar-v-model",
+      "https://www.heygen.com/agent",
+      "https://www.heygen.com/tool/ai-video-generator",
+      "https://www.heygen.com/ai-studio",
+      "https://www.heygen.com/translate",
+      "https://www.heygen.com/tool/text-to-video",
+      "https://www.heygen.com/tool/image-to-video",
+      "https://www.heygen.com/tool/audio-to-video-converter"
+    ]
+  },
+  "simulate": {
+    "trajectories": 300,
+    "goalReachPct": 52,
+    "outcomes": {
+      "goal-reached": 156,
+      "repetition-limit": 143,
+      "max-depth": 1
+    }
+  },
+  "verify": {
+    "runs": 4,
+    "passed": 0,
+    "failed": 4,
+    "assertionsPassed": 1,
+    "runsWithConsoleErrors": 4,
+    "runErrors": []
+  },
+  "compare": {
+    "goalCompleted": {
+      "baseline": false,
+      "variant": false
+    },
+    "interactionCount": {
+      "baseline": 8,
+      "variant": 8
+    },
+    "backtracks": {
+      "baseline": 8,
+      "variant": 8
+    },
+    "failedInteractions": {
+      "baseline": 0,
+      "variant": 0
+    },
+    "runtimeErrors": {
+      "baseline": 12,
+      "variant": 23
+    },
+    "findingReproduces": true
+  },
+  "findings": {
+    "total": 3,
+    "bySeverity": {
+      "critical": 0,
+      "high": 1,
+      "medium": 2,
+      "low": 0
+    },
+    "byEvidence": {
+      "verified-failure": 1,
+      "reproducible-concern": 2
+    },
+    "titles": [
+      "[high] Assertion failed in browser: url-matches \"pricing\"",
+      "[medium] Ambiguous link labels (1)",
+      "[medium] Dense link surface increases scan cost"
+    ]
+  },
+  "durationsMs": {
+    "discover": 36045,
+    "simulate": 50,
+    "verify": 18254,
+    "analyze": 6,
+    "compare": 5280,
+    "spec": 4,
+    "total": 62048
+  },
+  "ranAt": "2026-11-13T21:26:48.213Z"
+}

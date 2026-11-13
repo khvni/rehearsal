@@ -17,7 +17,7 @@ import { createRequire, syncBuiltinESMExports } from "node:module";
 import os from "node:os";
 import path from "node:path";
 import type { z } from "zod";
-import { Experiment, KrugDimension, KrugPrinciple, SpecReport } from "../src/lib/contracts";
+import { Experiment, KrugDimension, KrugPrinciple, SiteRunSummary, SpecReport } from "../src/lib/contracts";
 
 const root = process.cwd();
 const rel = (p: string) => path.relative(root, p).split(path.sep).join("/");
@@ -78,6 +78,7 @@ function contractFor(file: string, json: unknown): { name: string; schema: z.Zod
   const o = (json ?? {}) as Record<string, unknown>;
   if ("targetUrl" in o && "configuration" in o) return { name: "Experiment", schema: Experiment };
   if ("changes" in o && "rebuildPhases" in o) return { name: "SpecReport", schema: SpecReport };
+  if ("runner" in o && "preflight" in o) return { name: "SiteRunSummary", schema: SiteRunSummary };
   return null;
 }
 
@@ -98,7 +99,7 @@ function checkContracts(): CheckResult {
     }
     const contract = contractFor(file, json);
     if (!contract) {
-      issues.push({ path: file, message: "no contract matches (expected an Experiment or SpecReport)" });
+      issues.push({ path: file, message: "no contract matches (expected an Experiment, SpecReport or SiteRunSummary)" });
       continue;
     }
     const result = contract.schema.safeParse(json);

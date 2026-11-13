@@ -1,0 +1,104 @@
+{
+  "site": "keysight.com",
+  "url": "https://www.keysight.com",
+  "targetUrl": "https://www.keysight.com/us/en/home.html",
+  "goal": "find pricing or request a quote for an oscilloscope",
+  "status": "blocked",
+  "failureReason": "Cloudflare challenge",
+  "runner": "local-playwright",
+  "config": {
+    "maxStates": 15,
+    "trajectories": 300,
+    "verifyCount": 4,
+    "maxDepth": 3,
+    "viewports": [
+      "desktop"
+    ],
+    "seed": 1337
+  },
+  "preflight": {
+    "status": 200,
+    "finalUrl": "https://www.keysight.com/us/en/home.html",
+    "title": "Keysight: Design, Emulate, and Test to Accelerate Innovation",
+    "blocked": false
+  },
+  "robotsAllowsTarget": true,
+  "assertions": [
+    {
+      "kind": "url-matches",
+      "value": "oscilloscope"
+    }
+  ],
+  "discover": {
+    "states": 1,
+    "edges": 0,
+    "pageFailures": 0,
+    "pageFailureSamples": [],
+    "urls": [
+      "https://www.keysight.com/us/en/home.html"
+    ]
+  },
+  "simulate": {
+    "trajectories": 300,
+    "goalReachPct": 0,
+    "outcomes": {
+      "dead-end": 300
+    }
+  },
+  "verify": {
+    "runs": 4,
+    "passed": 0,
+    "failed": 4,
+    "assertionsPassed": 0,
+    "runsWithConsoleErrors": 4,
+    "runErrors": []
+  },
+  "compare": {
+    "goalCompleted": {
+      "baseline": false,
+      "variant": false
+    },
+    "interactionCount": {
+      "baseline": 0,
+      "variant": 0
+    },
+    "backtracks": {
+      "baseline": 0,
+      "variant": 0
+    },
+    "failedInteractions": {
+      "baseline": 0,
+      "variant": 0
+    },
+    "runtimeErrors": {
+      "baseline": 10,
+      "variant": 8
+    },
+    "findingReproduces": true
+  },
+  "findings": {
+    "total": 1,
+    "bySeverity": {
+      "critical": 0,
+      "high": 1,
+      "medium": 0,
+      "low": 0
+    },
+    "byEvidence": {
+      "verified-failure": 1
+    },
+    "titles": [
+      "[high] Assertion failed in browser: url-matches \"oscilloscope\""
+    ]
+  },
+  "durationsMs": {
+    "discover": 19723,
+    "simulate": 2,
+    "verify": 26561,
+    "analyze": 4,
+    "compare": 3982,
+    "spec": 1,
+    "total": 53896
+  },
+  "ranAt": "2026-11-13T21:12:29.808Z"
+}

@@ -82,3 +82,66 @@ export async function robotsDisallowed(url: URL, fetcher: (u: string) => Promise
     return [];
   }
 }
+
+interface RobotsRule {
+  allow: boolean;
+  pattern: RegExp;
+  length: number;
+}
+
+const robotsCache = new Map<string, Promise<RobotsRule[]>>();
+
+function robotsPattern(path: string): RegExp {
+  const anchored = path.endsWith("$");
+  const body = (anchored ? path.slice(0, -1) : path)
+    .split("*")
+    .map((s) => s.replace(/[.+?^${}()|[\]\\]/g, "\\$&"))
+    .join(".*");
+  return new RegExp(`^${body}${anchored ? "$" : ""}`);
+}
+
+/** Parse the `User-agent: *` group(s) of robots.txt into Allow/Disallow rules (wildcards + `$`). */
+export function parseRobots(robots: string): RobotsRule[] {
+  const rules: RobotsRule[] = [];
+  let groupApplies = false;
+  let inUaRun = false;
+  for (const raw of robots.split(/\r?\n/)) {
+    const line = raw.replace(/#.*$/, "").trim();
+    const m = line.match(/^(user-agent|allow|disallow)\s*:\s*(.*)$/i);
+    if (!m) continue;
+    const key = m[1].toLowerCase();
+    const value = m[2].trim();
+    if (key === "user-agent") {
+      if (!inUaRun) groupApplies = false;
+      inUaRun = true;
+      if (value === "*") groupApplies = true;
+      continue;
+    }
+    inUaRun = false;
+    if (!groupApplies || !value) continue;
+    rules.push({ allow: key === "allow", pattern: robotsPattern(value), length: value.length });
+  }
+  return rules;
+}
+
+/** Longest-match robots.txt check (Allow wins ties). Unreachable robots.txt => allowed. */
+export function robotsAllowsPath(rules: RobotsRule[], pathAndQuery: string): boolean {
+  let best: RobotsRule | undefined;
+  for (const r of rules) {
+    if (!r.pattern.test(pathAndQuery)) continue;
+    if (!best || r.length > best.length || (r.length === best.length && r.allow)) best = r;
+  }
+  return best ? best.allow : true;
+}
+
+/** True when the target host's robots.txt permits fetching `url` (cached per origin). */
+export async function robotsAllows(url: URL): Promise<boolean> {
+  let rules = robotsCache.get(url.origin);
+  if (!rules) {
+    rules = fetch(`${url.origin}/robots.txt`, { signal: AbortSignal.timeout(10000), redirect: "follow" })
+      .then(async (res) => (res.ok ? parseRobots(await res.text()) : []))
+      .catch(() => []);
+    robotsCache.set(url.origin, rules);
+  }
+  return robotsAllowsPath(await rules, `${url.pathname}${url.search}`);
+}

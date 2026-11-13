@@ -1,0 +1,77 @@
+{
+  "site": "hyperframes.studio",
+  "url": "https://hyperframes.studio",
+  "targetUrl": "https://hyperframes.studio",
+  "goal": "understand what the product does and request a demo",
+  "status": "blocked",
+  "failureReason": "renderer unresponsive in headless Chromium",
+  "error": "Discovery captured no states (every page load failed)",
+  "runner": "local-playwright",
+  "config": {
+    "maxStates": 15,
+    "trajectories": 300,
+    "verifyCount": 4,
+    "maxDepth": 3,
+    "viewports": [
+      "desktop"
+    ],
+    "seed": 1337
+  },
+  "preflight": {
+    "status": null,
+    "finalUrl": "https://hyperframes.studio",
+    "title": "",
+    "blocked": true,
+    "blockReason": "renderer unresponsive in headless Chromium",
+    "error": "page.content timed out after 15000ms (renderer unresponsive)"
+  },
+  "robotsAllowsTarget": true,
+  "assertions": [],
+  "discover": {
+    "states": 0,
+    "edges": 0,
+    "pageFailures": 2,
+    "pageFailureSamples": [
+      {
+        "url": "https://hyperframes.studio/",
+        "error": "Error: page.content timed out after 15000ms (renderer unresponsive)"
+      },
+      {
+        "url": "https://hyperframes.studio/",
+        "error": "Error: page.content timed out after 15000ms (renderer unresponsive)"
+      }
+    ],
+    "urls": []
+  },
+  "simulate": {
+    "trajectories": 0,
+    "goalReachPct": 0,
+    "outcomes": {}
+  },
+  "verify": {
+    "runs": 0,
+    "passed": 0,
+    "failed": 0,
+    "assertionsPassed": 0,
+    "runsWithConsoleErrors": 0,
+    "runErrors": []
+  },
+  "compare": null,
+  "findings": {
+    "total": 0,
+    "bySeverity": {
+      "critical": 0,
+      "high": 0,
+      "medium": 0,
+      "low": 0
+    },
+    "byEvidence": {},
+    "titles": []
+  },
+  "durationsMs": {
+    "discover": 33719,
+    "simulate": 0,
+    "total": 99519
+  },
+  "ranAt": "2026-11-13T21:25:08.693Z"
+}
