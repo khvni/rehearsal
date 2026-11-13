@@ -76,7 +76,7 @@ export default function Home() {
       </form>
       <section className="panel">
         <header className="panel-head">
-          <h3>How it works</h3>
+          <h2>How it works</h2>
         </header>
         <ol className="how">
           <li>Discover states and build a decision graph (Playwright + Bright Data)</li>

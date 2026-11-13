@@ -21,7 +21,7 @@ export function Panel({
   return (
     <section className={`panel ${className ?? ""}`} aria-busy={state.kind === "loading" || busy}>
       <header className="panel-head">
-        <h3>{title}</h3>
+        <h2>{title}</h2>
         {meta && <span className="panel-meta">{meta}</span>}
         {busy && state.kind === "ready" && <span className="pill running">updating</span>}
         {actions && <div className="panel-actions">{actions}</div>}
