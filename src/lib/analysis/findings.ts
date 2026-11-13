@@ -299,7 +299,8 @@ Return FINDINGS_JSON: {"findings": [{"title","category"(rubric key),"severity","
         verificationStatus: f.evidenceType === "verified-failure" ? "verified" : "unverified",
         krugPrinciple: (f.krugPrinciple ?? "dont-make-me-think") as Finding["krugPrinciple"],
       }));
-  } catch {
+  } catch (err) {
+    console.warn(`[llm-findings] ${llm.name} produced no findings: ${String(err)}`);
     return [];
   }
 }

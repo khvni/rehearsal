@@ -20,6 +20,18 @@ export class GeminiClient implements LlmClient {
 
   async complete(prompt: string, opts?: { deep?: boolean; json?: boolean }): Promise<string> {
     const model = opts?.deep ? this.deep : this.fast;
+    try {
+      return await this.generate(model, prompt, opts?.json ?? false);
+    } catch (err) {
+      if (model !== this.fast && isRetryableWithFastModel(err)) {
+        console.warn(`[gemini] ${model} unavailable (${String(err)}); falling back to ${this.fast}`);
+        return await this.generate(this.fast, prompt, opts?.json ?? false);
+      }
+      throw err;
+    }
+  }
+
+  private async generate(model: string, prompt: string, json: boolean): Promise<string> {
     const res = await fetch(
       `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${this.apiKey}`,
       {
@@ -28,7 +40,7 @@ export class GeminiClient implements LlmClient {
         body: JSON.stringify({
           contents: [{ parts: [{ text: prompt }] }],
           generationConfig: {
-            ...(opts?.json ? { responseMimeType: "application/json" } : {}),
+            ...(json ? { responseMimeType: "application/json" } : {}),
             maxOutputTokens: 8192,
           },
         }),
@@ -41,6 +53,11 @@ export class GeminiClient implements LlmClient {
     };
     return data.candidates?.[0]?.content?.parts?.map((p) => p.text ?? "").join("") ?? "";
   }
+}
+
+/** Quota (429), missing model (404) or 5xx on the deep model: degrade to the fast model instead of silently losing findings. */
+function isRetryableWithFastModel(err: unknown): boolean {
+  return /failed: (429|404|5\d\d)/.test(String(err));
 }
 
 /** Deterministic offline stand-in: structured responses keyed by prompt shape. */
