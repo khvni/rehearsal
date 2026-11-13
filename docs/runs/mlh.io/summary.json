@@ -56,10 +56,10 @@
   },
   "simulate": {
     "trajectories": 300,
-    "goalReachPct": 0,
+    "goalReachPct": 91,
     "outcomes": {
-      "repetition-limit": 290,
-      "max-depth": 10
+      "goal-reached": 273,
+      "repetition-limit": 27
     }
   },
   "verify": {
@@ -67,7 +67,7 @@
     "passed": 0,
     "failed": 4,
     "assertionsPassed": 0,
-    "runsWithConsoleErrors": 1,
+    "runsWithConsoleErrors": 0,
     "runErrors": []
   },
   "compare": {
@@ -76,12 +76,12 @@
       "variant": false
     },
     "interactionCount": {
-      "baseline": 9,
-      "variant": 9
+      "baseline": 6,
+      "variant": 6
     },
     "backtracks": {
-      "baseline": 9,
-      "variant": 9
+      "baseline": 6,
+      "variant": 6
     },
     "failedInteractions": {
       "baseline": 0,
@@ -93,31 +93,72 @@
     },
     "findingReproduces": true
   },
+  "endpoints": {
+    "intent": "information",
+    "total": 21,
+    "byClass": {
+      "schedule-event": {
+        "found": 5,
+        "reached": 5
+      },
+      "signup": {
+        "found": 5,
+        "reached": 4
+      },
+      "contact-form": {
+        "found": 2,
+        "reached": 1
+      },
+      "docs-answers": {
+        "found": 5,
+        "reached": 1
+      },
+      "demo-video": {
+        "found": 4,
+        "reached": 1
+      }
+    }
+  },
   "findings": {
-    "total": 2,
+    "total": 16,
     "bySeverity": {
       "critical": 0,
-      "high": 1,
-      "medium": 1,
-      "low": 0
+      "high": 2,
+      "medium": 7,
+      "low": 7
     },
     "byEvidence": {
       "verified-failure": 1,
-      "reproducible-concern": 1
+      "reproducible-concern": 13,
+      "hypothesis": 2
     },
     "titles": [
-      "[high] Assertion failed in browser: url-matches \"schedule\"",
-      "[medium] Dense link surface increases scan cost"
+      "[high] Assertion failed in browser: url-matches \"schedule\" (4 of 4 runs)",
+      "[medium] Dense link surface increases scan cost (13 of 13 pages)",
+      "[medium] Endpoint buried: signup \"Apply\"",
+      "[medium] Endpoint buried: signup \"Sign Up\"",
+      "[high] No pricing endpoint found",
+      "[medium] Desktop: homepage requires 9.34 screens of scrolling",
+      "[medium] Desktop: no call to action above the fold on the homepage",
+      "[medium] Desktop: no single dominant call to action above the fold",
+      "[low] Desktop: primary navigation has 8 items",
+      "[low] Heading outline is broken: skips h1→h3",
+      "[low] Desktop: largest text on the page is not the h1",
+      "[low] Desktop: missing search (trunk test fails)",
+      "[low] Desktop: missing search, you-are-here indicator (trunk test fails)",
+      "[low] Desktop: missing you-are-here indicator (trunk test fails)",
+      "[medium] \"Is there a free tier or trial?\" has no answer path",
+      "[low] 1 of 14 expected visitor questions have no answer path"
     ]
   },
   "durationsMs": {
-    "discover": 32419,
-    "simulate": 23,
-    "verify": 41964,
-    "analyze": 4,
-    "compare": 4435,
-    "spec": 3,
-    "total": 81894
+    "discover": 32190,
+    "simulate": 13,
+    "verify": 21431,
+    "analyze": 118,
+    "compare": 3041,
+    "spec": 5,
+    "total": 59727
   },
-  "ranAt": "2026-11-13T21:19:41.041Z"
+  "ranAt": "2026-11-13T22:18:52.239Z"
 }

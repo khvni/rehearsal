@@ -134,12 +134,27 @@ export function robotsAllowsPath(rules: RobotsRule[], pathAndQuery: string): boo
   return best ? best.allow : true;
 }
 
+/** Fetch robots.txt following at most 3 redirects, re-validating every hop with `assertPublicUrl`. */
+async function fetchRobots(start: string): Promise<string | undefined> {
+  let target = await assertPublicUrl(start);
+  for (let hop = 0; hop < 4; hop++) {
+    const res = await fetch(target, { signal: AbortSignal.timeout(10000), redirect: "manual" });
+    const location = res.headers.get("location");
+    if (res.status >= 300 && res.status < 400 && location) {
+      target = await assertPublicUrl(new URL(location, target).toString());
+      continue;
+    }
+    return res.ok ? await res.text() : undefined;
+  }
+  return undefined;
+}
+
 /** True when the target host's robots.txt permits fetching `url` (cached per origin). */
 export async function robotsAllows(url: URL): Promise<boolean> {
   let rules = robotsCache.get(url.origin);
   if (!rules) {
-    rules = fetch(`${url.origin}/robots.txt`, { signal: AbortSignal.timeout(10000), redirect: "follow" })
-      .then(async (res) => (res.ok ? parseRobots(await res.text()) : []))
+    rules = fetchRobots(`${url.origin}/robots.txt`)
+      .then((text) => (text === undefined ? [] : parseRobots(text)))
       .catch(() => []);
     robotsCache.set(url.origin, rules);
   }

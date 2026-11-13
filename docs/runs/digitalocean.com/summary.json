@@ -58,16 +58,16 @@
   },
   "simulate": {
     "trajectories": 300,
-    "goalReachPct": 54,
+    "goalReachPct": 51.7,
     "outcomes": {
-      "goal-reached": 162,
-      "repetition-limit": 138
+      "goal-reached": 155,
+      "repetition-limit": 145
     }
   },
   "verify": {
     "runs": 4,
-    "passed": 0,
-    "failed": 4,
+    "passed": 1,
+    "failed": 3,
     "assertionsPassed": 1,
     "runsWithConsoleErrors": 4,
     "runErrors": []
@@ -78,56 +78,96 @@
       "variant": false
     },
     "interactionCount": {
-      "baseline": 7,
-      "variant": 7
+      "baseline": 8,
+      "variant": 8
     },
     "backtracks": {
-      "baseline": 7,
-      "variant": 7
+      "baseline": 8,
+      "variant": 8
     },
     "failedInteractions": {
       "baseline": 0,
       "variant": 0
     },
     "runtimeErrors": {
-      "baseline": 3,
-      "variant": 4
+      "baseline": 2,
+      "variant": 9
     },
     "findingReproduces": true
   },
+  "endpoints": {
+    "intent": "quotation",
+    "total": 27,
+    "byClass": {
+      "pricing": {
+        "found": 5,
+        "reached": 5
+      },
+      "signup": {
+        "found": 5,
+        "reached": 5
+      },
+      "contact-form": {
+        "found": 5,
+        "reached": 2
+      },
+      "docs-answers": {
+        "found": 5,
+        "reached": 0
+      },
+      "demo-video": {
+        "found": 2,
+        "reached": 0
+      },
+      "schedule-event": {
+        "found": 5,
+        "reached": 0
+      }
+    }
+  },
   "findings": {
-    "total": 10,
+    "total": 20,
     "bySeverity": {
       "critical": 0,
-      "high": 2,
-      "medium": 8,
-      "low": 0
+      "high": 3,
+      "medium": 10,
+      "low": 7
     },
     "byEvidence": {
       "verified-failure": 1,
-      "reproducible-concern": 9
+      "reproducible-concern": 19
     },
     "titles": [
-      "[high] Assertion failed in browser: url-matches \"pricing\"",
-      "[medium] Dense link surface increases scan cost",
-      "[medium] Ambiguous link labels (3)",
+      "[high] Assertion failed in browser: url-matches \"pricing\" (3 of 4 runs)",
+      "[medium] Dense link surface increases scan cost (15 of 15 pages)",
+      "[medium] Ambiguous link labels (3) (2 of 15 pages)",
       "[medium] Ambiguous link labels (1)",
       "[medium] Ambiguous link labels (11)",
-      "[high] Post-event page still invites registration",
+      "[high] Post-event page still invites registration (3 of 15 pages)",
       "[medium] Ambiguous link labels (63)",
-      "[medium] Ambiguous link labels (6)",
+      "[medium] Ambiguous link labels (6) (2 of 15 pages)",
       "[medium] Ambiguous link labels (4)",
-      "[medium] Ambiguous link labels (2)"
+      "[medium] Ambiguous link labels (2)",
+      "[low] Console errors during browser runs (14)",
+      "[low] Desktop: homepage requires 6.76 screens of scrolling",
+      "[medium] Desktop: no single dominant call to action above the fold",
+      "[medium] Desktop: primary navigation has 17 items",
+      "[low] Heading outline is broken: skips h1→h3",
+      "[low] Heading outline is broken: no h1",
+      "[low] Desktop: missing search (trunk test fails)",
+      "[low] Desktop: missing search, you-are-here indicator (trunk test fails)",
+      "[high] Desktop: missing page name, search, you-are-here indicator (trunk test fails)",
+      "[low] Desktop: missing you-are-here indicator (trunk test fails)"
     ]
   },
   "durationsMs": {
-    "discover": 34458,
-    "simulate": 58,
-    "verify": 33142,
-    "analyze": 7,
-    "compare": 3494,
-    "spec": 6,
-    "total": 73412
+    "discover": 34720,
+    "simulate": 51,
+    "verify": 49443,
+    "analyze": 128,
+    "compare": 3870,
+    "spec": 7,
+    "total": 90451
   },
-  "ranAt": "2026-11-13T21:23:55.280Z"
+  "ranAt": "2026-11-13T22:23:26.038Z"
 }
