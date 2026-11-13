@@ -1,0 +1,5 @@
+# Default owner for everything.
+* @khvni
+
+# Shared contracts: changes here ripple through every pipeline stage.
+src/lib/contracts/ @khvni

@@ -1,0 +1,32 @@
+# Source of truth for the khvni/rehearsal Devin environment blueprint.
+# The blueprint in Devin's settings should mirror this file exactly; change it
+# here first (via PR), then paste it into the repo blueprint.
+initialize: |
+  mkdir -p ~/.local/node
+  curl -fsSL https://nodejs.org/dist/v22.21.0/node-v22.21.0-linux-x64.tar.xz | tar -xJ --strip-components=1 -C ~/.local/node
+  echo "PATH=$HOME/.local/node/bin:$PATH" >> $ENVRC
+  export PATH=$HOME/.local/node/bin:$PATH
+  npm install
+  npx playwright install chromium
+maintenance: |
+  export PATH=$HOME/.local/node/bin:$PATH
+  npm install
+knowledge:
+  - name: toolchain
+    contents: |
+      Node 22 lives at ~/.local/node — export PATH=$HOME/.local/node/bin:$PATH first. No API keys needed: every vendor adapter falls back to deterministic fixtures.
+  - name: lint
+    contents: |
+      npm run lint
+  - name: test
+    contents: |
+      npm test (unit) && npm run eval (evals) && npm run test:e2e (playwright, needs chromium)
+  - name: build
+    contents: |
+      npm run build
+  - name: check
+    contents: |
+      npm run check = lint + typecheck + unit + evals + skill-sync. Keep .devin/skills/rehearsal-testing/SKILL.md in sync with pipeline stages and eval files.
+  - name: dev-server
+    contents: |
+      npm run dev — dashboard at http://localhost:3000, fully functional without API keys
