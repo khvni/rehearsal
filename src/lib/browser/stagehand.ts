@@ -30,6 +30,11 @@ export interface StagehandRunnerOptions {
 }
 
 const NAV_TIMEOUT_MS = 60_000;
+/** Stagehand only exposes console events, so forward uncaught errors/rejections to console.error. */
+const PAGE_ERROR_BRIDGE = `(() => {
+  window.addEventListener("error", (e) => console.error("pageerror: " + (e.message || e.error)));
+  window.addEventListener("unhandledrejection", (e) => console.error("pageerror: " + e.reason));
+})();`;
 
 /**
  * Stagehand model config. Stagehand does not read env vars, so we resolve them here:
@@ -189,6 +194,7 @@ export class StagehandRunner implements BrowserRunner {
     try {
       await assertPublicUrl(args.url);
       await this.withSession(args.viewport, args.patches, async (sh, page) => {
+        await page.addInitScript(PAGE_ERROR_BRIDGE);
         await page.on("console", (ev) => {
           const p = ev.params as { type?: string; args?: { value?: unknown }[] };
           if (p.type === "error") {
