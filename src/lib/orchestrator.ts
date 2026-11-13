@@ -449,7 +449,7 @@ Return ASSERTION_LIST as a JSON array of {kind, value, selector?}.`,
 function dedupeFindings(list: Experiment["findings"]): Experiment["findings"] {
   const seen = new Set<string>();
   return list.filter((f) => {
-    const key = `${f.category}|${f.title.toLowerCase().slice(0, 40)}`;
+    const key = `${f.category}|${f.title.trim().toLowerCase()}|${[...f.affectedStates].sort().join(",")}`;
     if (seen.has(key)) return false;
     seen.add(key);
     return true;
