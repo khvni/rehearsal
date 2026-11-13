@@ -1,0 +1,51 @@
+name: ci
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npm run lint
+      - run: npm run typecheck
+      - run: npm run test
+      - name: Evals gate
+        run: npm run eval
+      - run: npm run check:skill-sync
+      - name: Install Chromium
+        run: npx playwright install --with-deps chromium
+      - name: E2E (hermetic fixtures)
+        run: npm run test:e2e
+
+  terraform:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: 1.9.8
+      - name: fmt
+        run: terraform fmt -check -recursive terraform/
+      - name: validate digitalocean
+        run: |
+          cd terraform/digitalocean
+          terraform init -backend=false
+          terraform validate
+      - name: validate cloudflare
+        run: |
+          cd terraform/cloudflare
+          terraform init -backend=false
+          terraform validate

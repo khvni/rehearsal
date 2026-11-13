@@ -1,0 +1,226 @@
+import { randomUUID } from "node:crypto";
+import type {
+  Assertion,
+  BrowserRun,
+  EvidenceType,
+  Finding,
+  SiteState,
+} from "../contracts";
+import { isVagueLabel } from "../browser/extract";
+import type { LlmClient } from "./gemini";
+import { rubricPromptSection } from "./rubric";
+
+let counter = 0;
+const fid = () => `f_${randomUUID().slice(0, 8)}_${counter++}`;
+
+/**
+ * Deterministic rule-based findings — always run, require no LLM.
+ * These are the "reproducible concern / verified failure" floor.
+ */
+export function ruleFindings(args: {
+  states: SiteState[];
+  runs: BrowserRun[];
+  assertions: Assertion[];
+  referenceNowIso?: string;
+}): Finding[] {
+  const { states, runs, assertions } = args;
+  const findings: Finding[] = [];
+  const now = args.referenceNowIso ? new Date(args.referenceNowIso) : new Date();
+
+  // 1. Verified failures: any assertion that failed in a browser run.
+  for (const run of runs) {
+    for (const { assertion, passed } of run.assertions) {
+      if (!passed) {
+        findings.push({
+          findingId: fid(),
+          title: `Assertion failed in browser: ${assertion.kind} "${assertion.value}"`,
+          category: "goal-completion",
+          severity: "high",
+          evidenceType: "verified-failure",
+          description: `Browser run ${run.runId} (${run.viewport.name}) failed assertion ${assertion.kind} on value "${assertion.value}".`,
+          affectedStates: [],
+          affectedActions: [],
+          evidencePaths: run.screenshotPaths,
+          recommendation: "Inspect the failed assertion against the live page and correct the mismatch.",
+          verificationStatus: "verified",
+          krugPrinciple: "testing-beats-arguing",
+        });
+      }
+    }
+  }
+
+  for (const state of states) {
+    const text = state.visibleText.toLowerCase();
+
+    // 2. Stale-content heuristic: past-dated event copy still invites action.
+    const pastDates = extractPastDates(state.visibleText, now);
+    const hasApplyCta = /\b(apply|register|sign up|get tickets|buy tickets|submit application)\b/i.test(
+      state.visibleText,
+    );
+    if (pastDates.length > 0 && hasApplyCta) {
+      findings.push({
+        findingId: fid(),
+        title: "Post-event page still invites registration",
+        category: "copy-economy",
+        severity: "high",
+        evidenceType: "reproducible-concern",
+        description: `Page "${state.pageTitle}" shows dates in the past (${pastDates.join(", ")}) alongside active registration/apply language — a stale-content inconsistency.`,
+        affectedStates: [state.stateId],
+        affectedActions: state.actions
+          .filter((a) => /\b(apply|register)\b/i.test(a.label))
+          .map((a) => a.actionId),
+        evidencePaths: state.screenshotPath ? [state.screenshotPath] : [],
+        recommendation:
+          "Replace the apply/register CTA with a post-event path (recordings, next-year waitlist) or add a visible 'event has ended' notice.",
+        verificationStatus: "reproduced",
+        krugPrinciple: "omit-words",
+      });
+    }
+
+    // 3. Vague labels — K1/K4.
+    const vague = state.actions.filter((a) => isVagueLabel(a.label));
+    if (vague.length > 0) {
+      findings.push({
+        findingId: fid(),
+        title: `Ambiguous link labels (${vague.length})`,
+        category: "cognitive-effort",
+        severity: "medium",
+        evidenceType: "reproducible-concern",
+        description: `Actions like ${vague.map((v) => `"${v.label}"`).join(", ")} force users to guess where they lead.`,
+        affectedStates: [state.stateId],
+        affectedActions: vague.map((v) => v.actionId),
+        evidencePaths: state.screenshotPath ? [state.screenshotPath] : [],
+        recommendation: "Rename vague labels to describe their destination explicitly.",
+        verificationStatus: "reproduced",
+        krugPrinciple: "dont-make-me-think",
+      });
+    }
+
+    // 4. Nav overload — >9 distinct top-level links raises scan cost (K2).
+    const links = state.actions.filter((a) => a.role === "link");
+    if (links.length > 24) {
+      findings.push({
+        findingId: fid(),
+        title: "Dense link surface increases scan cost",
+        category: "hierarchy",
+        severity: "medium",
+        evidenceType: "reproducible-concern",
+        description: `${links.length} distinct links compete for attention on "${state.pageTitle}".`,
+        affectedStates: [state.stateId],
+        affectedActions: [],
+        evidencePaths: [],
+        recommendation: "Group secondary links; keep the primary path visually dominant.",
+        verificationStatus: "reproduced",
+        krugPrinciple: "scanning-not-reading",
+      });
+    }
+
+    // 5. Missing H1-ish identity (trunk test, K6).
+    if (!state.pageTitle || state.pageTitle === state.url) {
+      findings.push({
+        findingId: fid(),
+        title: "Page lacks a readable title",
+        category: "navigation",
+        severity: "medium",
+        evidenceType: "reproducible-concern",
+        description: "No <title> text extracted — 'you are here' signal missing.",
+        affectedStates: [state.stateId],
+        affectedActions: [],
+        evidencePaths: [],
+        recommendation: "Give the page a descriptive title and matching H1.",
+        verificationStatus: "reproduced",
+        krugPrinciple: "navigation",
+      });
+    }
+
+    void text;
+  }
+
+  void assertions;
+  return findings;
+}
+
+const MONTHS: Record<string, number> = {
+  january: 0, february: 1, march: 2, april: 3, may: 4, june: 5, july: 6,
+  august: 7, september: 8, sept: 8, october: 9, november: 10, december: 11,
+  jan: 0, feb: 1, mar: 2, apr: 3, jun: 5, jul: 6, aug: 7, sep: 8, oct: 9, nov: 10, dec: 11,
+};
+
+/** Find "Month D(-D), YYYY" dates fully in the past (full or abbreviated month names). */
+export function extractPastDates(text: string, now: Date): string[] {
+  const out: string[] = [];
+  const monthNames = Object.keys(MONTHS).join("|");
+  const re = new RegExp(
+    `\\b(${monthNames})\\.?\\s+(\\d{1,2})(?:\\s*[–—-]\\s*(\\d{1,2}))?,?\\s+(\\d{4})`,
+    "gi",
+  );
+  for (const m of text.matchAll(re)) {
+    const month = MONTHS[m[1].toLowerCase().replace(".", "")];
+    const endDay = Number(m[3] ?? m[2]);
+    const year = Number(m[4]);
+    const end = new Date(Date.UTC(year, month, endDay, 23, 59, 59));
+    if (end.getTime() < now.getTime()) out.push(m[0]);
+  }
+  return out;
+}
+
+/**
+ * LLM-augmented findings (gemini-4-argon): sends compact evidence + rubric,
+ * expects FINDINGS_JSON. Failures degrade to rule findings only.
+ */
+export async function llmFindings(args: {
+  llm: LlmClient;
+  states: SiteState[];
+  runs: BrowserRun[];
+  goal: string;
+}): Promise<Finding[]> {
+  const { llm, states, runs, goal } = args;
+  const evidence = {
+    goal,
+    states: states.slice(0, 15).map((s) => ({
+      url: s.url,
+      title: s.pageTitle,
+      text: s.visibleText.slice(0, 900),
+      actions: s.actions.slice(0, 20).map((a) => ({ label: a.label, role: a.role, href: a.href })),
+    })),
+    runs: runs.map((r) => ({
+      viewport: r.viewport.name,
+      success: r.success,
+      failedAssertions: r.assertions.filter((a) => !a.passed).map((a) => a.assertion),
+      errors: r.errors.slice(0, 10),
+    })),
+  };
+  const prompt = `You are a UX auditor applying Steve Krug's "Don't Make Me Think, Revisited".
+Rubric dimensions:\n${rubricPromptSection()}\n
+GOAL: ${goal}
+EVIDENCE:\n${JSON.stringify(evidence)}\n
+Return FINDINGS_JSON: {"findings": [{"title","category"(rubric key),"severity","evidenceType","description","recommendation","krugPrinciple"}]} — only issues supported by the evidence; label unverified ones "hypothesis".`;
+  try {
+    const raw = await llm.complete(prompt, { deep: true, json: true });
+    const parsed = JSON.parse(stripFences(raw)) as {
+      findings?: Partial<Finding>[];
+    };
+    return (parsed.findings ?? [])
+      .filter((f) => f.title && f.description)
+      .map((f) => ({
+        findingId: fid(),
+        title: String(f.title),
+        category: (f.category ?? "clarity") as Finding["category"],
+        severity: (f.severity ?? "medium") as Finding["severity"],
+        evidenceType: (f.evidenceType ?? "hypothesis") as EvidenceType,
+        description: String(f.description),
+        affectedStates: states.slice(0, 3).map((s) => s.stateId),
+        affectedActions: [],
+        evidencePaths: [],
+        recommendation: String(f.recommendation ?? ""),
+        verificationStatus: f.evidenceType === "verified-failure" ? "verified" : "unverified",
+        krugPrinciple: (f.krugPrinciple ?? "dont-make-me-think") as Finding["krugPrinciple"],
+      }));
+  } catch {
+    return [];
+  }
+}
+
+export function stripFences(s: string): string {
+  return s.replace(/```json|```/g, "").trim();
+}

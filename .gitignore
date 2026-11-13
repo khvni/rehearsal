@@ -1,0 +1,21 @@
+node_modules/
+.next/
+out/
+dist/
+.env
+.env.*
+!.env.example
+data/
+evidence/
+playwright-report/
+test-results/
+*.tsbuildinfo
+.DS_Store
+.terraform/
+*.tfstate
+*.tfstate.*
+
+# runtime data
+data/
+test-results/
+playwright-report/

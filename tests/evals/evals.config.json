@@ -1,0 +1,13 @@
+{
+  "fixture": "tests/evals/fixtures/aie-code-2026.html",
+  "thresholds": {
+    "minActionsExtracted": 30,
+    "minLinksExtracted": 15,
+    "minHeadingsExtracted": 5,
+    "simulatedTrajectories": 500,
+    "minCoverageRatio": 0.5,
+    "minSpecChangeCompleteness": 1.0,
+    "maxAmbiguity": 1.0,
+    "requireStaleDateFinding": true
+  }
+}
