@@ -2,6 +2,9 @@ import { randomUUID } from "node:crypto";
 import type {
   Assertion,
   BrowserRun,
+  Endpoint,
+  EndpointClass,
+  EndpointJourney,
   EvidenceType,
   Finding,
   SiteState,
@@ -138,6 +141,85 @@ export function ruleFindings(args: {
   }
 
   void assertions;
+  return findings;
+}
+
+/**
+ * Endpoint reachability findings (deterministic, from seeded endpoint journeys):
+ * - endpoint-unreachable: high-weight endpoint with zero goal-reached journeys
+ * - endpoint-deep: median journey > 3 steps
+ * - missing-endpoint-class: site type expects a class (pricing/signup/…) that wasn't found
+ */
+export function endpointFindings(args: {
+  endpoints: Endpoint[];
+  journeys: EndpointJourney[];
+  expectedClasses: EndpointClass[];
+  siteType: string;
+  statesDiscovered: number;
+  highWeight?: number;
+  deepSteps?: number;
+}): Finding[] {
+  const { endpoints, journeys, expectedClasses, siteType, statesDiscovered } = args;
+  const highWeight = args.highWeight ?? 0.6;
+  const deepSteps = args.deepSteps ?? 3;
+  const byId = new Map(journeys.map((j) => [j.endpointId, j]));
+  const findings: Finding[] = [];
+  const affected = (e: Endpoint) => [...new Set([e.sourceStateId, e.stateId].filter(Boolean) as string[])];
+
+  for (const e of endpoints) {
+    const j = byId.get(e.endpointId);
+    if (!j) continue;
+    if (e.weight >= highWeight && j.goalReached === 0) {
+      findings.push({
+        findingId: `f_endpoint-unreachable_${e.endpointId}`,
+        title: `Endpoint unreachable: ${e.class} "${e.label.slice(0, 60)}"`,
+        category: "navigation",
+        severity: e.weight >= 0.85 ? "high" : "medium",
+        evidenceType: "reproducible-concern",
+        description: `endpoint-unreachable: "${e.label}" (${e.class}, weight ${e.weight}) at ${e.url} was reached in 0 of ${j.trajectories} seeded journeys from the start page. Krug's trunk test fails here — a visitor can't find their way to it.`,
+        affectedStates: affected(e),
+        affectedActions: e.actionId ? [e.actionId] : [],
+        evidencePaths: [],
+        recommendation: `Link "${e.label}" from persistent navigation or the start page with a label that names the ${e.class.replace("-", " ")} destination.`,
+        verificationStatus: "reproduced",
+        krugPrinciple: "navigation",
+      });
+    } else if (j.medianSteps !== undefined && j.medianSteps > deepSteps) {
+      findings.push({
+        findingId: `f_endpoint-deep_${e.endpointId}`,
+        title: `Endpoint buried: ${e.class} "${e.label.slice(0, 60)}"`,
+        category: "navigation",
+        severity: e.weight >= highWeight ? "medium" : "low",
+        evidenceType: "reproducible-concern",
+        description: `endpoint-deep: "${e.label}" (${e.class}, weight ${e.weight}) takes a median of ${j.medianSteps} steps across ${j.goalReached}/${j.trajectories} reaching journeys (shortest: ${j.samplePath.join(" → ") || "n/a"}). Each extra choice must be mindless; past ${deepSteps} the path stops being obvious.`,
+        affectedStates: affected(e),
+        affectedActions: e.actionId ? [e.actionId] : [],
+        evidencePaths: [],
+        recommendation: `Surface "${e.label}" within ${deepSteps} clicks of the start page, or make each intermediate link unambiguous about leading there.`,
+        verificationStatus: "reproduced",
+        krugPrinciple: "mindless-choices",
+      });
+    }
+  }
+
+  const found = new Set(endpoints.map((e) => e.class));
+  for (const cls of expectedClasses) {
+    if (found.has(cls)) continue;
+    findings.push({
+      findingId: `f_missing-endpoint-class_${cls}`,
+      title: `No ${cls} endpoint found`,
+      category: "goal-completion",
+      severity: cls === "pricing" || cls === "signup" ? "high" : "medium",
+      evidenceType: "reproducible-concern",
+      description: `missing-endpoint-class: a ${siteType} site is expected to expose a ${cls} endpoint, but none of the ${statesDiscovered} discovered states or their links/CTAs classify as ${cls}.`,
+      affectedStates: [],
+      affectedActions: [],
+      evidencePaths: [],
+      recommendation: `Add a clearly labeled ${cls.replace("-", " ")} destination and link it from the primary navigation.`,
+      verificationStatus: "reproduced",
+      krugPrinciple: "navigation",
+    });
+  }
   return findings;
 }
 

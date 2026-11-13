@@ -293,6 +293,59 @@ export const SpecReport = z.object({
 });
 export type SpecReport = z.infer<typeof SpecReport>;
 
+// ── Intents + endpoints (RFX-style: Information / Quotation / Proposal) ────
+
+export const IntentCategory = z.enum(["information", "quotation", "proposal"]);
+export type IntentCategory = z.infer<typeof IntentCategory>;
+
+export const EndpointClass = z.enum([
+  "pricing",
+  "signup",
+  "demo-video",
+  "contact-form",
+  "docs-answers",
+  "next-steps",
+  "schedule-event",
+  "download",
+  "other",
+]);
+export type EndpointClass = z.infer<typeof EndpointClass>;
+
+/** A destination a visitor wants to reach (pricing page, signup, video, form, answers…). */
+export const Endpoint = z.object({
+  endpointId: z.string(),
+  class: EndpointClass,
+  url: z.string().url(),
+  label: z.string(),
+  weight: z.number().min(0).max(1),
+  /** Graph state that *is* the endpoint (when it was discovered as a page). */
+  stateId: z.string().optional(),
+  /** State + action a visitor uses to reach it (CTA, link, button). */
+  sourceStateId: z.string().optional(),
+  actionId: z.string().optional(),
+  intent: z.array(IntentCategory),
+});
+export type Endpoint = z.infer<typeof Endpoint>;
+
+export const IntentProfile = z.object({
+  category: IntentCategory,
+  goal: z.string(),
+  targetEndpointClasses: z.array(EndpointClass),
+  weightOverrides: z.partialRecord(EndpointClass, z.number().min(0).max(1)).default({}),
+});
+export type IntentProfile = z.infer<typeof IntentProfile>;
+
+/** Seeded journey stats toward one endpoint: how often and how deep it is reached. */
+export const EndpointJourney = z.object({
+  endpointId: z.string(),
+  trajectories: z.number().int().nonnegative(),
+  goalReached: z.number().int().nonnegative(),
+  medianSteps: z.number().nonnegative().optional(),
+  /** Action labels along the shortest reaching path (the journey a visitor takes). */
+  samplePath: z.array(z.string()).default([]),
+});
+export type EndpointJourney = z.infer<typeof EndpointJourney>;
+
 // ── Experiment ──────────────────────────────────────────────────────────────
 
 export const ExperimentStatus = z.enum([
@@ -331,6 +384,9 @@ export const Experiment = z.object({
   variants: z.array(Variant).default([]),
   comparisons: z.array(Comparison).default([]),
   spec: SpecReport.optional(),
+  intents: z.array(IntentProfile).optional(),
+  endpoints: z.array(Endpoint).optional(),
+  journeys: z.array(EndpointJourney).optional(),
   errors: z.array(z.string()).default([]),
 });
 export type Experiment = z.infer<typeof Experiment>;
