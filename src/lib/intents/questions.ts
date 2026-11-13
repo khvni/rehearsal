@@ -68,7 +68,7 @@ function homepageQuestions(siteType: SiteType): QuestionTemplate[] {
       id: "hp-do",
       intent: "proposal",
       question: "What can I do here?",
-      classes: ["signup", "contact-form", "next-steps", "download", "schedule-event", "pricing", "demo-video"],
+      classes: ["signup", "contact-form", "next-steps", "download", "schedule-event", "pricing", "demo-video", "docs-answers"],
       importance: 0.9,
       startOnly: true,
     },
@@ -283,17 +283,19 @@ function snippet(hay: string, re: RegExp): string | null {
   return hay.slice(from, m.index + m[0].length + 60).replace(/\s+/g, " ").trim();
 }
 
+const usableKeywords = (words: string[]) => words.map((w) => w.trim()).filter((w) => w.length >= 2);
+
 const escapeRe = (s: string) => s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 
 function keywordTemplate(q: VisitorQuestion): QuestionTemplate {
-  const words = q.keywords?.filter((w) => w.trim().length > 2) ?? [];
+  const words = usableKeywords(q.keywords ?? []);
   return {
     id: q.questionId,
     intent: q.intent,
     question: q.question,
     classes: q.expectedEndpointClasses,
     importance: q.importance,
-    text: words.length ? new RegExp(`\\b(${words.map((w) => escapeRe(w.trim())).join("|")})\\b`, "i") : undefined,
+    text: words.length ? new RegExp(`\\b(${words.map(escapeRe).join("|")})\\b`, "i") : undefined,
   };
 }
 
@@ -380,8 +382,9 @@ Return VISITOR_QUESTIONS as JSON {"questions": [{"question": string, "intent": "
     for (const p of parsed.questions?.slice(0, 5) ?? []) {
       if (typeof p.question !== "string" || known.has(p.question.toLowerCase())) continue;
       const intent = p.intent === "quotation" || p.intent === "proposal" ? p.intent : "information";
-      const keywords = Array.isArray(p.keywords) ? p.keywords.filter((k): k is string => typeof k === "string").slice(0, 8) : [];
+      const keywords = Array.isArray(p.keywords) ? usableKeywords(p.keywords.filter((k): k is string => typeof k === "string")).slice(0, 8) : [];
       if (keywords.length === 0) continue;
+      known.add(p.question.toLowerCase());
       const importance = typeof p.importance === "number" ? round(Math.min(1, Math.max(0, p.importance))) : 0.5;
       extra.push({
         questionId: `llm-${createHash("sha1").update(p.question.toLowerCase()).digest("hex").slice(0, 8)}`,

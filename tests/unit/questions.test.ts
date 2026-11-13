@@ -94,6 +94,11 @@ describe("answer detection", () => {
     expect(qs.get("sponsor")?.answered).toBe(true);
   });
 
+  it("a docs-only homepage still answers 'what can I do here?'", () => {
+    const qs = byId(answerQuestions(generateQuestions(g, [], "content"), g, [ep("docs-answers", "Read the docs", home.stateId)]));
+    expect(qs.get("hp-do")?.answered).toBe(true);
+  });
+
   it("re-answers stored questions without regenerating (detectors keyed by questionId)", () => {
     const stored = JSON.parse(JSON.stringify(generateQuestions(g, [], "saas"))) as VisitorQuestion[];
     expect(byId(answerQuestions(stored, g, [])).get("docs")?.answered).toBe(true);
@@ -101,7 +106,7 @@ describe("answer detection", () => {
 });
 
 describe("LLM refinement", () => {
-  const g = graphOf(state("https://acme.com/", "Acme", "Acme ships rockets. Launch window opens in March."));
+  const g = graphOf(state("https://acme.com/", "Acme", "Acme ships rockets. Launch window opens in March. Telemetry lands in S3."));
 
   it("is skipped for the fixture client and on bad output", async () => {
     const base = generateQuestions(g, [], "saas");
@@ -118,15 +123,19 @@ describe("LLM refinement", () => {
           questions: [
             { question: "When is the next launch?", intent: "information", keywords: ["launch window"], importance: 0.9 },
             { question: "Can I ride along?", intent: "proposal", keywords: ["passenger"], importance: 0.4 },
-            { question: "No keywords", intent: "information", keywords: [] },
+            { question: "When is the next launch?", intent: "information", keywords: ["launch"], importance: 0.9 },
+            { question: "Where is telemetry stored?", intent: "information", keywords: ["S3"], importance: 0.6 },
+            { question: "No keywords", intent: "information", keywords: [" ", "a"] },
           ],
         }),
     };
     const qs = await visitorQuestions(g, [], "saas", llm);
     const llmQs = qs.filter((q) => q.source === "llm");
-    expect(llmQs.map((q) => q.question)).toEqual(["When is the next launch?", "Can I ride along?"]);
-    expect(llmQs[0]).toMatchObject({ answered: true, keywords: ["launch window"] });
-    expect(llmQs[1].answered).toBe(false);
+    const byQ = new Map(llmQs.map((q) => [q.question, q]));
+    expect(llmQs).toHaveLength(3);
+    expect(byQ.get("When is the next launch?")).toMatchObject({ answered: true, keywords: ["launch window"] });
+    expect(byQ.get("Where is telemetry stored?")).toMatchObject({ answered: true, keywords: ["S3"] });
+    expect(byQ.get("Can I ride along?")?.answered).toBe(false);
   });
 });
 
