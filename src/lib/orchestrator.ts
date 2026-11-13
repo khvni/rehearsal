@@ -14,7 +14,17 @@ import { GraphBuilder, makeState, adjacency } from "./graph";
 import { selectJev, scoreActions, type JevClient } from "./decisions/jev";
 import { simulateTrajectories, selectTrajectories, type SimWeights } from "./simulation";
 import { selectLlm, type LlmClient } from "./analysis/gemini";
-import { llmFindings, ruleFindings } from "./analysis/findings";
+import { endpointFindings, llmFindings, ruleFindings } from "./analysis/findings";
+import {
+  EXPECTED_CLASSES,
+  classifyGoalWithLlm,
+  defaultIntentsForSite,
+  detectSiteType,
+  discoverEndpoints,
+  endpointJourneys,
+  intentForGoal,
+  endpointGoalAssertions,
+} from "./intents";
 import { generateSpec, specToMarkdown } from "./analysis/spec";
 import { selectStore, type ExperimentStore } from "./storage";
 import { withTrace, logEvent } from "./telemetry";
@@ -144,6 +154,7 @@ export class Orchestrator {
         }
       }
       experiment.graph = builder.build();
+      await this.mapIntents(experiment);
       await this.update(experiment, "created");
       return experiment;
     });
@@ -164,6 +175,7 @@ export class Orchestrator {
 
       // Assertions: from LLM objective compile (fixture fallback = keyword text check).
       exp.assertions = await this.compileAssertions(exp.goal);
+      if (!exp.endpoints) await this.mapIntents(exp);
 
       // Score each state's actions once; cache by stateHash.
       const weights: SimWeights = { byState: new Map(), ambiguity: new Map() };
@@ -180,7 +192,7 @@ export class Orchestrator {
         graph,
         startStateId: start.stateId,
         weights,
-        assertions: exp.assertions,
+        assertions: [...exp.assertions, ...endpointGoalAssertions(exp.graph, exp.intents?.[0], exp.endpoints)],
         seed: config.seed,
         count: config.trajectories,
         maxDepth: config.maxDepth,
@@ -245,7 +257,8 @@ export class Orchestrator {
       const states = exp.graph?.states ?? [];
       const rules = ruleFindings({ states, runs: exp.browserTests, assertions: exp.assertions });
       const llm = await llmFindings({ llm: this.llm, states, runs: exp.browserTests, goal: exp.goal });
-      exp.findings = dedupeFindings([...rules, ...llm]);
+      const endpoints = await this.endpointAnalysis(exp);
+      exp.findings = dedupeFindings([...rules, ...endpoints, ...llm]);
       await this.update(exp, "created");
       return exp;
     });
@@ -348,6 +361,41 @@ export class Orchestrator {
       patches: [patch],
       status: "applied",
     };
+  }
+
+  /** Classify the goal (RFX intent), add one default goal per category, discover + weight endpoints. */
+  private async mapIntents(exp: Experiment): Promise<void> {
+    const graph = exp.graph;
+    if (!graph || graph.states.length === 0) return;
+    const goalIntent = intentForGoal(exp.goal, await classifyGoalWithLlm(exp.goal, this.llm));
+    exp.intents = [goalIntent, ...defaultIntentsForSite(graph)];
+    exp.endpoints = discoverEndpoints(graph, { intents: [goalIntent] });
+    logEvent({
+      experimentId: exp.id,
+      stage: "discover",
+      kind: "endpoints",
+      data: { intent: goalIntent.category, endpoints: exp.endpoints.length, siteType: detectSiteType(graph) },
+    });
+  }
+
+  /** Seeded endpoint journeys + reachability findings (unreachable / deep / missing class). */
+  private async endpointAnalysis(exp: Experiment): Promise<Experiment["findings"]> {
+    const graph = exp.graph;
+    if (!graph || graph.states.length === 0) return [];
+    if (!exp.endpoints) await this.mapIntents(exp);
+    const endpoints = exp.endpoints ?? [];
+    exp.journeys = endpointJourneys(graph, endpoints, {
+      seed: exp.configuration.seed,
+      maxDepth: exp.configuration.maxDepth,
+    });
+    const siteType = detectSiteType(graph);
+    return endpointFindings({
+      endpoints,
+      journeys: exp.journeys,
+      expectedClasses: EXPECTED_CLASSES[siteType],
+      siteType,
+      statesDiscovered: graph.states.length,
+    });
   }
 
   private async compileAssertions(goal: string): Promise<Assertion[]> {
