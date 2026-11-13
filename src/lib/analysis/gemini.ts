@@ -10,15 +10,26 @@ export class GeminiClient implements LlmClient {
   private apiKey: string;
   private fast: string;
   private deep: string;
+  private maxCalls: number;
+  private calls = 0;
 
   constructor() {
     this.apiKey = process.env.GEMINI_API_KEY ?? "";
     this.fast = process.env.GEMINI_MODEL_FAST ?? "gemini-4-hydrogen";
     this.deep = process.env.GEMINI_MODEL_DEEP ?? "gemini-4-argon";
+    const max = Number(process.env.REHEARSAL_GEMINI_MAX_CALLS ?? 2);
+    this.maxCalls = Number.isFinite(max) && max >= 0 ? max : 2;
     if (!this.apiKey) throw new Error("GeminiClient requires GEMINI_API_KEY");
   }
 
+  resetBudget(): void {
+    this.calls = 0;
+  }
+
+  /** Over budget throws; every caller already falls back to its deterministic path on error. */
   async complete(prompt: string, opts?: { deep?: boolean; json?: boolean }): Promise<string> {
+    if (this.calls >= this.maxCalls) throw new Error(`Gemini call budget (${this.maxCalls}/run) exhausted`);
+    this.calls++;
     const model = opts?.deep ? this.deep : this.fast;
     const res = await fetch(
       `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${this.apiKey}`,

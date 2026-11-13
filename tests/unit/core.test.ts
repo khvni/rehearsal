@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { readFileSync } from "node:fs";
 import path from "node:path";
 import {
@@ -16,6 +16,8 @@ import { FixtureJevClient, scoreActions } from "@/lib/decisions/jev";
 import { compilePatches, patchesIdempotent } from "@/lib/variants";
 import { extractPastDates, ruleFindings } from "@/lib/analysis/findings";
 import { specToMarkdown } from "@/lib/analysis/spec";
+import { summarizeRun } from "@/lib/browser/types";
+import { GeminiClient } from "@/lib/analysis/gemini";
 
 const FIXTURE = path.join(__dirname, "..", "evals", "fixtures", "aie-code-2026.html");
 const aieHtml = readFileSync(FIXTURE, "utf8");
@@ -168,6 +170,65 @@ describe("rule findings", () => {
     const stale = findings.find((f) => /post-event|stale|invites registration/i.test(f.title));
     expect(stale).toBeDefined();
     expect(stale?.krugPrinciple).toBe("omit-words");
+  });
+});
+
+describe("browser run success", () => {
+  const base = {
+    runId: "r1", viewport: VIEWPORTS.desktop, started: Date.now(),
+    steps: [{ label: "Hackathons", ok: true }],
+    assertions: [{ assertion: { kind: "url-matches" as const, value: "hackathon" }, passed: true }],
+    screenshots: [],
+  };
+
+  it("passes when navigation completes and the goal assertion holds, despite console errors", () => {
+    const run = summarizeRun({ ...base, errors: ["console: Failed to load resource", "pageerror: x is undefined"] });
+    expect(run.success).toBe(true);
+    expect(run.consoleErrorCount).toBe(2);
+  });
+
+  it("fails on a failed assertion, a failed step, or a runner error", () => {
+    expect(summarizeRun({ ...base, errors: [], assertions: [{ ...base.assertions[0], passed: false }] }).success).toBe(false);
+    expect(summarizeRun({ ...base, errors: [], steps: [{ label: "x", ok: false }] }).success).toBe(false);
+    const crashed = summarizeRun({ ...base, errors: ["run: Timeout 30000ms exceeded"] });
+    expect(crashed.success).toBe(false);
+    expect(crashed.consoleErrorCount).toBe(0);
+  });
+
+  it("emits one low-severity console-errors finding per viewport, citing K9", () => {
+    const state = makeState({ url: AIE_URL, viewport: VIEWPORTS.desktop, title: "AIE", visibleText: "", actions: [] });
+    const noisy = summarizeRun({ ...base, errors: ["console: boom"] });
+    const clean = summarizeRun({ ...base, runId: "r2", errors: [] });
+    const findings = ruleFindings({ states: [state], runs: [noisy, clean, { ...noisy, runId: "r3" }], assertions: [] });
+    const f = findings.filter((x) => x.findingId.startsWith("f_console-errors_"));
+    expect(f).toHaveLength(1);
+    expect(f[0].findingId).toBe("f_console-errors_desktop");
+    expect(f[0].severity).toBe("low");
+    expect(f[0].krugPrinciple).toBe("testing-beats-arguing");
+    expect(f[0].affectedStates).toEqual([state.stateId]);
+    expect(f[0].description).toContain("2 page/console errors across 2 of 3 desktop runs");
+    expect(ruleFindings({ states: [state], runs: [clean], assertions: [] }).some((x) => x.findingId.startsWith("f_console-errors_"))).toBe(false);
+  });
+});
+
+describe("gemini call budget", () => {
+  it("caps calls per run at REHEARSAL_GEMINI_MAX_CALLS and resets per run", async () => {
+    vi.stubEnv("GEMINI_API_KEY", "test");
+    vi.stubEnv("REHEARSAL_GEMINI_MAX_CALLS", "2");
+    const fetchMock = vi.fn(async () => new Response(JSON.stringify({ candidates: [{ content: { parts: [{ text: "ok" }] } }] })));
+    vi.stubGlobal("fetch", fetchMock);
+    try {
+      const llm = new GeminiClient();
+      await expect(llm.complete("a")).resolves.toBe("ok");
+      await expect(llm.complete("b")).resolves.toBe("ok");
+      await expect(llm.complete("c")).rejects.toThrow(/budget/);
+      expect(fetchMock).toHaveBeenCalledTimes(2);
+      llm.resetBudget();
+      await expect(llm.complete("d")).resolves.toBe("ok");
+    } finally {
+      vi.unstubAllGlobals();
+      vi.unstubAllEnvs();
+    }
   });
 });
 

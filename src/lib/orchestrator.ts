@@ -99,6 +99,7 @@ export class Orchestrator {
   /** Stage 1 — discover states, build graph. */
   async discover(id: string): Promise<Experiment> {
     const experiment = await this.mustGet(id);
+    this.llm.resetBudget?.();
     await this.update(experiment, "discovering");
     return withTrace("discover", id, async () => {
       const config = experiment.configuration;
