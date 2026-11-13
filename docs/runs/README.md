@@ -11,7 +11,7 @@ endpoints = per endpoint class, reached by ≥1 seeded journey / found; findings
 
 | Site | Goal | Status | HTTP | States | Edges | Goal % | Verify | Assert | Endpoints reached/found | Findings c/h/m/l | Discover s | Verify s | Total s | Notes |
 |---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|
-| ai.engineer | find the schedule and register to attend | error | 200 | 0 | 0 | 0 | 0/0 | 0/0 | – | 0/0/0/0 | – | – | 5 | self-signed certificate in certificate chain (no summary.json committed) |
+| ai.engineer | find the schedule and register to attend | complete | 200 | 15 | 176 | 100 | 0/4 | 0/4 | – | 0/0/0/23 | – | – | 283 | [spec](ai.engineer/spec.md) [summary](ai.engineer/summary.json) |
 | [brightdata.com](brightdata.com/summary.json) | find pricing for the Web Unlocker | blocked | 429 | 1 | 0 | 0 | 0/4 | 0/4 | – | 0/5/6/3 | 20 | 69 | 109 | Cloudflare challenge |
 | [devpost.com](devpost.com/summary.json) | find an upcoming hackathon to join | complete | 200 | 15 | 110 | 95.3 | 2/4 | 3/4 | signup 3/3, contact-form 1/1, docs-answers 2/2, schedule-event 2/2 | 0/3/4/5 | 33 | 16 | 60 |  |
 | [digitalocean.com](digitalocean.com/summary.json) | find droplet pricing | complete | 200 | 15 | 321 | 51.7 | 1/4 | 1/4 | pricing 5/5, signup 5/5, contact-form 2/5, docs-answers 0/5, demo-video 0/2, schedule-event 0/5 | 0/3/10/7 | 35 | 49 | 90 | 1 page failures |
