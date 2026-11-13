@@ -36,7 +36,7 @@ import {
 } from "./intents";
 import { metricFindings } from "./analysis/metric-findings";
 import { metricsFromHtml } from "./browser/metrics";
-import { isSameOrigin, normalizeUrl } from "./browser/extract";
+import { isSameOrigin } from "./browser/extract";
 import { generateSpec, specToMarkdown } from "./analysis/spec";
 import { selectStore } from "./storage";
 import { captureError, logEvent, traceTags, withTrace } from "./telemetry";
@@ -319,14 +319,15 @@ export class Orchestrator {
       exp.browserTests.push(run);
 
       const baseline = exp.browserTests.find((r) => !r.variantId) ?? exp.browserTests[0];
-      // Backtracks = steps that revisit a URL already seen in the run (incl. the start page).
+      // Backtracks = successful steps that revisit a URL (query kept, hash dropped) already seen, incl. the start page.
       const backtracksOf = (r: typeof run) => {
-        const seen = new Set([normalizeUrl(exp.targetUrl)]);
+        const pageKey = (u: string) => u.split("#")[0].replace(/\/$/, "");
+        const seen = new Set([pageKey(exp.targetUrl)]);
         let n = 0;
         for (const s of r.steps) {
-          const href = s.actionId ? actionById.get(s.actionId)?.href : undefined;
+          const href = s.ok && s.actionId ? actionById.get(s.actionId)?.href : undefined;
           if (!href) continue;
-          const key = normalizeUrl(href);
+          const key = pageKey(href);
           if (seen.has(key)) n++;
           seen.add(key);
         }
