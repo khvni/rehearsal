@@ -27,7 +27,7 @@
    │      └─ selectRunner(): BrightDataBrowserRunner → StagehandRunner → PlaywrightRunner
    └─ BrightDataFetcher (Web Unlocker) → BrowserbaseFetcher → PlainFetcher + SSRF guards + politeness
 
-telemetry: Sentry (SENTRY_DSN) + data/events/*.jsonl
+telemetry: Sentry (SENTRY_DSN) + data/events/*.jsonl → /api/hooks/sentry → first-responder issue (docs/telemetry.md)
 ```
 
 ## Data flow
@@ -100,6 +100,8 @@ variable that is missing here or in `.env.example`, or `.env.example` lists one 
 | `STAGEHAND_CHROME_PATH` | `browser/runner.ts` | Stagehand's default Chrome lookup (`stagehand-local` only) |
 | `REHEARSAL_BROWSER` | `browser/runner.ts` | `auto` |
 | `SENTRY_DSN` / `SENTRY_TRACES_SAMPLE_RATE` | `telemetry/index.ts` | Sentry off (JSONL event log still written) / `0.2` |
+| `SENTRY_WEBHOOK_SECRET` | `app/api/hooks/sentry/route.ts` | `POST /api/hooks/sentry` returns 503 (webhook not configured) |
+| `GITHUB_TOKEN` | `app/api/hooks/sentry/route.ts` | Sentry alerts are verified but not filed as GitHub issues (logged notice) |
 | `TIGERDATA_URL` (or `DATABASE_URL`) | `storage/index.ts` | `JsonFileStore` under `data/experiments/` |
 | `SNOWFLAKE_ACCOUNT_URL`, `SNOWFLAKE_TOKEN`, `SNOWFLAKE_CORTEX_SERVICE` | `storage/index.ts` | Cortex Search disabled |
 | `REHEARSAL_ALLOW_PRIVATE` | `fetch/guards.ts` | SSRF guard enforced. `1` lets tests target localhost; never set it in a deployment |
