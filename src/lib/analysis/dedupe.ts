@@ -1,4 +1,6 @@
-import type { Finding } from "../contracts";
+import type { Finding, SiteState } from "../contracts";
+
+type Totals = { states: Pick<SiteState, "stateId" | "url">[]; runs: number };
 
 const SEVERITY_RANK: Record<Finding["severity"], number> = { critical: 4, high: 3, medium: 2, low: 1 };
 const EVIDENCE_RANK: Record<Finding["evidenceType"], number> = {
@@ -20,7 +22,7 @@ const strongest = <T extends string>(values: T[], rank: Record<T, number>): T =>
  */
 export function collapseFindings(
   list: Finding[],
-  totals: { states: number; runs: number },
+  totals: Totals,
 ): Finding[] {
   const groups = new Map<string, Finding[]>();
   for (const f of list) {
@@ -32,7 +34,7 @@ export function collapseFindings(
   return [...groups.values()].map((group) => (group.length === 1 ? group[0] : merge(group, totals)));
 }
 
-function merge(group: Finding[], totals: { states: number; runs: number }): Finding {
+function merge(group: Finding[], totals: Totals): Finding {
   const [first] = group;
   const affectedStates = union(group.map((f) => f.affectedStates));
   const descriptions = [...new Set(group.map((f) => f.description))];
@@ -50,9 +52,13 @@ function merge(group: Finding[], totals: { states: number; runs: number }): Find
   };
 }
 
-function scope(group: Finding[], affectedStates: string[], totals: { states: number; runs: number }): string {
-  if (affectedStates.length > 1) {
-    return ` (${affectedStates.length} of ${Math.max(totals.states, affectedStates.length)} pages)`;
+/** Pages are counted by URL: desktop and mobile states of one URL are one page. */
+function scope(group: Finding[], affectedStates: string[], totals: Totals): string {
+  const urlOf = new Map(totals.states.map((s) => [s.stateId, s.url]));
+  const pages = new Set(affectedStates.map((id) => urlOf.get(id) ?? id));
+  if (pages.size > 1) {
+    const allPages = new Set([...urlOf.values(), ...pages]);
+    return ` (${pages.size} of ${allPages.size} pages)`;
   }
   if (affectedStates.length === 0 && totals.runs > 0) {
     return ` (${group.length} of ${Math.max(totals.runs, group.length)} runs)`;

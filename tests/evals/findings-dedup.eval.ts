@@ -55,7 +55,7 @@ describe("eval: cross-state finding dedup", () => {
   const schedule: Assertion = { kind: "url-matches", value: "schedule" };
   const runs = [failedRun("run_a", [schedule]), failedRun("run_b", [schedule])];
   const raw = ruleFindings({ states, runs, assertions: [schedule], referenceNowIso: REFERENCE_NOW });
-  const collapsed = collapseFindings(raw, { states: states.length, runs: runs.length });
+  const collapsed = collapseFindings(raw, { states, runs: runs.length });
 
   it("raw rule output repeats per state (the bug this guards against)", () => {
     expect(duplicateKeys(raw).length).toBeGreaterThan(0);
@@ -91,11 +91,25 @@ describe("eval: cross-state finding dedup", () => {
     const other: Assertion = { kind: "text-present", value: "Schedule" };
     const findings = collapseFindings(
       ruleFindings({ states: [], runs: [failedRun("run_a", [schedule]), failedRun("run_b", [other])], assertions: [] }),
-      { states: 0, runs: 2 },
+      { states: [], runs: 2 },
     );
     expect(findings).toHaveLength(2);
     const [low, high] = [{ ...raw[0], severity: "low" as const }, { ...raw[0], findingId: "x", severity: "critical" as const }];
-    expect(collapseFindings([low, high], { states: 1, runs: 0 })[0].severity).toBe("critical");
+    expect(collapseFindings([low, high], { states: [], runs: 0 })[0].severity).toBe("critical");
+  });
+
+  it("counts pages by URL, so desktop + mobile states of one URL are one page", () => {
+    const mobile = states.map((s) =>
+      makeState({ url: s.url, viewport: VIEWPORTS.mobile, title: s.pageTitle, visibleText: s.visibleText, actions: s.actions }),
+    );
+    const both = [states[0], mobile[0], states[1], mobile[1]];
+    const findings = collapseFindings(ruleFindings({ states: both, runs: [], assertions: [], referenceNowIso: REFERENCE_NOW }), { states: both, runs: 0 });
+    const stale = findings.find((f) => f.title.startsWith("Post-event page still invites registration"));
+    expect(stale?.title).toBe("Post-event page still invites registration (2 of 2 pages)");
+    expect(stale?.affectedStates).toHaveLength(4);
+    const one = [states[0], mobile[0]];
+    const single = collapseFindings(ruleFindings({ states: one, runs: [], assertions: [], referenceNowIso: REFERENCE_NOW }), { states: one, runs: 0 });
+    expect(single.find((f) => f.title.startsWith("Post-event"))?.title).toBe("Post-event page still invites registration");
   });
 });
 

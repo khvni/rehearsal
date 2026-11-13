@@ -282,7 +282,7 @@ export class Orchestrator {
         ...metricFindings(states, { homepageUrl: exp.targetUrl }),
         ...questionFindings(exp.questions ?? [], graph),
         ...llm,
-      ], { states: states.length, runs: exp.browserTests.length });
+      ], { states, runs: exp.browserTests.length });
       await this.update(exp, "created");
       return exp;
     });
