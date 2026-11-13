@@ -1,0 +1,123 @@
+{
+  "site": "sentry.io",
+  "url": "https://sentry.io",
+  "targetUrl": "https://sentry.io/welcome/",
+  "goal": "find pricing and start a trial",
+  "status": "complete",
+  "runner": "local-playwright",
+  "config": {
+    "maxStates": 15,
+    "trajectories": 300,
+    "verifyCount": 4,
+    "maxDepth": 3,
+    "viewports": [
+      "desktop"
+    ],
+    "seed": 1337
+  },
+  "preflight": {
+    "status": 200,
+    "finalUrl": "https://sentry.io/welcome/",
+    "title": "Application Performance Monitoring & Error Tracking Software | Sentry",
+    "blocked": false
+  },
+  "robotsAllowsTarget": true,
+  "assertions": [
+    {
+      "kind": "url-matches",
+      "value": "trial"
+    }
+  ],
+  "discover": {
+    "states": 15,
+    "edges": 274,
+    "pageFailures": 0,
+    "pageFailureSamples": [],
+    "urls": [
+      "https://sentry.io/welcome/",
+      "https://sentry.io/for/startups/",
+      "https://sentry.io/pricing/",
+      "https://sentry.io/signup/",
+      "https://sentry.io/product/error-monitoring/",
+      "https://sentry.io/product/logs/",
+      "https://sentry.io/product/seer/",
+      "https://sentry.io/product/seer/agent/",
+      "https://sentry.io/product/seer/autofix/",
+      "https://sentry.io/product/session-replay/",
+      "https://sentry.io/product/metrics/",
+      "https://sentry.io/product/tracing/",
+      "https://sentry.io/product/tracing/ai-agent/",
+      "https://sentry.io/product/profiling/",
+      "https://sentry.io/product/size-analysis/"
+    ]
+  },
+  "simulate": {
+    "trajectories": 300,
+    "goalReachPct": 0,
+    "outcomes": {
+      "repetition-limit": 299,
+      "max-depth": 1
+    }
+  },
+  "verify": {
+    "runs": 4,
+    "passed": 0,
+    "failed": 4,
+    "assertionsPassed": 0,
+    "runsWithConsoleErrors": 4,
+    "runErrors": []
+  },
+  "compare": {
+    "goalCompleted": {
+      "baseline": false,
+      "variant": false
+    },
+    "interactionCount": {
+      "baseline": 9,
+      "variant": 9
+    },
+    "backtracks": {
+      "baseline": 9,
+      "variant": 9
+    },
+    "failedInteractions": {
+      "baseline": 0,
+      "variant": 0
+    },
+    "runtimeErrors": {
+      "baseline": 4,
+      "variant": 4
+    },
+    "findingReproduces": true
+  },
+  "findings": {
+    "total": 5,
+    "bySeverity": {
+      "critical": 0,
+      "high": 1,
+      "medium": 4,
+      "low": 0
+    },
+    "byEvidence": {
+      "verified-failure": 1,
+      "reproducible-concern": 4
+    },
+    "titles": [
+      "[high] Assertion failed in browser: url-matches \"trial\"",
+      "[medium] Dense link surface increases scan cost",
+      "[medium] Ambiguous link labels (3)",
+      "[medium] Ambiguous link labels (2)",
+      "[medium] Ambiguous link labels (1)"
+    ]
+  },
+  "durationsMs": {
+    "discover": 35840,
+    "simulate": 42,
+    "verify": 29573,
+    "analyze": 9,
+    "compare": 5887,
+    "spec": 4,
+    "total": 74061
+  },
+  "ranAt": "2026-11-13T21:21:43.765Z"
+}

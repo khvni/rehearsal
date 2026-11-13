@@ -50,7 +50,7 @@ export class FixtureLlmClient implements LlmClient {
   async complete(prompt: string): Promise<string> {
     if (prompt.includes("ASSERTION_LIST")) {
       // Goal object (last content word, e.g. "schedule") must be reached as a page.
-      const filler = new Set(["find", "the", "a", "an", "to", "for", "of", "get", "see", "view", "check", "locate", "look", "page", "out", "where", "how", "what"]);
+      const filler = new Set(["find", "the", "a", "an", "to", "for", "of", "get", "see", "view", "check", "locate", "look", "page", "out", "where", "how", "what", "and", "or", "in", "on", "with", "up", "join", "sign", "start", "request", "understand", "does", "it", "this", "their", "its", "product"]);
       const words = (prompt.match(/GOAL:(.*)/)?.[1] ?? "").toLowerCase().split(/[^a-z0-9]+/).filter((w) => w && !filler.has(w));
       const target = words[words.length - 1];
       return JSON.stringify(target ? [{ kind: "url-matches", value: target }] : []);

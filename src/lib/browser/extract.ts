@@ -41,7 +41,11 @@ function attr(tag: string, name: string): string | undefined {
 }
 
 /** Extract links, buttons, inputs, headings, and readable text from HTML. */
-export function extractPage(html: string, pageUrl: string): ExtractedPage {
+const MAX_HTML_CHARS = 2_000_000;
+const NON_HTML_EXT_RE = /\.(pdf|zip|gz|tgz|dmg|exe|msi|pkg|deb|rpm|apk|iso|csv|xlsx?|docx?|pptx?|mp4|mov|webm|mp3|wav|png|jpe?g|gif|webp|svg|ics)$/i;
+
+export function extractPage(rawHtml: string, pageUrl: string): ExtractedPage {
+  const html = rawHtml.length > MAX_HTML_CHARS ? rawHtml.slice(0, MAX_HTML_CHARS) : rawHtml;
   const titleMatch = html.match(/<title[^>]*>([\s\S]*?)<\/title>/i);
   const title = titleMatch ? normalizeLabel(stripTags(titleMatch[1])) : pageUrl;
 
@@ -69,14 +73,16 @@ export function extractPage(html: string, pageUrl: string): ExtractedPage {
     if (!href || href.startsWith("#") || href.toLowerCase().startsWith("javascript:")) continue;
     const absolute = safeResolve(pageUrl, href);
     if (!absolute) continue;
+    if (absolute === stripHash(pageUrl)) continue; // in-page anchor (/#section on the same page)
     const external = !absolute.startsWith(new URL(pageUrl).origin);
+    const download = NON_HTML_EXT_RE.test(new URL(absolute).pathname);
     push({
-      type: external ? "navigate" : "click",
+      type: external || download ? "navigate" : "click",
       label,
       role: "link",
       href: absolute,
       enabled: true,
-      safeToExecute: !external,
+      safeToExecute: !external && !download,
     });
   }
 
@@ -111,9 +117,21 @@ export function extractPage(html: string, pageUrl: string): ExtractedPage {
 
 function safeResolve(base: string, href: string): string | undefined {
   try {
-    return new URL(href, base).toString();
+    const u = new URL(href, base);
+    if (u.protocol === "http:" || u.protocol === "https:") u.hash = "";
+    return u.toString();
   } catch {
     return undefined;
+  }
+}
+
+function stripHash(url: string): string {
+  try {
+    const u = new URL(url);
+    u.hash = "";
+    return u.toString();
+  } catch {
+    return url;
   }
 }
 

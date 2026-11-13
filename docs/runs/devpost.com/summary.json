@@ -1,0 +1,121 @@
+{
+  "site": "devpost.com",
+  "url": "https://devpost.com",
+  "targetUrl": "https://devpost.com/",
+  "goal": "find an upcoming hackathon to join",
+  "status": "complete",
+  "runner": "local-playwright",
+  "config": {
+    "maxStates": 15,
+    "trajectories": 300,
+    "verifyCount": 4,
+    "maxDepth": 3,
+    "viewports": [
+      "desktop"
+    ],
+    "seed": 1337
+  },
+  "preflight": {
+    "status": 200,
+    "finalUrl": "https://devpost.com/",
+    "title": "Devpost - The home for hackathons",
+    "blocked": false
+  },
+  "robotsAllowsTarget": true,
+  "assertions": [
+    {
+      "kind": "url-matches",
+      "value": "hackathon"
+    }
+  ],
+  "discover": {
+    "states": 15,
+    "edges": 110,
+    "pageFailures": 0,
+    "pageFailureSamples": [],
+    "urls": [
+      "https://devpost.com/",
+      "https://devpost.com/hackathons",
+      "https://devpost.com/hackathons?themes%5B%5D=Beginner+Friendly",
+      "https://devpost.com/hackathons?themes%5B%5D=Machine+Learning%2FAI",
+      "https://devpost.com/hackathons?themes%5B%5D=Open+Ended",
+      "https://devpost.com/hackathons?themes%5B%5D=Social+Good",
+      "https://devpost.com/hackathons?themes%5B%5D=Education",
+      "https://devpost.com/hackathons?themes%5B%5D=Web",
+      "https://devpost.com/hackathons?themes%5B%5D=Low%2FNo+Code",
+      "https://devpost.com/hackathons?themes%5B%5D=Design",
+      "https://devpost.com/hackathons?themes%5B%5D=Productivity",
+      "https://devpost.com/hackathons?themes%5B%5D=Gaming",
+      "https://devpost.com/hackathons?themes%5B%5D=IoT",
+      "https://devpost.com/hackathons?themes%5B%5D=Health",
+      "https://devpost.com/hackathons?themes%5B%5D=Cybersecurity"
+    ]
+  },
+  "simulate": {
+    "trajectories": 300,
+    "goalReachPct": 96,
+    "outcomes": {
+      "goal-reached": 288,
+      "repetition-limit": 12
+    }
+  },
+  "verify": {
+    "runs": 4,
+    "passed": 0,
+    "failed": 4,
+    "assertionsPassed": 3,
+    "runsWithConsoleErrors": 4,
+    "runErrors": []
+  },
+  "compare": {
+    "goalCompleted": {
+      "baseline": false,
+      "variant": false
+    },
+    "interactionCount": {
+      "baseline": 2,
+      "variant": 2
+    },
+    "backtracks": {
+      "baseline": 2,
+      "variant": 2
+    },
+    "failedInteractions": {
+      "baseline": 0,
+      "variant": 0
+    },
+    "runtimeErrors": {
+      "baseline": 2,
+      "variant": 2
+    },
+    "findingReproduces": true
+  },
+  "findings": {
+    "total": 3,
+    "bySeverity": {
+      "critical": 0,
+      "high": 2,
+      "medium": 1,
+      "low": 0
+    },
+    "byEvidence": {
+      "verified-failure": 1,
+      "reproducible-concern": 2
+    },
+    "titles": [
+      "[high] Assertion failed in browser: url-matches \"hackathon\"",
+      "[medium] Dense link surface increases scan cost",
+      "[high] Post-event page still invites registration"
+    ]
+  },
+  "durationsMs": {
+    "discover": 32445,
+    "simulate": 23,
+    "verify": 16060,
+    "analyze": 4,
+    "compare": 2225,
+    "spec": 4,
+    "total": 62425
+  },
+  "ranAt": "2026-11-13T21:18:38.616Z"
+}

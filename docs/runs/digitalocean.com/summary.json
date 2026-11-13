@@ -1,0 +1,133 @@
+{
+  "site": "digitalocean.com",
+  "url": "https://www.digitalocean.com",
+  "targetUrl": "https://www.digitalocean.com/",
+  "goal": "find droplet pricing",
+  "status": "complete",
+  "runner": "local-playwright",
+  "config": {
+    "maxStates": 15,
+    "trajectories": 300,
+    "verifyCount": 4,
+    "maxDepth": 3,
+    "viewports": [
+      "desktop"
+    ],
+    "seed": 1337
+  },
+  "preflight": {
+    "status": 200,
+    "finalUrl": "https://www.digitalocean.com/",
+    "title": "AI-Native Cloud | DigitalOcean",
+    "blocked": false
+  },
+  "robotsAllowsTarget": true,
+  "assertions": [
+    {
+      "kind": "url-matches",
+      "value": "pricing"
+    }
+  ],
+  "discover": {
+    "states": 15,
+    "edges": 321,
+    "pageFailures": 1,
+    "pageFailureSamples": [
+      {
+        "url": "https://www.digitalocean.com/support",
+        "error": "Error: Redirected off-origin to https://docs.digitalocean.com"
+      }
+    ],
+    "urls": [
+      "https://www.digitalocean.com/",
+      "https://www.digitalocean.com/pricing/agent-droplets",
+      "https://www.digitalocean.com/products/gpu-droplets",
+      "https://www.digitalocean.com/pricing",
+      "https://www.digitalocean.com/products/droplets",
+      "https://www.digitalocean.com/pricing/calculator",
+      "https://www.digitalocean.com/blog/now-available-prompt-caching",
+      "https://www.digitalocean.com/blog",
+      "https://www.digitalocean.com/careers",
+      "https://www.digitalocean.com/company/contact/sales?referrer=tophat",
+      "https://www.digitalocean.com/products",
+      "https://www.digitalocean.com/products/managed-agents",
+      "https://www.digitalocean.com/products/learning-services",
+      "https://www.digitalocean.com/products/data-services",
+      "https://www.digitalocean.com/products/inference-engine"
+    ]
+  },
+  "simulate": {
+    "trajectories": 300,
+    "goalReachPct": 54,
+    "outcomes": {
+      "goal-reached": 162,
+      "repetition-limit": 138
+    }
+  },
+  "verify": {
+    "runs": 4,
+    "passed": 0,
+    "failed": 4,
+    "assertionsPassed": 1,
+    "runsWithConsoleErrors": 4,
+    "runErrors": []
+  },
+  "compare": {
+    "goalCompleted": {
+      "baseline": false,
+      "variant": false
+    },
+    "interactionCount": {
+      "baseline": 7,
+      "variant": 7
+    },
+    "backtracks": {
+      "baseline": 7,
+      "variant": 7
+    },
+    "failedInteractions": {
+      "baseline": 0,
+      "variant": 0
+    },
+    "runtimeErrors": {
+      "baseline": 3,
+      "variant": 4
+    },
+    "findingReproduces": true
+  },
+  "findings": {
+    "total": 10,
+    "bySeverity": {
+      "critical": 0,
+      "high": 2,
+      "medium": 8,
+      "low": 0
+    },
+    "byEvidence": {
+      "verified-failure": 1,
+      "reproducible-concern": 9
+    },
+    "titles": [
+      "[high] Assertion failed in browser: url-matches \"pricing\"",
+      "[medium] Dense link surface increases scan cost",
+      "[medium] Ambiguous link labels (3)",
+      "[medium] Ambiguous link labels (1)",
+      "[medium] Ambiguous link labels (11)",
+      "[high] Post-event page still invites registration",
+      "[medium] Ambiguous link labels (63)",
+      "[medium] Ambiguous link labels (6)",
+      "[medium] Ambiguous link labels (4)",
+      "[medium] Ambiguous link labels (2)"
+    ]
+  },
+  "durationsMs": {
+    "discover": 34458,
+    "simulate": 58,
+    "verify": 33142,
+    "analyze": 7,
+    "compare": 3494,
+    "spec": 6,
+    "total": 73412
+  },
+  "ranAt": "2026-11-13T21:23:55.280Z"
+}

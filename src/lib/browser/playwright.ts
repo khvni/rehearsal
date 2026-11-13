@@ -12,7 +12,7 @@ import type {
   TrajectoryArgs,
   Viewport,
 } from "../contracts";
-import { assertPublicUrl } from "../fetch/guards";
+import { assertPublicUrl, politeDelay, robotsAllows } from "../fetch/guards";
 import { compilePatches } from "../variants";
 import { measurePage } from "./metrics";
 import { evaluateAssertion, shouldShoot, summarizeRun } from "./types";
@@ -20,12 +20,23 @@ import { evaluateAssertion, shouldShoot, summarizeRun } from "./types";
 export const DEFAULT_EVIDENCE_DIR = path.join(process.cwd(), "data", "evidence");
 const USER_AGENT = "Rehearsal/0.1 (+https://github.com/khvni/rehearsal)";
 
+/** Reject when a page call outlives `ms` — some sites peg the renderer so content()/title() never resolve. */
+export function withTimeout<T>(work: Promise<T>, ms: number, label: string): Promise<T> {
+  let timer: NodeJS.Timeout | undefined;
+  const timeout = new Promise<never>((_, reject) => {
+    timer = setTimeout(() => reject(new Error(`${label} timed out after ${ms}ms (renderer unresponsive)`)), ms);
+  });
+  return Promise.race([work, timeout]).finally(() => clearTimeout(timer));
+}
+
+const PAGE_CALL_MS = 15000;
+
 export function playwrightProbe(page: Page): AssertionProbe {
   return {
-    bodyText: async () => (await page.textContent("body")) ?? "",
+    bodyText: async () => (await page.textContent("body", { timeout: PAGE_CALL_MS })) ?? "",
     isVisible: (s) => page.locator(s).first().isVisible({ timeout: 3000 }),
-    count: (s) => page.locator(s).count(),
-    title: () => page.title(),
+    count: (s) => withTimeout(page.locator(s).count(), PAGE_CALL_MS, "count"),
+    title: () => withTimeout(page.title(), PAGE_CALL_MS, "title"),
     url: async () => page.url(),
   };
 }
@@ -47,8 +58,9 @@ export async function executeTrajectory(
 
   await page.goto(args.url, { waitUntil: "domcontentloaded", timeout: opts.navTimeoutMs });
   await page.waitForTimeout(800);
+  await settleInterstitial(page);
   const shot0 = path.join(evidenceDir, `${args.runId}_0.png`);
-  await page.screenshot({ path: shot0 });
+  await page.screenshot({ path: shot0, timeout: PAGE_CALL_MS });
   screenshots.push(shot0);
 
   const total = Math.min(args.actions.length, args.maxSteps ?? 12);
@@ -74,7 +86,7 @@ export async function executeTrajectory(
     }
     if (shouldShoot(i, total)) {
       const shot = path.join(evidenceDir, `${args.runId}_${i + 1}.png`);
-      await page.screenshot({ path: shot }).catch(() => undefined);
+      await page.screenshot({ path: shot, timeout: PAGE_CALL_MS }).catch(() => undefined);
       screenshots.push(shot);
     }
   }
@@ -83,6 +95,18 @@ export async function executeTrajectory(
     assertions.push({ assertion, passed: await checkAssertion(page, assertion) });
   }
   return { steps, assertions, screenshots };
+}
+
+const INTERSTITIAL_TITLE_RE = /just a moment|checking your browser|one moment, please|please wait/i;
+
+/** Passive JS interstitials (e.g. "Just a moment...") reload into the real page on their own; give them time. */
+export async function settleInterstitial(page: Page, timeoutMs = 15000): Promise<void> {
+  if (!INTERSTITIAL_TITLE_RE.test(await withTimeout(page.title(), PAGE_CALL_MS, "title").catch(() => ""))) return;
+  await page
+    .waitForFunction((src) => !new RegExp(src, "i").test(document.title), INTERSTITIAL_TITLE_RE.source, { timeout: timeoutMs })
+    .catch(() => undefined);
+  await page.waitForLoadState("domcontentloaded").catch(() => undefined);
+  await page.waitForTimeout(1200);
 }
 
 export function watchPageErrors(page: Page, errors: string[]): void {
@@ -121,16 +145,24 @@ export class PlaywrightRunner implements BrowserRunner {
     viewport: Viewport,
     opts?: { patches?: DomPatch[]; shotName?: string },
   ): Promise<OpenPageResult> {
-    await assertPublicUrl(url);
+    const target = await assertPublicUrl(url);
+    if (!(await robotsAllows(target))) throw new Error(`robots.txt disallows ${target.pathname}`);
+    await politeDelay(target);
     const ctx = await this.newContext(viewport, opts?.patches);
     try {
       const page = await ctx.newPage();
       const screenshotPath = path.join(this.evidenceDir, `${opts?.shotName ?? Date.now()}.png`);
-      await page.goto(url, { waitUntil: "domcontentloaded", timeout: 30000 });
+      const res = await page.goto(url, { waitUntil: "domcontentloaded", timeout: 30000 });
+      const contentType = res?.headers()["content-type"] ?? "";
+      if (contentType && !/html|xml/i.test(contentType)) throw new Error(`Non-HTML response (${contentType}) for ${url}`);
+      const finalOrigin = new URL(page.url()).origin;
+      if (finalOrigin !== target.origin) throw new Error(`Redirected off-origin to ${finalOrigin}`);
       await page.waitForTimeout(1200);
-      await page.screenshot({ path: screenshotPath, fullPage: false });
-      const metrics = await measurePage(page);
-      return { html: await page.content(), screenshotPath, metrics };
+      await settleInterstitial(page);
+      const html = await withTimeout(page.content(), PAGE_CALL_MS, "page.content");
+      await page.screenshot({ path: screenshotPath, fullPage: false, timeout: PAGE_CALL_MS });
+      const metrics = await withTimeout(measurePage(page), PAGE_CALL_MS, "measurePage");
+      return { html, screenshotPath, metrics };
     } finally {
       await ctx.close();
     }

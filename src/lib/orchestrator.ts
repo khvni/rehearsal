@@ -182,6 +182,7 @@ export class Orchestrator {
       const config = exp.configuration;
       const graph = exp.graph!;
       const start = graph.states[0];
+      if (!start) throw new Error("Discovery captured no states (every page load failed)");
 
       // Assertions: from LLM objective compile (fixture fallback = keyword text check).
       exp.assertions = await this.compileAssertions(exp.goal);
