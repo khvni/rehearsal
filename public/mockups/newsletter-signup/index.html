@@ -1,0 +1,263 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>AI Engineer newsletter · Code Summit 2026</title>
+<meta name="description" content="Get new AI Engineer talks and conference dates by email.">
+<style>
+  :root {
+    --bg: #fff;
+    --ink: #111;
+    --muted: #6b6b6b;
+    --line: #ededed;
+    --field: #fafafa;
+    --error: #b42318;
+    --ok: #157f3b;
+    --ease: cubic-bezier(0.23, 1, 0.32, 1);
+    color-scheme: light;
+  }
+  * { box-sizing: border-box; }
+  html { -webkit-text-size-adjust: 100%; }
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--ink);
+    font: 400 16px/1.6 ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    text-rendering: optimizeLegibility;
+  }
+  a { color: inherit; text-underline-offset: 3px; text-decoration-thickness: 1px; text-decoration-color: #c8c8c8; transition: text-decoration-color 150ms ease; }
+  @media (hover: hover) { a:hover { text-decoration-color: var(--ink); } }
+  a:focus-visible, button:focus-visible { outline: 2px solid var(--ink); outline-offset: 3px; border-radius: 4px; }
+  .wrap { max-width: 640px; margin: 0 auto; padding: 0 24px; }
+
+  header { border-bottom: 1px solid var(--line); }
+  header .wrap { display: flex; align-items: center; justify-content: space-between; gap: 16px; height: 56px; }
+  .site { font-weight: 500; text-decoration: none; white-space: nowrap; }
+  .site span { color: var(--muted); font-weight: 400; }
+  nav ul { display: flex; gap: 20px; margin: 0; padding: 0; list-style: none; font-size: 14px; }
+  nav a { color: var(--muted); text-decoration: none; padding: 10px 0; }
+  nav a[aria-current="page"] { color: var(--ink); font-weight: 500; }
+  @media (hover: hover) { nav a:hover { color: var(--ink); } }
+
+  main.wrap { padding-top: 72px; padding-bottom: 40px; }
+  .status { margin: 0 0 32px; font-size: 14px; color: var(--muted); }
+  .status a { color: var(--ink); }
+  h1 { margin: 0; font-size: clamp(32px, 6vw, 40px); line-height: 1.15; font-weight: 500; letter-spacing: -0.02em; text-wrap: balance; }
+  .lede { margin: 16px 0 32px; font-size: 18px; color: var(--muted); max-width: 32em; text-wrap: pretty; }
+
+  .signup { margin: 0; }
+  .signup label { display: block; font-size: 14px; font-weight: 500; margin-bottom: 8px; }
+  .row { display: flex; gap: 8px; }
+  .signup input {
+    flex: 1; min-width: 0; height: 48px; padding: 0 14px;
+    font: inherit; font-size: 16px; color: var(--ink);
+    background: var(--field); border: 1px solid #dcdcdc; border-radius: 10px;
+    outline: none; transition: border-color 150ms ease, background-color 150ms ease;
+  }
+  .signup input::placeholder { color: #9a9a9a; }
+  .signup input:focus { border-color: var(--ink); background: var(--bg); }
+  .signup input[aria-invalid="true"] { border-color: var(--error); }
+  .signup button {
+    height: 48px; padding: 0 20px; flex: none;
+    font: inherit; font-size: 16px; font-weight: 500;
+    color: #fff; background: var(--ink); border: 0; border-radius: 10px; cursor: pointer;
+    transition: transform 160ms var(--ease), background-color 150ms ease;
+    -webkit-tap-highlight-color: transparent;
+  }
+  @media (hover: hover) { .signup button:hover { background: #2a2a2a; } }
+  .signup button:active { transform: scale(0.97); }
+  .hint { margin: 10px 0 0; font-size: 14px; color: var(--muted); min-height: 1.6em; }
+  .hint.error { color: var(--error); }
+
+  .done { display: none; padding: 16px 0 0; }
+  .done p { margin: 0; }
+  .done .title { font-weight: 500; display: flex; align-items: center; gap: 8px; }
+  .done .title svg { color: var(--ok); flex: none; }
+  .done .sub { color: var(--muted); font-size: 14px; margin-top: 4px; }
+  .done .sub a { white-space: nowrap; }
+  .is-done .fields { display: none; }
+  .is-done .done { display: block; animation: rise 280ms var(--ease) both; }
+  @keyframes rise { from { opacity: 0; transform: translateY(6px); } }
+
+  .proof { display: flex; flex-wrap: wrap; gap: 8px 24px; margin: 40px 0 0; padding: 0; list-style: none; font-size: 14px; color: var(--muted); font-variant-numeric: tabular-nums; }
+  .proof b { color: var(--ink); font-weight: 500; }
+
+  section { margin-top: 72px; }
+  h2 { margin: 0 0 4px; font-size: 18px; font-weight: 500; letter-spacing: -0.01em; }
+  .section-note { margin: 0 0 16px; font-size: 14px; color: var(--muted); }
+  .list { margin: 0; padding: 0; list-style: none; border-top: 1px solid var(--line); }
+  .list li { padding: 14px 0; border-bottom: 1px solid var(--line); }
+  .list .t { font-weight: 500; }
+  .list .m { color: var(--muted); font-size: 14px; }
+  .events li { display: flex; justify-content: space-between; gap: 16px; align-items: baseline; }
+  .events .d { color: var(--muted); font-size: 14px; white-space: nowrap; font-variant-numeric: tabular-nums; }
+  .talks a { text-decoration: none; display: block; }
+  @media (hover: hover) { .talks a:hover .t { text-decoration: underline; text-decoration-color: var(--ink); text-underline-offset: 3px; } }
+
+  .again { margin-top: 72px; padding-top: 32px; border-top: 1px solid var(--line); }
+  .again p { margin: 0 0 16px; }
+  .again .btn-link {
+    display: inline-flex; align-items: center; height: 40px; padding: 0 16px;
+    border: 1px solid #dcdcdc; border-radius: 10px; text-decoration: none; font-weight: 500; font-size: 15px;
+    transition: border-color 150ms ease, transform 160ms var(--ease);
+  }
+  @media (hover: hover) { .again .btn-link:hover { border-color: var(--ink); } }
+  .again .btn-link:active { transform: scale(0.97); }
+
+  footer { margin-top: 72px; border-top: 1px solid var(--line); }
+  footer .wrap { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 12px 24px; padding-top: 24px; padding-bottom: 48px; font-size: 14px; color: var(--muted); }
+  footer ul { display: flex; flex-wrap: wrap; gap: 8px 20px; margin: 0; padding: 0; list-style: none; }
+  footer a { color: var(--muted); }
+
+  .sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0; }
+
+  @media (max-width: 520px) {
+    main.wrap { padding-top: 40px; }
+    .site { font-size: 15px; }
+    nav ul { gap: 14px; }
+    nav li:first-child { display: none; }
+    .row { flex-direction: column; }
+    .signup input { flex: none; width: 100%; }
+    .signup button { width: 100%; }
+    .events li { flex-direction: column; gap: 0; }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .is-done .done { animation: fade 150ms ease both; }
+    @keyframes fade { from { opacity: 0; } }
+    .signup button:active, .again .btn-link:active { transform: none; }
+  }
+</style>
+</head>
+<body>
+<header>
+  <div class="wrap">
+    <a class="site" href="https://ai.engineer/code/2026">AI Engineer <span>Code 2026</span></a>
+    <nav aria-label="Primary">
+      <ul>
+        <li><a href="https://ai.engineer/code/2026/talks">Talks</a></li>
+        <li><a href="https://ai.engineer/code/2026/schedule">Schedule</a></li>
+        <li><a href="./" aria-current="page">Newsletter</a></li>
+      </ul>
+    </nav>
+  </div>
+</header>
+
+<main class="wrap">
+  <p class="status">Code Summit 2026 ran Nov 10–12 in San Francisco. <a href="https://ai.engineer/code/2026/talks">All 50 talks are online</a>.</p>
+
+  <h1>Get new talks and conference dates by email</h1>
+  <p class="lede">The AI Engineer newsletter sends new recordings and tells you when applications open for the next event.</p>
+
+  <form class="signup" id="signup" action="https://ai.engineer/newsletter" method="get" novalidate>
+    <div class="fields">
+      <label for="email">Email</label>
+      <div class="row">
+        <input id="email" name="email" type="email" inputmode="email" autocomplete="email" autocapitalize="off" spellcheck="false" placeholder="you@company.com" required aria-describedby="email-hint">
+        <button type="submit">Subscribe</button>
+      </div>
+      <p class="hint" id="email-hint" aria-live="polite">Free. No spam.</p>
+    </div>
+    <div class="done" id="confirmation" role="status" tabindex="-1">
+      <p class="title"><svg width="18" height="18" viewBox="0 0 20 20" fill="none" aria-hidden="true"><circle cx="10" cy="10" r="9" stroke="currentColor" stroke-width="1.5"/><path d="M6 10.2l2.6 2.6L14 7.4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>You're subscribed</p>
+      <p class="sub">We'll email <span id="confirmed-email"></span> when new talks and event dates are out. <a href="#" id="change-email">Use a different email</a></p>
+    </div>
+  </form>
+
+  <ul class="proof" aria-label="Audience">
+    <li><b>1M</b> YouTube subscribers</li>
+    <li><b>1.5M</b> talk views</li>
+    <li><b>800</b> admitted last year</li>
+  </ul>
+
+  <section aria-labelledby="next">
+    <h2 id="next">Coming up</h2>
+    <p class="section-note">Subscribers hear first when applications open.</p>
+    <ul class="list events">
+      <li><span class="t">AI Engineer Europe</span><span class="d">Feb 17–19, 2027 · London</span></li>
+      <li><span class="t">AI Engineer World's Fair</span><span class="d">Jun 29–Jul 1, 2027 · San Francisco</span></li>
+    </ul>
+  </section>
+
+  <section aria-labelledby="recent">
+    <h2 id="recent">Recent talks</h2>
+    <p class="section-note">From Code Summit 2026. Each has a recording and a reading edition.</p>
+    <ul class="list talks">
+      <li><a href="https://ai.engineer/code/2026/talks"><span class="t">2026 in LLMs</span><br><span class="m">Simon Willison · Creator of Datasette</span></a></li>
+      <li><a href="https://ai.engineer/code/2026/talks"><span class="t">Choose the project you can verify</span><br><span class="m">Jarred Sumner · Anthropic</span></a></li>
+      <li><a href="https://ai.engineer/code/2026/talks"><span class="t">Rethinking Claude Code Best Practices</span><br><span class="m">Lydia Hallie · Anthropic</span></a></li>
+    </ul>
+  </section>
+
+  <div class="again" id="again">
+    <p>One email field, and you'll hear about the next talks and events.</p>
+    <a class="btn-link" href="#signup" id="again-link">Subscribe</a>
+  </div>
+</main>
+
+<footer>
+  <div class="wrap">
+    <span>AI Engineer</span>
+    <ul aria-label="More">
+      <li><a href="https://www.youtube.com/@aiDotEngineer">YouTube</a></li>
+      <li><a href="https://x.com/aiDotEngineer">X</a></li>
+      <li><a href="https://ai.engineer/code/2026/llms.txt">For agents (llms.txt)</a></li>
+    </ul>
+  </div>
+</footer>
+
+<script>
+(function () {
+  var form = document.getElementById('signup');
+  var input = document.getElementById('email');
+  var hint = document.getElementById('email-hint');
+  var done = document.getElementById('confirmation');
+  var defaultHint = hint.textContent;
+  var EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
+
+  function setError(msg) {
+    hint.textContent = msg;
+    hint.classList.add('error');
+    input.setAttribute('aria-invalid', 'true');
+  }
+  function clearError() {
+    if (input.getAttribute('aria-invalid') !== 'true') return;
+    hint.textContent = defaultHint;
+    hint.classList.remove('error');
+    input.removeAttribute('aria-invalid');
+  }
+
+  input.addEventListener('input', clearError);
+
+  form.addEventListener('submit', function (e) {
+    e.preventDefault();
+    var value = input.value.trim();
+    if (!value) { setError('Enter your email to subscribe.'); input.focus(); return; }
+    if (!EMAIL.test(value)) { setError('That email looks incomplete. Check for a typo.'); input.focus(); return; }
+    document.getElementById('confirmed-email').textContent = value;
+    form.classList.add('is-done');
+    history.replaceState(null, '', '#confirmed');
+    done.focus({ preventScroll: true });
+    document.getElementById('again').hidden = true;
+  });
+
+  document.getElementById('change-email').addEventListener('click', function (e) {
+    e.preventDefault();
+    form.classList.remove('is-done');
+    document.getElementById('again').hidden = false;
+    history.replaceState(null, '', location.pathname + location.search);
+    input.select();
+    input.focus();
+  });
+
+  document.getElementById('again-link').addEventListener('click', function (e) {
+    e.preventDefault();
+    form.scrollIntoView({ behavior: matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth', block: 'center' });
+    input.focus({ preventScroll: true });
+  });
+})();
+</script>
+</body>
+</html>
