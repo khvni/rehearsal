@@ -146,5 +146,10 @@
     "spec": 19808,
     "total": 283200
   },
-  "ranAt": "2026-11-13T22:17:15.719Z"
+  "ranAt": "2026-11-13T22:17:15.719Z",
+  "endpoints": {
+    "intent": "information",
+    "total": 0,
+    "byClass": {}
+  }
 }
