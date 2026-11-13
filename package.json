@@ -13,7 +13,8 @@
     "eval": "vitest run tests/evals --reporter=dot",
     "test:e2e": "playwright test",
     "check:skill-sync": "tsx scripts/check-skill-sync.ts",
-    "check": "npm run lint && npm run typecheck && npm run test && npm run eval && npm run check:skill-sync"
+    "check:facts": "tsx scripts/verify-facts.ts",
+    "check": "npm run lint && npm run typecheck && npm run test && npm run eval && npm run check:skill-sync && npm run check:facts"
   },
   "dependencies": {
     "@browserbasehq/stagehand": "^4.4.0",

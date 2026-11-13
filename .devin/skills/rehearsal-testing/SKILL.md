@@ -45,12 +45,17 @@ eval cases.** `npm run check:skill-sync` fails the build otherwise.
 
 - `discovery.spec.ts` — hermetic: serves the AIE fixture over localhost, verifies real-browser extraction + the stale-CTA precondition. Requires `REHEARSAL_ALLOW_PRIVATE=1` (set inside the spec).
 
+## Layer 1 facts (scripts/verify-facts.ts)
+
+`npm run check:facts` checks deterministic facts so neither an LLM nor a reviewer has to (docs/verification.md): stored experiments (`data/experiments/**`, `tests/fixtures/experiments/**`, `docs/runs/**/summary.json`) parse with the `Experiment`/`SpecReport` contracts with no unknown keys; every env var read in src/ is in `.env.example` and README/docs (and vice versa), and the terraform stacks declare + map the deploy subset (`DEPLOYED_ENV`, exemptions listed in the script); Krug principle slugs/K-ids in `src/lib/analysis` + `src/lib/intents` exist in docs/krug-principles.md and the contract enum; every stable finding rule id (`f_<rule>_…`, metric `finding("<rule>")`) is referenced by a test; every `src/app/api/**` route + method is in docs/api.md. `--json` prints machine-readable results. After changing the pipeline output shape, regenerate the stored fixture with `npx tsx scripts/verify-facts.ts --write-fixtures` (hermetic run on `aie-code-2026.html`, mocked ids + clock, byte-identical across runs).
+
 ## How to run
 
 - `npm run test` — unit tests
 - `npm run eval` — eval suite (CI gate; threshold-driven)
 - `npm run test:e2e` — Playwright hermetic browser tests (needs `npx playwright install chromium`)
 - `npm run check:skill-sync` — this file vs. PIPELINE_STAGES + eval files
+- `npm run check:facts` — Layer 1 drift checks (above)
 - `npm run check` — everything
 
 ## Rules

@@ -1,0 +1,3983 @@
+{
+  "id": "exp_00000001",
+  "targetUrl": "https://ai.engineer/code/2026",
+  "goal": "find the conference schedule",
+  "status": "complete",
+  "createdAt": "2026-11-13T12:00:00.000Z",
+  "configuration": {
+    "seed": 1337,
+    "maxStates": 5,
+    "maxDepth": 3,
+    "trajectories": 40,
+    "verifyCount": 2,
+    "viewports": [
+      "desktop"
+    ]
+  },
+  "assertions": [
+    {
+      "kind": "url-matches",
+      "value": "schedule"
+    }
+  ],
+  "graph": {
+    "states": [
+      {
+        "stateId": "st_00000002",
+        "url": "https://ai.engineer/code/2026",
+        "viewport": {
+          "name": "desktop",
+          "width": 1440,
+          "height": 900
+        },
+        "pageTitle": "AI Engineer Code Summit 2026: AI Engineering Conference, Nov 10-12, San Francisco",
+        "visibleText": "01000011 01001111 01000100 01000101\n\n 01001110 01000101\n 01000101 01010010\n\n 01001110 01000101\n 01000101 01010010\n\n 01001110 01000101\n 01000101 01010010\n\n \n //LOCATION SAN FRANCISCO, CA \n //DATE NOV 10-12, 2026 \n\n Search… / WELCOME AIE Code Summit 2026 WATCH & READ Recordings, essays & transcripts WHY ATTEND Built for practitioners APPLY TO ATTEND SPEAKERS First speakers announced PROGRAM Daily agenda VENUE Hilton Union Square, SF SIDE EVENTS Events around the summit FOR AGENTS MCP, llms.txt & JSON SPONSORS First sponsors announced FAQ \n\n \n NOV 10-12, 2026 // SF, CA \n A YEAR OF AGENTIC CODING. ONE ROOM. \n AIE CODE returns for its second annual code-focused summit. Catch up on the year with the world’s top agentic engineers, sharing the workflows and breakthroughs changing how software gets built. \n 800 admitted last year. 1.5 million talk views worldwide.\n A highly selective gathering. Invitations by application only.\n APPLY TO ATTEND \n \n \n BECOME A SPONSOR \n \n \n \n\n \n\n PRESENTED BY // SUPPORTED BY \n\n AI Engineer CODE 2026 · Watch & read\n The talks, in writing.\n Rewatch both conference days, or browse individual sessions for their illustrated reading editions, recordings, and full timestamped transcripts. Separate recordings restore interrupted talks where available.\n Explore all 50 sessions → Wednesday, November 11\n Watch \n\n Watch on YouTube ↗ \n Thursday, November 12\n Watch \n\n Watch on YouTube ↗ \n\n Browse the sessions\n Schedule Companies A–Z Both days 50 Nov 11 27 Nov 12 23 \n\n Search talks, speakers, or companies Track All sessions Main stage Online track Remarks \n 50 of 50 sessions · Event order · timestamps are positions in each source recording\n Jump to session November 11 0:11:26 Gimlet Labs 0:00:00 Anthropic 0:40:09 Cloudflare 1:01:02 SpaceXSI 1:30:40 Intrinsec AI 1:37:50 Harvey 1:50:46 Amazon Web Services 1:58:35 Meta 2:21:16 Google DeepMind 2:46:35 Databricks 3:10:06 Sonar 3:42:45 Factory 3:59:46 Cline 4:26:17 Tanmay Sah 4:42:54 Duolingo 0:00:00 Zenity 5:06:58 TypeSafe AI 5:34:33 Glean 5:52:15 UiPath 6:11:43 ZoomInfo 6:24:42 Workday 6:37:54 Microsoft 7:00:53 Nikolay Petrov 7:26:06 Lovable 7:48:52 Ramp 8:06:23 Independent 8:31:08 Independent \n November 12 0:19:40 OpenAI 0:40:03 Earendil 1:01:22 Warp 1:20:53 ArtCraft 1:46:46 Ayush Bhardwaj 1:59:06 Brian Douglas 2:13:37 Rohan Pandey 0:00:00 Maersk 2:33:30 Cognition 2:59:08 Exa 3:23:23 AWS 3:48:31 Anthropic 4:11:43 Syntax 0:00:00 Robinhood 5:19:16 Anthropic 0:00:00 Uber 6:08:26 Google DeepMind 6:34:30 Diffusion 6:57:39 Independent · Neo4j 7:35:53 Google DeepMind 7:55:24 Amp 8:15:48 Factory 8:37:57 Independent \n Wednesday, November 11\n Full livestream ↗ \n Gimlet Labs\n November 11 · Main stage\n What will you build when AI is 10× faster? \n Natalie Serrino Gimlet Labs Co-Founder \n\n Natalie Serrino asks her agent to make a slide look better. It does. The result takes less time than she would have needed to redesign it herself, and she gets a slide she likes without becoming a designer.\n Read the talk → Watch at 0:11:26 ↗ 17 min \n\n Anthropic\n November 11 · Main stage\n Rethinking Claude Code Best Practices \n Lydia Hallie Anthropic Member of Technical Staff \n\n A setup built around an older model can become an obstacle for a newer one.\n Read the talk → Watch at 0:00:00 ↗ 18 min \n\n Cloudflare\n November 11 · Main stage\n cloudflare is a neolab \n Michelle Chen Cloudflare Group Product Manager \n\n Cloudflare built a distributed inference network around a bet: models would get smaller and faster, making the distance between the model and its user increasingly important.\n Read the talk → Watch at 0:40:09 ↗ 20 min \n\n SpaceXSI\n November 11 · Main stage\n All Code Is Slop (Except Mine) \n Lauren Tan SpaceXSI Principal Engineer \n\n When an agent makes the same mistake again, it is tempting to add another warning to AGENTS.md. Lauren Tan wants the correction to land somewhere harder to ignore: the codebase, an API, or an executable check.\n Read the talk → Watch at 1:01:02 ↗ 18 min \n\n Intrinsec AI\n November 11 · Online track\n Read the inference state before the agent acts \n Speaker identity unverified Intrinsec AI \n\n A guardrail can inspect a prompt before the model receives it and inspect a response after the model produces it. But between those checks, the model has already transformed its input into internal state. The talk asks whether an inference operator can use that state as an additional security signal.\n Read the talk → Watch at 1:30:40 ↗ 7 min \n\n Harvey\n November 11 · Online track\n The harness has to finish the job \n Joey Wang Harvey \n\n Joey Wang opens with the scale of Harvey&#x27;s internal agent platform: more than one agent starting every minute on average, around the clock, and thousands of agent-written pull requests.\n Read the talk → Watch at 1:37:50 ↗ 13 min \n\n Amazon Web Services\n November 11 · Online track\n Specs have bugs too \n Rajath Kotyal Amazon Web Services \n\n An e-commerce specification says that an order should become a backorder when inventory is unavailable. Elsewhere, it says that no order should ever become a backorder.\n Read the talk → Watch at 1:50:46 ↗ 8 min \n\n Meta\n November 11 · Online track\n From answering the page to sharing the on-call rotation \n Chinmay Gandhi Meta \n Swaapnika Motapothula Meta \n Vlad Tsvang Meta \n\n Twelve alerts arrive at two in the morning. An assistant can help explain a latency spike, inspect a deployment, and read a runbook. Someone still has to decide which alert matters, ask each question, connect the answers, and carry out the follow-up.\n Read the talk → Watch at 1:58:35 ↗ 16 min \n\n Google DeepMind\n November 11 · Main stage · Excerpt\n I deleted 90% of my harness (And It Got Better) \n Philipp Schmid Google DeepMind Member of the Technical Staff \n\n An agent can reach the right answer while taking an unnecessarily expensive route. Philipp Schmid&#x27;s harness experiments focus on that difference: two systems may look equivalent in an accuracy table, yet consume very different numbers of turns, tokens, and dollars to finish the same work.\n Read the talk → Watch at 2:21:16 ↗ 15 min \n\n Databricks\n November 11 · Main stage\n The Rise of the Agent Workforce: Rethinking Agent Infrastructure \n Ankit Mathur Databricks Member of Technical Staff \n\n A broken data pipeline invites several plausible explanations. Perhaps an upstream job changed. Perhaps the data no longer matches an assumption. An agent can suggest each theory, but testing it against production may be the very thing an engineer cannot safely let it do.\n Read the talk → Watch at 2:46:35 ↗ 17 min \n\n Sonar\n November 11 · Main stage\n Building a Safe Software Factory \n Andrew Finch Sonar Staff Software Engineer \n\n A coding agent makes it easier to produce a pull request. That does not settle whether the change should merge, whether it behaves correctly after deployment, or whether a vulnerability discovered next week changes the answer.\n Read the talk → Watch at 3:10:06 ↗ 14 min \n\n Factory\n November 11 · Main stage\n Earning Autonomy: From Missions to Workstreams \n Luke Alvoeiro Factory Member of Technical Staff \n\n A team hands an agent a large goal, approves the plan, and returns later to completed work.\n Read the talk → Watch at 3:42:45 ↗ 15 min \n\n Cline\n November 11 · Online track\n The Improvement Loop Is the Product \n Ara Khan Cline \n\n A coding agent can help build the system that makes coding agents better. That observation is easy to turn into a story about a distant intelligence explosion. Ara Khan instead begins with a nearer question: what should an engineer work on when a new model can erase the value of a side project overnight?\n Read the talk → Watch at 3:59:46 ↗ 27 min \n\n Tanmay Sah\n November 11 · Online track\n An Agent&#x27;s Change Is Not Safe Until Its Recovery Has Been Tested \n Tanmay Sah \n Dolly Sah \n\n The coding agent has done what it was asked to do. It patched the repository, passed the tests, and produced a release. Then a downstream integration fails. Reverting the Git commit sounds like an obvious response, but the repository is only one part of the system the agent changed.\n Read the talk → Watch at 4:26:17 ↗ 17 min \n\n Duolingo\n November 11 · Online track\n Duolingo&#x27;s Test-Writing Agent Is a Pull-Request Lifecycle, Not a Prompt \n Kush Agrawal Duolingo \n\n Duolingo&#x27;s iOS codebase contains roughly 1.8 million lines of code and a decade of accumulated decisions.\n Read the talk → Watch at 4:42:54 ↗ 13 min \n\n Zenity\n November 11 · Online track\n A Skill&#x27;s Instructions Are Not Its Behavior \n Roey Ben Chaim Zenity \n\n An agent reads cloud configuration, queries identity services, and probes instance metadata.\n Read the talk → Watch at 0:00:00 ↗ 15 min \n\n TypeSafe AI\n November 11 · Main stage\n Beyond Better Assistants: Software That Can Make a Decision \n Diogo Almeida TypeSafe AI Co-founder & CEO \n\n A model can be impressive in a demo and still be unsuitable for unattended operation. Diogo Almeida makes that gap the center of his keynote. He likes the new tools; his objection is to treating a good assistant as if it were already a dependable automation component.\n Read the talk → Watch at 5:06:58 ↗ 23 min \n\n Glean\n November 11 · Main stage\n Beyond Generation: Fast, Structured AI Decisions with Jev at Glean \n Chinmay Goyal Glean Software Engineer \n\n A search assistant makes many decisions that do not require it to write anything.\n Read the talk → Watch at 5:34:33 ↗ 16 min \n\n UiPath\n November 11 · Main stage\n Your Automation Is Overthinking It \n Chibi Vikram UiPath Engineer \n Kevin Bernstein UiPath Principal AI Solution Architect \n\n A workflow does not need to deliberate about every step.\n Read the talk → Watch at 5:52:15 ↗ 15 min \n\n ZoomInfo\n November 11 · Main stage\n Your Judge Is Hallucinating Too \n Brian Kennedy ZoomInfo Principal Engineer \n\n An agent says it scheduled an email for Tuesday.\n Read the talk → Watch at 6:11:43 ↗ 11 min \n\n Workday\n November 11 · Main stage\n Autocomplete for Actions: System One from the UI to the DB \n Scott Roberts Workday \n\n Workday users do not always arrive with an open-ended research problem. Sometimes they want their pay information, a time-off action, or a colleague&#x27;s contact card. Scott Roberts asks what happens when an interface can recognize that intent quickly enough to prepare the action while the user is still typing.\n Read the talk → Watch at 6:24:42 ↗ 12 min \n\n Microsoft\n November 11 · Online track\n Sub-Agents Are a Distributed System (And Nobody Gave You a Consistency Model) \n Girish Konda Microsoft \n\n An orchestrator delegates work to several agents.\n Read the talk → Watch at 6:37:54 ↗ 23 min \n\n Nikolay Petrov\n November 11 · Online track\n Your SKILL.md is 70% of Things the Model Already Knows \n Nikolay Petrov \n\n A skill can teach an agent something it does not know, or it can steer the agent through a process it already understands.\n Read the talk → Watch at 7:00:53 ↗ 14 min \n\n Lovable\n November 11 · Main stage\n What it takes to set intelligence free \n Fabian Hedin Lovable CTO \n\n Lovable nearly failed by building for agents too early. Fabian Hedin opens with that admission, not with the architecture diagram. In 2023, the team could see a future of agents delegating to agents, but the models available at the time could not reliably support the elaborate system they built around them.\n Read the talk → Watch at 7:26:06 ↗ 22 min \n\n Ramp\n November 11 · Main stage\n How to build an agent that builds the culture \n Zach Bruggeman Ramp Principal Software Engineer \n\n Inspect began as Ramp&#x27;s collaborative coding agent.\n Read the talk → Watch at 7:48:52 ↗ 15 min \n\n Independent\n November 11 · Main stage\n Software Factories: Escape from Trash Mountain \n Steve Yegge Independent Independent Advisor & Creator of Beads & Gas Town \n\n Steve Yegge has spent the year trying to make agents run other agents.\n Read the talk → Watch at 8:06:23 ↗ 21 min \n\n Independent\n November 11 · Main stage\n 2026 in LLMs \n Simon Willison Independent Creator of Datasette \n\n Simon Willison org",
+        "actions": [
+          {
+            "actionId": "st_00000002_a0",
+            "stateId": "st_00000002",
+            "type": "click",
+            "label": "BECOME A SPONSOR",
+            "role": "link",
+            "href": "https://ai.engineer/code/2026/guide/sponsorship",
+            "enabled": true,
+            "safeToExecute": true
+          },
+          {
+            "actionId": "st_00000002_a1",
+            "stateId": "st_00000002",
+            "type": "click",
+            "label": "Explore all 50 sessions →",
+            "role": "link",
+            "href": "https://ai.engineer/code/2026/talks",
+            "enabled": true,
+            "safeToExecute": true
+          },
+          {
+            "actionId": "st_00000002_a2",
+            "stateId": "st_00000002",
+            "type": "navigate",
+            "label": "Watch on YouTube ↗",
+            "role": "link",
+            "href": "https://www.youtube.com/watch?v=ZZ19zhYnDKY",
+            "enabled": true,
+            "safeToExecute": false
+          },
+          {
+            "actionId": "st_00000002_a3",
+            "stateId": "st_00000002",
+            "type": "navigate",
+            "label": "Watch on YouTube ↗",
+            "role": "link",
+            "href": "https://www.youtube.com/watch?v=y9JtCCZP2MQ",
+            "enabled": true,
+            "safeToExecute": false
+          },
+          {
+            "actionId": "st_00000002_a4",
+            "stateId": "st_00000002",
+            "type": "click",
+            "label": "Schedule",
+            "role": "link",
+            "href": "https://ai.engineer/code/2026?",
+            "enabled": true,
+            "safeToExecute": true
+          },
+          {
+            "actionId": "st_00000002_a5",
+            "stateId": "st_00000002",
+            "type": "click",
+            "label": "Companies A–Z",
+            "role": "link",
+            "href": "https://ai.engineer/code/2026?view=companies",
+            "enabled": true,
+            "safeToExecute": true
+          },
+          {
+            "actionId": "st_00000002_a6",
+            "stateId": "st_00000002",
+            "type": "click",
+            "label": "Both days 50",
+            "role": "link",
+            "href": "https://ai.engineer/code/2026?",
+            "enabled": true,
+            "safeToExecute": true
+          },
+          {
+            "actionId": "st_00000002_a7",
+            "stateId": "st_00000002",
+            "type": "click",
+            "label": "Nov 11 27",
+            "role": "link",
+            "href": "https://ai.engineer/code/2026?day=11",
+            "enabled": true,
+            "safeToExecute": true
+          },
+          {
+            "actionId": "st_00000002_a8",
+            "stateId": "st_00000002",
+            "type": "click",
+            "label": "Nov 12 23",
+            "role": "link",
+            "href": "https://ai.engineer/code/2026?day=12",
+            "enabled": true,
+            "safeToExecute": true
+          },
+          {
+            "actionId": "st_00000002_a9",
+            "stateId": "st_00000002",
+            "type": "navigate",
+            "label": "Full livestream ↗",
+            "role": "link",
+            "href": "https://www.youtube.com/watch?v=ZZ19zhYnDKY",
+            "enabled": true,
+            "safeToExecute": false
+          },
+          {
+            "actionId": "st_00000002_a10",
+            "stateId": "st_00000002",
+            "type": "click",
+            "label": "Read What will you build when AI is 10× faster?",
+            "role": "link",
+            "href": "https://ai.engineer/code/2026/talks/natalie-serrino",
+            "enabled": true,
+            "safeToExecute": true
+          },
+          {
+            "actionId": "st_00000002_a11",
+            "stateId": "st_00000002",
+            "type": "click",
+            "label": "What will you build when AI is 10× faster?",
+            "role": "link",
+            "href": "https://ai.engineer/code/2026/talks/natalie-serrino",
+            "enabled": true,
+            "safeToExecute": true
+          },
+          {
+            "actionId": "st_00000002_a12",
+            "stateId": "st_00000002",
+            "type": "click",
+            "label": "Read the talk →",
+            "role": "link",
+            "href": "https://ai.engineer/code/2026/talks/natalie-serrino",
+            "enabled": true,
+            "safeToExecute": true
+          },
+          {
+            "actionId": "st_00000002_a13",
+            "stateId": "st_00000002",
+            "type": "navigate",
+            "label": "Watch at 0:11:26 ↗",
+            "role": "link",
+            "href": "https://www.youtube.com/watch?v=ZZ19zhYnDKY&amp;t=686s",
+            "enabled": true,
+            "safeToExecute": false
+          },
+          {
+            "actionId": "st_00000002_a14",
+            "stateId": "st_00000002",
+            "type": "click",
+            "label": "Read Rethinking Claude Code Best Practices",
+            "role": "link",
+            "href": "https://ai.engineer/code/2026/talks/lydia-hallie",
+            "enabled": true,
+            "safeToExecute": true
+          },
+          {
+            "actionId": "st_00000002_a15",
+            "stateId": "st_00000002",
+            "type": "click",
+            "label": "Rethinking Claude Code Best Practices",
+            "role": "link",
+            "href": "https://ai.engineer/code/2026/talks/lydia-hallie",
+            "enabled": true,
+            "safeToExecute": true
+          },
+          {
+            "actionId": "st_00000002_a16",
+            "stateId": "st_00000002",
+            "type": "click",
+            "label": "Read the talk →",
+            "role": "link",
+            "href": "https://ai.engineer/code/2026/talks/lydia-hallie",
+            "enabled": true,
+            "safeToExecute": true
+          },
+          {
+            "actionId": "st_00000002_a17",
+            "stateId": "st_00000002",
+            "type": "navigate",
+            "label": "Watch at 0:00:00 ↗",
+            "role": "link",
+            "href": "https://www.youtube.com/watch?v=vlfCjWuv4es&amp;t=0s",
+            "enabled": true,
+            "safeToExecute": false
+          },
+          {
+            "actionId": "st_00000002_a18",
+            "stateId": "st_00000002",
+            "type": "click",
+            "label": "Read cloudflare is a neolab",
+            "role": "link",
+            "href": "https://ai.engineer/code/2026/talks/michelle-chen",
+            "enabled": true,
+            "safeToExecute": true
+          },
+          {
+            "actionId": "st_00000002_a19",
+            "stateId": "st_00000002",
+            "type": "click",
+            "label": "cloudflare is a neolab",
+            "role": "link",
+            "href": "https://ai.engineer/code/2026/talks/michelle-chen",
+            "enabled": true,
+            "safeToExecute": true
+          },
+          {
+            "actionId": "st_00000002_a20",
+            "stateId": "st_00000002",
+            "type": "click",
+            "label": "Read the talk →",
+            "role": "link",
+            "href": "https://ai.engineer/code/2026/talks/michelle-chen",
+            "enabled": true,
+            "safeToExecute": true
+          },
+          {
+            "actionId": "st_00000002_a21",
+            "stateId": "st_00000002",
+            "type": "navigate",
+            "label": "Watch at 0:40:09 ↗",
+            "role": "link",
+            "href": "https://www.youtube.com/watch?v=ZZ19zhYnDKY&amp;t=2409s",
+            "enabled": true,
+            "safeToExecute": false
+          },
+          {
+            "actionId": "st_00000002_a22",
+            "stateId": "st_00000002",
+            "type": "click",
+            "label": "Read All Code Is Slop (Except Mine)",
+            "role": "link",
+            "href": "https://ai.engineer/code/2026/talks/lauren-tan",
+            "enabled": true,
+            "safeToExecute": true
+          },
+          {
+            "actionId": "st_00000002_a23",
+            "stateId": "st_00000002",
+            "type": "click",
+            "label": "All Code Is Slop (Except Mine)",
+            "role": "link",
+            "href": "https://ai.engineer/code/2026/talks/lauren-tan",
+            "enabled": true,
+            "safeToExecute": true
+          },
+          {
+            "actionId": "st_00000002_a24",
+            "stateId": "st_00000002",
+            "type": "click",
+            "label": "Read the talk →",
+            "role": "link",
+            "href": "https://ai.engineer/code/2026/talks/lauren-tan",
+            "enabled": true,
+            "safeToExecute": true
+          },
+          {
+            "actionId": "st_00000002_a25",
+            "stateId": "st_00000002",
+            "type": "navigate",
+            "label": "Watch at 1:01:02 ↗",
+            "role": "link",
+            "href": "https://www.youtube.com/watch?v=ZZ19zhYnDKY&amp;t=3662s",
+            "enabled": true,
+            "safeToExecute": false
+          },
+          {
+            "actionId": "st_00000002_a26",
+            "stateId": "st_00000002",
+            "type": "click",
+            "label": "Read Read the inference state before the agent acts",
+            "role": "link",
+            "href": "https://ai.engineer/code/2026/talks/online-inference-security",
+            "enabled": true,
+            "safeToExecute": true
+          },
+          {
+            "actionId": "st_00000002_a27",
+            "stateId": "st_00000002",
+            "type": "click",
+            "label": "Read the inference state before the agent acts",
+            "role": "link",
+            "href": "https://ai.engineer/code/2026/talks/online-inference-security",
+            "enabled": true,
+            "safeToExecute": true
+          },
+          {
+            "actionId": "st_00000002_a28",
+            "stateId": "st_00000002",
+            "type": "click",
+            "label": "Read the talk →",
+            "role": "link",
+            "href": "https://ai.engineer/code/2026/talks/online-inference-security",
+            "enabled": true,
+            "safeToExecute": true
+          },
+          {
+            "actionId": "st_00000002_a29",
+            "stateId": "st_00000002",
+            "type": "navigate",
+            "label": "Watch at 1:30:40 ↗",
+            "role": "link",
+            "href": "https://www.youtube.com/watch?v=ZZ19zhYnDKY&amp;t=5440s",
+            "enabled": true,
+            "safeToExecute": false
+          },
+          {
+            "actionId": "st_00000002_a30",
+            "stateId": "st_00000002",
+            "type": "click",
+            "label": "Read The harness has to finish the job",
+            "role": "link",
+            "href": "https://ai.engineer/code/2026/talks/online-harvey-agent-platform",
+            "enabled": true,
+            "safeToExecute": true
+          },
+          {
+            "actionId": "st_00000002_a31",
+            "stateId": "st_00000002",
+            "type": "click",
+            "label": "The harness has to finish the job",
+            "role": "link",
+            "href": "https://ai.engineer/code/2026/talks/online-harvey-agent-platform",
+            "enabled": true,
+            "safeToExecute": true
+          },
+          {
+            "actionId": "st_00000002_a32",
+            "stateId": "st_00000002",
+            "type": "click",
+            "label": "Read the talk →",
+            "role": "link",
+            "href": "https://ai.engineer/code/2026/talks/online-harvey-agent-platform",
+            "enabled": true,
+            "safeToExecute": true
+          },
+          {
+            "actionId": "st_00000002_a33",
+            "stateId": "st_00000002",
+            "type": "navigate",
+            "label": "Watch at 1:37:50 ↗",
+            "role": "link",
+            "href": "https://www.youtube.com/watch?v=ZZ19zhYnDKY&amp;t=5870s",
+            "enabled": true,
+            "safeToExecute": false
+          },
+          {
+            "actionId": "st_00000002_a34",
+            "stateId": "st_00000002",
+            "type": "click",
+            "label": "Read Specs have bugs too",
+            "role": "link",
+            "href": "https://ai.engineer/code/2026/talks/online-aws-specification-analyzer",
+            "enabled": true,
+            "safeToExecute": true
+          },
+          {
+            "actionId": "st_00000002_a35",
+            "stateId": "st_00000002",
+            "type": "click",
+            "label": "Specs have bugs too",
+            "role": "link",
+            "href": "https://ai.engineer/code/2026/talks/online-aws-specification-analyzer",
+            "enabled": true,
+            "safeToExecute": true
+          },
+          {
+            "actionId": "st_00000002_a36",
+            "stateId": "st_00000002",
+            "type": "click",
+            "label": "Read the talk →",
+            "role": "link",
+            "href": "https://ai.engineer/code/2026/talks/online-aws-specification-analyzer",
+            "enabled": true,
+            "safeToExecute": true
+          },
+          {
+            "actionId": "st_00000002_a37",
+            "stateId": "st_00000002",
+            "type": "navigate",
+            "label": "Watch at 1:50:46 ↗",
+            "role": "link",
+            "href": "https://www.youtube.com/watch?v=ZZ19zhYnDKY&amp;t=6646s",
+            "enabled": true,
+            "safeToExecute": false
+          },
+          {
+            "actionId": "st_00000002_a38",
+            "stateId": "st_00000002",
+            "type": "click",
+            "label": "Read From answering the page to sharing the on-call rotation",
+            "role": "link",
+            "href": "https://ai.engineer/code/2026/talks/online-meta-oncall",
+            "enabled": true,
+            "safeToExecute": true
+          },
+          {
+            "actionId": "st_00000002_a39",
+            "stateId": "st_00000002",
+            "type": "click",
+            "label": "From answering the page to sharing the on-call rotation",
+            "role": "link",
+            "href": "https://ai.engineer/code/2026/talks/online-meta-oncall",
+            "enabled": true,
+            "safeToExecute": true
+          },
+          {
+            "actionId": "st_00000002_a40",
+            "stateId": "st_00000002",
+            "type": "click",
+            "label": "Read the talk →",
+            "role": "link",
+            "href": "https://ai.engineer/code/2026/talks/online-meta-oncall",
+            "enabled": true,
+            "safeToExecute": true
+          },
+          {
+            "actionId": "st_00000002_a41",
+            "stateId": "st_00000002",
+            "type": "navigate",
+            "label": "Watch at 1:58:35 ↗",
+            "role": "link",
+            "href": "https://www.youtube.com/watch?v=ZZ19zhYnDKY&amp;t=7115s",
+            "enabled": true,
+            "safeToExecute": false
+          },
+          {
+            "actionId": "st_00000002_a42",
+            "stateId": "st_00000002",
+            "type": "click",
+            "label": "Read I deleted 90% of my harness (And It Got Better)",
+            "role": "link",
+            "href": "https://ai.engineer/code/2026/talks/philipp-schmid",
+            "enabled": true,
+            "safeToExecute": true
+          },
+          {
+            "actionId": "st_00000002_a43",
+            "stateId": "st_00000002",
+            "type": "click",
+            "label": "I deleted 90% of my harness (And It Got Better)",
+            "role": "link",
+            "href": "https://ai.engineer/code/2026/talks/philipp-schmid",
+            "enabled": true,
+            "safeToExecute": true
+          },
+          {
+            "actionId": "st_00000002_a44",
+            "stateId": "st_00000002",
+            "type": "click",
+            "label": "Read the talk →",
+            "role": "link",
+            "href": "https://ai.engineer/code/2026/talks/philipp-schmid",
+            "enabled": true,
+            "safeToExecute": true
+          },
+          {
+            "actionId": "st_00000002_a45",
+            "stateId": "st_00000002",
+            "type": "navigate",
+            "label": "Watch at 2:21:16 ↗",
+            "role": "link",
+            "href": "https://www.youtube.com/watch?v=ZZ19zhYnDKY&amp;t=8476s",
+            "enabled": true,
+            "safeToExecute": false
+          },
+          {
+            "actionId": "st_00000002_a46",
+            "stateId": "st_00000002",
+            "type": "click",
+            "label": "Read The Rise of the Agent Workforce: Rethinking Agent Infrastructure",
+            "role": "link",
+            "href": "https://ai.engineer/code/2026/talks/ankit-mathur",
+            "enabled": true,
+            "safeToExecute": true
+          },
+          {
+            "actionId": "st_00000002_a47",
+            "stateId": "st_00000002",
+            "type": "click",
+            "label": "The Rise of the Agent Workforce: Rethinking Agent Infrastructure",
+            "role": "link",
+            "href": "https://ai.engineer/code/2026/talks/ankit-mathur",
+            "enabled": true,
+            "safeToExecute": true
+          },
+          {
+            "actionId": "st_00000002_a48",
+            "stateId": "st_00000002",
+            "type": "click",
+            "label": "Read the talk →",
+            "role": "link",
+            "href": "https://ai.engineer/code/2026/talks/ankit-mathur",
+            "enabled": true,
+            "safeToExecute": true
+          },
+          {
+            "actionId": "st_00000002_a49",
+            "stateId": "st_00000002",
+            "type": "navigate",
+            "label": "Watch at 2:46:35 ↗",
+            "role": "link",
+            "href": "https://www.youtube.com/watch?v=ZZ19zhYnDKY&amp;t=9995s",
+            "enabled": true,
+            "safeToExecute": false
+          },
+          {
+            "actionId": "st_00000002_a50",
+            "stateId": "st_00000002",
+            "type": "click",
+            "label": "Read Building a Safe Software Factory",
+            "role": "link",
+            "href": "https://ai.engineer/code/2026/talks/andrew-finch",
+            "enabled": true,
+            "safeToExecute": true
+          },
+          {
+            "actionId": "st_00000002_a51",
+            "stateId": "st_00000002",
+            "type": "click",
+            "label": "Building a Safe Software Factory",
+            "role": "link",
+            "href": "https://ai.engineer/code/2026/talks/andrew-finch",
+            "enabled": true,
+            "safeToExecute": true
+          },
+          {
+            "actionId": "st_00000002_a52",
+            "stateId": "st_00000002",
+            "type": "click",
+            "label": "Read the talk →",
+            "role": "link",
+            "href": "https://ai.engineer/code/2026/talks/andrew-finch",
+            "enabled": true,
+            "safeToExecute": true
+          },
+          {
+            "actionId": "st_00000002_a53",
+            "stateId": "st_00000002",
+            "type": "navigate",
+            "label": "Watch at 3:10:06 ↗",
+            "role": "link",
+            "href": "https://www.youtube.com/watch?v=ZZ19zhYnDKY&amp;t=11406s",
+            "enabled": true,
+            "safeToExecute": false
+          },
+          {
+            "actionId": "st_00000002_a54",
+            "stateId": "st_00000002",
+            "type": "click",
+            "label": "Read Earning Autonomy: From Missions to Workstreams",
+            "role": "link",
+            "href": "https://ai.engineer/code/2026/talks/luke-alvoeiro",
+            "enabled": true,
+            "safeToExecute": true
+          },
+          {
+            "actionId": "st_00000002_a55",
+            "stateId": "st_00000002",
+            "type": "click",
+            "label": "Earning Autonomy: From Missions to Workstreams",
+            "role": "link",
+            "href": "https://ai.engineer/code/2026/talks/luke-alvoeiro",
+            "enabled": true,
+            "safeToExecute": true
+          },
+          {
+            "actionId": "st_00000002_a56",
+            "stateId": "st_00000002",
+            "type": "click",
+            "label": "Read the talk →",
+            "role": "link",
+            "href": "https://ai.engineer/code/2026/talks/luke-alvoeiro",
+            "enabled": true,
+            "safeToExecute": true
+          },
+          {
+            "actionId": "st_00000002_a57",
+            "stateId": "st_00000002",
+            "type": "navigate",
+            "label": "Watch at 3:42:45 ↗",
+            "role": "link",
+            "href": "https://www.youtube.com/watch?v=ZZ19zhYnDKY&amp;t=13365s",
+            "enabled": true,
+            "safeToExecute": false
+          },
+          {
+            "actionId": "st_00000002_a58",
+            "stateId": "st_00000002",
+            "type": "click",
+            "label": "Read The Improvement Loop Is the Product",
+            "role": "link",
+            "href": "https://ai.engineer/code/2026/talks/online-cline-rsi",
+            "enabled": true,
+            "safeToExecute": true
+          },
+          {
+            "actionId": "st_00000002_a59",
+            "stateId": "st_00000002",
+            "type": "click",
+            "label": "The Improvement Loop Is the Product",
+            "role": "link",
+            "href": "https://ai.engineer/code/2026/talks/online-cline-rsi",
+            "enabled": true,
+            "safeToExecute": true
+          },
+          {
+            "actionId": "st_00000002_a60",
+            "stateId": "st_00000002",
+            "type": "click",
+            "label": "Read the talk →",
+            "role": "link",
+            "href": "https://ai.engineer/code/2026/talks/online-cline-rsi",
+            "enabled": true,
+            "safeToExecute": true
+          },
+          {
+            "actionId": "st_00000002_a61",
+            "stateId": "st_00000002",
+            "type": "navigate",
+            "label": "Watch at 3:59:46 ↗",
+            "role": "link",
+            "href": "https://www.youtube.com/watch?v=ZZ19zhYnDKY&amp;t=14386s",
+            "enabled": true,
+            "safeToExecute": false
+          },
+          {
+            "actionId": "st_00000002_a62",
+            "stateId": "st_00000002",
+            "type": "click",
+            "label": "Read An Agent&#x27;s Change Is Not Safe Until Its Recovery Has Been Tested",
+            "role": "link",
+            "href": "https://ai.engineer/code/2026/talks/online-undo-button",
+            "enabled": true,
+            "safeToExecute": true
+          },
+          {
+            "actionId": "st_00000002_a63",
+            "stateId": "st_00000002",
+            "type": "click",
+            "label": "An Agent&#x27;s Change Is Not Safe Until Its Recovery Has Been Tested",
+            "role": "link",
+            "href": "https://ai.engineer/code/2026/talks/online-undo-button",
+            "enabled": true,
+            "safeToExecute": true
+          },
+          {
+            "actionId": "st_00000002_a64",
+            "stateId": "st_00000002",
+            "type": "click",
+            "label": "Read the talk →",
+            "role": "link",
+            "href": "https://ai.engineer/code/2026/talks/online-undo-button",
+            "enabled": true,
+            "safeToExecute": true
+          },
+          {
+            "actionId": "st_00000002_a65",
+            "stateId": "st_00000002",
+            "type": "navigate",
+            "label": "Watch at 4:26:17 ↗",
+            "role": "link",
+            "href": "https://www.youtube.com/watch?v=ZZ19zhYnDKY&amp;t=15977s",
+            "enabled": true,
+            "safeToExecute": false
+          },
+          {
+            "actionId": "st_00000002_a66",
+            "stateId": "st_00000002",
+            "type": "click",
+            "label": "Read Duolingo&#x27;s Test-Writing Agent Is a Pull-Request Lifecycle, Not a Prompt",
+            "role": "link",
+            "href": "https://ai.engineer/code/2026/talks/online-duolingo-tests",
+            "enabled": true,
+            "safeToExecute": true
+          },
+          {
+            "actionId": "st_00000002_a67",
+            "stateId": "st_00000002",
+            "type": "click",
+            "label": "Duolingo&#x27;s Test-Writing Agent Is a Pull-Request Lifecycle, Not a Prompt",
+            "role": "link",
+            "href": "https://ai.engineer/code/2026/talks/online-duolingo-tests",
+            "enabled": true,
+            "safeToExecute": true
+          },
+          {
+            "actionId": "st_00000002_a68",
+            "stateId": "st_00000002",
+            "type": "click",
+            "label": "Read the talk →",
+            "role": "link",
+            "href": "https://ai.engineer/code/2026/talks/online-duolingo-tests",
+            "enabled": true,
+            "safeToExecute": true
+          },
+          {
+            "actionId": "st_00000002_a69",
+            "stateId": "st_00000002",
+            "type": "navigate",
+            "label": "Watch at 4:42:54 ↗",
+            "role": "link",
+            "href": "https://www.youtube.com/watch?v=ZZ19zhYnDKY&amp;t=16974s",
+            "enabled": true,
+            "safeToExecute": false
+          },
+          {
+            "actionId": "st_00000002_a70",
+            "stateId": "st_00000002",
+            "type": "click",
+            "label": "Read A Skill&#x27;s Instructions Are Not Its Behavior",
+            "role": "link",
+            "href": "https://ai.engineer/code/2026/talks/online-zenity-skills",
+            "enabled": true,
+            "safeToExecute": true
+          },
+          {
+            "actionId": "st_00000002_a71",
+            "stateId": "st_00000002",
+            "type": "click",
+            "label": "A Skill&#x27;s Instructions Are Not Its Behavior",
+            "role": "link",
+            "href": "https://ai.engineer/code/2026/talks/online-zenity-skills",
+            "enabled": true,
+            "safeToExecute": true
+          },
+          {
+            "actionId": "st_00000002_a72",
+            "stateId": "st_00000002",
+            "type": "click",
+            "label": "Read the talk →",
+            "role": "link",
+            "href": "https://ai.engineer/code/2026/talks/online-zenity-skills",
+            "enabled": true,
+            "safeToExecute": true
+          },
+          {
+            "actionId": "st_00000002_a73",
+            "stateId": "st_00000002",
+            "type": "navigate",
+            "label": "Watch at 0:00:00 ↗",
+            "role": "link",
+            "href": "https://www.youtube.com/watch?v=_7P580m4kPY&amp;t=0s",
+            "enabled": true,
+            "safeToExecute": false
+          },
+          {
+            "actionId": "st_00000002_a74",
+            "stateId": "st_00000002",
+            "type": "click",
+            "label": "Read Beyond Better Assistants: Software That Can Make a Decision",
+            "role": "link",
+            "href": "https://ai.engineer/code/2026/talks/diogo-almeida",
+            "enabled": true,
+            "safeToExecute": true
+          },
+          {
+            "actionId": "st_00000002_a75",
+            "stateId": "st_00000002",
+            "type": "click",
+            "label": "Beyond Better Assistants: Software That Can Make a Decision",
+            "role": "link",
+            "href": "https://ai.engineer/code/2026/talks/diogo-almeida",
+            "enabled": true,
+            "safeToExecute": true
+          },
+          {
+            "actionId": "st_00000002_a76",
+            "stateId": "st_00000002",
+            "type": "click",
+            "label": "Read the talk →",
+            "role": "link",
+            "href": "https://ai.engineer/code/2026/talks/diogo-almeida",
+            "enabled": true,
+            "safeToExecute": true
+          },
+          {
+            "actionId": "st_00000002_a77",
+            "stateId": "st_00000002",
+            "type": "navigate",
+            "label": "Watch at 5:06:58 ↗",
+            "role": "link",
+            "href": "https://www.youtube.com/watch?v=ZZ19zhYnDKY&amp;t=18418s",
+            "enabled": true,
+            "safeToExecute": false
+          },
+          {
+            "actionId": "st_00000002_a78",
+            "stateId": "st_00000002",
+            "type": "click",
+            "label": "Read Beyond Generation: Fast, Structured AI Decisions with Jev at Glean",
+            "role": "link",
+            "href": "https://ai.engineer/code/2026/talks/chinmay-goyal",
+            "enabled": true,
+            "safeToExecute": true
+          },
+          {
+            "actionId": "st_00000002_a79",
+            "stateId": "st_00000002",
+            "type": "click",
+            "label": "Beyond Generation: Fast, Structured AI Decisions with Jev at Glean",
+            "role": "link",
+            "href": "https://ai.engineer/code/2026/talks/chinmay-goyal",
+            "enabled": true,
+            "safeToExecute": true
+          },
+          {
+            "actionId": "st_00000002_a80",
+            "stateId": "st_00000002",
+            "type": "click",
+            "label": "Read the talk →",
+            "role": "link",
+            "href": "https://ai.engineer/code/2026/talks/chinmay-goyal",
+            "enabled": true,
+            "safeToExecute": true
+          },
+          {
+            "actionId": "st_00000002_a81",
+            "stateId": "st_00000002",
+            "type": "navigate",
+            "label": "Watch at 5:34:33 ↗",
+            "role": "link",
+            "href": "https://www.youtube.com/watch?v=ZZ19zhYnDKY&amp;t=20073s",
+            "enabled": true,
+            "safeToExecute": false
+          },
+          {
+            "actionId": "st_00000002_a82",
+            "stateId": "st_00000002",
+            "type": "click",
+            "label": "Read Your Automation Is Overthinking It",
+            "role": "link",
+            "href": "https://ai.engineer/code/2026/talks/uipath",
+            "enabled": true,
+            "safeToExecute": true
+          },
+          {
+            "actionId": "st_00000002_a83",
+            "stateId": "st_00000002",
+            "type": "click",
+            "label": "Your Automation Is Overthinking It",
+            "role": "link",
+            "href": "https://ai.engineer/code/2026/talks/uipath",
+            "enabled": true,
+            "safeToExecute": true
+          },
+          {
+            "actionId": "st_00000002_a84",
+            "stateId": "st_00000002",
+            "type": "click",
+            "label": "Read the talk →",
+            "role": "link",
+            "href": "https://ai.engineer/code/2026/talks/uipath",
+            "enabled": true,
+            "safeToExecute": true
+          },
+          {
+            "actionId": "st_00000002_a85",
+            "stateId": "st_00000002",
+            "type": "navigate",
+            "label": "Watch at 5:52:15 ↗",
+            "role": "link",
+            "href": "https://www.youtube.com/watch?v=ZZ19zhYnDKY&amp;t=21135s",
+            "enabled": true,
+            "safeToExecute": false
+          },
+          {
+            "actionId": "st_00000002_a86",
+            "stateId": "st_00000002",
+            "type": "click",
+            "label": "Read Your Judge Is Hallucinating Too",
+            "role": "link",
+            "href": "https://ai.engineer/code/2026/talks/brian-kennedy",
+            "enabled": true,
+            "safeToExecute": true
+          },
+          {
+            "actionId": "st_00000002_a87",
+            "stateId": "st_00000002",
+            "type": "click",
+            "label": "Your Judge Is Hallucinating Too",
+            "role": "link",
+            "href": "https://ai.engineer/code/2026/talks/brian-kennedy",
+            "enabled": true,
+            "safeToExecute": true
+          },
+          {
+            "actionId": "st_00000002_a88",
+            "stateId": "st_00000002",
+            "type": "click",
+            "label": "Read the talk →",
+            "role": "link",
+            "href": "https://ai.engineer/code/2026/talks/brian-kennedy",
+            "enabled": true,
+            "safeToExecute": true
+          },
+          {
+            "actionId": "st_00000002_a89",
+            "stateId": "st_00000002",
+            "type": "navigate",
+            "label": "Watch at 6:11:43 ↗",
+            "role": "link",
+            "href": "https://www.youtube.com/watch?v=ZZ19zhYnDKY&amp;t=22303s",
+            "enabled": true,
+            "safeToExecute": false
+          },
+          {
+            "actionId": "st_00000002_a90",
+            "stateId": "st_00000002",
+            "type": "click",
+            "label": "Read Autocomplete for Actions: System One from the UI to the DB",
+            "role": "link",
+            "href": "https://ai.engineer/code/2026/talks/scott-roberts",
+            "enabled": true,
+            "safeToExecute": true
+          },
+          {
+            "actionId": "st_00000002_a91",
+            "stateId": "st_00000002",
+            "type": "click",
+            "label": "Autocomplete for Actions: System One from the UI to the DB",
+            "role": "link",
+            "href": "https://ai.engineer/code/2026/talks/scott-roberts",
+            "enabled": true,
+            "safeToExecute": true
+          },
+          {
+            "actionId": "st_00000002_a92",
+            "stateId": "st_00000002",
+            "type": "click",
+            "label": "Read the talk →",
+            "role": "link",
+            "href": "https://ai.engineer/code/2026/talks/scott-roberts",
+            "enabled": true,
+            "safeToExecute": true
+          },
+          {
+            "actionId": "st_00000002_a93",
+            "stateId": "st_00000002",
+            "type": "navigate",
+            "label": "Watch at 6:24:42 ↗",
+            "role": "link",
+            "href": "https://www.youtube.com/watch?v=ZZ19zhYnDKY&amp;t=23082s",
+            "enabled": true,
+            "safeToExecute": false
+          },
+          {
+            "actionId": "st_00000002_a94",
+            "stateId": "st_00000002",
+            "type": "click",
+            "label": "Read Sub-Agents Are a Distributed System (And Nobody Gave You a Consistency Model)",
+            "role": "link",
+            "href": "https://ai.engineer/code/2026/talks/online-subagent-distributed-systems",
+            "enabled": true,
+            "safeToExecute": true
+          },
+          {
+            "actionId": "st_00000002_a95",
+            "stateId": "st_00000002",
+            "type": "click",
+            "label": "Sub-Agents Are a Distributed System (And Nobody Gave You a Consistency Model)",
+            "role": "link",
+            "href": "https://ai.engineer/code/2026/talks/online-subagent-distributed-systems",
+            "enabled": true,
+            "safeToExecute": true
+          },
+          {
+            "actionId": "st_00000002_a96",
+            "stateId": "st_00000002",
+            "type": "click",
+            "label": "Read the talk →",
+            "role": "link",
+            "href": "https://ai.engineer/code/2026/talks/online-subagent-distributed-systems",
+            "enabled": true,
+            "safeToExecute": true
+          },
+          {
+            "actionId": "st_00000002_a97",
+            "stateId": "st_00000002",
+            "type": "navigate",
+            "label": "Watch at 6:37:54 ↗",
+            "role": "link",
+            "href": "https://www.youtube.com/watch?v=ZZ19zhYnDKY&amp;t=23874s",
+            "enabled": true,
+            "safeToExecute": false
+          },
+          {
+            "actionId": "st_00000002_a98",
+            "stateId": "st_00000002",
+            "type": "click",
+            "label": "Read Your SKILL.md is 70% of Things the Model Already Knows",
+            "role": "link",
+            "href": "https://ai.engineer/code/2026/talks/online-skills-knowledge",
+            "enabled": true,
+            "safeToExecute": true
+          },
+          {
+            "actionId": "st_00000002_a99",
+            "stateId": "st_00000002",
+            "type": "click",
+            "label": "Your SKILL.md is 70% of Things the Model Already Knows",
+            "role": "link",
+            "href": "https://ai.engineer/code/2026/talks/online-skills-knowledge",
+            "enabled": true,
+            "safeToExecute": true
+          },
+          {
+            "actionId": "st_00000002_a100",
+            "stateId": "st_00000002",
+            "type": "click",
+            "label": "Read the talk →",
+            "role": "link",
+            "href": "https://ai.engineer/code/2026/talks/online-skills-knowledge",
+            "enabled": true,
+            "safeToExecute": true
+          },
+          {
+            "actionId": "st_00000002_a101",
+            "stateId": "st_00000002",
+            "type": "navigate",
+            "label": "Watch at 7:00:53 ↗",
+            "role": "link",
+            "href": "https://www.youtube.com/watch?v=ZZ19zhYnDKY&amp;t=25253s",
+            "enabled": true,
+            "safeToExecute": false
+          },
+          {
+            "actionId": "st_00000002_a102",
+            "stateId": "st_00000002",
+            "type": "click",
+            "label": "Read What it takes to set intelligence free",
+            "role": "link",
+            "href": "https://ai.engineer/code/2026/talks/fabian-hedin",
+            "enabled": true,
+            "safeToExecute": true
+          },
+          {
+            "actionId": "st_00000002_a103",
+            "stateId": "st_00000002",
+            "type": "click",
+            "label": "What it takes to set intelligence free",
+            "role": "link",
+            "href": "https://ai.engineer/code/2026/talks/fabian-hedin",
+            "enabled": true,
+            "safeToExecute": true
+          },
+          {
+            "actionId": "st_00000002_a104",
+            "stateId": "st_00000002",
+            "type": "click",
+            "label": "Read the talk →",
+            "role": "link",
+            "href": "https://ai.engineer/code/2026/talks/fabian-hedin",
+            "enabled": true,
+            "safeToExecute": true
+          },
+          {
+            "actionId": "st_00000002_a105",
+            "stateId": "st_00000002",
+            "type": "navigate",
+            "label": "Watch at 7:26:06 ↗",
+            "role": "link",
+            "href": "https://www.youtube.com/watch?v=ZZ19zhYnDKY&amp;t=26766s",
+            "enabled": true,
+            "safeToExecute": false
+          },
+          {
+            "actionId": "st_00000002_a106",
+            "stateId": "st_00000002",
+            "type": "click",
+            "label": "Read How to build an agent that builds the culture",
+            "role": "link",
+            "href": "https://ai.engineer/code/2026/talks/zach-bruggeman",
+            "enabled": true,
+            "safeToExecute": true
+          },
+          {
+            "actionId": "st_00000002_a107",
+            "stateId": "st_00000002",
+            "type": "click",
+            "label": "How to build an agent that builds the culture",
+            "role": "link",
+            "href": "https://ai.engineer/code/2026/talks/zach-bruggeman",
+            "enabled": true,
+            "safeToExecute": true
+          },
+          {
+            "actionId": "st_00000002_a108",
+            "stateId": "st_00000002",
+            "type": "click",
+            "label": "Read the talk →",
+            "role": "link",
+            "href": "https://ai.engineer/code/2026/talks/zach-bruggeman",
+            "enabled": true,
+            "safeToExecute": true
+          },
+          {
+            "actionId": "st_00000002_a109",
+            "stateId": "st_00000002",
+            "type": "navigate",
+            "label": "Watch at 7:48:52 ↗",
+            "role": "link",
+            "href": "https://www.youtube.com/watch?v=ZZ19zhYnDKY&amp;t=28132s",
+            "enabled": true,
+            "safeToExecute": false
+          },
+          {
+            "actionId": "st_00000002_a110",
+            "stateId": "st_00000002",
+            "type": "click",
+            "label": "Read Software Factories: Escape from Trash Mountain",
+            "role": "link",
+            "href": "https://ai.engineer/code/2026/talks/steve-yegge",
+            "enabled": true,
+            "safeToExecute": true
+          },
+          {
+            "actionId": "st_00000002_a111",
+            "stateId": "st_00000002",
+            "type": "click",
+            "label": "Software Factories: Escape from Trash Mountain",
+            "role": "link",
+            "href": "https://ai.engineer/code/2026/talks/steve-yegge",
+            "enabled": true,
+            "safeToExecute": true
+          },
+          {
+            "actionId": "st_00000002_a112",
+            "stateId": "st_00000002",
+            "type": "click",
+            "label": "Read the talk →",
+            "role": "link",
+            "href": "https://ai.engineer/code/2026/talks/steve-yegge",
+            "enabled": true,
+            "safeToExecute": true
+          },
+          {
+            "actionId": "st_00000002_a113",
+            "stateId": "st_00000002",
+            "type": "navigate",
+            "label": "Watch at 8:06:23 ↗",
+            "role": "link",
+            "href": "https://www.youtube.com/watch?v=ZZ19zhYnDKY&amp;t=29183s",
+            "enabled": true,
+            "safeToExecute": false
+          },
+          {
+            "actionId": "st_00000002_a114",
+            "stateId": "st_00000002",
+            "type": "click",
+            "label": "Read 2026 in LLMs",
+            "role": "link",
+            "href": "https://ai.engineer/code/2026/talks/simon-willison",
+            "enabled": true,
+            "safeToExecute": true
+          },
+          {
+            "actionId": "st_00000002_a115",
+            "stateId": "st_00000002",
+            "type": "click",
+            "label": "2026 in LLMs",
+            "role": "link",
+            "href": "https://ai.engineer/code/2026/talks/simon-willison",
+            "enabled": true,
+            "safeToExecute": true
+          },
+          {
+            "actionId": "st_00000002_a116",
+            "stateId": "st_00000002",
+            "type": "click",
+            "label": "Read the talk →",
+            "role": "link",
+            "href": "https://ai.engineer/code/2026/talks/simon-willison",
+            "enabled": true,
+            "safeToExecute": true
+          },
+          {
+            "actionId": "st_00000002_a117",
+            "stateId": "st_00000002",
+            "type": "navigate",
+            "label": "Watch at 8:31:08 ↗",
+            "role": "link",
+            "href": "https://www.youtube.com/watch?v=ZZ19zhYnDKY&amp;t=30668s",
+            "enabled": true,
+            "safeToExecute": false
+          },
+          {
+            "actionId": "st_00000002_a118",
+            "stateId": "st_00000002",
+            "type": "navigate",
+            "label": "Full livestream ↗",
+            "role": "link",
+            "href": "https://www.youtube.com/watch?v=y9JtCCZP2MQ",
+            "enabled": true,
+            "safeToExecute": false
+          },
+          {
+            "actionId": "st_00000002_a119",
+            "stateId": "st_00000002",
+            "type": "click",
+            "label": "Read Ambition in AI",
+            "role": "link",
+            "href": "https://ai.engineer/code/2026/talks/jason-liu",
+            "enabled": true,
+            "safeToExecute": true
+          },
+          {
+            "actionId": "st_00000002_a120",
+            "stateId": "st_00000002",
+            "type": "click",
+            "label": "Ambition in AI",
+            "role": "link",
+            "href": "https://ai.engineer/code/2026/talks/jason-liu",
+            "enabled": true,
+            "safeToExecute": true
+          },
+          {
+            "actionId": "st_00000002_a121",
+            "stateId": "st_00000002",
+            "type": "click",
+            "label": "Read the talk →",
+            "role": "link",
+            "href": "https://ai.engineer/code/2026/talks/jason-liu",
+            "enabled": true,
+            "safeToExecute": true
+          },
+          {
+            "actionId": "st_00000002_a122",
+            "stateId": "st_00000002",
+            "type": "navigate",
+            "label": "Watch at 0:19:40 ↗",
+            "role": "link",
+            "href": "https://www.youtube.com/watch?v=y9JtCCZP2MQ&amp;t=1180s",
+            "enabled": true,
+            "safeToExecute": false
+          },
+          {
+            "actionId": "st_00000002_a123",
+            "stateId": "st_00000002",
+            "type": "click",
+            "label": "Read The Software Atelier",
+            "role": "link",
+            "href": "https://ai.engineer/code/2026/talks/armin-ronacher",
+            "enabled": true,
+            "safeToExecute": true
+          },
+          {
+            "actionId": "st_00000002_a124",
+            "stateId": "st_00000002",
+            "type": "click",
+            "label": "The Software Atelier",
+            "role": "link",
+            "href": "https://ai.engineer/code/2026/talks/armin-ronacher",
+            "enabled": true,
+            "safeToExecute": true
+          },
+          {
+            "actionId": "st_00000002_a125",
+            "stateId": "st_00000002",
+            "type": "click",
+            "label": "Read the talk →",
+            "role": "link",
+            "href": "https://ai.engineer/code/2026/talks/armin-ronacher",
+            "enabled": true,
+            "safeToExecute": true
+          },
+          {
+            "actionId": "st_00000002_a126",
+            "stateId": "st_00000002",
+            "type": "navigate",
+            "label": "Watch at 0:40:03 ↗",
+            "role": "link",
+            "href": "https://www.youtube.com/watch?v=y9JtCCZP2MQ&amp;t=2403s",
+            "enabled": true,
+            "safeToExecute": false
+          },
+          {
+            "actionId": "st_00000002_a127",
+            "stateId": "st_00000002",
+            "type": "click",
+            "label": "Read Software Engineering Is Becoming Factory Engineering",
+            "role": "link",
+            "href": "https://ai.engineer/code/2026/talks/zach-lloyd",
+            "enabled": true,
+            "safeToExecute": true
+          },
+          {
+            "actionId": "st_00000002_a128",
+            "stateId": "st_00000002",
+            "type": "click",
+            "label": "Software Engineering Is Becoming Factory Engineering",
+            "role": "link",
+            "href": "https://ai.engineer/code/2026/talks/zach-lloyd",
+            "enabled": true,
+            "safeToExecute": true
+          },
+          {
+            "actionId": "st_00000002_a129",
+            "stateId": "st_00000002",
+            "type": "click",
+            "label": "Read the talk →",
+            "role": "link",
+            "href": "https://ai.engineer/code/2026/talks/zach-lloyd",
+            "enabled": true,
+            "safeToExecute": true
+          },
+          {
+            "actionId": "st_00000002_a130",
+            "stateId": "st_00000002",
+            "type": "navigate",
+            "label": "Watch at 1:01:22 ↗",
+            "role": "link",
+            "href": "https://www.youtube.com/watch?v=y9JtCCZP2MQ&amp;t=3682s",
+            "enabled": true,
+            "safeToExecute": false
+          },
+          {
+            "actionId": "st_00000002_a131",
+            "stateId": "st_00000002",
+            "type": "click",
+            "label": "Read Let&#x27;s Open Source the World",
+            "role": "link",
+            "href": "https://ai.engineer/code/2026/talks/brandon-thomas",
+            "enabled": true,
+            "safeToExecute": true
+          },
+          {
+            "actionId": "st_00000002_a132",
+            "stateId": "st_00000002",
+            "type": "click",
+            "label": "Let&#x27;s Open Source the World",
+            "role": "link",
+            "href": "https://ai.engineer/code/2026/talks/brandon-thomas",
+            "enabled": true,
+            "safeToExecute": true
+          },
+          {
+            "actionId": "st_00000002_a133",
+            "stateId": "st_00000002",
+            "type": "click",
+            "label": "Read the talk →",
+            "role": "link",
+            "href": "https://ai.engineer/code/2026/talks/brandon-thomas",
+            "enabled": true,
+            "safeToExecute": true
+          },
+          {
+            "actionId": "st_00000002_a134",
+            "stateId": "st_00000002",
+            "type": "navigate",
+            "label": "Watch at 1:20:53 ↗",
+            "role": "link",
+            "href": "https://www.youtube.com/watch?v=y9JtCCZP2MQ&amp;t=4853s",
+            "enabled": true,
+            "safeToExecute": false
+          },
+          {
+            "actionId": "st_00000002_a135",
+            "stateId": "st_00000002",
+            "type": "click",
+            "label": "Read Your agent hates your CLI",
+            "role": "link",
+            "href": "https://ai.engineer/code/2026/talks/online-ayush-cli",
+            "enabled": true,
+            "safeToExecute": true
+          },
+          {
+            "actionId": "st_00000002_a136",
+            "stateId": "st_00000002",
+            "type": "click",
+            "label": "Your agent hates your CLI",
+            "role": "link",
+            "href": "https://ai.engineer/code/2026/talks/online-ayush-cli",
+            "enabled": true,
+            "safeToExecute": true
+          },
+          {
+            "actionId": "st_00000002_a137",
+            "stateId": "st_00000002",
+            "type": "click",
+            "label": "Read the talk →",
+            "role": "link",
+            "href": "https://ai.engineer/code/2026/talks/online-ayush-cli",
+            "enabled": true,
+            "safeToExecute": true
+          },
+          {
+            "actionId": "st_00000002_a138",
+            "stateId": "st_00000002",
+            "type": "navigate",
+            "label": "Watch at 1:46:46 ↗",
+            "role": "link",
+            "href": "https://www.youtube.com/watch?v=y9JtCCZP2MQ&amp;t=6406s",
+            "enabled": true,
+            "safeToExecute": false
+          },
+          {
+            "actionId": "st_00000002_a139",
+            "stateId": "st_00000002",
+            "type": "click",
+            "label": "Read If You Are Going to Verbally Abuse Your Agents, at Least Label the Outcome",
+            "role": "link",
+            "href": "https://ai.engineer/code/2026/talks/online-brian-douglas",
+            "enabled": true,
+            "safeToExecute": true
+          },
+          {
+            "actionId": "st_00000002_a140",
+            "stateId": "st_00000002",
+            "type": "click",
+            "label": "If You Are Going to Verbally Abuse Your Agents, at Least Label the Outcome",
+            "role": "link",
+            "href": "https://ai.engineer/code/2026/talks/online-brian-douglas",
+            "enabled": true,
+            "safeToExecute": true
+          },
+          {
+            "actionId": "st_00000002_a141",
+            "stateId": "st_00000002",
+            "type": "click",
+            "label": "Read the talk →",
+            "role": "link",
+            "href": "https://ai.engineer/code/2026/talks/online-brian-douglas",
+            "enabled": true,
+            "safeToExecute": true
+          },
+          {
+            "actionId": "st_00000002_a142",
+            "stateId": "st_00000002",
+            "type": "navigate",
+            "label": "Watch at 1:59:06 ↗",
+            "role": "link",
+            "href": "https://www.youtube.com/watch?v=y9JtCCZP2MQ&amp;t=7146s",
+            "enabled": true,
+            "safeToExecute": false
+          },
+          {
+            "actionId": "st_00000002_a143",
+            "stateId": "st_00000002",
+            "type": "click",
+            "label": "Read Searching for a better model-serving recipe",
+            "role": "link",
+            "href": "https://ai.engineer/code/2026/talks/online-rohan-optimization",
+            "enabled": true,
+            "safeToExecute": true
+          },
+          {
+            "actionId": "st_00000002_a144",
+            "stateId": "st_00000002",
+            "type": "click",
+            "label": "Searching for a better model-serving recipe",
+            "role": "link",
+            "href": "https://ai.engineer/code/2026/talks/online-rohan-optimization",
+            "enabled": true,
+            "safeToExecute": true
+          },
+          {
+            "actionId": "st_00000002_a145",
+            "stateId": "st_00000002",
+            "type": "click",
+            "label": "Read the talk →",
+            "role": "link",
+            "href": "https://ai.engineer/code/2026/talks/online-rohan-optimization",
+            "enabled": true,
+            "safeToExecute": true
+          },
+          {
+            "actionId": "st_00000002_a146",
+            "stateId": "st_00000002",
+            "type": "navigate",
+            "label": "Watch at 2:13:37 ↗",
+            "role": "link",
+            "href": "https://www.youtube.com/watch?v=y9JtCCZP2MQ&amp;t=8017s",
+            "enabled": true,
+            "safeToExecute": false
+          },
+          {
+            "actionId": "st_00000002_a147",
+            "stateId": "st_00000002",
+            "type": "click",
+            "label": "Read Agents Made Code Free. Maintaining It Didn&#x27;t Get Cheaper.",
+            "role": "link",
+            "href": "https://ai.engineer/code/2026/talks/online-dmitry-maintenance",
+            "enabled": true,
+            "safeToExecute": true
+          },
+          {
+            "actionId": "st_00000002_a148",
+            "stateId": "st_00000002",
+            "type": "click",
+            "label": "Agents Made Code Free. Maintaining It Didn&#x27;t Get Cheaper.",
+            "role": "link",
+            "href": "https://ai.engineer/code/2026/talks/online-dmitry-maintenance",
+            "enabled": true,
+            "safeToExecute": true
+          },
+          {
+            "actionId": "st_00000002_a149",
+            "stateId": "st_00000002",
+            "type": "click",
+            "label": "Read the talk →",
+            "role": "link",
+            "href": "https://ai.engineer/code/2026/talks/online-dmitry-maintenance",
+            "enabled": true,
+            "safeToExecute": true
+          },
+          {
+            "actionId": "st_00000002_a150",
+            "stateId": "st_00000002",
+            "type": "navigate",
+            "label": "Watch at 0:00:00 ↗",
+            "role": "link",
+            "href": "https://www.youtube.com/watch?v=oeknLUsN_GE&amp;t=0s",
+            "enabled": true,
+            "safeToExecute": false
+          },
+          {
+            "actionId": "st_00000002_a151",
+            "stateId": "st_00000002",
+            "type": "click",
+            "label": "Read A New Age of Software Engineering",
+            "role": "link",
+            "href": "https://ai.engineer/code/2026/talks/walden-yan",
+            "enabled": true,
+            "safeToExecute": true
+          },
+          {
+            "actionId": "st_00000002_a152",
+            "stateId": "st_00000002",
+            "type": "click",
+            "label": "A New Age of Software Engineering",
+            "role": "link",
+            "href": "https://ai.engineer/code/2026/talks/walden-yan",
+            "enabled": true,
+            "safeToExecute": true
+          },
+          {
+            "actionId": "st_00000002_a153",
+            "stateId": "st_00000002",
+            "type": "click",
+            "label": "Read the talk →",
+            "role": "link",
+            "href": "https://ai.engineer/code/2026/talks/walden-yan",
+            "enabled": true,
+            "safeToExecute": true
+          },
+          {
+            "actionId": "st_00000002_a154",
+            "stateId": "st_00000002",
+            "type": "navigate",
+            "label": "Watch at 2:33:30 ↗",
+            "role": "link",
+            "href": "https://www.youtube.com/watch?v=y9JtCCZP2MQ&amp;t=9210s",
+            "enabled": true,
+            "safeToExecute": false
+          },
+          {
+            "actionId": "st_00000002_a155",
+            "stateId": "st_00000002",
+            "type": "click",
+            "label": "Read What Your AI Doesn&#x27;t Know",
+            "role": "link",
+            "href": "https://ai.engineer/code/2026/talks/jeffrey-pinner",
+            "enabled": true,
+            "safeToExecute": true
+          },
+          {
+            "actionId": "st_00000002_a156",
+            "stateId": "st_00000002",
+            "type": "click",
+            "label": "What Your AI Doesn&#x27;t Know",
+            "role": "link",
+            "href": "https://ai.engineer/code/2026/talks/jeffrey-pinner",
+            "enabled": true,
+            "safeToExecute": true
+          },
+          {
+            "actionId": "st_00000002_a157",
+            "stateId": "st_00000002",
+            "type": "click",
+            "label": "Read the talk →",
+            "role": "link",
+            "href": "https://ai.engineer/code/2026/talks/jeffrey-pinner",
+            "enabled": true,
+            "safeToExecute": true
+          },
+          {
+            "actionId": "st_00000002_a158",
+            "stateId": "st_00000002",
+            "type": "navigate",
+            "label": "Watch at 2:59:08 ↗",
+            "role": "link",
+            "href": "https://www.youtube.com/watch?v=y9JtCCZP2MQ&amp;t=10748s",
+            "enabled": true,
+            "safeToExecute": false
+          },
+          {
+            "actionId": "st_00000002_a159",
+            "stateId": "st_00000002",
+            "type": "click",
+            "label": "Read Ship More as a Team of One with Kiro Crew",
+            "role": "link",
+            "href": "https://ai.engineer/code/2026/talks/doug-clauson",
+            "enabled": true,
+            "safeToExecute": true
+          },
+          {
+            "actionId": "st_00000002_a160",
+            "stateId": "st_00000002",
+            "type": "click",
+            "label": "Ship More as a Team of One with Kiro Crew",
+            "role": "link",
+            "href": "https://ai.engineer/code/2026/talks/doug-clauson",
+            "enabled": true,
+            "safeToExecute": true
+          },
+          {
+            "actionId": "st_00000002_a161",
+            "stateId": "st_00000002",
+            "type": "click",
+            "label": "Read the talk →",
+            "role": "link",
+            "href": "https://ai.engineer/code/2026/talks/doug-clauson",
+            "enabled": true,
+            "safeToExecute": true
+          },
+          {
+            "actionId": "st_00000002_a162",
+            "stateId": "st_00000002",
+            "type": "navigate",
+            "label": "Watch at 3:23:23 ↗",
+            "role": "link",
+            "href": "https://www.youtube.com/watch?v=y9JtCCZP2MQ&amp;t=12203s",
+            "enabled": true,
+            "safeToExecute": false
+          },
+          {
+            "actionId": "st_00000002_a163",
+            "stateId": "st_00000002",
+            "type": "click",
+            "label": "Read Exploring Claude&#x27;s Frontier",
+            "role": "link",
+            "href": "https://ai.engineer/code/2026/talks/lance-martin",
+            "enabled": true,
+            "safeToExecute": true
+          },
+          {
+            "actionId": "st_00000002_a164",
+            "stateId": "st_00000002",
+            "type": "click",
+            "label": "Exploring Claude&#x27;s Frontier",
+            "role": "link",
+            "href": "https://ai.engineer/code/2026/talks/lance-martin",
+            "enabled": true,
+            "safeToExecute": true
+          },
+          {
+            "actionId": "st_00000002_a165",
+            "stateId": "st_00000002",
+            "type": "click",
+            "label": "Read the talk →",
+            "role": "link",
+            "href": "https://ai.engineer/code/2026/talks/lance-martin",
+            "enabled": true,
+            "safeToExecute": true
+          },
+          {
+            "actionId": "st_00000002_a166",
+            "stateId": "st_00000002",
+            "type": "navigate",
+            "label": "Watch at 3:48:31 ↗",
+            "role": "link",
+            "href": "https://www.youtube.com/watch?v=y9JtCCZP2MQ&amp;t=13711s",
+            "enabled": true,
+            "safeToExecute": false
+          },
+          {
+            "actionId": "st_00000002_a167",
+            "stateId": "st_00000002",
+            "type": "click",
+            "label": "Read The code still needs someone who cares",
+            "role": "link",
+            "href": "https://ai.engineer/code/2026/talks/syntax-lunch",
+            "enabled": true,
+            "safeToExecute": true
+          },
+          {
+            "actionId": "st_00000002_a168",
+            "stateId": "st_00000002",
+            "type": "click",
+            "label": "The code still needs someone who cares",
+            "role": "link",
+            "href": "https://ai.engineer/code/2026/talks/syntax-lunch",
+            "enabled": true,
+            "safeToExecute": true
+          },
+          {
+            "actionId": "st_00000002_a169",
+            "stateId": "st_00000002",
+            "type": "click",
+            "label": "Read the talk →",
+            "role": "link",
+            "href": "https://ai.engineer/code/2026/talks/syntax-lunch",
+            "enabled": true,
+            "safeToExecute": true
+          },
+          {
+            "actionId": "st_00000002_a170",
+            "stateId": "st_00000002",
+            "type": "navigate",
+            "label": "Watch at 4:11:43 ↗",
+            "role": "link",
+            "href": "https://www.youtube.com/watch?v=y9JtCCZP2MQ&amp;t=15103s",
+            "enabled": true,
+            "safeToExecute": false
+          },
+          {
+            "actionId": "st_00000002_a171",
+            "stateId": "st_00000002",
+            "type": "click",
+            "label": "Read Who reviews the bots?",
+            "role": "link",
+            "href": "https://ai.engineer/code/2026/talks/online-robinhood-review",
+            "enabled": true,
+            "safeToExecute": true
+          },
+          {
+            "actionId": "st_00000002_a172",
+            "stateId": "st_00000002",
+            "type": "click",
+            "label": "Who reviews the bots?",
+            "role": "link",
+            "href": "https://ai.engineer/code/2026/talks/online-robinhood-review",
+            "enabled": true,
+            "safeToExecute": true
+          },
+          {
+            "actionId": "st_00000002_a173",
+            "stateId": "st_00000002",
+            "type": "click",
+            "label": "Read the talk →",
+            "role": "link",
+            "href": "https://ai.engineer/code/2026/talks/online-robinhood-review",
+            "enabled": true,
+            "safeToExecute": true
+          },
+          {
+            "actionId": "st_00000002_a174",
+            "stateId": "st_00000002",
+            "type": "navigate",
+            "label": "Watch at 0:00:00 ↗",
+            "role": "link",
+            "href": "https://www.youtube.com/watch?v=MQiojLnK-E0&amp;t=0s",
+            "enabled": true,
+            "safeToExecute": false
+          },
+          {
+            "actionId": "st_00000002_a175",
+            "stateId": "st_00000002",
+            "type": "click",
+            "label": "Read Choose the project you can verify",
+            "role": "link",
+            "href": "https://ai.engineer/code/2026/talks/jarred-sumner",
+            "enabled": true,
+            "safeToExecute": true
+          },
+          {
+            "actionId": "st_00000002_a176",
+            "stateId": "st_00000002",
+            "type": "click",
+            "label": "Choose the project you can verify",
+            "role": "link",
+            "href": "https://ai.engineer/code/2026/talks/jarred-sumner",
+            "enabled": true,
+            "safeToExecute": true
+          },
+          {
+            "actionId": "st_00000002_a177",
+            "stateId": "st_00000002",
+            "type": "click",
+            "label": "Read the talk →",
+            "role": "link",
+            "href": "https://ai.engineer/code/2026/talks/jarred-sumner",
+            "enabled": true,
+            "safeToExecute": true
+          },
+          {
+            "actionId": "st_00000002_a178",
+            "stateId": "st_00000002",
+            "type": "navigate",
+            "label": "Watch at 5:19:16 ↗",
+            "role": "link",
+            "href": "https://www.youtube.com/watch?v=y9JtCCZP2MQ&amp;t=19156s",
+            "enabled": true,
+            "safeToExecute": false
+          },
+          {
+            "actionId": "st_00000002_a179",
+            "stateId": "st_00000002",
+            "type": "click",
+            "label": "Read Green Pull Requests Can Still Break the Trunk",
+            "role": "link",
+            "href": "https://ai.engineer/code/2026/talks/online-uber-merging",
+            "enabled": true,
+            "safeToExecute": true
+          },
+          {
+            "actionId": "st_00000002_a180",
+            "stateId": "st_00000002",
+            "type": "click",
+            "label": "Green Pull Requests Can Still Break the Trunk",
+            "role": "link",
+            "href": "https://ai.engineer/code/2026/talks/online-uber-merging",
+            "enabled": true,
+            "safeToExecute": true
+          },
+          {
+            "actionId": "st_00000002_a181",
+            "stateId": "st_00000002",
+            "type": "click",
+            "label": "Read the talk →",
+            "role": "link",
+            "href": "https://ai.engineer/code/2026/talks/online-uber-merging",
+            "enabled": true,
+            "safeToExecute": true
+          },
+          {
+            "actionId": "st_00000002_a182",
+            "stateId": "st_00000002",
+            "type": "navigate",
+            "label": "Watch at 0:00:00 ↗",
+            "role": "link",
+            "href": "https://www.youtube.com/watch?v=hX140a5klW0&amp;t=0s",
+            "enabled": true,
+            "safeToExecute": false
+          },
+          {
+            "actionId": "st_00000002_a183",
+            "stateId": "st_00000002",
+            "type": "click",
+            "label": "Read Judgement is the last job",
+            "role": "link",
+            "href": "https://ai.engineer/code/2026/talks/ishaan-dey",
+            "enabled": true,
+            "safeToExecute": true
+          },
+          {
+            "actionId": "st_00000002_a184",
+            "stateId": "st_00000002",
+            "type": "click",
+            "label": "Judgement is the last job",
+            "role": "link",
+            "href": "https://ai.engineer/code/2026/talks/ishaan-dey",
+            "enabled": true,
+            "safeToExecute": true
+          },
+          {
+            "actionId": "st_00000002_a185",
+            "stateId": "st_00000002",
+            "type": "click",
+            "label": "Read the talk →",
+            "role": "link",
+            "href": "https://ai.engineer/code/2026/talks/ishaan-dey",
+            "enabled": true,
+            "safeToExecute": true
+          },
+          {
+            "actionId": "st_00000002_a186",
+            "stateId": "st_00000002",
+            "type": "navigate",
+            "label": "Watch at 6:08:26 ↗",
+            "role": "link",
+            "href": "https://www.youtube.com/watch?v=y9JtCCZP2MQ&amp;t=22106s",
+            "enabled": true,
+            "safeToExecute": false
+          },
+          {
+            "actionId": "st_00000002_a187",
+            "stateId": "st_00000002",
+            "type": "click",
+            "label": "Read Brownfield factories keep the promises you already made",
+            "role": "link",
+            "href": "https://ai.engineer/code/2026/talks/justin-mccarthy",
+            "enabled": true,
+            "safeToExecute": true
+          },
+          {
+            "actionId": "st_00000002_a188",
+            "stateId": "st_00000002",
+            "type": "click",
+            "label": "Brownfield factories keep the promises you already made",
+            "role": "link",
+            "href": "https://ai.engineer/code/2026/talks/justin-mccarthy",
+            "enabled": true,
+            "safeToExecute": true
+          },
+          {
+            "actionId": "st_00000002_a189",
+            "stateId": "st_00000002",
+            "type": "click",
+            "label": "Read the talk →",
+            "role": "link",
+            "href": "https://ai.engineer/code/2026/talks/justin-mccarthy",
+            "enabled": true,
+            "safeToExecute": true
+          },
+          {
+            "actionId": "st_00000002_a190",
+            "stateId": "st_00000002",
+            "type": "navigate",
+            "label": "Watch at 6:34:30 ↗",
+            "role": "link",
+            "href": "https://www.youtube.com/watch?v=y9JtCCZP2MQ&amp;t=23670s",
+            "enabled": true,
+            "safeToExecute": false
+          },
+          {
+            "actionId": "st_00000002_a191",
+            "stateId": "st_00000002",
+            "type": "click",
+            "label": "Read Give the PR writer an evidence packet, not another context dump",
+            "role": "link",
+            "href": "https://ai.engineer/code/2026/talks/online-stephen-cassandra",
+            "enabled": true,
+            "safeToExecute": true
+          },
+          {
+            "actionId": "st_00000002_a192",
+            "stateId": "st_00000002",
+            "type": "click",
+            "label": "Give the PR writer an evidence packet, not another context dump",
+            "role": "link",
+            "href": "https://ai.engineer/code/2026/talks/online-stephen-cassandra",
+            "enabled": true,
+            "safeToExecute": true
+          },
+          {
+            "actionId": "st_00000002_a193",
+            "stateId": "st_00000002",
+            "type": "click",
+            "label": "Read the talk →",
+            "role": "link",
+            "href": "https://ai.engineer/code/2026/talks/online-stephen-cassandra",
+            "enabled": true,
+            "safeToExecute": true
+          },
+          {
+            "actionId": "st_00000002_a194",
+            "stateId": "st_00000002",
+            "type": "navigate",
+            "label": "Watch at 6:57:39 ↗",
+            "role": "link",
+            "href": "https://www.youtube.com/watch?v=y9JtCCZP2MQ&amp;t=25059s",
+            "enabled": true,
+            "safeToExecute": false
+          },
+          {
+            "actionId": "st_00000002_a195",
+            "stateId": "st_00000002",
+            "type": "click",
+            "label": "Read Train on the engineering work that still fails",
+            "role": "link",
+            "href": "https://ai.engineer/code/2026/talks/melvin-johnson",
+            "enabled": true,
+            "safeToExecute": true
+          },
+          {
+            "actionId": "st_00000002_a196",
+            "stateId": "st_00000002",
+            "type": "click",
+            "label": "Train on the engineering work that still fails",
+            "role": "link",
+            "href": "https://ai.engineer/code/2026/talks/melvin-johnson",
+            "enabled": true,
+            "safeToExecute": true
+          },
+          {
+            "actionId": "st_00000002_a197",
+            "stateId": "st_00000002",
+            "type": "click",
+            "label": "Read the talk →",
+            "role": "link",
+            "href": "https://ai.engineer/code/2026/talks/melvin-johnson",
+            "enabled": true,
+            "safeToExecute": true
+          },
+          {
+            "actionId": "st_00000002_a198",
+            "stateId": "st_00000002",
+            "type": "navigate",
+            "label": "Watch at 7:35:53 ↗",
+            "role": "link",
+            "href": "https://www.youtube.com/watch?v=y9JtCCZP2MQ&amp;t=27353s",
+            "enabled": true,
+            "safeToExecute": false
+          },
+          {
+            "actionId": "st_00000002_a199",
+            "stateId": "st_00000002",
+            "type": "click",
+            "label": "Read Build the company around the agent, not a pilot project",
+            "role": "link",
+            "href": "https://ai.engineer/code/2026/talks/quinn-slack",
+            "enabled": true,
+            "safeToExecute": true
+          },
+          {
+            "actionId": "st_00000002_a200",
+            "stateId": "st_00000002",
+            "type": "click",
+            "label": "Build the company around the agent, not a pilot project",
+            "role": "link",
+            "href": "https://ai.engineer/code/2026/talks/quinn-slack",
+            "enabled": true,
+            "safeToExecute": true
+          },
+          {
+            "actionId": "st_00000002_a201",
+            "stateId": "st_00000002",
+            "type": "click",
+            "label": "Read the talk →",
+            "role": "link",
+            "href": "https://ai.engineer/code/2026/talks/quinn-slack",
+            "enabled": true,
+            "safeToExecute": true
+          },
+          {
+            "actionId": "st_00000002_a202",
+            "stateId": "st_00000002",
+            "type": "navigate",
+            "label": "Watch at 7:55:24 ↗",
+            "role": "link",
+            "href": "https://www.youtube.com/watch?v=y9JtCCZP2MQ&amp;t=28524s",
+            "enabled": true,
+            "safeToExecute": false
+          },
+          {
+            "actionId": "st_00000002_a203",
+            "stateId": "st_00000002",
+            "type": "click",
+            "label": "Read A software factory needs pressure in both directions",
+            "role": "link",
+            "href": "https://ai.engineer/code/2026/talks/dexter-horthy",
+            "enabled": true,
+            "safeToExecute": true
+          },
+          {
+            "actionId": "st_00000002_a204",
+            "stateId": "st_00000002",
+            "type": "click",
+            "label": "A software factory needs pressure in both directions",
+            "role": "link",
+            "href": "https://ai.engineer/code/2026/talks/dexter-horthy",
+            "enabled": true,
+            "safeToExecute": true
+          },
+          {
+            "actionId": "st_00000002_a205",
+            "stateId": "st_00000002",
+            "type": "click",
+            "label": "Read the talk →",
+            "role": "link",
+            "href": "https://ai.engineer/code/2026/talks/dexter-horthy",
+            "enabled": true,
+            "safeToExecute": true
+          },
+          {
+            "actionId": "st_00000002_a206",
+            "stateId": "st_00000002",
+            "type": "navigate",
+            "label": "Watch at 8:15:48 ↗",
+            "role": "link",
+            "href": "https://www.youtube.com/watch?v=y9JtCCZP2MQ&amp;t=29748s",
+            "enabled": true,
+            "safeToExecute": false
+          },
+          {
+            "actionId": "st_00000002_a207",
+            "stateId": "st_00000002",
+            "type": "click",
+            "label": "Read Keep the human inside the creative loop",
+            "role": "link",
+            "href": "https://ai.engineer/code/2026/talks/thariq-shihipar",
+            "enabled": true,
+            "safeToExecute": true
+          },
+          {
+            "actionId": "st_00000002_a208",
+            "stateId": "st_00000002",
+            "type": "click",
+            "label": "Keep the human inside the creative loop",
+            "role": "link",
+            "href": "https://ai.engineer/code/2026/talks/thariq-shihipar",
+            "enabled": true,
+            "safeToExecute": true
+          },
+          {
+            "actionId": "st_00000002_a209",
+            "stateId": "st_00000002",
+            "type": "click",
+            "label": "Read the talk →",
+            "role": "link",
+            "href": "https://ai.engineer/code/2026/talks/thariq-shihipar",
+            "enabled": true,
+            "safeToExecute": true
+          },
+          {
+            "actionId": "st_00000002_a210",
+            "stateId": "st_00000002",
+            "type": "navigate",
+            "label": "Watch at 8:37:57 ↗",
+            "role": "link",
+            "href": "https://www.youtube.com/watch?v=y9JtCCZP2MQ&amp;t=31077s",
+            "enabled": true,
+            "safeToExecute": false
+          },
+          {
+            "actionId": "st_00000002_a211",
+            "stateId": "st_00000002",
+            "type": "click",
+            "label": "Apply through our MCP →",
+            "role": "link",
+            "href": "https://ai.engineer/data#code-applications",
+            "enabled": true,
+            "safeToExecute": true
+          },
+          {
+            "actionId": "st_00000002_a212",
+            "stateId": "st_00000002",
+            "type": "click",
+            "label": "EMAIL UPDATES",
+            "role": "link",
+            "href": "https://ai.engineer/newsletter",
+            "enabled": true,
+            "safeToExecute": true
+          },
+          {
+            "actionId": "st_00000002_a213",
+            "stateId": "st_00000002",
+            "type": "navigate",
+            "label": "YOUTUBE",
+            "role": "link",
+            "href": "https://youtube.com/@aiDotEngineer",
+            "enabled": true,
+            "safeToExecute": false
+          },
+          {
+            "actionId": "st_00000002_a214",
+            "stateId": "st_00000002",
+            "type": "navigate",
+            "label": "X",
+            "role": "link",
+            "href": "https://x.com/aiDotEngineer",
+            "enabled": true,
+            "safeToExecute": false
+          },
+          {
+            "actionId": "st_00000002_a215",
+            "stateId": "st_00000002",
+            "type": "navigate",
+            "label": "LINKEDIN",
+            "role": "link",
+            "href": "https://www.linkedin.com/company/aidotengineer/",
+            "enabled": true,
+            "safeToExecute": false
+          },
+          {
+            "actionId": "st_00000002_a216",
+            "stateId": "st_00000002",
+            "type": "click",
+            "label": "// Scaling without Slop Keynote Melvin Johnson Vice President, Gemini Post-Training Lead Google DeepMind",
+            "role": "link",
+            "href": "https://ai.engineer/speakers/melvin-johnson",
+            "enabled": true,
+            "safeToExecute": true
+          },
+          {
+            "actionId": "st_00000002_a217",
+            "stateId": "st_00000002",
+            "type": "click",
+            "label": "// System One Models Keynote Diogo Almeida Co-founder & CEO TypeSafe AI",
+            "role": "link",
+            "href": "https://ai.engineer/speakers/diogo-almeida",
+            "enabled": true,
+            "safeToExecute": true
+          },
+          {
+            "actionId": "st_00000002_a218",
+            "stateId": "st_00000002",
+            "type": "click",
+            "label": "// Rewrites Keynote Jarred Sumner Founder of Bun Anthropic",
+            "role": "link",
+            "href": "https://ai.engineer/speakers/jarred-sumner",
+            "enabled": true,
+            "safeToExecute": true
+          },
+          {
+            "actionId": "st_00000002_a219",
+            "stateId": "st_00000002",
+            "type": "click",
+            "label": "Zach Bruggeman Principal Software Engineer Ramp",
+            "role": "link",
+            "href": "https://ai.engineer/speakers/zach-bruggeman",
+            "enabled": true,
+            "safeToExecute": true
+          },
+          {
+            "actionId": "st_00000002_a220",
+            "stateId": "st_00000002",
+            "type": "click",
+            "label": "Michelle Chen Group Product Manager Cloudflare",
+            "role": "link",
+            "href": "https://ai.engineer/speakers/michelle-chen",
+            "enabled": true,
+            "safeToExecute": true
+          },
+          {
+            "actionId": "st_00000002_a221",
+            "stateId": "st_00000002",
+            "type": "click",
+            "label": "Lydia Hallie Member of Technical Staff Anthropic",
+            "role": "link",
+            "href": "https://ai.engineer/speakers/lydia-hallie",
+            "enabled": true,
+            "safeToExecute": true
+          },
+          {
+            "actionId": "st_00000002_a222",
+            "stateId": "st_00000002",
+            "type": "click",
+            "label": "Fabian Hedin CTO Lovable",
+            "role": "link",
+            "href": "https://ai.engineer/speakers/fabian-hedin",
+            "enabled": true,
+            "safeToExecute": true
+          },
+          {
+            "actionId": "st_00000002_a223",
+            "stateId": "st_00000002",
+            "type": "click",
+            "label": "Dexter Horthy Member of Technical Staff Factory",
+            "role": "link",
+            "href": "https://ai.engineer/speakers/dex-horthy",
+            "enabled": true,
+            "safeToExecute": true
+          },
+          {
+            "actionId": "st_00000002_a224",
+            "stateId": "st_00000002",
+            "type": "click",
+            "label": "Jason Liu Developer Experience OpenAI",
+            "role": "link",
+            "href": "https://ai.engineer/speakers/jason-liu",
+            "enabled": true,
+            "safeToExecute": true
+          },
+          {
+            "actionId": "st_00000002_a225",
+            "stateId": "st_00000002",
+            "type": "click",
+            "label": "Zach Lloyd Founder & CEO Warp",
+            "role": "link",
+            "href": "https://ai.engineer/speakers/zach-lloyd",
+            "enabled": true,
+            "safeToExecute": true
+          },
+          {
+            "actionId": "st_00000002_a226",
+            "stateId": "st_00000002",
+            "type": "click",
+            "label": "Armin Ronacher CTO Earendil",
+            "role": "link",
+            "href": "https://ai.engineer/speakers/armin-ronacher",
+            "enabled": true,
+            "safeToExecute": true
+          },
+          {
+            "actionId": "st_00000002_a227",
+            "stateId": "st_00000002",
+            "type": "click",
+            "label": "Natalie Serrino Co-Founder Gimlet Labs",
+            "role": "link",
+            "href": "https://ai.engineer/speakers/natalie-serrino",
+            "enabled": true,
+            "safeToExecute": true
+          },
+          {
+            "actionId": "st_00000002_a228",
+            "stateId": "st_00000002",
+            "type": "click",
+            "label": "Thariq Shihipar Independent",
+            "role": "link",
+            "href": "https://ai.engineer/speakers/thariq-shihipar",
+            "enabled": true,
+            "safeToExecute": true
+          },
+          {
+            "actionId": "st_00000002_a229",
+            "stateId": "st_00000002",
+            "type": "click",
+            "label": "Quinn Slack CEO Amp",
+            "role": "link",
+            "href": "https://ai.engineer/speakers/quinn-slack",
+            "enabled": true,
+            "safeToExecute": true
+          },
+          {
+            "actionId": "st_00000002_a230",
+            "stateId": "st_00000002",
+            "type": "click",
+            "label": "Lauren Tan Principal Engineer SpaceXSI",
+            "role": "link",
+            "href": "https://ai.engineer/speakers/lauren-tan",
+            "enabled": true,
+            "safeToExecute": true
+          },
+          {
+            "actionId": "st_00000002_a231",
+            "stateId": "st_00000002",
+            "type": "click",
+            "label": "Brandon Thomas CEO ArtCraft",
+            "role": "link",
+            "href": "https://ai.engineer/speakers/brandon-thomas",
+            "enabled": true,
+            "safeToExecute": true
+          },
+          {
+            "actionId": "st_00000002_a232",
+            "stateId": "st_00000002",
+            "type": "click",
+            "label": "Simon Willison Creator of Datasette Independent",
+            "role": "link",
+            "href": "https://ai.engineer/speakers/simon-willison",
+            "enabled": true,
+            "safeToExecute": true
+          },
+          {
+            "actionId": "st_00000002_a233",
+            "stateId": "st_00000002",
+            "type": "click",
+            "label": "Steve Yegge Independent Advisor & Creator of Beads & Gas Town Independent",
+            "role": "link",
+            "href": "https://ai.engineer/speakers/steve-yegge",
+            "enabled": true,
+            "safeToExecute": true
+          },
+          {
+            "actionId": "st_00000002_a234",
+            "stateId": "st_00000002",
+            "type": "click",
+            "label": "Richelle J. Chief of Staff Featherless AI",
+            "role": "link",
+            "href": "https://ai.engineer/speakers/richelle-ji",
+            "enabled": true,
+            "safeToExecute": true
+          },
+          {
+            "actionId": "st_00000002_a235",
+            "stateId": "st_00000002",
+            "type": "click",
+            "label": "Corey Quinn Chief Cloud Economist The Duckbill Group",
+            "role": "link",
+            "href": "https://ai.engineer/speakers/corey-quinn",
+            "enabled": true,
+            "safeToExecute": true
+          },
+          {
+            "actionId": "st_00000002_a236",
+            "stateId": "st_00000002",
+            "type": "click",
+            "label": "Talk Walden Yan Chief Product Officer Cognition",
+            "role": "link",
+            "href": "https://ai.engineer/speakers/walden-yan",
+            "enabled": true,
+            "safeToExecute": true
+          },
+          {
+            "actionId": "st_00000002_a237",
+            "stateId": "st_00000002",
+            "type": "click",
+            "label": "Talk Luke Alvoeiro Member of Technical Staff Factory",
+            "role": "link",
+            "href": "https://ai.engineer/speakers/luke-alvoeiro",
+            "enabled": true,
+            "safeToExecute": true
+          },
+          {
+            "actionId": "st_00000002_a238",
+            "stateId": "st_00000002",
+            "type": "click",
+            "label": "Search… /",
+            "role": "button",
+            "enabled": true,
+            "safeToExecute": true
+          },
+          {
+            "actionId": "st_00000002_a239",
+            "stateId": "st_00000002",
+            "type": "click",
+            "label": "Search AI Engineer",
+            "role": "button",
+            "enabled": true,
+            "safeToExecute": true
+          },
+          {
+            "actionId": "st_00000002_a240",
+            "stateId": "st_00000002",
+            "type": "click",
+            "label": "Open menu",
+            "role": "button",
+            "enabled": true,
+            "safeToExecute": true
+          },
+          {
+            "actionId": "st_00000002_a241",
+            "stateId": "st_00000002",
+            "type": "click",
+            "label": "Watch",
+            "role": "button",
+            "enabled": true,
+            "safeToExecute": true
+          },
+          {
+            "actionId": "st_00000002_a242",
+            "stateId": "st_00000002",
+            "type": "click",
+            "label": "APPLY TO ATTEND",
+            "role": "button",
+            "enabled": false,
+            "safeToExecute": true
+          },
+          {
+            "actionId": "st_00000002_a243",
+            "stateId": "st_00000002",
+            "type": "fill",
+            "label": "Company, speaker, role, or topic…",
+            "role": "textbox",
+            "enabled": true,
+            "safeToExecute": false
+          },
+          {
+            "actionId": "st_00000002_a244",
+            "stateId": "st_00000002",
+            "type": "fill",
+            "label": "you@example.com",
+            "role": "textbox",
+            "enabled": true,
+            "safeToExecute": false
+          }
+        ],
+        "screenshotPath": "",
+        "stateHash": "3efc00a5997ac00f",
+        "metrics": {
+          "source": "html",
+          "pageHeightPx": null,
+          "viewportHeightPx": 900,
+          "foldRatio": null,
+          "estimatedScrollTimeSec": null,
+          "aboveFoldCtaCount": null,
+          "totalCtaCount": 3,
+          "primaryCtaAmbiguity": null,
+          "primaryCtaLabels": [],
+          "headingOutline": {
+            "h1Count": 1,
+            "h1Text": [
+              "A YEAR OF AGENTIC CODING. ONE ROOM."
+            ],
+            "skippedLevels": []
+          },
+          "navItemCount": 11,
+          "fontSizeBuckets": null,
+          "textDensity": null,
+          "largestTextIsH1": null,
+          "trunkTest": {
+            "hasSiteName": false,
+            "hasPageName": true,
+            "hasPrimaryNav": true,
+            "hasSearch": true,
+            "hasYouAreHere": true
+          }
+        }
+      },
+      {
+        "stateId": "st_00000003",
+        "url": "https://ai.engineer/code/2026/talks",
+        "viewport": {
+          "name": "desktop",
+          "width": 1440,
+          "height": 900
+        },
+        "pageTitle": "Sessions — AIE Code 2026",
+        "visibleText": "Schedule\n Wednesday November 11 talks",
+        "actions": [],
+        "screenshotPath": "",
+        "stateHash": "3ac676d53a68e1c1",
+        "metrics": {
+          "source": "html",
+          "pageHeightPx": null,
+          "viewportHeightPx": 900,
+          "foldRatio": null,
+          "estimatedScrollTimeSec": null,
+          "aboveFoldCtaCount": null,
+          "totalCtaCount": 0,
+          "primaryCtaAmbiguity": null,
+          "primaryCtaLabels": [],
+          "headingOutline": {
+            "h1Count": 1,
+            "h1Text": [
+              "Schedule"
+            ],
+            "skippedLevels": []
+          },
+          "navItemCount": 0,
+          "fontSizeBuckets": null,
+          "textDensity": null,
+          "largestTextIsH1": null,
+          "trunkTest": {
+            "hasSiteName": false,
+            "hasPageName": true,
+            "hasPrimaryNav": false,
+            "hasSearch": false,
+            "hasYouAreHere": false
+          }
+        }
+      }
+    ],
+    "edges": [
+      {
+        "fromStateId": "st_00000002",
+        "actionId": "st_00000002_a1",
+        "toStateId": "st_00000003"
+      }
+    ]
+  },
+  "simulations": [
+    {
+      "trajectoryId": "t0",
+      "seed": 1337,
+      "profile": "goal-directed",
+      "steps": [
+        {
+          "stateId": "st_00000002"
+        },
+        {
+          "stateId": "st_00000002",
+          "actionId": "st_00000002_a31"
+        },
+        {
+          "stateId": "st_00000002",
+          "actionId": "st_00000002_a32"
+        }
+      ],
+      "outcome": "repetition-limit",
+      "backtracks": 2,
+      "riskScore": 40
+    },
+    {
+      "trajectoryId": "t1",
+      "seed": 1338,
+      "profile": "impatient",
+      "steps": [
+        {
+          "stateId": "st_00000002"
+        },
+        {
+          "stateId": "st_00000002",
+          "actionId": "st_00000002_a58"
+        },
+        {
+          "stateId": "st_00000002",
+          "actionId": "st_00000002_a4"
+        }
+      ],
+      "outcome": "repetition-limit",
+      "backtracks": 2,
+      "riskScore": 39
+    },
+    {
+      "trajectoryId": "t2",
+      "seed": 1339,
+      "profile": "exploratory",
+      "steps": [
+        {
+          "stateId": "st_00000002"
+        },
+        {
+          "stateId": "st_00000002",
+          "actionId": "st_00000002_a27"
+        },
+        {
+          "stateId": "st_00000002",
+          "actionId": "st_00000002_a241"
+        }
+      ],
+      "outcome": "repetition-limit",
+      "backtracks": 2,
+      "riskScore": 38
+    },
+    {
+      "trajectoryId": "t3",
+      "seed": 1340,
+      "profile": "goal-directed",
+      "steps": [
+        {
+          "stateId": "st_00000002"
+        },
+        {
+          "stateId": "st_00000002",
+          "actionId": "st_00000002_a136"
+        },
+        {
+          "stateId": "st_00000002",
+          "actionId": "st_00000002_a64"
+        }
+      ],
+      "outcome": "repetition-limit",
+      "backtracks": 2,
+      "riskScore": 37
+    },
+    {
+      "trajectoryId": "t4",
+      "seed": 1341,
+      "profile": "impatient",
+      "steps": [
+        {
+          "stateId": "st_00000002"
+        },
+        {
+          "stateId": "st_00000002",
+          "actionId": "st_00000002_a4"
+        },
+        {
+          "stateId": "st_00000002",
+          "actionId": "st_00000002_a4"
+        }
+      ],
+      "outcome": "repetition-limit",
+      "backtracks": 2,
+      "riskScore": 36
+    },
+    {
+      "trajectoryId": "t5",
+      "seed": 1342,
+      "profile": "exploratory",
+      "steps": [
+        {
+          "stateId": "st_00000002"
+        },
+        {
+          "stateId": "st_00000002",
+          "actionId": "st_00000002_a208"
+        },
+        {
+          "stateId": "st_00000002",
+          "actionId": "st_00000002_a64"
+        }
+      ],
+      "outcome": "repetition-limit",
+      "backtracks": 2,
+      "riskScore": 35
+    },
+    {
+      "trajectoryId": "t6",
+      "seed": 1343,
+      "profile": "goal-directed",
+      "steps": [
+        {
+          "stateId": "st_00000002"
+        },
+        {
+          "stateId": "st_00000002",
+          "actionId": "st_00000002_a78"
+        },
+        {
+          "stateId": "st_00000002",
+          "actionId": "st_00000002_a125"
+        }
+      ],
+      "outcome": "repetition-limit",
+      "backtracks": 2,
+      "riskScore": 34
+    },
+    {
+      "trajectoryId": "t7",
+      "seed": 1344,
+      "profile": "impatient",
+      "steps": [
+        {
+          "stateId": "st_00000002"
+        },
+        {
+          "stateId": "st_00000002",
+          "actionId": "st_00000002_a4"
+        },
+        {
+          "stateId": "st_00000002",
+          "actionId": "st_00000002_a4"
+        }
+      ],
+      "outcome": "repetition-limit",
+      "backtracks": 2,
+      "riskScore": 33
+    },
+    {
+      "trajectoryId": "t8",
+      "seed": 1345,
+      "profile": "exploratory",
+      "steps": [
+        {
+          "stateId": "st_00000002"
+        },
+        {
+          "stateId": "st_00000002",
+          "actionId": "st_00000002_a226"
+        },
+        {
+          "stateId": "st_00000002",
+          "actionId": "st_00000002_a18"
+        }
+      ],
+      "outcome": "repetition-limit",
+      "backtracks": 2,
+      "riskScore": 32
+    },
+    {
+      "trajectoryId": "t9",
+      "seed": 1346,
+      "profile": "goal-directed",
+      "steps": [
+        {
+          "stateId": "st_00000002"
+        },
+        {
+          "stateId": "st_00000002",
+          "actionId": "st_00000002_a159"
+        },
+        {
+          "stateId": "st_00000002",
+          "actionId": "st_00000002_a44"
+        }
+      ],
+      "outcome": "repetition-limit",
+      "backtracks": 2,
+      "riskScore": 31
+    },
+    {
+      "trajectoryId": "t10",
+      "seed": 1347,
+      "profile": "impatient",
+      "steps": [
+        {
+          "stateId": "st_00000002"
+        },
+        {
+          "stateId": "st_00000002",
+          "actionId": "st_00000002_a161"
+        },
+        {
+          "stateId": "st_00000002",
+          "actionId": "st_00000002_a200"
+        }
+      ],
+      "outcome": "repetition-limit",
+      "backtracks": 2,
+      "riskScore": 30
+    },
+    {
+      "trajectoryId": "t11",
+      "seed": 1348,
+      "profile": "exploratory",
+      "steps": [
+        {
+          "stateId": "st_00000002"
+        },
+        {
+          "stateId": "st_00000002",
+          "actionId": "st_00000002_a188"
+        },
+        {
+          "stateId": "st_00000002",
+          "actionId": "st_00000002_a51"
+        }
+      ],
+      "outcome": "repetition-limit",
+      "backtracks": 2,
+      "riskScore": 29
+    },
+    {
+      "trajectoryId": "t12",
+      "seed": 1349,
+      "profile": "goal-directed",
+      "steps": [
+        {
+          "stateId": "st_00000002"
+        },
+        {
+          "stateId": "st_00000002",
+          "actionId": "st_00000002_a78"
+        },
+        {
+          "stateId": "st_00000002",
+          "actionId": "st_00000002_a234"
+        }
+      ],
+      "outcome": "repetition-limit",
+      "backtracks": 2,
+      "riskScore": 28
+    },
+    {
+      "trajectoryId": "t13",
+      "seed": 1350,
+      "profile": "impatient",
+      "steps": [
+        {
+          "stateId": "st_00000002"
+        },
+        {
+          "stateId": "st_00000002",
+          "actionId": "st_00000002_a4"
+        },
+        {
+          "stateId": "st_00000002",
+          "actionId": "st_00000002_a4"
+        }
+      ],
+      "outcome": "repetition-limit",
+      "backtracks": 2,
+      "riskScore": 27
+    },
+    {
+      "trajectoryId": "t14",
+      "seed": 1351,
+      "profile": "exploratory",
+      "steps": [
+        {
+          "stateId": "st_00000002"
+        },
+        {
+          "stateId": "st_00000002",
+          "actionId": "st_00000002_a64"
+        },
+        {
+          "stateId": "st_00000002",
+          "actionId": "st_00000002_a86"
+        }
+      ],
+      "outcome": "repetition-limit",
+      "backtracks": 2,
+      "riskScore": 26
+    },
+    {
+      "trajectoryId": "t15",
+      "seed": 1352,
+      "profile": "goal-directed",
+      "steps": [
+        {
+          "stateId": "st_00000002"
+        },
+        {
+          "stateId": "st_00000002",
+          "actionId": "st_00000002_a153"
+        },
+        {
+          "stateId": "st_00000002",
+          "actionId": "st_00000002_a234"
+        }
+      ],
+      "outcome": "repetition-limit",
+      "backtracks": 2,
+      "riskScore": 25
+    },
+    {
+      "trajectoryId": "t16",
+      "seed": 1353,
+      "profile": "impatient",
+      "steps": [
+        {
+          "stateId": "st_00000002"
+        },
+        {
+          "stateId": "st_00000002",
+          "actionId": "st_00000002_a4"
+        },
+        {
+          "stateId": "st_00000002",
+          "actionId": "st_00000002_a56"
+        }
+      ],
+      "outcome": "repetition-limit",
+      "backtracks": 2,
+      "riskScore": 24
+    },
+    {
+      "trajectoryId": "t17",
+      "seed": 1354,
+      "profile": "exploratory",
+      "steps": [
+        {
+          "stateId": "st_00000002"
+        },
+        {
+          "stateId": "st_00000002",
+          "actionId": "st_00000002_a149"
+        },
+        {
+          "stateId": "st_00000002",
+          "actionId": "st_00000002_a151"
+        }
+      ],
+      "outcome": "repetition-limit",
+      "backtracks": 2,
+      "riskScore": 23
+    },
+    {
+      "trajectoryId": "t18",
+      "seed": 1355,
+      "profile": "goal-directed",
+      "steps": [
+        {
+          "stateId": "st_00000002"
+        },
+        {
+          "stateId": "st_00000002",
+          "actionId": "st_00000002_a219"
+        },
+        {
+          "stateId": "st_00000002",
+          "actionId": "st_00000002_a211"
+        }
+      ],
+      "outcome": "repetition-limit",
+      "backtracks": 2,
+      "riskScore": 22
+    },
+    {
+      "trajectoryId": "t19",
+      "seed": 1356,
+      "profile": "impatient",
+      "steps": [
+        {
+          "stateId": "st_00000002"
+        },
+        {
+          "stateId": "st_00000002",
+          "actionId": "st_00000002_a4"
+        },
+        {
+          "stateId": "st_00000002",
+          "actionId": "st_00000002_a187"
+        }
+      ],
+      "outcome": "repetition-limit",
+      "backtracks": 2,
+      "riskScore": 21
+    },
+    {
+      "trajectoryId": "t20",
+      "seed": 1357,
+      "profile": "exploratory",
+      "steps": [
+        {
+          "stateId": "st_00000002"
+        },
+        {
+          "stateId": "st_00000002",
+          "actionId": "st_00000002_a227"
+        },
+        {
+          "stateId": "st_00000002",
+          "actionId": "st_00000002_a115"
+        }
+      ],
+      "outcome": "repetition-limit",
+      "backtracks": 2,
+      "riskScore": 20
+    },
+    {
+      "trajectoryId": "t21",
+      "seed": 1358,
+      "profile": "goal-directed",
+      "steps": [
+        {
+          "stateId": "st_00000002"
+        },
+        {
+          "stateId": "st_00000002",
+          "actionId": "st_00000002_a237"
+        },
+        {
+          "stateId": "st_00000002",
+          "actionId": "st_00000002_a30"
+        }
+      ],
+      "outcome": "repetition-limit",
+      "backtracks": 2,
+      "riskScore": 19
+    },
+    {
+      "trajectoryId": "t22",
+      "seed": 1359,
+      "profile": "impatient",
+      "steps": [
+        {
+          "stateId": "st_00000002"
+        },
+        {
+          "stateId": "st_00000002",
+          "actionId": "st_00000002_a8"
+        },
+        {
+          "stateId": "st_00000002",
+          "actionId": "st_00000002_a205"
+        }
+      ],
+      "outcome": "repetition-limit",
+      "backtracks": 2,
+      "riskScore": 18
+    },
+    {
+      "trajectoryId": "t23",
+      "seed": 1360,
+      "profile": "exploratory",
+      "steps": [
+        {
+          "stateId": "st_00000002"
+        },
+        {
+          "stateId": "st_00000002",
+          "actionId": "st_00000002_a47"
+        },
+        {
+          "stateId": "st_00000002",
+          "actionId": "st_00000002_a129"
+        }
+      ],
+      "outcome": "repetition-limit",
+      "backtracks": 2,
+      "riskScore": 17
+    },
+    {
+      "trajectoryId": "t24",
+      "seed": 1361,
+      "profile": "goal-directed",
+      "steps": [
+        {
+          "stateId": "st_00000002"
+        },
+        {
+          "stateId": "st_00000002",
+          "actionId": "st_00000002_a114"
+        },
+        {
+          "stateId": "st_00000002",
+          "actionId": "st_00000002_a197"
+        }
+      ],
+      "outcome": "repetition-limit",
+      "backtracks": 2,
+      "riskScore": 16
+    },
+    {
+      "trajectoryId": "t25",
+      "seed": 1362,
+      "profile": "impatient",
+      "steps": [
+        {
+          "stateId": "st_00000002"
+        },
+        {
+          "stateId": "st_00000002",
+          "actionId": "st_00000002_a209"
+        },
+        {
+          "stateId": "st_00000002",
+          "actionId": "st_00000002_a4"
+        }
+      ],
+      "outcome": "repetition-limit",
+      "backtracks": 2,
+      "riskScore": 15
+    },
+    {
+      "trajectoryId": "t26",
+      "seed": 1363,
+      "profile": "exploratory",
+      "steps": [
+        {
+          "stateId": "st_00000002"
+        },
+        {
+          "stateId": "st_00000002",
+          "actionId": "st_00000002_a151"
+        },
+        {
+          "stateId": "st_00000002",
+          "actionId": "st_00000002_a63"
+        }
+      ],
+      "outcome": "repetition-limit",
+      "backtracks": 2,
+      "riskScore": 14
+    },
+    {
+      "trajectoryId": "t27",
+      "seed": 1364,
+      "profile": "goal-directed",
+      "steps": [
+        {
+          "stateId": "st_00000002"
+        },
+        {
+          "stateId": "st_00000002",
+          "actionId": "st_00000002_a201"
+        },
+        {
+          "stateId": "st_00000002",
+          "actionId": "st_00000002_a114"
+        }
+      ],
+      "outcome": "repetition-limit",
+      "backtracks": 2,
+      "riskScore": 13
+    },
+    {
+      "trajectoryId": "t28",
+      "seed": 1365,
+      "profile": "impatient",
+      "steps": [
+        {
+          "stateId": "st_00000002"
+        },
+        {
+          "stateId": "st_00000002",
+          "actionId": "st_00000002_a4"
+        },
+        {
+          "stateId": "st_00000002",
+          "actionId": "st_00000002_a4"
+        }
+      ],
+      "outcome": "repetition-limit",
+      "backtracks": 2,
+      "riskScore": 12
+    },
+    {
+      "trajectoryId": "t29",
+      "seed": 1366,
+      "profile": "exploratory",
+      "steps": [
+        {
+          "stateId": "st_00000002"
+        },
+        {
+          "stateId": "st_00000002",
+          "actionId": "st_00000002_a160"
+        },
+        {
+          "stateId": "st_00000002",
+          "actionId": "st_00000002_a187"
+        }
+      ],
+      "outcome": "repetition-limit",
+      "backtracks": 2,
+      "riskScore": 11
+    },
+    {
+      "trajectoryId": "t30",
+      "seed": 1367,
+      "profile": "goal-directed",
+      "steps": [
+        {
+          "stateId": "st_00000002"
+        },
+        {
+          "stateId": "st_00000002",
+          "actionId": "st_00000002_a91"
+        },
+        {
+          "stateId": "st_00000002",
+          "actionId": "st_00000002_a67"
+        }
+      ],
+      "outcome": "repetition-limit",
+      "backtracks": 2,
+      "riskScore": 10
+    },
+    {
+      "trajectoryId": "t31",
+      "seed": 1368,
+      "profile": "impatient",
+      "steps": [
+        {
+          "stateId": "st_00000002"
+        },
+        {
+          "stateId": "st_00000002",
+          "actionId": "st_00000002_a4"
+        },
+        {
+          "stateId": "st_00000002",
+          "actionId": "st_00000002_a4"
+        }
+      ],
+      "outcome": "repetition-limit",
+      "backtracks": 2,
+      "riskScore": 9
+    },
+    {
+      "trajectoryId": "t32",
+      "seed": 1369,
+      "profile": "exploratory",
+      "steps": [
+        {
+          "stateId": "st_00000002"
+        },
+        {
+          "stateId": "st_00000002",
+          "actionId": "st_00000002_a106"
+        },
+        {
+          "stateId": "st_00000002",
+          "actionId": "st_00000002_a95"
+        }
+      ],
+      "outcome": "repetition-limit",
+      "backtracks": 2,
+      "riskScore": 8
+    },
+    {
+      "trajectoryId": "t33",
+      "seed": 1370,
+      "profile": "goal-directed",
+      "steps": [
+        {
+          "stateId": "st_00000002"
+        },
+        {
+          "stateId": "st_00000002",
+          "actionId": "st_00000002_a32"
+        },
+        {
+          "stateId": "st_00000002",
+          "actionId": "st_00000002_a98"
+        }
+      ],
+      "outcome": "repetition-limit",
+      "backtracks": 2,
+      "riskScore": 7
+    },
+    {
+      "trajectoryId": "t34",
+      "seed": 1371,
+      "profile": "impatient",
+      "steps": [
+        {
+          "stateId": "st_00000002"
+        },
+        {
+          "stateId": "st_00000002",
+          "actionId": "st_00000002_a181"
+        },
+        {
+          "stateId": "st_00000002",
+          "actionId": "st_00000002_a211"
+        }
+      ],
+      "outcome": "repetition-limit",
+      "backtracks": 2,
+      "riskScore": 6
+    },
+    {
+      "trajectoryId": "t35",
+      "seed": 1372,
+      "profile": "exploratory",
+      "steps": [
+        {
+          "stateId": "st_00000002"
+        },
+        {
+          "stateId": "st_00000002",
+          "actionId": "st_00000002_a128"
+        },
+        {
+          "stateId": "st_00000002",
+          "actionId": "st_00000002_a96"
+        }
+      ],
+      "outcome": "repetition-limit",
+      "backtracks": 2,
+      "riskScore": 5
+    },
+    {
+      "trajectoryId": "t36",
+      "seed": 1373,
+      "profile": "goal-directed",
+      "steps": [
+        {
+          "stateId": "st_00000002"
+        },
+        {
+          "stateId": "st_00000002",
+          "actionId": "st_00000002_a64"
+        },
+        {
+          "stateId": "st_00000002",
+          "actionId": "st_00000002_a54"
+        }
+      ],
+      "outcome": "repetition-limit",
+      "backtracks": 2,
+      "riskScore": 4
+    },
+    {
+      "trajectoryId": "t37",
+      "seed": 1374,
+      "profile": "impatient",
+      "steps": [
+        {
+          "stateId": "st_00000002"
+        },
+        {
+          "stateId": "st_00000002",
+          "actionId": "st_00000002_a159"
+        },
+        {
+          "stateId": "st_00000002",
+          "actionId": "st_00000002_a4"
+        }
+      ],
+      "outcome": "repetition-limit",
+      "backtracks": 2,
+      "riskScore": 3
+    },
+    {
+      "trajectoryId": "t38",
+      "seed": 1375,
+      "profile": "exploratory",
+      "steps": [
+        {
+          "stateId": "st_00000002"
+        },
+        {
+          "stateId": "st_00000002",
+          "actionId": "st_00000002_a167"
+        },
+        {
+          "stateId": "st_00000002",
+          "actionId": "st_00000002_a196"
+        }
+      ],
+      "outcome": "repetition-limit",
+      "backtracks": 2,
+      "riskScore": 2
+    },
+    {
+      "trajectoryId": "t39",
+      "seed": 1376,
+      "profile": "goal-directed",
+      "steps": [
+        {
+          "stateId": "st_00000002"
+        },
+        {
+          "stateId": "st_00000002",
+          "actionId": "st_00000002_a148"
+        },
+        {
+          "stateId": "st_00000002",
+          "actionId": "st_00000002_a47"
+        }
+      ],
+      "outcome": "repetition-limit",
+      "backtracks": 2,
+      "riskScore": 1
+    }
+  ],
+  "browserTests": [
+    {
+      "runId": "run_t0_desktop",
+      "viewport": {
+        "name": "desktop",
+        "width": 1440,
+        "height": 900
+      },
+      "success": true,
+      "steps": [
+        {
+          "actionId": "st_00000002_a31",
+          "label": "The harness has to finish the job",
+          "ok": true
+        },
+        {
+          "actionId": "st_00000002_a32",
+          "label": "Read the talk →",
+          "ok": true
+        }
+      ],
+      "assertions": [
+        {
+          "assertion": {
+            "kind": "url-matches",
+            "value": "schedule"
+          },
+          "passed": true
+        }
+      ],
+      "errors": [],
+      "screenshotPaths": [],
+      "durationMs": 0
+    },
+    {
+      "runId": "run_t1_desktop",
+      "viewport": {
+        "name": "desktop",
+        "width": 1440,
+        "height": 900
+      },
+      "success": true,
+      "steps": [
+        {
+          "actionId": "st_00000002_a58",
+          "label": "Read The Improvement Loop Is the Product",
+          "ok": true
+        },
+        {
+          "actionId": "st_00000002_a4",
+          "label": "Schedule",
+          "ok": true
+        }
+      ],
+      "assertions": [
+        {
+          "assertion": {
+            "kind": "url-matches",
+            "value": "schedule"
+          },
+          "passed": true
+        }
+      ],
+      "errors": [],
+      "screenshotPaths": [],
+      "durationMs": 0
+    },
+    {
+      "runId": "run_variant_var_00000006",
+      "variantId": "var_00000006",
+      "viewport": {
+        "name": "desktop",
+        "width": 1440,
+        "height": 900
+      },
+      "success": true,
+      "steps": [
+        {
+          "actionId": "st_00000002_a31",
+          "label": "The harness has to finish the job",
+          "ok": true
+        },
+        {
+          "actionId": "st_00000002_a32",
+          "label": "Read the talk →",
+          "ok": true
+        }
+      ],
+      "assertions": [
+        {
+          "assertion": {
+            "kind": "url-matches",
+            "value": "schedule"
+          },
+          "passed": true
+        }
+      ],
+      "errors": [],
+      "screenshotPaths": [],
+      "durationMs": 0
+    }
+  ],
+  "findings": [
+    {
+      "findingId": "f_00000004_0",
+      "title": "Post-event page still invites registration",
+      "category": "copy-economy",
+      "severity": "high",
+      "evidenceType": "reproducible-concern",
+      "description": "Page \"AI Engineer Code Summit 2026: AI Engineering Conference, Nov 10-12, San Francisco\" shows dates in the past (NOV 10-12, 2026) alongside active registration/apply language — a stale-content inconsistency.",
+      "affectedStates": [
+        "st_00000002"
+      ],
+      "affectedActions": [
+        "st_00000002_a211",
+        "st_00000002_a242"
+      ],
+      "evidencePaths": [],
+      "recommendation": "Replace the apply/register CTA with a post-event path (recordings, next-year waitlist) or add a visible 'event has ended' notice.",
+      "verificationStatus": "reproduced",
+      "krugPrinciple": "omit-words"
+    },
+    {
+      "findingId": "f_00000005_1",
+      "title": "Dense link surface increases scan cost",
+      "category": "hierarchy",
+      "severity": "medium",
+      "evidenceType": "reproducible-concern",
+      "description": "238 distinct links compete for attention on \"AI Engineer Code Summit 2026: AI Engineering Conference, Nov 10-12, San Francisco\".",
+      "affectedStates": [
+        "st_00000002"
+      ],
+      "affectedActions": [],
+      "evidencePaths": [],
+      "recommendation": "Group secondary links; keep the primary path visually dominant.",
+      "verificationStatus": "reproduced",
+      "krugPrinciple": "scanning-not-reading"
+    },
+    {
+      "findingId": "f_metric_nav-overload_752dcb69",
+      "title": "Desktop: primary navigation has 11 items",
+      "category": "navigation",
+      "severity": "low",
+      "evidenceType": "reproducible-concern",
+      "description": "The top navigation exposes up to 11 visible items (more than 7), which makes the major sections harder to name at a glance.",
+      "affectedStates": [
+        "st_00000002"
+      ],
+      "affectedActions": [],
+      "evidencePaths": [],
+      "recommendation": "Group navigation into 7 or fewer top-level sections; move the rest into sub-navigation or the footer.",
+      "verificationStatus": "reproduced",
+      "krugPrinciple": "navigation"
+    },
+    {
+      "findingId": "f_metric_trunk-test_972a62d2",
+      "title": "Desktop: missing site ID (trunk test fails)",
+      "category": "navigation",
+      "severity": "medium",
+      "evidenceType": "reproducible-concern",
+      "description": "On 1 page(s) a visitor dropped in cold can't find: site ID. Persistent navigation should answer what site this is, what page they're on, the major sections, how to search and where they are.",
+      "affectedStates": [
+        "st_00000002"
+      ],
+      "affectedActions": [],
+      "evidencePaths": [],
+      "recommendation": "Add the missing trunk-test signals (site ID) to the persistent header on every page.",
+      "verificationStatus": "reproduced",
+      "krugPrinciple": "navigation"
+    },
+    {
+      "findingId": "f_metric_trunk-test_62279188",
+      "title": "Desktop: missing site ID, primary navigation, search, you-are-here indicator (trunk test fails)",
+      "category": "navigation",
+      "severity": "high",
+      "evidenceType": "reproducible-concern",
+      "description": "On 1 page(s) a visitor dropped in cold can't find: site ID, primary navigation, search, you-are-here indicator. Persistent navigation should answer what site this is, what page they're on, the major sections, how to search and where they are.",
+      "affectedStates": [
+        "st_00000003"
+      ],
+      "affectedActions": [],
+      "evidencePaths": [],
+      "recommendation": "Add the missing trunk-test signals (site ID, primary navigation, search, you-are-here indicator) to the persistent header on every page.",
+      "verificationStatus": "reproduced",
+      "krugPrinciple": "navigation"
+    }
+  ],
+  "variants": [
+    {
+      "variantId": "var_00000006",
+      "findingId": "f_00000004_0",
+      "description": "Replace the apply/register CTA with a post-event path (recordings, next-year waitlist) or add a visible 'event has ended' notice.",
+      "patches": [
+        {
+          "op": "insertNotice",
+          "selector": "body",
+          "value": "This event has concluded. Recordings and future dates coming soon."
+        }
+      ],
+      "status": "verified"
+    }
+  ],
+  "comparisons": [
+    {
+      "baselineRunId": "run_t0_desktop",
+      "variantRunId": "run_variant_var_00000006",
+      "deltas": {
+        "goalCompleted": {
+          "baseline": true,
+          "variant": true
+        },
+        "interactionCount": {
+          "baseline": 2,
+          "variant": 2
+        },
+        "backtracks": {
+          "baseline": 2,
+          "variant": 2
+        },
+        "failedInteractions": {
+          "baseline": 0,
+          "variant": 0
+        },
+        "runtimeErrors": {
+          "baseline": 0,
+          "variant": 0
+        },
+        "findingReproduces": true
+      }
+    }
+  ],
+  "spec": {
+    "targetUrl": "https://ai.engineer/code/2026",
+    "goal": "find the conference schedule",
+    "generatedAt": "2026-11-13T12:00:00.000Z",
+    "baselineRunIds": [
+      "run_t0_desktop",
+      "run_t1_desktop",
+      "run_variant_var_00000006"
+    ],
+    "summary": "Rehearsal verified 3 browser runs against https://ai.engineer/code/2026: 0 verified failure(s), 5 reproducible concern(s). 5 total findings mapped to 5 proposed changes.",
+    "changes": [
+      {
+        "rank": 1,
+        "title": "Post-event page still invites registration",
+        "findingId": "f_00000004_0",
+        "krugPrinciple": "omit-words",
+        "change": "Replace the apply/register CTA with a post-event path (recordings, next-year waitlist) or add a visible 'event has ended' notice.",
+        "rationale": "Page \"AI Engineer Code Summit 2026: AI Engineering Conference, Nov 10-12, San Francisco\" shows dates in the past (NOV 10-12, 2026) alongside active registration/apply language — a stale-content inconsistency. [reproducible-concern; Is text free of needless words, happy talk, stale claims?]",
+        "effort": "M",
+        "evidencePaths": []
+      },
+      {
+        "rank": 2,
+        "title": "Desktop: missing site ID, primary navigation, search, you-are-here indicator (trunk test fails)",
+        "findingId": "f_metric_trunk-test_62279188",
+        "krugPrinciple": "navigation",
+        "change": "Add the missing trunk-test signals (site ID, primary navigation, search, you-are-here indicator) to the persistent header on every page.",
+        "rationale": "On 1 page(s) a visitor dropped in cold can't find: site ID, primary navigation, search, you-are-here indicator. Persistent navigation should answer what site this is, what page they're on, the major sections, how to search and where they are. [reproducible-concern; Is the next relevant action discoverable and conventional?]",
+        "effort": "M",
+        "evidencePaths": []
+      },
+      {
+        "rank": 3,
+        "title": "Dense link surface increases scan cost",
+        "findingId": "f_00000005_1",
+        "krugPrinciple": "scanning-not-reading",
+        "change": "Group secondary links; keep the primary path visually dominant.",
+        "rationale": "238 distinct links compete for attention on \"AI Engineer Code Summit 2026: AI Engineering Conference, Nov 10-12, San Francisco\". [reproducible-concern; Are important elements visually and semantically prioritized?]",
+        "effort": "S",
+        "evidencePaths": []
+      },
+      {
+        "rank": 4,
+        "title": "Desktop: missing site ID (trunk test fails)",
+        "findingId": "f_metric_trunk-test_972a62d2",
+        "krugPrinciple": "navigation",
+        "change": "Add the missing trunk-test signals (site ID) to the persistent header on every page.",
+        "rationale": "On 1 page(s) a visitor dropped in cold can't find: site ID. Persistent navigation should answer what site this is, what page they're on, the major sections, how to search and where they are. [reproducible-concern; Is the next relevant action discoverable and conventional?]",
+        "effort": "S",
+        "evidencePaths": []
+      },
+      {
+        "rank": 5,
+        "title": "Desktop: primary navigation has 11 items",
+        "findingId": "f_metric_nav-overload_752dcb69",
+        "krugPrinciple": "navigation",
+        "change": "Group navigation into 7 or fewer top-level sections; move the rest into sub-navigation or the footer.",
+        "rationale": "The top navigation exposes up to 11 visible items (more than 7), which makes the major sections harder to name at a glance. [reproducible-concern; Is the next relevant action discoverable and conventional?]",
+        "effort": "S",
+        "evidencePaths": []
+      }
+    ],
+    "rebuildPhases": [
+      {
+        "name": "Truth pass",
+        "goal": "Remove anything stale or misleading — copy must match reality.",
+        "items": [
+          "Post-event page still invites registration",
+          "Desktop: missing site ID, primary navigation, search, you-are-here indicator (trunk test fails)"
+        ]
+      },
+      {
+        "name": "Hierarchy pass",
+        "goal": "One obvious primary action; scanning-friendly structure.",
+        "items": [
+          "Rebuild nav to ~7 items max",
+          "Single dominant CTA above the fold",
+          "Dense link surface increases scan cost",
+          "Desktop: missing site ID (trunk test fails)",
+          "Desktop: primary navigation has 11 items"
+        ]
+      },
+      {
+        "name": "Verification loop",
+        "goal": "Rehearse the rebuild against the same assertions before shipping.",
+        "items": [
+          "Re-run experiment on staging",
+          "Compare baseline vs. rebuild deltas"
+        ]
+      }
+    ]
+  },
+  "intents": [
+    {
+      "category": "information",
+      "goal": "find the conference schedule",
+      "targetEndpointClasses": [
+        "schedule-event"
+      ],
+      "weightOverrides": {
+        "schedule-event": 1
+      }
+    },
+    {
+      "category": "information",
+      "goal": "find the schedule for AI Engineer Code Summit 2026",
+      "targetEndpointClasses": [
+        "schedule-event",
+        "docs-answers"
+      ],
+      "weightOverrides": {}
+    },
+    {
+      "category": "quotation",
+      "goal": "find ticket prices for AI Engineer Code Summit 2026",
+      "targetEndpointClasses": [
+        "pricing"
+      ],
+      "weightOverrides": {}
+    },
+    {
+      "category": "proposal",
+      "goal": "apply or register to attend AI Engineer Code Summit 2026",
+      "targetEndpointClasses": [
+        "signup",
+        "contact-form"
+      ],
+      "weightOverrides": {}
+    }
+  ],
+  "endpoints": [
+    {
+      "endpointId": "ep_schedule-event_52ecbb70",
+      "class": "schedule-event",
+      "url": "https://ai.engineer/code/2026/talks",
+      "label": "Explore all 50 sessions →",
+      "weight": 0.9,
+      "stateId": "st_00000003",
+      "sourceStateId": "st_00000002",
+      "actionId": "st_00000002_a1",
+      "intent": [
+        "information"
+      ]
+    },
+    {
+      "endpointId": "ep_schedule-event_d24bcaf5",
+      "class": "schedule-event",
+      "url": "https://ai.engineer/code/2026",
+      "label": "Schedule",
+      "weight": 0.8,
+      "stateId": "st_00000002",
+      "sourceStateId": "st_00000002",
+      "actionId": "st_00000002_a4",
+      "intent": [
+        "information"
+      ]
+    },
+    {
+      "endpointId": "ep_signup_406df8b3",
+      "class": "signup",
+      "url": "https://ai.engineer/data#code-applications",
+      "label": "Apply through our MCP →",
+      "weight": 0.76,
+      "sourceStateId": "st_00000002",
+      "actionId": "st_00000002_a211",
+      "intent": [
+        "proposal"
+      ]
+    },
+    {
+      "endpointId": "ep_demo-video_17004053",
+      "class": "demo-video",
+      "url": "https://www.youtube.com/watch?v=ZZ19zhYnDKY",
+      "label": "Watch on YouTube ↗",
+      "weight": 0.6,
+      "sourceStateId": "st_00000002",
+      "actionId": "st_00000002_a2",
+      "intent": [
+        "information"
+      ]
+    },
+    {
+      "endpointId": "ep_demo-video_3d4c893c",
+      "class": "demo-video",
+      "url": "https://www.youtube.com/watch?v=y9JtCCZP2MQ",
+      "label": "Watch on YouTube ↗",
+      "weight": 0.6,
+      "sourceStateId": "st_00000002",
+      "actionId": "st_00000002_a3",
+      "intent": [
+        "information"
+      ]
+    },
+    {
+      "endpointId": "ep_demo-video_014b126e",
+      "class": "demo-video",
+      "url": "https://www.youtube.com/watch?v=vlfCjWuv4es&t=0s",
+      "label": "Watch at 0:00:00 ↗",
+      "weight": 0.48,
+      "sourceStateId": "st_00000002",
+      "actionId": "st_00000002_a17",
+      "intent": [
+        "information"
+      ]
+    },
+    {
+      "endpointId": "ep_demo-video_76f370b8",
+      "class": "demo-video",
+      "url": "https://www.youtube.com/watch?v=_7P580m4kPY&t=0s",
+      "label": "Watch at 0:00:00 ↗",
+      "weight": 0.48,
+      "sourceStateId": "st_00000002",
+      "actionId": "st_00000002_a73",
+      "intent": [
+        "information"
+      ]
+    },
+    {
+      "endpointId": "ep_demo-video_f6f36903",
+      "class": "demo-video",
+      "url": "https://www.youtube.com/watch?v=oeknLUsN_GE&t=0s",
+      "label": "Watch at 0:00:00 ↗",
+      "weight": 0.48,
+      "sourceStateId": "st_00000002",
+      "actionId": "st_00000002_a150",
+      "intent": [
+        "information"
+      ]
+    },
+    {
+      "endpointId": "ep_contact-form_a608654c",
+      "class": "contact-form",
+      "url": "https://ai.engineer/code/2026/guide/sponsorship",
+      "label": "BECOME A SPONSOR",
+      "weight": 0.4,
+      "sourceStateId": "st_00000002",
+      "actionId": "st_00000002_a0",
+      "intent": [
+        "proposal",
+        "quotation"
+      ]
+    },
+    {
+      "endpointId": "ep_next-steps_d0f743a8",
+      "class": "next-steps",
+      "url": "https://ai.engineer/newsletter",
+      "label": "EMAIL UPDATES",
+      "weight": 0.4,
+      "sourceStateId": "st_00000002",
+      "actionId": "st_00000002_a212",
+      "intent": [
+        "proposal"
+      ]
+    }
+  ],
+  "journeys": [
+    {
+      "endpointId": "ep_schedule-event_52ecbb70",
+      "trajectories": 200,
+      "goalReached": 200,
+      "medianSteps": 1,
+      "samplePath": [
+        "Explore all 50 sessions →"
+      ]
+    },
+    {
+      "endpointId": "ep_schedule-event_d24bcaf5",
+      "trajectories": 200,
+      "goalReached": 200,
+      "medianSteps": 0,
+      "samplePath": []
+    },
+    {
+      "endpointId": "ep_signup_406df8b3",
+      "trajectories": 200,
+      "goalReached": 200,
+      "medianSteps": 1,
+      "samplePath": [
+        "Apply through our MCP →"
+      ]
+    },
+    {
+      "endpointId": "ep_demo-video_17004053",
+      "trajectories": 200,
+      "goalReached": 200,
+      "medianSteps": 1,
+      "samplePath": [
+        "Watch on YouTube ↗"
+      ]
+    },
+    {
+      "endpointId": "ep_demo-video_3d4c893c",
+      "trajectories": 200,
+      "goalReached": 200,
+      "medianSteps": 1,
+      "samplePath": [
+        "Watch on YouTube ↗"
+      ]
+    },
+    {
+      "endpointId": "ep_demo-video_014b126e",
+      "trajectories": 200,
+      "goalReached": 200,
+      "medianSteps": 1,
+      "samplePath": [
+        "Watch at 0:00:00 ↗"
+      ]
+    },
+    {
+      "endpointId": "ep_demo-video_76f370b8",
+      "trajectories": 200,
+      "goalReached": 200,
+      "medianSteps": 1,
+      "samplePath": [
+        "Watch at 0:00:00 ↗"
+      ]
+    },
+    {
+      "endpointId": "ep_demo-video_f6f36903",
+      "trajectories": 200,
+      "goalReached": 200,
+      "medianSteps": 1,
+      "samplePath": [
+        "Watch at 0:00:00 ↗"
+      ]
+    },
+    {
+      "endpointId": "ep_contact-form_a608654c",
+      "trajectories": 200,
+      "goalReached": 200,
+      "medianSteps": 1,
+      "samplePath": [
+        "BECOME A SPONSOR"
+      ]
+    },
+    {
+      "endpointId": "ep_next-steps_d0f743a8",
+      "trajectories": 200,
+      "goalReached": 200,
+      "medianSteps": 1,
+      "samplePath": [
+        "EMAIL UPDATES"
+      ]
+    }
+  ],
+  "errors": []
+}

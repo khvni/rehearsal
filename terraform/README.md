@@ -55,7 +55,7 @@ from wrangler are ignored by Terraform. Keep `worker_name` equal to `name` in th
 | `domain` | no | `""` | custom hostname, e.g. `rehearsal.example.com` |
 | `workers_dev_subdomain` | no | `""` | only used to build `app_url` when no `domain` |
 | `worker_name` | no | `rehearsal` | |
-| `gemini_api_key`, `jev_api_key`, `brightdata_api_key`, `sentry_dsn` | no | `""` | empty values are not bound |
+| `gemini_api_key`, `jev_api_key`, `brightdata_api_key`, `brightdata_zone`, `sentry_dsn` | no | `""` | empty values are not bound |
 
 ```bash
 cd terraform/cloudflare
