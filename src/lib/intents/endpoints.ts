@@ -1,8 +1,7 @@
 import { createHash } from "node:crypto";
-import type { Assertion, Endpoint, EndpointClass, IntentProfile, SiteState, StateGraph } from "../contracts";
+import type { Assertion, Endpoint, EndpointClass, IntentProfile, SiteState, SiteType, StateGraph } from "../contracts";
 import { CLASS_INTENTS, classifyAction, classifyText, pathWords } from "./patterns";
 
-export type SiteType = "event" | "saas" | "commerce" | "content";
 
 const SITE_SIGNALS: readonly (readonly [SiteType, RegExp])[] = [
   ["event", /\b(schedule|agenda|speakers?|venue|tickets?|conference|summit|keynote|sessions?|attend|workshops?)\b/g],

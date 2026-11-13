@@ -312,6 +312,9 @@ export const EndpointClass = z.enum([
 export type EndpointClass = z.infer<typeof EndpointClass>;
 
 /** A destination a visitor wants to reach (pricing page, signup, video, form, answers…). */
+export const SiteType = z.enum(["event", "saas", "commerce", "content"]);
+export type SiteType = z.infer<typeof SiteType>;
+
 export const Endpoint = z.object({
   endpointId: z.string(),
   class: EndpointClass,

@@ -1,6 +1,6 @@
-import type { EndpointClass, IntentCategory, IntentProfile, StateGraph } from "../contracts";
+import type { EndpointClass, IntentCategory, IntentProfile, SiteType, StateGraph } from "../contracts";
 import type { LlmClient } from "../analysis/gemini";
-import { detectSiteType, type SiteType } from "./endpoints";
+import { detectSiteType } from "./endpoints";
 
 const QUOTATION =
   /\b(pric(e|es|ing)|cost|costs|quote|plans?|how much|fees?|rates?|budget|tiers?|discount|afford)\b/g;
