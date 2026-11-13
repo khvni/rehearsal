@@ -1,6 +1,6 @@
 import { mkdirSync, writeFileSync } from "node:fs";
 import path from "node:path";
-import type { ModelConfig, Page, Stagehand, StagehandBrowser } from "@browserbasehq/stagehand";
+import type { Locator, ModelConfig, Page, Stagehand, StagehandBrowser } from "@browserbasehq/stagehand";
 import type { BrowserRun, DomPatch, Viewport } from "../contracts";
 import { assertPublicUrl } from "../fetch/guards";
 import { compilePatches } from "../variants";
@@ -64,6 +64,16 @@ function stableSelector(a: TrajectoryAction): string {
   return a.role === "button"
     ? `xpath=//*[self::button or @role="button" or self::input[@type="submit" or @type="button"]][${match} or @value=${text}]`
     : `xpath=//*[self::a or @role="link"][${match}]`;
+}
+
+async function firstVisible(page: Page, selector: string): Promise<Locator | null> {
+  const all = page.locator(selector);
+  const n = await all.count().catch(() => 0);
+  for (let i = 0; i < n; i++) {
+    const loc = all.nth(i);
+    if (await loc.isVisible().catch(() => false)) return loc;
+  }
+  return null;
 }
 
 function stagehandProbe(page: Page): AssertionProbe {
@@ -158,8 +168,8 @@ export class StagehandRunner implements BrowserRunner {
       await page.goto(a.href, { waitUntil: "domcontentloaded", timeout: NAV_TIMEOUT_MS });
       return;
     }
-    const loc = page.locator(stableSelector(a)).first();
-    if ((await loc.count().catch(() => 0)) > 0) {
+    const loc = await firstVisible(page, stableSelector(a));
+    if (loc) {
       await loc.click();
     } else if (this.canAct) {
       const res = await sh.act(`click the ${a.role === "button" ? "button" : "link"} labelled "${a.label}"`, { page });
