@@ -1,4 +1,4 @@
-import type { Experiment, LlmClient, SpecChange, SpecReport } from "../contracts";
+import { SpecChange, SpecReport, type Experiment, type LlmClient } from "../contracts";
 import { stripFences } from "./findings";
 import { RUBRIC } from "./rubric";
 
@@ -37,17 +37,16 @@ export async function generateSpec(experiment: Experiment, llm: LlmClient): Prom
     .then((raw) => JSON.parse(stripFences(raw)) as Partial<SpecReport>)
     .catch(() => null);
 
+  // LLM output is untrusted: keep it only when it parses against the contract.
+  const llmChanges = SpecChange.array().safeParse(
+    Array.isArray(llmSpec?.changes) ? llmSpec.changes.map((c, i) => ({ ...c, rank: i + 1 })) : undefined,
+  );
+  const llmPhases = SpecReport.shape.rebuildPhases.safeParse(llmSpec?.rebuildPhases);
   return {
     ...base,
-    summary: llmSpec?.summary ?? fallbackSummary(experiment, changes.length),
-    changes:
-      llmSpec?.changes && llmSpec.changes.length >= changes.length
-        ? llmSpec.changes.map((c, i) => ({ ...c, rank: i + 1 }) as SpecChange)
-        : changes,
-    rebuildPhases:
-      llmSpec?.rebuildPhases && llmSpec.rebuildPhases.length > 0
-        ? llmSpec.rebuildPhases
-        : fallbackPhases(changes),
+    summary: typeof llmSpec?.summary === "string" && llmSpec.summary.trim() ? llmSpec.summary : fallbackSummary(experiment, changes.length),
+    changes: llmChanges.success && llmChanges.data.length >= changes.length ? llmChanges.data : changes,
+    rebuildPhases: llmPhases.success && llmPhases.data.length > 0 ? llmPhases.data : fallbackPhases(changes),
   };
 }
 

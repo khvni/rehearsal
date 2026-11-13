@@ -74,7 +74,7 @@ export function extractPage(rawHtml: string, pageUrl: string): ExtractedPage {
     const absolute = safeResolve(pageUrl, href);
     if (!absolute) continue;
     if (absolute === stripHash(pageUrl)) continue; // in-page anchor (/#section on the same page)
-    const external = !absolute.startsWith(new URL(pageUrl).origin);
+    const external = !isSameOrigin(absolute, new URL(pageUrl).origin);
     const download = NON_HTML_EXT_RE.test(new URL(absolute).pathname);
     push({
       type: external || download ? "navigate" : "click",
@@ -113,6 +113,16 @@ export function extractPage(rawHtml: string, pageUrl: string): ExtractedPage {
 
   const visibleText = stripTags(html).slice(0, 12000);
   return { title, visibleText, headings, actions };
+}
+
+/** True when `href` parses to exactly `origin` (a prefix test would accept https://a.com.evil.com). */
+export function isSameOrigin(href: string | undefined, origin: string): boolean {
+  if (!href) return false;
+  try {
+    return new URL(href).origin === origin;
+  } catch {
+    return false;
+  }
 }
 
 function safeResolve(base: string, href: string): string | undefined {
