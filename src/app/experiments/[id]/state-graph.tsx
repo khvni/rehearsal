@@ -91,7 +91,7 @@ export function StateGraph({
 }) {
   const [hovered, setHovered] = useState<string | null>(null);
 
-  const base = useMemo(() => {
+  const fresh = useMemo(() => {
     const visits = visitCounts(simulations);
     const transitions = transitionCounts(simulations);
     const states = graph.states.filter((s) => s.viewport.name === viewport);
@@ -150,7 +150,14 @@ export function StateGraph({
     return { nodes, edges };
   }, [graph, simulations, viewport]);
 
-  const { nodes, edges } = useMemo(() => {
+  // Polling hands us new graph objects every few seconds. Keep node objects
+  // stable until the content changes, so React Flow keeps its measurements.
+  const sig = `${viewport}:${graph.states.length}:${graph.edges.length}:${simulations.length}`;
+  const [kept, setKept] = useState({ sig, base: fresh });
+  if (kept.sig !== sig) setKept({ sig, base: fresh });
+  const base = kept.sig === sig ? kept.base : fresh;
+
+  const { edges, dimCss } = useMemo(() => {
     const neighbors = new Set<string>();
     if (hovered) {
       neighbors.add(hovered);
@@ -159,7 +166,6 @@ export function StateGraph({
         if (e.target === hovered) neighbors.add(e.source);
       }
     }
-    const nodes: Node[] = base.nodes.map((n) => ({ ...n, className: hovered && !neighbors.has(n.id) ? "dim" : undefined }));
     const edges: Edge[] = base.edges.map((e) => {
       const incident = hovered !== null && (e.source === hovered || e.target === hovered);
       const opacity = hovered ? (incident ? 0.95 : 0.04) : e.flow > 0 ? 0.25 + e.w * 0.55 : 0.12;
@@ -176,14 +182,19 @@ export function StateGraph({
         },
       };
     });
-    return { nodes, edges };
+    // Dim through CSS so hovering never hands React Flow new node objects;
+    // replacing nodes mid-poll drops their measurements and blanks the graph.
+    const keep = [...neighbors].map((id) => `[data-id=${JSON.stringify(id)}]`).join(", ");
+    const dimCss = hovered ? `.graph-wrap .react-flow__node:not(${keep}) { opacity: 0.3; }` : "";
+    return { edges, dimCss };
   }, [base, hovered]);
 
   return (
     <div className={`graph-wrap ${viewport}`}>
+      {dimCss && <style>{dimCss}</style>}
       <ReactFlow
         key={`${viewport}:${base.nodes.length}:${simulations.length}`}
-        nodes={nodes}
+        nodes={base.nodes}
         edges={edges}
         fitView
         fitViewOptions={{ padding: 0.12 }}

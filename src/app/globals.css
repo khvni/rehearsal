@@ -894,7 +894,6 @@ table.delta + table.delta { margin-top: var(--s-4); }
   --xy-controls-button-border-color-default: var(--border);
 }
 .graph-wrap .react-flow__node { transition: opacity var(--dur-1) ease, border-color var(--dur-1) ease; }
-.graph-wrap .react-flow__node.dim { opacity: 0.3; }
 .graph-wrap .react-flow__node:hover { border-color: var(--hl) !important; }
 .graph-wrap .react-flow__node.selected, .graph-wrap .react-flow__node:focus-visible { outline: 2px solid var(--hl); outline-offset: 1px; }
 .graph-wrap .react-flow__edge path { transition: stroke-opacity var(--dur-1) ease, stroke var(--dur-1) ease; }
