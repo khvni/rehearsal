@@ -28,6 +28,10 @@ eval cases.** `npm run check:skill-sync` fails the build otherwise.
   - graph dedup — `GraphBuilder` collapses identical-stateHash states (same page, reordered/recased actions) into one node; viewport change makes a new node (`maxStatesPerStateHash`)
   - vague labels — finding on `fixtures/vague-labels.html` names exactly the vague labels found; no finding on the AIE fixture (`minVagueLabelsDetected`)
   - stale date — finding description cites every detected past date; no finding before the event ends (`minPastDatesDetected`, `requireStaleDateEvidence`)
+- `intents.eval.ts` — RFX intents (information / quotation / proposal) + endpoint discovery; thresholds are local constants in the file:
+  - AIE fixture — `detectSiteType` = event; `discoverEndpoints` finds ≥1 `schedule-event` ("Explore all 50 sessions", "Schedule") and ≥1 `signup` whose label says apply; top endpoint weight ≥ 0.75; weights deterministic and in [0,1]; `defaultIntentsForSite` yields one goal per category; "find the conference schedule" → information targeting `schedule-event`; no endpoint findings when CTAs sit on the start page
+  - synthetic journeys — orphaned /signup → `endpoint-unreachable` (navigation); pricing 4 clicks deep → `endpoint-deep` (mindless-choices, median 4, sample path recorded); absent expected class → `missing-endpoint-class`; `endpointJourneys` deterministic per seed
+  - orchestrator wiring — fixture runner/store/adapters: `discover` stores `intents` + `endpoints`, endpoint class assertions (`endpointGoalAssertions`) make reaching /talks satisfy `goalSatisfiedInState`, `analyze` stores `journeys`, and the experiment round-trips through the `Experiment` contract (what GET /api/experiments/[id] serializes)
 
 - `metrics.eval.ts` — page metrics (`src/lib/browser/metrics.ts` `measurePage`) on the AIE fixture in hermetic local Chromium (loopback server, all other requests aborted, `networkidle` so layout settles): repeat measurements are identical; homepage fold ratio ≥ `metricsMinHomepageFoldRatio` with scroll time = screens × 1.5s; exactly `metricsExpectedH1Count` h1 and it is the largest text; ≥ `metricsMinNavItems` primary-nav items, ≥ `metricsMinCtas` CTAs, `primaryCtaAmbiguity` ≤ `metricsMaxPrimaryCtaAmbiguity`, ≥ `metricsMinFontSizeBuckets` font sizes; the HTML-only fallback matches the DOM facts and nulls layout fields; `metricFindings` emits every rule in `metricsRequiredRules`, no CTA-ambiguity finding, each with a Krug key + screenshot evidence
 
@@ -35,6 +39,7 @@ eval cases.** `npm run check:skill-sync` fails the build otherwise.
 
 - `metrics.test.ts` — `measurePage` via `PlaywrightRunner.openPage` on synthetic pages served from loopback (scroll, CTA prominence ties, heading skips/multiple h1, nav count, font buckets, trunk test), `metricsFromHtml` fallback, and each `metricFindings` rule (grouping, severity, evidence)
 - `core.test.ts` — contract parsing, extractor, graph dedup, mulberry32 determinism, profile shaping, fixture Jev scoring, patch compilation, rule findings, spec markdown
+- `intents.test.ts` — `classifyGoal` keyword heuristics, LLM refinement fallback, endpoint label/path classification, `discoverEndpoints`/`weightEndpoints` determinism + overrides, optional Experiment fields
 
 ## Browser tests (tests/e2e/)
 
