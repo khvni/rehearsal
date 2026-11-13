@@ -60,6 +60,27 @@ export class BrightDataFetcher implements PageFetcher {
   }
 }
 
+/** Browserbase Fetch API (via Stagehand's browserbase.fetch): browserless HTTP fetch with optional proxies. */
+export class BrowserbaseFetcher implements PageFetcher {
+  readonly name = "browserbase-fetch";
+  private apiKey: string;
+
+  constructor() {
+    this.apiKey = process.env.BROWSERBASE_API_KEY ?? "";
+    if (!this.apiKey) throw new Error("BrowserbaseFetcher requires BROWSERBASE_API_KEY");
+  }
+
+  async fetchHtml(url: string): Promise<string> {
+    const u = await assertPublicUrl(url);
+    await politeDelay(u);
+    const { browserbase } = await import("@browserbasehq/stagehand");
+    const res = await browserbase.fetch({ url: u.toString(), apiKey: this.apiKey, format: "raw", proxies: true });
+    if (res.statusCode >= 400) throw new Error(`Browserbase fetch failed: ${res.statusCode}`);
+    return typeof res.content === "string" ? res.content : JSON.stringify(res.content);
+  }
+}
+
+/** Priority: Bright Data Web Unlocker → Browserbase Fetch → plain fetch. */
 export function selectFetcher(): PageFetcher {
   if (process.env.BRIGHTDATA_API_KEY && process.env.BRIGHTDATA_ZONE) {
     try {
@@ -68,5 +89,6 @@ export function selectFetcher(): PageFetcher {
       // fall through
     }
   }
+  if (process.env.BROWSERBASE_API_KEY) return new BrowserbaseFetcher();
   return new PlainFetcher();
 }

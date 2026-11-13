@@ -9,7 +9,7 @@ import {
 } from "./contracts";
 import { selectFetcher, type PageFetcher } from "./fetch";
 import { assertPublicUrl, robotsDisallowed } from "./fetch/guards";
-import { PlaywrightRunner, extractPage } from "./browser/runner";
+import { extractPage, selectRunner, type BrowserRunner } from "./browser/runner";
 import { GraphBuilder, makeState, adjacency } from "./graph";
 import { selectJev, scoreActions, type JevClient } from "./decisions/jev";
 import { simulateTrajectories, selectTrajectories, type SimWeights } from "./simulation";
@@ -37,7 +37,7 @@ export interface OrchestratorDeps {
   jev?: JevClient;
   llm?: LlmClient;
   store?: ExperimentStore;
-  runner?: PlaywrightRunner;
+  runner?: BrowserRunner;
 }
 
 export class Orchestrator {
@@ -45,14 +45,14 @@ export class Orchestrator {
   private jev: JevClient;
   private llm: LlmClient;
   private store: ExperimentStore;
-  private runner: PlaywrightRunner;
+  private runner: BrowserRunner;
 
   constructor(deps: OrchestratorDeps = {}) {
     this.fetcher = deps.fetcher ?? selectFetcher();
     this.jev = deps.jev ?? selectJev();
     this.llm = deps.llm ?? selectLlm();
     this.store = deps.store ?? selectStore();
-    this.runner = deps.runner ?? new PlaywrightRunner();
+    this.runner = deps.runner ?? selectRunner();
   }
 
   async createExperiment(targetUrl: string, goal: string, config?: Partial<ExperimentConfig>): Promise<Experiment> {
@@ -84,6 +84,7 @@ export class Orchestrator {
     return withTrace("discover", id, async () => {
       const config = experiment.configuration;
       const builder = new GraphBuilder(config.maxStates, config.maxDepth);
+      logEvent({ experimentId: id, stage: "discover", kind: "browser-runner", data: { runner: this.runner.name } });
       const disallowed = await robotsDisallowed(
         new URL(experiment.targetUrl),
         this.fetcher.fetchHtml.bind(this.fetcher),
@@ -101,7 +102,7 @@ export class Orchestrator {
           if (visited.has(url) || depth > config.maxDepth) continue;
           visited.add(url);
           try {
-            const { html, screenshotPath, ctx } = await this.runner.openPage(url, viewport, {
+            const { html, screenshotPath } = await this.runner.openPage(url, viewport, {
               shotName: `${id}_${vpName}_d${depth}`,
             });
             const extracted = extractPage(html, url);
@@ -114,7 +115,6 @@ export class Orchestrator {
               screenshotPath,
             });
             const { state: canonical, isNew } = builder.add(state);
-            await ctx?.close();
             if (!isNew) continue;
             if (depth < config.maxDepth) {
               for (const a of canonical.actions) {

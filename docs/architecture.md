@@ -24,8 +24,8 @@
    │      │      │      │      └─ mulberry32 seeded sampler, profiles, risk rank
    │      │      │      └─ JevClient (OpenRouter decisions) | FixtureJevClient
    │      │      └─ stateHash dedup, adjacency
-   │      └─ PlaywrightRunner: local chromium | Bright Data CDP (BRIGHTDATA_BROWSER_WS)
-   └─ BrightDataFetcher (BRIGHTDATA_API_KEY+ZONE) | PlainFetcher + SSRF guards + politeness
+   │      └─ selectRunner(): BrightDataBrowserRunner → StagehandRunner → PlaywrightRunner
+   └─ BrightDataFetcher (Web Unlocker) → BrowserbaseFetcher → PlainFetcher + SSRF guards + politeness
 
 telemetry: Sentry (SENTRY_DSN) + data/events/*.jsonl
 ```
@@ -43,6 +43,44 @@ telemetry: Sentry (SENTRY_DSN) + data/events/*.jsonl
 5. **compare**: variant (DomPatch set) applied via `addInitScript` in a fresh context;
    same assertions re-run; deltas recorded.
 6. **spec**: `generateSpec` merges findings → ordered changes + rebuild phases → `spec.md`.
+
+## Browser + fetch vendors
+
+`src/lib/browser/runner.ts#selectRunner` picks a `BrowserRunner` from env (`runner.name` is
+logged as the `browser-runner` telemetry event at the start of discover):
+
+| Priority | Condition | State capture (`openPage`) | Trajectories (`runTrajectory`) |
+|---|---|---|---|
+| 1 | `BRIGHTDATA_BROWSER_WS` or `BRIGHTDATA_BROWSER_USER`+`_PASSWORD` | Bright Data Browser API | Stagehand on Browserbase if `BROWSERBASE_API_KEY`, else Bright Data |
+| 2 | `BROWSERBASE_API_KEY` | Stagehand on Browserbase | Stagehand on Browserbase |
+| 3 | no keys | local Playwright Chromium | local Playwright Chromium |
+
+`REHEARSAL_BROWSER=brightdata|stagehand|stagehand-local|playwright` forces a backend (falls
+back to local Playwright when its keys are missing). Evals and e2e never touch a vendor.
+
+**Bright Data Browser API** (`brightdata.ts`) — Playwright `connectOverCDP` to
+`wss://<user>:<pass>@brd.superproxy.io:9222`. Session limits: a session is pinned to one
+domain (`navigate_domains_limit`), closes after 5 min idle, and has a hard max length (the
+product docs say 60 min; Bright Data's agent best-practices guide says one initial navigation
+and 30 min). We design for the stricter reading: **every captured state opens a new session
+with exactly one navigation**, and each trajectory gets one session that navigates once and
+then advances by clicking (same-origin `goto` is only a fallback). Navigation timeout is 120 s,
+as Bright Data recommends for unlocking.
+
+**Stagehand v4** (`stagehand.ts`) — `Stagehand.create({ browser: browserbase.launch(...) })`.
+Each step tries a deterministic XPath locator for the action's label/role first; if the label
+no longer matches it falls back to `act()` (natural language, `selfHeal: true`). `act()` needs
+a model: `STAGEHAND_MODEL`, else our `GEMINI_API_KEY` as `google/$GEMINI_MODEL_FAST`, else the
+Browserbase Model Gateway (Browserbase only; it does not serve local browsers). Stagehand can
+also drive a local Chrome (`stagehand-local`), but it is not the zero-key default — local
+Playwright stays the hermetic fallback. Stagehand cannot attach to a Bright Data CDP session
+(its `localBrowser.connect` needs its extension loaded from a shared filesystem), so the two
+vendors are combined by routing, not by sharing a browser.
+
+**Fetch** (`src/lib/fetch`) — Bright Data Web Unlocker (`POST https://api.brightdata.com/request`
+with `{ zone, url, format: "raw" }`) → Browserbase Fetch (`browserbase.fetch`) → plain `fetch`.
+Every path runs `assertPublicUrl` + per-host politeness first. Bright Data SERP API and Web
+Scraper API / datasets target search engines and prebuilt site scrapers, so they are not wired.
 
 ## Why adapters
 

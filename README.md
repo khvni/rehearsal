@@ -14,8 +14,8 @@ Demo target: https://ai.engineer/code/2026
 |---|---|
 | App | Next.js 16 + React 19 + TypeScript |
 | Graph | @xyflow/react |
-| Browser | Playwright (local or Bright Data Browser API over CDP) |
-| Page fetch | Bright Data Web Unlocker → fetch fallback |
+| Browser | Bright Data Browser API (CDP) → Browserbase Stagehand → local Playwright |
+| Page fetch | Bright Data Web Unlocker → Browserbase Fetch → fetch fallback |
 | Decisions | Jev System One (`typesafe/jev-1.13` via OpenRouter decisions API) |
 | LLM | Gemini — `gemini-4-hydrogen` (fast) + `gemini-4-argon` (deep) |
 | Persistence | JSON files → Tiger Data (`DATABASE_URL`) |
