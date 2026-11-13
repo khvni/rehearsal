@@ -19,6 +19,7 @@
   --fail: #f07a73;
   --critical: #e5484d;
   --low: #9aa3af;
+  --tip-shadow: 0 8px 24px rgb(0 0 0 / 0.4);
 
   /* Type scale: 12 / 14 / 20 / 28 / 40. */
   --fs-12: 12px;
@@ -48,6 +49,28 @@
   --font-sans: -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
   --font-mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
   color-scheme: dark;
+}
+
+@media (prefers-color-scheme: light) {
+  :root {
+    --bg: #ffffff;
+    --panel: #ffffff;
+    --panel-2: #fafafa;
+    --raised: #f5f5f7;
+    --border: #e5e5ea;
+    --border-strong: #d1d1d6;
+    --text: #1d1d1f;
+    --text-2: #3a3a3c;
+    --muted: #6e6e73;
+    --accent: #0a66e8;
+    --ok: #1f9d55;
+    --warn: #b26b00;
+    --fail: #d93025;
+    --critical: #c5221f;
+    --low: #8e8e93;
+    --tip-shadow: 0 8px 24px rgb(29 29 31 / 0.12);
+    color-scheme: light;
+  }
 }
 
 * { box-sizing: border-box; }
@@ -101,11 +124,11 @@ button, .button-link {
   transition-duration: var(--dur-1);
   transition-timing-function: var(--ease);
 }
-button:hover:not(:disabled), .button-link:hover { background: #1e2125; border-color: #3a3f46; }
+button:hover:not(:disabled), .button-link:hover { background: var(--raised); border-color: var(--border-strong); }
 button:active:not(:disabled), .button-link:active { scale: 0.96; }
 button:disabled { opacity: 0.45; cursor: not-allowed; }
-button.primary { background: var(--text); border-color: var(--text); color: #0c0d0f; font-weight: 600; }
-button.primary:hover:not(:disabled) { background: #ffffff; border-color: #ffffff; }
+button.primary { background: var(--text); border-color: var(--text); color: var(--bg); font-weight: 600; }
+button.primary:hover:not(:disabled) { background: var(--text-2); border-color: var(--text-2); }
 button.quiet { background: transparent; border-color: transparent; color: var(--muted); }
 button.quiet:hover:not(:disabled) { background: var(--raised); color: var(--text); }
 
@@ -214,7 +237,7 @@ button.quiet:hover:not(:disabled) { background: var(--raised); color: var(--text
 .chip.pass { color: var(--ok); border-color: color-mix(in oklab, var(--ok) 40%, transparent); }
 .chip.fail { color: var(--fail); border-color: color-mix(in oklab, var(--fail) 45%, transparent); }
 .chip.krug { color: var(--text-2); background: var(--raised); border-color: var(--border-strong); transition: border-color var(--dur-1) ease, color var(--dur-1) ease; }
-.tip:hover .chip.krug, .tip:focus-visible .chip.krug { border-color: #464b53; color: var(--text); }
+.tip:hover .chip.krug, .tip:focus-visible .chip.krug { border-color: var(--border-strong); color: var(--text); }
 .chip.variant-verified, .chip.variant-applied { color: var(--ok); border-color: color-mix(in oklab, var(--ok) 40%, transparent); }
 .chip.variant-rejected { color: var(--fail); border-color: color-mix(in oklab, var(--fail) 45%, transparent); }
 .chip.variant-verified, .chip.variant-applied, .chip.variant-rejected, .chip.variant-proposed { text-transform: capitalize; }
@@ -233,7 +256,7 @@ button.quiet:hover:not(:disabled) { background: var(--raised); color: var(--text
   width: max-content; max-width: 280px; padding: var(--s-2) var(--s-3); border-radius: var(--radius-sm);
   background: var(--raised); color: var(--text); font-size: var(--fs-12); font-weight: 400; line-height: 1.45; white-space: normal;
   border: 1px solid var(--border-strong);
-  box-shadow: 0 8px 24px rgb(0 0 0 / 0.4);
+  box-shadow: var(--tip-shadow);
   visibility: hidden; opacity: 0; translate: 0 -4px; pointer-events: none;
   transition-property: opacity, translate, visibility; transition-duration: var(--dur-1); transition-timing-function: var(--ease-out);
 }

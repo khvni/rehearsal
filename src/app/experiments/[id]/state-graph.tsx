@@ -195,9 +195,9 @@ export function StateGraph({
         onNodeClick={(_, n) => setHovered((h) => (h === n.id ? null : n.id))}
         onPaneClick={() => setHovered(null)}
         proOptions={{ hideAttribution: true }}
-        colorMode="dark"
+        colorMode="system"
       >
-        <Background variant={BackgroundVariant.Dots} color="#24272c" gap={24} size={1} />
+        <Background variant={BackgroundVariant.Dots} color="var(--border)" gap={24} size={1} />
         <Controls showInteractive={false} />
       </ReactFlow>
     </div>
