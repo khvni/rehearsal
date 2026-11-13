@@ -15,6 +15,7 @@ import { selectJev, scoreActions, type JevClient } from "./decisions/jev";
 import { simulateTrajectories, selectTrajectories, type SimWeights } from "./simulation";
 import { selectLlm, type LlmClient } from "./analysis/gemini";
 import { endpointFindings, llmFindings, ruleFindings } from "./analysis/findings";
+import { questionFindings } from "./analysis/question-findings";
 import {
   EXPECTED_CLASSES,
   classifyGoalWithLlm,
@@ -24,6 +25,7 @@ import {
   endpointJourneys,
   intentForGoal,
   endpointGoalAssertions,
+  visitorQuestions,
 } from "./intents";
 import { metricFindings } from "./analysis/metric-findings";
 import { metricsFromHtml } from "./browser/metrics";
@@ -261,10 +263,13 @@ export class Orchestrator {
       const rules = ruleFindings({ states, runs: exp.browserTests, assertions: exp.assertions });
       const llm = await llmFindings({ llm: this.llm, states, runs: exp.browserTests, goal: exp.goal });
       const endpoints = await this.endpointAnalysis(exp);
+      const graph = exp.graph?.states.length ? exp.graph : undefined;
+      if (graph) exp.questions = await visitorQuestions(graph, exp.endpoints ?? [], detectSiteType(graph), this.llm);
       exp.findings = dedupeFindings([
         ...rules,
         ...endpoints,
         ...metricFindings(states, { homepageUrl: exp.targetUrl }),
+        ...questionFindings(exp.questions ?? [], graph),
         ...llm,
       ]);
       await this.update(exp, "created");
