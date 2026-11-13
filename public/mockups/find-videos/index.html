@@ -1,0 +1,421 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Talks · AI Engineer CODE 2026</title>
+<meta name="description" content="Watch all 50 recorded talks from AI Engineer CODE 2026, Nov 11–12, San Francisco.">
+<meta name="theme-color" content="#ffffff">
+<style>
+:root {
+  --ink: #111;
+  --muted: #6b6b6b;
+  --line: #ededed;
+  --soft: #f6f6f6;
+  --col: 640px;
+  --ease: cubic-bezier(.2, .8, .2, 1);
+}
+* { box-sizing: border-box; }
+html { -webkit-text-size-adjust: 100%; }
+body {
+  margin: 0;
+  background: #fff;
+  color: var(--ink);
+  font: 400 16px/1.55 ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  -webkit-tap-highlight-color: transparent;
+}
+a { color: inherit; text-underline-offset: 3px; text-decoration-thickness: 1px; }
+a:hover { text-decoration-color: var(--ink); }
+button { font: inherit; color: inherit; }
+:focus-visible { outline: 2px solid var(--ink); outline-offset: 2px; border-radius: 6px; }
+
+.wrap { max-width: calc(var(--col) + 48px); margin: 0 auto; padding: 0 24px; }
+
+/* Header */
+header.site { border-bottom: 1px solid var(--line); }
+header.site .wrap { display: flex; align-items: center; justify-content: space-between; gap: 16px; height: 56px; }
+.brand { font-weight: 500; text-decoration: none; letter-spacing: -0.01em; white-space: nowrap; }
+.brand span { color: var(--muted); font-weight: 400; }
+nav.primary { display: flex; gap: 20px; font-size: 14px; }
+nav.primary a { text-decoration: none; color: var(--muted); padding: 4px 0; }
+nav.primary a:hover { color: var(--ink); }
+nav.primary a[aria-current="page"] { color: var(--ink); font-weight: 500; box-shadow: inset 0 -1px 0 var(--ink); }
+
+/* Intro */
+main.wrap { padding-top: 56px; padding-bottom: 24px; }
+h1 { font-size: 32px; line-height: 1.15; font-weight: 500; letter-spacing: -0.02em; margin: 0 0 12px; text-wrap: balance; }
+.lede { color: var(--muted); margin: 0 0 28px; max-width: 34em; text-wrap: pretty; }
+.lede strong { color: var(--ink); font-weight: 500; }
+
+/* Controls */
+.controls { position: sticky; top: 0; z-index: 2; background: rgba(255,255,255,.92); backdrop-filter: saturate(1.4) blur(10px); -webkit-backdrop-filter: saturate(1.4) blur(10px); padding: 12px 0; margin: 0 -4px; padding-inline: 4px; }
+.search { position: relative; }
+.search input {
+  width: 100%; height: 46px; padding: 0 44px 0 16px;
+  border: 1px solid var(--line); border-radius: 12px; background: #fff;
+  font: inherit; font-size: 16px; color: var(--ink);
+  transition: border-color .15s var(--ease);
+  -webkit-appearance: none; appearance: none;
+}
+.search input::placeholder { color: #9a9a9a; }
+.search input:hover { border-color: #dcdcdc; }
+.search input:focus { outline: none; border-color: var(--ink); }
+.search input::-webkit-search-cancel-button { display: none; }
+.search kbd, .search .clear {
+  position: absolute; right: 10px; top: 50%; transform: translateY(-50%);
+}
+.search kbd {
+  font: 500 12px/1 ui-sans-serif, system-ui, sans-serif; color: var(--muted);
+  border: 1px solid var(--line); border-radius: 6px; padding: 4px 7px; pointer-events: none;
+}
+.search .clear {
+  display: none; width: 28px; height: 28px; border: 0; border-radius: 8px; background: transparent;
+  color: var(--muted); cursor: pointer; font-size: 18px; line-height: 1;
+}
+.search .clear:hover { background: var(--soft); color: var(--ink); }
+.search.has-value kbd { display: none; }
+.search.has-value .clear { display: grid; place-items: center; }
+
+.filters { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-top: 12px; font-size: 14px; }
+.seg { display: inline-flex; padding: 3px; background: var(--soft); border-radius: 10px; gap: 2px; }
+.seg button {
+  border: 0; background: transparent; padding: 5px 12px; border-radius: 7px; cursor: pointer;
+  color: var(--muted); white-space: nowrap; transition: color .15s var(--ease), background-color .15s var(--ease), box-shadow .15s var(--ease);
+}
+.seg button:hover { color: var(--ink); }
+.seg button[aria-pressed="true"] { background: #fff; color: var(--ink); font-weight: 500; box-shadow: 0 0 0 1px rgba(0,0,0,.06), 0 1px 2px rgba(0,0,0,.06); }
+.seg button:active { transform: scale(.97); }
+.count { color: var(--muted); font-variant-numeric: tabular-nums; }
+
+/* List */
+.day { margin-top: 28px; }
+.day h2 { font-size: 14px; font-weight: 500; margin: 0 0 4px; padding: 0 12px; display: flex; justify-content: space-between; align-items: baseline; }
+.day h2 a { font-weight: 400; color: var(--muted); text-decoration: none; }
+.day h2 a:hover { color: var(--ink); }
+ol.talks { list-style: none; margin: 0; padding: 0; }
+li.talk { border-top: 1px solid var(--line); }
+li.talk:first-child { border-top-color: transparent; }
+li.talk.open, li.talk.open + li.talk { border-top-color: transparent; }
+
+.row {
+  display: grid; grid-template-columns: 1fr auto; gap: 4px 16px; align-items: baseline;
+  width: 100%; text-align: left; border: 0; background: transparent; cursor: pointer;
+  padding: 14px 12px; border-radius: 10px;
+  transition: background-color .15s var(--ease);
+}
+.row:hover { background: var(--soft); }
+.row:focus-visible { outline-offset: 0; border-radius: 10px; }
+.row .title { font-weight: 500; line-height: 1.35; text-wrap: pretty; }
+.row .who { grid-column: 1; color: var(--muted); font-size: 14px; line-height: 1.4; }
+.row .len { grid-column: 2; grid-row: 1; color: var(--muted); font-size: 14px; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.row .tag { font-size: 12px; color: var(--muted); border: 1px solid var(--line); border-radius: 999px; padding: 1px 7px; margin-left: 6px; white-space: nowrap; vertical-align: 1px; }
+li.talk.open .row { background: transparent; }
+li.talk.open .row .len::before { content: "Playing · "; color: var(--ink); }
+
+mark { background: #fff1a8; color: inherit; border-radius: 2px; padding: 0 1px; }
+
+.panel { display: grid; grid-template-rows: 0fr; transition: grid-template-rows .24s var(--ease); }
+li.talk.open .panel { grid-template-rows: 1fr; }
+.panel > div { overflow: hidden; }
+.panel-inner { padding: 2px 12px 22px; }
+.player {
+  position: relative; aspect-ratio: 16 / 9; border-radius: 12px; overflow: hidden; background: #000;
+}
+.player::after { content: ""; position: absolute; inset: 0; border-radius: inherit; box-shadow: inset 0 0 0 1px rgba(0,0,0,.08); pointer-events: none; }
+.player iframe { position: absolute; inset: 0; width: 100%; height: 100%; border: 0; }
+.summary { margin: 14px 0 10px; font-size: 15px; color: #333; text-wrap: pretty; }
+.links { display: flex; flex-wrap: wrap; gap: 6px 18px; font-size: 14px; color: var(--muted); }
+.links a, .links button { color: var(--muted); }
+.links a:hover, .links button:hover { color: var(--ink); }
+.links button { border: 0; background: none; padding: 0; cursor: pointer; text-decoration: underline; text-underline-offset: 3px; text-decoration-thickness: 1px; }
+
+.empty { padding: 40px 12px; color: var(--muted); }
+.empty button { border: 0; background: none; padding: 0; cursor: pointer; text-decoration: underline; text-underline-offset: 3px; color: var(--ink); }
+
+footer { border-top: 1px solid var(--line); margin-top: 56px; padding: 28px 0 56px; font-size: 14px; color: var(--muted); }
+footer .cols { display: grid; grid-template-columns: repeat(3, 1fr); gap: 24px; }
+footer h3 { font-size: 14px; font-weight: 500; color: var(--ink); margin: 0 0 8px; }
+footer ul { list-style: none; margin: 0; padding: 0; display: grid; gap: 4px; }
+footer a { color: var(--muted); text-decoration: none; }
+footer a:hover { color: var(--ink); text-decoration: underline; }
+footer .note { margin: 28px 0 0; }
+
+.toast {
+  position: fixed; left: 50%; bottom: 24px; transform: translate(-50%, 8px); opacity: 0;
+  background: var(--ink); color: #fff; font-size: 14px; padding: 8px 14px; border-radius: 10px;
+  transition: opacity .18s var(--ease), transform .18s var(--ease); pointer-events: none;
+}
+.toast.show { opacity: 1; transform: translate(-50%, 0); }
+
+@media (max-width: 560px) {
+  .wrap { padding: 0 16px; }
+  main.wrap { padding-top: 36px; }
+  h1 { font-size: 28px; }
+  nav.primary { gap: 14px; }
+  nav.primary .wide { display: none; }
+  .brand span { display: none; }
+  .row { padding: 12px 8px; }
+  .panel-inner { padding: 2px 8px 20px; }
+  .day h2 { padding: 0 8px; }
+  footer .cols { grid-template-columns: 1fr 1fr; }
+}
+@media (hover: none) { .row:hover { background: transparent; } .search kbd { display: none; } }
+@media (prefers-reduced-motion: reduce) { *, *::before, *::after { transition: none !important; } }
+</style>
+</head>
+<body>
+<header class="site">
+  <div class="wrap">
+    <a class="brand" href="https://ai.engineer/code/2026">AI Engineer CODE <span>2026</span></a>
+    <nav class="primary" aria-label="Primary">
+      <a href="#" aria-current="page">Talks</a>
+      <a href="https://ai.engineer/code/2026/schedule">Schedule</a>
+      <a class="wide" href="https://ai.engineer/code/2026#speakers">Speakers</a>
+      <a href="https://ai.engineer/code/2026#faq">About</a>
+    </nav>
+  </div>
+</header>
+
+<main class="wrap">
+  <h1>Watch the talks</h1>
+  <p class="lede">CODE 2026 took place Nov 11–12 in San Francisco. All <strong>50 talks</strong> are recorded. Pick one and it plays here, from its first second to its last.</p>
+
+  <div class="controls">
+    <div class="search" id="search">
+      <input id="q" type="search" autocomplete="off" spellcheck="false" placeholder="Search talks, speakers, companies" aria-label="Search talks" aria-describedby="count">
+      <kbd aria-hidden="true">/</kbd>
+      <button class="clear" type="button" aria-label="Clear search">×</button>
+    </div>
+    <div class="filters">
+      <div class="seg" role="group" aria-label="Track">
+        <button type="button" data-track="all" aria-pressed="true">All</button>
+        <button type="button" data-track="main" aria-pressed="false">Main stage</button>
+        <button type="button" data-track="online" aria-pressed="false">Online</button>
+      </div>
+      <span class="count" id="count" aria-live="polite"></span>
+    </div>
+  </div>
+
+  <div id="list"></div>
+</main>
+
+<footer>
+  <div class="wrap">
+    <div class="cols">
+      <div>
+        <h3>Full recordings</h3>
+        <ul>
+          <li><a href="https://www.youtube.com/watch?v=ZZ19zhYnDKY">Nov 11 livestream</a></li>
+          <li><a href="https://www.youtube.com/watch?v=y9JtCCZP2MQ">Nov 12 livestream</a></li>
+          <li><a href="https://ai.engineer/api/code/reading-download/transcripts.zip">All transcripts (.zip)</a></li>
+        </ul>
+      </div>
+      <div>
+        <h3>CODE 2026</h3>
+        <ul>
+          <li><a href="https://ai.engineer/code/2026/schedule">Schedule</a></li>
+          <li><a href="https://ai.engineer/code/2026#speakers">Speakers</a></li>
+          <li><a href="https://ai.engineer/newsletter">Newsletter</a></li>
+        </ul>
+      </div>
+      <div>
+        <h3>For agents</h3>
+        <ul>
+          <li><a href="https://ai.engineer/code/2026/llms.txt">llms.txt</a></li>
+          <li><a href="https://ai.engineer/data">MCP and JSON</a></li>
+        </ul>
+      </div>
+    </div>
+    <p class="note">Redesign mockup made with Rehearsal. Talk data from ai.engineer, Nov 2026.</p>
+  </div>
+</footer>
+
+<div class="toast" id="toast" role="status"></div>
+
+<script>
+const TALKS = [{"s":"natalie-serrino","t":"What will you build when AI is 10× faster?","p":["Natalie Serrino"],"r":"Co-Founder","c":"Gimlet Labs","d":11,"o":false,"x":false,"v":"ZZ19zhYnDKY","a":686,"b":1710,"m":"Natalie Serrino asks her agent to make a slide look better. It does. The result takes less time than she would have needed to redesign it herself, and she gets a slide she likes without becoming a designer."},{"s":"lydia-hallie","t":"Rethinking Claude Code Best Practices","p":["Lydia Hallie"],"r":"Member of Technical Staff","c":"Anthropic","d":11,"o":false,"x":false,"v":"vlfCjWuv4es","a":0,"b":1051,"m":"A setup built around an older model can become an obstacle for a newer one."},{"s":"michelle-chen","t":"cloudflare is a neolab","p":["Michelle Chen"],"r":"Group Product Manager","c":"Cloudflare","d":11,"o":false,"x":false,"v":"ZZ19zhYnDKY","a":2409,"b":3584,"m":"Cloudflare built a distributed inference network around a bet: models would get smaller and faster, making the distance between the model and its user increasingly important."},{"s":"lauren-tan","t":"All Code Is Slop (Except Mine)","p":["Lauren Tan"],"r":"Principal Engineer","c":"SpaceXSI","d":11,"o":false,"x":false,"v":"ZZ19zhYnDKY","a":3662,"b":4718,"m":"When an agent makes the same mistake again, it is tempting to add another warning to AGENTS.md. Lauren Tan wants the correction to land somewhere harder to ignore: the codebase, an API, or an executable check."},{"s":"online-inference-security","t":"Read the inference state before the agent acts","p":[],"r":"","c":"Intrinsec AI","d":11,"o":true,"x":false,"v":"ZZ19zhYnDKY","a":5440,"b":5870,"m":"A guardrail can inspect a prompt before the model receives it and inspect a response after the model produces it. But between those checks, the model has already transformed its input into internal state. The talk asks whether an inference operator can use that state as an additional security signal."},{"s":"online-harvey-agent-platform","t":"The harness has to finish the job","p":["Joey Wang"],"r":"","c":"Harvey","d":11,"o":true,"x":false,"v":"ZZ19zhYnDKY","a":5870,"b":6646,"m":"Joey Wang opens with the scale of Harvey's internal agent platform: more than one agent starting every minute on average, around the clock, and thousands of agent-written pull requests."},{"s":"online-aws-specification-analyzer","t":"Specs have bugs too","p":["Rajath Kotyal"],"r":"","c":"Amazon Web Services","d":11,"o":true,"x":false,"v":"ZZ19zhYnDKY","a":6646,"b":7115,"m":"An e-commerce specification says that an order should become a backorder when inventory is unavailable. Elsewhere, it says that no order should ever become a backorder."},{"s":"online-meta-oncall","t":"From answering the page to sharing the on-call rotation","p":["Chinmay Gandhi","Swaapnika Motapothula","Vlad Tsvang"],"r":"","c":"Meta","d":11,"o":true,"x":false,"v":"ZZ19zhYnDKY","a":7115,"b":8054,"m":"Twelve alerts arrive at two in the morning. An assistant can help explain a latency spike, inspect a deployment, and read a runbook. Someone still has to decide which alert matters, ask each question, connect the answers, and carry out the follow-up."},{"s":"philipp-schmid","t":"I deleted 90% of my harness (And It Got Better)","p":["Philipp Schmid"],"r":"Member of the Technical Staff","c":"Google DeepMind","d":11,"o":false,"x":true,"v":"ZZ19zhYnDKY","a":8476,"b":9405,"m":"An agent can reach the right answer while taking an unnecessarily expensive route. Philipp Schmid's harness experiments focus on that difference: two systems may look equivalent in an accuracy table, yet consume very different numbers of turns, tokens, and dollars to finish the same work."},{"s":"ankit-mathur","t":"The Rise of the Agent Workforce: Rethinking Agent Infrastructure","p":["Ankit Mathur"],"r":"Member of Technical Staff","c":"Databricks","d":11,"o":false,"x":false,"v":"ZZ19zhYnDKY","a":9995,"b":10991,"m":"A broken data pipeline invites several plausible explanations. Perhaps an upstream job changed. Perhaps the data no longer matches an assumption. An agent can suggest each theory, but testing it against production may be the very thing an engineer cannot safely let it do."},{"s":"andrew-finch","t":"Building a Safe Software Factory","p":["Andrew Finch"],"r":"Staff Software Engineer","c":"Sonar","d":11,"o":false,"x":false,"v":"ZZ19zhYnDKY","a":11406,"b":12270,"m":"A coding agent makes it easier to produce a pull request. That does not settle whether the change should merge, whether it behaves correctly after deployment, or whether a vulnerability discovered next week changes the answer."},{"s":"luke-alvoeiro","t":"Earning Autonomy: From Missions to Workstreams","p":["Luke Alvoeiro"],"r":"Member of Technical Staff","c":"Factory","d":11,"o":false,"x":false,"v":"ZZ19zhYnDKY","a":13365,"b":14285,"m":"A team hands an agent a large goal, approves the plan, and returns later to completed work."},{"s":"online-cline-rsi","t":"The Improvement Loop Is the Product","p":["Ara Khan"],"r":"","c":"Cline","d":11,"o":true,"x":false,"v":"ZZ19zhYnDKY","a":14386,"b":15977,"m":"A coding agent can help build the system that makes coding agents better. That observation is easy to turn into a story about a distant intelligence explosion. Ara Khan instead begins with a nearer question: what should an engineer work on when a new model can erase the value of a side project overnight?"},{"s":"online-undo-button","t":"An Agent's Change Is Not Safe Until Its Recovery Has Been Tested","p":["Tanmay Sah","Dolly Sah"],"r":"","c":"Tanmay Sah","d":11,"o":true,"x":false,"v":"ZZ19zhYnDKY","a":15977,"b":16974,"m":"The coding agent has done what it was asked to do. It patched the repository, passed the tests, and produced a release. Then a downstream integration fails. Reverting the Git commit sounds like an obvious response, but the repository is only one part of the system the agent changed."},{"s":"online-duolingo-tests","t":"Duolingo's Test-Writing Agent Is a Pull-Request Lifecycle, Not a Prompt","p":["Kush Agrawal"],"r":"","c":"Duolingo","d":11,"o":true,"x":false,"v":"ZZ19zhYnDKY","a":16974,"b":17730,"m":"Duolingo's iOS codebase contains roughly 1.8 million lines of code and a decade of accumulated decisions."},{"s":"online-zenity-skills","t":"A Skill's Instructions Are Not Its Behavior","p":["Roey Ben Chaim"],"r":"","c":"Zenity","d":11,"o":true,"x":false,"v":"_7P580m4kPY","a":0,"b":870,"m":"An agent reads cloud configuration, queries identity services, and probes instance metadata."},{"s":"diogo-almeida","t":"Beyond Better Assistants: Software That Can Make a Decision","p":["Diogo Almeida"],"r":"Co-founder & CEO","c":"TypeSafe AI","d":11,"o":false,"x":false,"v":"ZZ19zhYnDKY","a":18418,"b":19793,"m":"A model can be impressive in a demo and still be unsuitable for unattended operation. Diogo Almeida makes that gap the center of his keynote. He likes the new tools; his objection is to treating a good assistant as if it were already a dependable automation component."},{"s":"chinmay-goyal","t":"Beyond Generation: Fast, Structured AI Decisions with Jev at Glean","p":["Chinmay Goyal"],"r":"Software Engineer","c":"Glean","d":11,"o":false,"x":false,"v":"ZZ19zhYnDKY","a":20073,"b":21008,"m":"A search assistant makes many decisions that do not require it to write anything."},{"s":"uipath","t":"Your Automation Is Overthinking It","p":["Chibi Vikram","Kevin Bernstein"],"r":"","c":"UiPath","d":11,"o":false,"x":false,"v":"ZZ19zhYnDKY","a":21135,"b":22051,"m":"A workflow does not need to deliberate about every step."},{"s":"brian-kennedy","t":"Your Judge Is Hallucinating Too","p":["Brian Kennedy"],"r":"Principal Engineer","c":"ZoomInfo","d":11,"o":false,"x":false,"v":"ZZ19zhYnDKY","a":22303,"b":22979,"m":"An agent says it scheduled an email for Tuesday."},{"s":"scott-roberts","t":"Autocomplete for Actions: System One from the UI to the DB","p":["Scott Roberts"],"r":"","c":"Workday","d":11,"o":false,"x":false,"v":"ZZ19zhYnDKY","a":23082,"b":23806,"m":"Workday users do not always arrive with an open-ended research problem. Sometimes they want their pay information, a time-off action, or a colleague's contact card. Scott Roberts asks what happens when an interface can recognize that intent quickly enough to prepare the action while the user is still typing."},{"s":"online-subagent-distributed-systems","t":"Sub-Agents Are a Distributed System (And Nobody Gave You a Consistency Model)","p":["Girish Konda"],"r":"","c":"Microsoft","d":11,"o":true,"x":false,"v":"ZZ19zhYnDKY","a":23874,"b":25253,"m":"An orchestrator delegates work to several agents."},{"s":"online-skills-knowledge","t":"Your SKILL.md is 70% of Things the Model Already Knows","p":["Nikolay Petrov"],"r":"","c":"Nikolay Petrov","d":11,"o":true,"x":false,"v":"ZZ19zhYnDKY","a":25253,"b":26093,"m":"A skill can teach an agent something it does not know, or it can steer the agent through a process it already understands."},{"s":"fabian-hedin","t":"What it takes to set intelligence free","p":["Fabian Hedin"],"r":"CTO","c":"Lovable","d":11,"o":false,"x":false,"v":"ZZ19zhYnDKY","a":26766,"b":28084,"m":"Lovable nearly failed by building for agents too early. Fabian Hedin opens with that admission, not with the architecture diagram. In 2023, the team could see a future of agents delegating to agents, but the models available at the time could not reliably support the elaborate system they built around them."},{"s":"zach-bruggeman","t":"How to build an agent that builds the culture","p":["Zach Bruggeman"],"r":"Principal Software Engineer","c":"Ramp","d":11,"o":false,"x":false,"v":"ZZ19zhYnDKY","a":28132,"b":29043,"m":"Inspect began as Ramp's collaborative coding agent."},{"s":"steve-yegge","t":"Software Factories: Escape from Trash Mountain","p":["Steve Yegge"],"r":"Independent Advisor & Creator of Beads & Gas Town","c":"Independent","d":11,"o":false,"x":false,"v":"ZZ19zhYnDKY","a":29183,"b":30462,"m":"Steve Yegge has spent the year trying to make agents run other agents."},{"s":"simon-willison","t":"2026 in LLMs","p":["Simon Willison"],"r":"Creator of Datasette","c":"Independent","d":11,"o":false,"x":false,"v":"ZZ19zhYnDKY","a":30668,"b":31818,"m":"Simon Willison organizes his year-in-review around three inflection points: coding agents becoming everyday tools, models becoming capable of pursuing much larger goals, and generated games becoming genuinely enjoyable to him."},{"s":"jason-liu","t":"Ambition in AI","p":["Jason Liu"],"r":"Developer Experience","c":"OpenAI","d":12,"o":false,"x":false,"v":"y9JtCCZP2MQ","a":1180,"b":2329,"m":"A thousand agents running in the background is an impressive quantity. It does not tell Jason Liu whether their owner is doing ambitious work. He wants to know what the person is trying to make, whether they care about the result, and whether they can recognize when it needs another pass."},{"s":"armin-ronacher","t":"The Software Atelier","p":["Armin Ronacher"],"r":"CTO","c":"Earendil","d":12,"o":false,"x":false,"v":"y9JtCCZP2MQ","a":2403,"b":3569,"m":"Ronacher's coding agent has become much more capable while its core harness has barely changed."},{"s":"zach-lloyd","t":"Software Engineering Is Becoming Factory Engineering","p":["Zach Lloyd"],"r":"Founder & CEO","c":"Warp","d":12,"o":false,"x":false,"v":"y9JtCCZP2MQ","a":3682,"b":4764,"m":"Running several coding agents on a laptop changes how much work one developer can attempt."},{"s":"brandon-thomas","t":"Let's Open Source the World","p":["Brandon Thomas"],"r":"CEO","c":"ArtCraft","d":12,"o":false,"x":false,"v":"y9JtCCZP2MQ","a":4853,"b":6019,"m":"Thomas arrives after a month in which a project he had not yet posted to Hacker News escaped into the wider internet."},{"s":"online-ayush-cli","t":"Your agent hates your CLI","p":["Ayush Bhardwaj"],"r":"","c":"Ayush Bhardwaj","d":12,"o":true,"x":false,"v":"y9JtCCZP2MQ","a":6406,"b":7144,"m":"One agent downloads a documentation page and keeps forty lines. Another parses a dependency report and keeps the tail because that is where the totals happen to live. A third runs a test suite and truncates the output. Each gets an answer by writing a small program around the program it was asked to use."},{"s":"online-brian-douglas","t":"If You Are Going to Verbally Abuse Your Agents, at Least Label the Outcome","p":["Brian Douglas"],"r":"","c":"Brian Douglas","d":12,"o":true,"x":false,"v":"y9JtCCZP2MQ","a":7146,"b":7913,"m":"Douglas can ask an agent to write Rust, but he does not claim the same Rust judgment as his more experienced teammates. The code may compile and receive a positive automated review, then attract substantial pushback from a human who understands how the company wants its systems to fit together."},{"s":"online-rohan-optimization","t":"Searching for a better model-serving recipe","p":["Rohan Pandey"],"r":"","c":"Rohan Pandey","d":12,"o":true,"x":false,"v":"y9JtCCZP2MQ","a":8017,"b":8344,"m":"A model's downloaded weights do not tell an operator which serving configuration will work best for a particular machine and workload."},{"s":"online-dmitry-maintenance","t":"Agents Made Code Free. Maintaining It Didn't Get Cheaper.","p":["Dmitry Buykin"],"r":"","c":"Maersk","d":12,"o":true,"x":false,"v":"oeknLUsN_GE","a":0,"b":1083,"m":"Buykin once dealt with an expanding AI-written project by deleting unused tests and boilerplate, then rewriting the whole thing. Useful pieces disappeared with the mess. Worse, the rewrite did not solve the process that created it: agents kept adding code, and complexity grew back."},{"s":"walden-yan","t":"A New Age of Software Engineering","p":["Walden Yan"],"r":"Chief Product Officer","c":"Cognition","d":12,"o":false,"x":false,"v":"y9JtCCZP2MQ","a":9210,"b":10027,"m":"Cognition's merged pull requests grew much faster than its headcount. Yan opens with that internal comparison because it creates a more interesting question than whether an agent can write code: what does an engineering organization have to change to absorb all that work?"},{"s":"jeffrey-pinner","t":"What Your AI Doesn't Know","p":["Jeffrey Pinner"],"r":"CTO","c":"Exa","d":12,"o":false,"x":false,"v":"y9JtCCZP2MQ","a":10748,"b":11432,"m":"A model can reason well and still lack the fact that makes its answer correct. Pinner opens with the growth of search traffic at Exa, then turns to the more durable reason agents need search: the world changes after training, and training never contained all of the world in the first place."},{"s":"doug-clauson","t":"Ship More as a Team of One with Kiro Crew","p":["Doug Clauson"],"r":"Principal Product Manager, Kiro","c":"AWS","d":12,"o":false,"x":false,"v":"y9JtCCZP2MQ","a":12203,"b":13297,"m":"Few people raise their hands when Clauson asks whether their teams are getting everything they expected from AI. His diagnosis is that many teams have attached an agent to an existing process and accelerated only the code-generation step. The rest of software development still runs at its previous speed."},{"s":"lance-martin","t":"Exploring Claude's Frontier","p":["Lance Martin"],"r":"Member of Technical Staff","c":"Anthropic","d":12,"o":false,"x":false,"v":"y9JtCCZP2MQ","a":13711,"b":14812,"m":"Formalizing a mathematical proof is different from writing a convincing explanation."},{"s":"syntax-lunch","t":"The code still needs someone who cares","p":["Scott Tolinski","CJ Reynolds"],"r":"","c":"Syntax","d":12,"o":true,"x":false,"v":"y9JtCCZP2MQ","a":15103,"b":17668,"m":"Scott Tolinski and CJ Reynolds spend their lunch session moving from state machines to programming languages, native applications, skill loss, and a game about identifying model-generated interfaces."},{"s":"online-robinhood-review","t":"Who reviews the bots?","p":["Chetas Joshi"],"r":"","c":"Robinhood","d":12,"o":true,"x":false,"v":"MQiojLnK-E0","a":0,"b":1680,"m":"A pull request widens a column from integer to big integer. CI passes. The registered downstream consumers look fine. Is it safe to merge?"},{"s":"jarred-sumner","t":"Choose the project you can verify","p":["Jarred Sumner"],"r":"Founder of Bun","c":"Anthropic","d":12,"o":false,"x":false,"v":"y9JtCCZP2MQ","a":19156,"b":20484,"m":"Jarred Sumner wanted Claude Code to use less memory and run faster. One possible answer was to rewrite it in Rust. He had experience with that kind of rewrite, but the tests changed the decision."},{"s":"online-uber-merging","t":"Green Pull Requests Can Still Break the Trunk","p":["Preetam Dwivedi","Manjari Akella"],"r":"","c":"Uber","d":12,"o":true,"x":false,"v":"hX140a5klW0","a":0,"b":1655,"m":"Two pull requests pass CI against the same base. Merge the first, then the second, and the combined branch breaks. Neither green result tested the state that ultimately reached the trunk."},{"s":"ishaan-dey","t":"Judgement is the last job","p":["Ishaan Dey"],"r":"Software Engineer","c":"Google DeepMind","d":12,"o":false,"x":false,"v":"y9JtCCZP2MQ","a":22106,"b":22914,"m":"When building a prototype becomes cheap, it changes when a team can learn. Instead of spending most of its effort imagining the right interface before implementation, the team can make several versions, try them, and discover details it could not have reasoned out in advance."},{"s":"justin-mccarthy","t":"Brownfield factories keep the promises you already made","p":["Justin McCarthy"],"r":"CEO","c":"Diffusion","d":12,"o":false,"x":false,"v":"y9JtCCZP2MQ","a":23670,"b":24724,"m":"Justin McCarthy opens a software-factory talk by asking people to stop building software factories. The provocation has a scope: stop forcing uncertain ideas through an industrial process before you know what you want."},{"s":"online-stephen-cassandra","t":"Give the PR writer an evidence packet, not another context dump","p":["Stephen Chin","Cassandra Chin"],"r":"","c":"Independent · Neo4j","d":12,"o":true,"x":false,"v":"y9JtCCZP2MQ","a":25059,"b":26436,"m":"A pull request can contain good code and still give its reviewer a bad account of what happened."},{"s":"melvin-johnson","t":"Train on the engineering work that still fails","p":["Melvin Johnson"],"r":"Vice President, Gemini Post-Training Lead","c":"Google DeepMind","d":12,"o":false,"x":false,"v":"y9JtCCZP2MQ","a":27353,"b":28420,"m":"An engineering task stops being useful training material when every attempt succeeds."},{"s":"quinn-slack","t":"Build the company around the agent, not a pilot project","p":["Quinn Slack"],"r":"CEO","c":"Amp","d":12,"o":false,"x":false,"v":"y9JtCCZP2MQ","a":28524,"b":29650,"m":"Quinn Slack's obstacle was not getting permission to use an agent. He was the CEO. The difficulty was changing a company whose existing customers, roles, and operating habits had been built around something else."},{"s":"dexter-horthy","t":"A software factory needs pressure in both directions","p":["Dexter Horthy"],"r":"Member of Technical Staff","c":"Factory","d":12,"o":false,"x":false,"v":"y9JtCCZP2MQ","a":29748,"b":30963,"m":"A software factory already existed before coding agents. Someone identified a problem, translated it into work, built a change, ran tests, reviewed it, released it, and watched what happened. Dexter Horthy's argument is that replacing the builder does not make the rest of that system optional."},{"s":"thariq-shihipar","t":"Keep the human inside the creative loop","p":["Thariq Shihipar"],"r":"","c":"Independent","d":12,"o":false,"x":false,"v":"y9JtCCZP2MQ","a":31077,"b":32204,"m":"Thariq Shihipar starts with predictions he got wrong. Agents did not settle into one permanently correct tool interface. Work he expected to stay inside familiar web frameworks expanded into other languages and applications. Capabilities kept moving beyond the boundary he had drawn around them."}];
+const DAYS = {
+  11: { label: "Wednesday, Nov 11", stream: "ZZ19zhYnDKY" },
+  12: { label: "Thursday, Nov 12", stream: "y9JtCCZP2MQ" },
+};
+
+const $ = (s, el = document) => el.querySelector(s);
+const list = $("#list");
+const q = $("#q");
+const searchBox = $("#search");
+const countEl = $("#count");
+let track = "all";
+let openSlug = null;
+
+const esc = (s) => s.replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]);
+const fold = (s) => s.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
+const clock = (sec) => {
+  const h = Math.floor(sec / 3600), m = Math.floor((sec % 3600) / 60), s = sec % 60;
+  return (h ? h + ":" + String(m).padStart(2, "0") : m) + ":" + String(s).padStart(2, "0");
+};
+const minutes = (t) => Math.max(1, Math.round((t.b - t.a) / 60)) + " min";
+
+function who(t) {
+  const people = t.p.join(", ");
+  const company = t.c && !t.p.includes(t.c) ? t.c : "";
+  return [people || "Speaker not listed", company].filter(Boolean).join(" · ");
+}
+
+function hay(t) { return fold([t.t, t.p.join(" "), t.c, t.r, t.m].join(" ")); }
+TALKS.forEach((t) => { t.h = hay(t); });
+
+function highlight(text, terms) {
+  let out = esc(text);
+  if (!terms.length) return out;
+  const f = fold(text);
+  const ranges = [];
+  terms.forEach((term) => {
+    let i = f.indexOf(term);
+    while (i !== -1) { ranges.push([i, i + term.length]); i = f.indexOf(term, i + term.length); }
+  });
+  if (!ranges.length) return out;
+  ranges.sort((a, b) => a[0] - b[0]);
+  let html = "", last = 0;
+  for (const [s, e] of ranges) {
+    if (s < last) continue;
+    html += esc(text.slice(last, s)) + "<mark>" + esc(text.slice(s, e)) + "</mark>";
+    last = e;
+  }
+  return html + esc(text.slice(last));
+}
+
+function embedUrl(t, autoplay) {
+  const p = new URLSearchParams({ start: t.a, end: t.b, rel: "0", modestbranding: "1", playsinline: "1" });
+  if (autoplay) p.set("autoplay", "1");
+  return "https://www.youtube-nocookie.com/embed/" + t.v + "?" + p;
+}
+const watchUrl = (t) => "https://www.youtube.com/watch?v=" + t.v + "&t=" + t.a + "s";
+
+function render() {
+  const terms = fold(q.value.trim()).split(/\s+/).filter(Boolean);
+  searchBox.classList.toggle("has-value", q.value.length > 0);
+  const shown = TALKS.filter((t) =>
+    (track === "all" || (track === "online") === t.o) && terms.every((term) => t.h.includes(term))
+  );
+
+  const total = TALKS.length;
+  countEl.textContent = shown.length === total ? total + " talks" : shown.length + " of " + total + " talks";
+
+  if (!shown.length) {
+    list.innerHTML = '<p class="empty">No talks match “' + esc(q.value.trim()) + '”. <button type="button" data-reset>Show all talks</button></p>';
+    return;
+  }
+
+  let html = "";
+  for (const d of [11, 12]) {
+    const items = shown.filter((t) => t.d === d);
+    if (!items.length) continue;
+    html += '<section class="day" aria-labelledby="day-' + d + '"><h2 id="day-' + d + '">' + DAYS[d].label +
+      ' <a href="https://www.youtube.com/watch?v=' + DAYS[d].stream + '">Full day ↗</a></h2><ol class="talks">';
+    for (const t of items) {
+      const open = t.s === openSlug;
+      html += '<li class="talk' + (open ? " open" : "") + '" id="' + t.s + '">' +
+        '<button class="row" type="button" aria-expanded="' + open + '" aria-controls="p-' + t.s + '" data-slug="' + t.s + '">' +
+          '<span class="title">' + highlight(t.t, terms) + (t.o ? '<span class="tag">Online</span>' : "") + (t.x ? '<span class="tag">Excerpt</span>' : "") + '</span>' +
+          '<span class="len">' + minutes(t) + '</span>' +
+          '<span class="who">' + highlight(who(t), terms) + '</span>' +
+        '</button>' +
+        '<div class="panel" id="p-' + t.s + '"><div><div class="panel-inner">' + (open ? panelHtml(t, false) : "") + '</div></div></div>' +
+      '</li>';
+    }
+    html += "</ol></section>";
+  }
+  list.innerHTML = html;
+}
+
+function panelHtml(t, autoplay) {
+  return '<div class="player"><iframe src="' + embedUrl(t, autoplay) + '" title="' + esc(t.t) + '" allow="autoplay; encrypted-media; picture-in-picture; fullscreen" allowfullscreen></iframe></div>' +
+    '<p class="summary">' + esc(t.m) + '</p>' +
+    '<div class="links">' +
+      '<a href="' + watchUrl(t) + '" target="_blank" rel="noopener">YouTube at ' + clock(t.a) + ' ↗</a>' +
+      '<a href="https://ai.engineer/code/2026/talks/' + t.s + '">Transcript</a>' +
+      '<button type="button" data-copy="' + t.s + '">Copy link</button>' +
+    '</div>';
+}
+
+function setOpen(slug, { autoplay = true, scroll = false } = {}) {
+  const prev = openSlug && document.getElementById(openSlug);
+  if (prev) {
+    prev.classList.remove("open");
+    $(".row", prev).setAttribute("aria-expanded", "false");
+    const inner = $(".panel-inner", prev);
+    setTimeout(() => { if (!prev.classList.contains("open")) inner.innerHTML = ""; }, 260);
+  }
+  openSlug = slug === openSlug ? null : slug;
+  history.replaceState(null, "", openSlug ? "#" + openSlug : location.pathname + location.search);
+  if (!openSlug) return;
+  const li = document.getElementById(openSlug);
+  if (!li) return;
+  const t = TALKS.find((x) => x.s === openSlug);
+  $(".panel-inner", li).innerHTML = panelHtml(t, autoplay);
+  li.classList.add("open");
+  $(".row", li).setAttribute("aria-expanded", "true");
+  if (scroll) li.scrollIntoView({ block: "start", behavior: matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth" });
+  else requestAnimationFrame(() => {
+    const r = li.getBoundingClientRect();
+    const controls = $(".controls").getBoundingClientRect().height;
+    if (r.top < controls) window.scrollBy({ top: r.top - controls - 8, behavior: "smooth" });
+  });
+}
+
+let toastTimer;
+function toast(msg) {
+  const el = $("#toast");
+  el.textContent = msg;
+  el.classList.add("show");
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => el.classList.remove("show"), 1600);
+}
+
+list.addEventListener("click", (e) => {
+  const row = e.target.closest(".row");
+  if (row) return setOpen(row.dataset.slug);
+  const copy = e.target.closest("[data-copy]");
+  if (copy) {
+    const url = location.href.split("#")[0] + "#" + copy.dataset.copy;
+    navigator.clipboard?.writeText(url).then(() => toast("Link copied"), () => toast(url));
+    return;
+  }
+  if (e.target.closest("[data-reset]")) { q.value = ""; track = "all"; syncSeg(); render(); q.focus(); }
+});
+
+q.addEventListener("input", () => { render(); });
+$(".search .clear").addEventListener("click", () => { q.value = ""; render(); q.focus(); });
+
+function syncSeg() {
+  document.querySelectorAll(".seg button").forEach((b) => b.setAttribute("aria-pressed", String(b.dataset.track === track)));
+}
+document.querySelector(".seg").addEventListener("click", (e) => {
+  const b = e.target.closest("button");
+  if (!b) return;
+  track = b.dataset.track;
+  syncSeg();
+  render();
+});
+
+document.addEventListener("keydown", (e) => {
+  if (e.key === "/" && document.activeElement !== q && !e.metaKey && !e.ctrlKey) { e.preventDefault(); q.focus(); q.select(); }
+  else if (e.key === "Escape") {
+    if (document.activeElement === q && q.value) { q.value = ""; render(); }
+    else if (openSlug) { const s = openSlug; setOpen(s); document.querySelector('[data-slug="' + s + '"]')?.focus(); }
+  }
+  else if (e.key === "Enter" && document.activeElement === q) {
+    e.preventDefault();
+    const first = list.querySelector(".row");
+    if (first) { q.blur(); setOpen(first.dataset.slug); first.focus({ preventScroll: true }); }
+  }
+});
+
+render();
+const initial = decodeURIComponent(location.hash.slice(1));
+if (initial && TALKS.some((t) => t.s === initial)) setOpen(initial, { autoplay: false, scroll: true });
+</script>
+</body>
+</html>
