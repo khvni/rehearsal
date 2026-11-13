@@ -327,7 +327,6 @@ export default function ExperimentPage() {
                 <tbody>
                   <tr><td>Goal completed</td><td>{c.deltas.goalCompleted.baseline ? "yes" : "no"}</td><td>{c.deltas.goalCompleted.variant ? "yes" : "no"}</td></tr>
                   <tr><td>Interactions</td><td>{c.deltas.interactionCount.baseline}</td><td>{c.deltas.interactionCount.variant}</td></tr>
-                  <tr><td>Backtracks</td><td>{c.deltas.backtracks.baseline}</td><td>{c.deltas.backtracks.variant}</td></tr>
                   <tr><td>Failed interactions</td><td>{c.deltas.failedInteractions.baseline}</td><td>{c.deltas.failedInteractions.variant}</td></tr>
                   <tr><td>Runtime errors</td><td>{c.deltas.runtimeErrors.baseline}</td><td>{c.deltas.runtimeErrors.variant}</td></tr>
                   <tr><td>Finding reproduces</td><td colSpan={2}>{c.deltas.findingReproduces ? "yes" : "no"}</td></tr>
