@@ -1,0 +1,4 @@
+.hyperframes/
+renders/
+out/*
+!out/rehearsal-demo.mp4
