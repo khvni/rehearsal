@@ -1,0 +1,34 @@
+// Tours a completed experiment page: graph zoom + scroll through panels.
+import { chromium } from "playwright";
+import { cursorScript } from "./cursor.mjs";
+const out = process.argv[2] ?? "/tmp/footage-results";
+const exp = process.argv[3] ?? "exp_ac0e4ba0";
+const base = process.env.BASE_URL ?? "http://localhost:3000";
+const browser = await chromium.launch();
+const ctx = await browser.newContext({ viewport: { width: 1280, height: 800 }, deviceScaleFactor: 1.5, recordVideo: { dir: out, size: { width: 1920, height: 1200 } }, colorScheme: "light" });
+await ctx.addInitScript(cursorScript);
+await ctx.addInitScript(() => { const s = document.createElement("style"); s.textContent = "nextjs-portal{display:none!important}"; document.addEventListener("DOMContentLoaded", () => document.head.appendChild(s)); });
+const page = await ctx.newPage();
+const t0 = Date.now();
+const mark = (l) => console.log(`${((Date.now() - t0) / 1000).toFixed(1)}s ${l}`);
+await page.goto(`${base}/experiments/${exp}`, { waitUntil: "networkidle" });
+await page.locator(".react-flow__node").first().waitFor({ timeout: 20000 });
+mark("graph");
+await page.waitForTimeout(4000);
+// slow pan across the graph
+await page.mouse.move(700, 420, { steps: 20 });
+await page.mouse.wheel(0, -300);
+await page.waitForTimeout(2200);
+await page.mouse.wheel(0, -300);
+await page.waitForTimeout(2200);
+mark("runs");
+await page.waitForTimeout(2500);
+await page.mouse.wheel(0, -400);
+mark("findings");
+await page.waitForTimeout(3200);
+await page.mouse.wheel(0, -500);
+mark("spec");
+await page.waitForTimeout(3500);
+console.log("url", page.url());
+await ctx.close();
+await browser.close();

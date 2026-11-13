@@ -1,0 +1,306 @@
+{
+  "capturedFrom": "https://ai.engineer/code/2026",
+  "pages": [
+    {
+      "url": "https://ai.engineer/code/2026",
+      "file": "pages/code/2026/index.html",
+      "title": "AI Engineer Code Summit 2026: AI Engineering Conference, Nov 10-12, San Francisco"
+    },
+    {
+      "url": "https://ai.engineer/code/2026/guide/sponsorship",
+      "file": "pages/code/2026/guide/sponsorship/index.html",
+      "title": "Sponsorship Prospectus - AI Engineer Code Summit 2026"
+    },
+    {
+      "url": "https://ai.engineer/code/2026/talks",
+      "file": "pages/code/2026/talks/index.html",
+      "title": "Talks & reading editions | AI Engineer CODE 2026"
+    },
+    {
+      "url": "https://ai.engineer/code/2026?view=companies",
+      "file": "pages/code/2026/view=companies/index.html",
+      "title": "AI Engineer Code Summit 2026: AI Engineering Conference, Nov 10-12, San Francisco"
+    },
+    {
+      "url": "https://ai.engineer/code/2026?day=11",
+      "file": "pages/code/2026/day=11/index.html",
+      "title": "AI Engineer Code Summit 2026: AI Engineering Conference, Nov 10-12, San Francisco"
+    },
+    {
+      "url": "https://ai.engineer/code/2026?day=12",
+      "file": "pages/code/2026/day=12/index.html",
+      "title": "AI Engineer Code Summit 2026: AI Engineering Conference, Nov 10-12, San Francisco"
+    },
+    {
+      "url": "https://ai.engineer/code/2026/talks/natalie-serrino",
+      "file": "pages/code/2026/talks/natalie-serrino/index.html",
+      "title": "What will you build when AI is 10× faster? | AI Engineer CODE 2026"
+    },
+    {
+      "url": "https://ai.engineer/code/2026/talks/lydia-hallie",
+      "file": "pages/code/2026/talks/lydia-hallie/index.html",
+      "title": "Rethinking Claude Code Best Practices | AI Engineer CODE 2026"
+    },
+    {
+      "url": "https://ai.engineer/code/2026/talks/michelle-chen",
+      "file": "pages/code/2026/talks/michelle-chen/index.html",
+      "title": "cloudflare is a neolab | AI Engineer CODE 2026"
+    },
+    {
+      "url": "https://ai.engineer/code/2026/talks/lauren-tan",
+      "file": "pages/code/2026/talks/lauren-tan/index.html",
+      "title": "All Code Is Slop (Except Mine) | AI Engineer CODE 2026"
+    },
+    {
+      "url": "https://ai.engineer/code/2026/talks/online-inference-security",
+      "file": "pages/code/2026/talks/online-inference-security/index.html",
+      "title": "Read the inference state before the agent acts | AI Engineer CODE 2026"
+    },
+    {
+      "url": "https://ai.engineer/code/2026/talks/online-harvey-agent-platform",
+      "file": "pages/code/2026/talks/online-harvey-agent-platform/index.html",
+      "title": "The harness has to finish the job | AI Engineer CODE 2026"
+    },
+    {
+      "url": "https://ai.engineer/code/2026/talks/online-aws-specification-analyzer",
+      "file": "pages/code/2026/talks/online-aws-specification-analyzer/index.html",
+      "title": "Specs have bugs too | AI Engineer CODE 2026"
+    },
+    {
+      "url": "https://ai.engineer/code/2026/talks/online-meta-oncall",
+      "file": "pages/code/2026/talks/online-meta-oncall/index.html",
+      "title": "From answering the page to sharing the on-call rotation | AI Engineer CODE 2026"
+    },
+    {
+      "url": "https://ai.engineer/code/2026/talks/philipp-schmid",
+      "file": "pages/code/2026/talks/philipp-schmid/index.html",
+      "title": "I deleted 90% of my harness (And It Got Better) | AI Engineer CODE 2026"
+    },
+    {
+      "url": "https://ai.engineer/code/2026/talks/ankit-mathur",
+      "file": "pages/code/2026/talks/ankit-mathur/index.html",
+      "title": "The Rise of the Agent Workforce: Rethinking Agent Infrastructure | AI Engineer CODE 2026"
+    },
+    {
+      "url": "https://ai.engineer/code/2026/talks/andrew-finch",
+      "file": "pages/code/2026/talks/andrew-finch/index.html",
+      "title": "Building a Safe Software Factory | AI Engineer CODE 2026"
+    },
+    {
+      "url": "https://ai.engineer/code/2026/talks/luke-alvoeiro",
+      "file": "pages/code/2026/talks/luke-alvoeiro/index.html",
+      "title": "Earning Autonomy: From Missions to Workstreams | AI Engineer CODE 2026"
+    },
+    {
+      "url": "https://ai.engineer/code/2026/talks/online-cline-rsi",
+      "file": "pages/code/2026/talks/online-cline-rsi/index.html",
+      "title": "The Improvement Loop Is the Product | AI Engineer CODE 2026"
+    },
+    {
+      "url": "https://ai.engineer/code/2026/talks/online-undo-button",
+      "file": "pages/code/2026/talks/online-undo-button/index.html",
+      "title": "An Agent's Change Is Not Safe Until Its Recovery Has Been Tested | AI Engineer CODE 2026"
+    },
+    {
+      "url": "https://ai.engineer/code/2026/talks/online-duolingo-tests",
+      "file": "pages/code/2026/talks/online-duolingo-tests/index.html",
+      "title": "Duolingo's Test-Writing Agent Is a Pull-Request Lifecycle, Not a Prompt | AI Engineer CODE 2026"
+    },
+    {
+      "url": "https://ai.engineer/code/2026/talks/online-zenity-skills",
+      "file": "pages/code/2026/talks/online-zenity-skills/index.html",
+      "title": "A Skill's Instructions Are Not Its Behavior | AI Engineer CODE 2026"
+    },
+    {
+      "url": "https://ai.engineer/code/2026/talks/diogo-almeida",
+      "file": "pages/code/2026/talks/diogo-almeida/index.html",
+      "title": "Beyond Better Assistants: Software That Can Make a Decision | AI Engineer CODE 2026"
+    },
+    {
+      "url": "https://ai.engineer/code/2026/talks/chinmay-goyal",
+      "file": "pages/code/2026/talks/chinmay-goyal/index.html",
+      "title": "Beyond Generation: Fast, Structured AI Decisions with Jev at Glean | AI Engineer CODE 2026"
+    },
+    {
+      "url": "https://ai.engineer/code/2026/talks/uipath",
+      "file": "pages/code/2026/talks/uipath/index.html",
+      "title": "Your Automation Is Overthinking It | AI Engineer CODE 2026"
+    },
+    {
+      "url": "https://ai.engineer/code/2026/talks/brian-kennedy",
+      "file": "pages/code/2026/talks/brian-kennedy/index.html",
+      "title": "Your Judge Is Hallucinating Too | AI Engineer CODE 2026"
+    },
+    {
+      "url": "https://ai.engineer/code/2026/talks/scott-roberts",
+      "file": "pages/code/2026/talks/scott-roberts/index.html",
+      "title": "Autocomplete for Actions: System One from the UI to the DB | AI Engineer CODE 2026"
+    },
+    {
+      "url": "https://ai.engineer/code/2026/talks/online-subagent-distributed-systems",
+      "file": "pages/code/2026/talks/online-subagent-distributed-systems/index.html",
+      "title": "Sub-Agents Are a Distributed System (And Nobody Gave You a Consistency Model) | AI Engineer CODE 2026"
+    },
+    {
+      "url": "https://ai.engineer/code/2026/talks/online-skills-knowledge",
+      "file": "pages/code/2026/talks/online-skills-knowledge/index.html",
+      "title": "Your SKILL.md is 70% of Things the Model Already Knows | AI Engineer CODE 2026"
+    },
+    {
+      "url": "https://ai.engineer/code/2026/talks/fabian-hedin",
+      "file": "pages/code/2026/talks/fabian-hedin/index.html",
+      "title": "What it takes to set intelligence free | AI Engineer CODE 2026"
+    },
+    {
+      "url": "https://ai.engineer/code/2026/talks/zach-bruggeman",
+      "file": "pages/code/2026/talks/zach-bruggeman/index.html",
+      "title": "How to build an agent that builds the culture | AI Engineer CODE 2026"
+    },
+    {
+      "url": "https://ai.engineer/code/2026/talks/steve-yegge",
+      "file": "pages/code/2026/talks/steve-yegge/index.html",
+      "title": "Software Factories: Escape from Trash Mountain | AI Engineer CODE 2026"
+    },
+    {
+      "url": "https://ai.engineer/code/2026/talks/simon-willison",
+      "file": "pages/code/2026/talks/simon-willison/index.html",
+      "title": "2026 in LLMs | AI Engineer CODE 2026"
+    },
+    {
+      "url": "https://ai.engineer/code/2026/talks/jason-liu",
+      "file": "pages/code/2026/talks/jason-liu/index.html",
+      "title": "Ambition in AI | AI Engineer CODE 2026"
+    },
+    {
+      "url": "https://ai.engineer/code/2026/talks/armin-ronacher",
+      "file": "pages/code/2026/talks/armin-ronacher/index.html",
+      "title": "The Software Atelier | AI Engineer CODE 2026"
+    },
+    {
+      "url": "https://ai.engineer/code/2026/talks/zach-lloyd",
+      "file": "pages/code/2026/talks/zach-lloyd/index.html",
+      "title": "Software Engineering Is Becoming Factory Engineering | AI Engineer CODE 2026"
+    },
+    {
+      "url": "https://ai.engineer/code/2026/talks/brandon-thomas",
+      "file": "pages/code/2026/talks/brandon-thomas/index.html",
+      "title": "Let's Open Source the World | AI Engineer CODE 2026"
+    },
+    {
+      "url": "https://ai.engineer/code/2026/talks/online-ayush-cli",
+      "file": "pages/code/2026/talks/online-ayush-cli/index.html",
+      "title": "Your agent hates your CLI | AI Engineer CODE 2026"
+    },
+    {
+      "url": "https://ai.engineer/code/2026/talks/online-brian-douglas",
+      "file": "pages/code/2026/talks/online-brian-douglas/index.html",
+      "title": "If You Are Going to Verbally Abuse Your Agents, at Least Label the Outcome | AI Engineer CODE 2026"
+    },
+    {
+      "url": "https://ai.engineer/code/2026/talks/online-rohan-optimization",
+      "file": "pages/code/2026/talks/online-rohan-optimization/index.html",
+      "title": "Searching for a better model-serving recipe | AI Engineer CODE 2026"
+    },
+    {
+      "url": "https://ai.engineer/code/2026/talks/online-dmitry-maintenance",
+      "file": "pages/code/2026/talks/online-dmitry-maintenance/index.html",
+      "title": "Agents Made Code Free. Maintaining It Didn't Get Cheaper. | AI Engineer CODE 2026"
+    },
+    {
+      "url": "https://ai.engineer/code/2026/talks/walden-yan",
+      "file": "pages/code/2026/talks/walden-yan/index.html",
+      "title": "A New Age of Software Engineering | AI Engineer CODE 2026"
+    },
+    {
+      "url": "https://ai.engineer/code/2026/talks/jeffrey-pinner",
+      "file": "pages/code/2026/talks/jeffrey-pinner/index.html",
+      "title": "What Your AI Doesn't Know | AI Engineer CODE 2026"
+    },
+    {
+      "url": "https://ai.engineer/code/2026/talks/doug-clauson",
+      "file": "pages/code/2026/talks/doug-clauson/index.html",
+      "title": "Ship More as a Team of One with Kiro Crew | AI Engineer CODE 2026"
+    },
+    {
+      "url": "https://ai.engineer/code/2026/talks/lance-martin",
+      "file": "pages/code/2026/talks/lance-martin/index.html",
+      "title": "Exploring Claude's Frontier | AI Engineer CODE 2026"
+    },
+    {
+      "url": "https://ai.engineer/code/2026/talks/syntax-lunch",
+      "file": "pages/code/2026/talks/syntax-lunch/index.html",
+      "title": "The code still needs someone who cares | AI Engineer CODE 2026"
+    },
+    {
+      "url": "https://ai.engineer/code/2026/talks/online-robinhood-review",
+      "file": "pages/code/2026/talks/online-robinhood-review/index.html",
+      "title": "Who reviews the bots? | AI Engineer CODE 2026"
+    },
+    {
+      "url": "https://ai.engineer/code/2026/talks/jarred-sumner",
+      "file": "pages/code/2026/talks/jarred-sumner/index.html",
+      "title": "Choose the project you can verify | AI Engineer CODE 2026"
+    },
+    {
+      "url": "https://ai.engineer/code/2026/talks/online-uber-merging",
+      "file": "pages/code/2026/talks/online-uber-merging/index.html",
+      "title": "Green Pull Requests Can Still Break the Trunk | AI Engineer CODE 2026"
+    },
+    {
+      "url": "https://ai.engineer/code/2026/talks/ishaan-dey",
+      "file": "pages/code/2026/talks/ishaan-dey/index.html",
+      "title": "Judgement is the last job | AI Engineer CODE 2026"
+    },
+    {
+      "url": "https://ai.engineer/code/2026/talks/justin-mccarthy",
+      "file": "pages/code/2026/talks/justin-mccarthy/index.html",
+      "title": "Brownfield factories keep the promises you already made | AI Engineer CODE 2026"
+    },
+    {
+      "url": "https://ai.engineer/code/2026/talks/online-stephen-cassandra",
+      "file": "pages/code/2026/talks/online-stephen-cassandra/index.html",
+      "title": "Give the PR writer an evidence packet, not another context dump | AI Engineer CODE 2026"
+    },
+    {
+      "url": "https://ai.engineer/code/2026/talks/melvin-johnson",
+      "file": "pages/code/2026/talks/melvin-johnson/index.html",
+      "title": "Train on the engineering work that still fails | AI Engineer CODE 2026"
+    },
+    {
+      "url": "https://ai.engineer/code/2026/talks/quinn-slack",
+      "file": "pages/code/2026/talks/quinn-slack/index.html",
+      "title": "Build the company around the agent, not a pilot project | AI Engineer CODE 2026"
+    },
+    {
+      "url": "https://ai.engineer/code/2026/talks/dexter-horthy",
+      "file": "pages/code/2026/talks/dexter-horthy/index.html",
+      "title": "A software factory needs pressure in both directions | AI Engineer CODE 2026"
+    },
+    {
+      "url": "https://ai.engineer/code/2026/talks/thariq-shihipar",
+      "file": "pages/code/2026/talks/thariq-shihipar/index.html",
+      "title": "Keep the human inside the creative loop | AI Engineer CODE 2026"
+    },
+    {
+      "url": "https://ai.engineer/code/2026/schedule",
+      "file": "pages/code/2026/schedule/index.html",
+      "title": "Schedule | AI Engineer Code Summit 2026"
+    },
+    {
+      "url": "https://ai.engineer/code/2026/map",
+      "file": "pages/code/2026/map/index.html",
+      "title": "Venue Map | AI Engineer CODE Summit 2026"
+    },
+    {
+      "url": "https://ai.engineer/code/2026/map?level=1",
+      "file": "pages/code/2026/map/level=1/index.html",
+      "title": "Venue Map | AI Engineer CODE Summit 2026"
+    },
+    {
+      "url": "https://ai.engineer/code/2026/map?level=2-workshops",
+      "file": "pages/code/2026/map/level=2-workshops/index.html",
+      "title": "Venue Map | AI Engineer CODE Summit 2026"
+    }
+  ],
+  "assetCount": 117
+}

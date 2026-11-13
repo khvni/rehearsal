@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="en" data-resolution="landscape">
+<html lang="en">
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=1920, height=1080" />
@@ -9,219 +9,157 @@
       @font-face { font-family: "Geist Sans"; src: url("assets/fonts/geist-sans-500.woff2") format("woff2"); font-weight: 500; }
       @font-face { font-family: "Geist Sans"; src: url("assets/fonts/geist-sans-600.woff2") format("woff2"); font-weight: 600; }
       @font-face { font-family: "Geist Sans"; src: url("assets/fonts/geist-sans-700.woff2") format("woff2"); font-weight: 700; }
+      @font-face { font-family: "Geist Sans"; src: url("assets/fonts/geist-sans-900.woff2") format("woff2"); font-weight: 900; }
       @font-face { font-family: "Geist Mono"; src: url("assets/fonts/geist-mono-400.woff2") format("woff2"); font-weight: 400; }
-      @font-face { font-family: "Geist Mono"; src: url("assets/fonts/geist-mono-600.woff2") format("woff2"); font-weight: 600; }
       :root {
-        --ground: #07080c;
-        --panel: rgba(255, 255, 255, 0.045);
-        --line: rgba(255, 255, 255, 0.09);
-        --ink: #f5f7fa;
-        --muted: #96a1b4;
-        --accent: #5eead4;
-        --warn: #fbbf24;
-        --fail: #f87171;
+        --ground: #f4f1ea;
+        --ink: #1c1c1a;
+        --muted: #7a776f;
+        --green: #2d5338;
+        --sky: #8cc3e6;
+        --fail: #c8382c;
         --font: "Geist Sans", "DejaVu Sans", sans-serif;
         --mono: "Geist Mono", "DejaVu Sans Mono", monospace;
       }
       * { margin: 0; padding: 0; box-sizing: border-box; }
       html, body { width: 1920px; height: 1080px; overflow: hidden; background: var(--ground); }
       #root {
-        position: relative; width: 100%; height: 100%;
+        position: relative; width: 100%; height: 100%; overflow: hidden;
         font-family: var(--font); color: var(--ink);
         -webkit-font-smoothing: antialiased; text-rendering: optimizeLegibility;
-        background:
-          radial-gradient(1200px 700px at 12% -10%, rgba(94, 234, 212, 0.14), transparent 60%),
-          radial-gradient(1100px 800px at 105% 25%, rgba(129, 140, 248, 0.16), transparent 62%),
-          radial-gradient(900px 700px at 55% 115%, rgba(236, 72, 153, 0.10), transparent 60%),
-          linear-gradient(160deg, #0a0d14 0%, #07080c 55%, #05060a 100%);
+        background: radial-gradient(1400px 900px at 50% 40%, #fbf9f4 0%, var(--ground) 70%);
       }
-      .clip { position: absolute; inset: 0; padding: 96px 120px; display: flex; flex-direction: column; justify-content: center; }
-      h1 { font-size: 88px; font-weight: 700; letter-spacing: -0.035em; line-height: 1.02; }
-      h2 { font-size: 68px; font-weight: 650; letter-spacing: -0.03em; line-height: 1.08; margin-bottom: 44px; }
-      .sub { font-size: 36px; color: var(--muted); line-height: 1.35; max-width: 1500px; }
-      .accent { color: var(--accent); }
-      .mono { font-family: var(--mono); }
-      .tag {
-        font-family: var(--mono); font-size: 22px; color: var(--accent);
-        letter-spacing: 0.22em; text-transform: uppercase;
+      .clip { position: absolute; inset: 0; }
+      .scene { display: flex; flex-direction: column; align-items: center; justify-content: center; }
+      .cap {
+        position: absolute; left: 0; right: 0; top: 64px; text-align: center;
+        font-size: 52px; font-weight: 600; letter-spacing: -0.025em; line-height: 1.1; opacity: 0;
       }
-      .center { justify-content: center; }
-      .row { display: flex; gap: 28px; }
-      .card {
-        background: var(--panel); border: 1px solid var(--line); border-radius: 20px;
-        padding: 40px 40px;
-        backdrop-filter: blur(14px);
-        box-shadow: inset 0 1px 0 rgba(255,255,255,0.06), 0 18px 50px rgba(0,0,0,0.35);
+      .line { font-size: 96px; font-weight: 700; letter-spacing: -0.04em; line-height: 1.05; text-align: center; opacity: 0; position: absolute; }
+      .window {
+        position: absolute; left: 50%; top: 176px; width: 1328px; margin-left: -664px;
+        border-radius: 18px; overflow: hidden; background: #fff;
+        box-shadow: 0 0 0 1px rgba(28, 28, 26, 0.08), 0 24px 60px rgba(28, 28, 26, 0.12), 0 4px 12px rgba(28, 28, 26, 0.06);
       }
-      .card b { display: block; font-size: 38px; font-weight: 600; letter-spacing: -0.01em; margin-bottom: 10px; }
-      .card span { font-size: 29px; color: var(--muted); line-height: 1.4; }
-      .step { flex: 1; position: relative; }
-      .step .n { font-family: var(--mono); font-size: 20px; color: var(--accent); margin-bottom: 14px; display: block; }
-      .shot { border-radius: 14px; border: 1px solid var(--line); box-shadow: 0 30px 80px rgba(0,0,0,0.55); display: block; }
-      .grid3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 32px; }
-      .grid4 { display: grid; grid-template-columns: repeat(4, 1fr); gap: 28px; }
-      .pill { display: inline-block; font-family: var(--mono); font-size: 24px; padding: 8px 18px; border-radius: 999px; border: 1px solid var(--line); color: var(--muted); }
-      .pill.fail { color: var(--fail); border-color: rgba(248,113,113,0.4); }
-      .pill.warn { color: var(--warn); border-color: rgba(251,191,36,0.4); }
-      .finding { display: grid; grid-template-columns: 340px 1fr 360px; align-items: center; gap: 32px; padding: 28px 0; border-bottom: 1px solid var(--line); font-size: 38px; }
-      .finding .k { font-family: var(--mono); font-size: 26px; color: var(--accent); }
-      .spec { font-family: var(--mono); font-size: 27px; line-height: 1.55; color: #cbd5e1; white-space: pre; }
-      .spec .h { color: var(--ink); font-weight: 600; }
-      .spec .c { color: var(--muted); }
+      .bar { height: 48px; display: flex; align-items: center; gap: 10px; padding: 0 18px; background: #f7f6f3; border-bottom: 1px solid rgba(28, 28, 26, 0.07); }
+      .dot { width: 13px; height: 13px; border-radius: 50%; background: #dedbd3; }
+      .url { margin-left: 18px; flex: 1; height: 30px; border-radius: 8px; background: #fff; border: 1px solid rgba(28, 28, 26, 0.08); font: 400 16px/30px var(--mono); color: var(--muted); padding-left: 14px; }
+      .body { position: relative; width: 1328px; height: 830px; overflow: hidden; background: #fff; }
+      .body video, .body img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; object-position: top center; }
+      .cam { position: absolute; inset: 0; transform-origin: 50% 0; }
+      .mark { font-size: 260px; font-weight: 900; letter-spacing: -0.065em; color: var(--green); line-height: 0.9; }
+      .kicker { font-size: 44px; font-weight: 500; letter-spacing: -0.02em; color: var(--ink); }
+      .fail { color: var(--fail); }
+      .small { font: 400 30px/1.3 var(--mono); color: var(--muted); letter-spacing: 0; }
     </style>
   </head>
   <body>
-    <div id="root" data-composition-id="main" data-start="0" data-duration="92" data-width="1920" data-height="1080">
-      <audio id="vo" src="assets/vo.mp3" data-start="0" data-duration="92" data-track-index="1"></audio>
+    <div id="root" data-composition-id="main" data-start="0" data-duration="49" data-width="1920" data-height="1080">
 
-      <!-- 1. Hook -->
-      <section id="s-title" class="clip center" data-start="0" data-duration="6" data-track-index="0">
-        <div class="tag t-in">Rehearsal</div>
-        <h1 class="t-in" style="margin-top: 28px;">Can a visitor find the schedule?</h1>
-        <div class="sub t-in" style="margin-top: 24px; font-size: 44px; color: var(--ink);">We sent a browser to ai.engineer/code/2026 to find out. <span class="accent">It failed 4 times out of 4.</span></div>
-        <div class="sub t-in" style="margin-top: 36px; font-size: 30px;">Rehearsal is how we know, and it tells you what to fix.</div>
+      <!-- 1. A visitor looks for the schedule -->
+      <section id="s-hunt" class="clip scene" data-start="0" data-duration="8.6" data-track-index="0">
+        <div class="cap" id="c1a">This person wants the schedule.</div>
+        <div class="cap" id="c1b">They have no idea where it is.</div>
+        <div class="window" id="w-hunt">
+          <div class="bar"><span class="dot"></span><span class="dot"></span><span class="dot"></span><span class="url">ai.engineer/code/2026</span></div>
+          <div class="body"><div class="cam" id="cam-hunt"></div></div>
+        </div>
+      </section>
+      <video id="v-site" class="clip" src="assets/site.mp4" muted data-start="0" data-duration="8.6" data-media-start="2" data-playback-rate="1.6" data-track-index="1" style="position:absolute; left:296px; top:224px; width:1328px; height:830px; object-fit:cover; object-position:left top; border-radius:0 0 18px 18px; pointer-events:none;"></video>
+
+      <!-- 2. The premise -->
+      <section id="s-premise" class="clip scene" data-start="8.6" data-duration="5.6" data-track-index="0">
+        <div class="line" id="l2a">Most sites find this out<br />after launch.</div>
+        <div class="line" id="l2b">I wanted to find out <span style="color: var(--green);">before</span>.</div>
       </section>
 
-      <!-- 2. Problem -->
-      <section id="s-problem" class="clip center" data-start="6" data-duration="9" data-track-index="0">
-        <div class="tag p-in">The problem</div>
-        <h2 class="p-in" style="margin-top: 20px; font-size: 72px;">Sites get reviewed by opinion.<br />Nobody checks if a visitor can get where they want.</h2>
-        <div class="row" style="margin-top: 20px;">
-          <div class="card step p-in"><b>"Looks fine to me"</b><span>Taste decides what ships.</span></div>
-          <div class="card step p-in"><b>Nobody walks the path</b><span>Can you reach the schedule? The price? The signup?</span></div>
-          <div class="card step p-in"><b>Users find it first</b><span>After launch, when it costs the most.</span></div>
+      <!-- 3. Title -->
+      <section id="s-title" class="clip scene" data-start="14.2" data-duration="3.6" data-track-index="0">
+        <div class="kicker t-in">Why leave your website to chance?</div>
+        <div class="mark t-in" style="margin-top: 36px;">Rehearsal</div>
+      </section>
+
+      <!-- 4. The dashboard at work -->
+      <section id="s-dash" class="clip scene" data-start="17.8" data-duration="22.4" data-track-index="0">
+        <div class="cap" id="c4a">Tell it what a visitor wants.</div>
+        <div class="cap" id="c4b">It maps every page they could reach.</div>
+        <div class="cap" id="c4c">Sends a thousand pretend visitors through.</div>
+        <div class="cap" id="c4d">Then real browsers, to make sure.</div>
+        <div class="cap" id="c4e"><span class="fail">9 of 10</span> never found the schedule.</div>
+        <div class="cap" id="c4f">And it tells you why.</div>
+        <div class="window" id="w-dash">
+          <div class="bar"><span class="dot"></span><span class="dot"></span><span class="dot"></span><span class="url">rehearsal.alikhani.co</span></div>
+          <div class="body"><div class="cam" id="cam-dash"></div></div>
+        </div>
+      </section>
+      <video id="v-launch" class="clip" src="assets/dash.mp4" muted data-start="17.8" data-duration="4.2" data-media-start="0.5" data-playback-rate="2" data-track-index="1" style="position:absolute; left:296px; top:224px; width:1328px; height:830px; object-fit:cover; object-position:left top; border-radius:0 0 18px 18px; pointer-events:none;"></video>
+      <video id="v-run" class="clip" src="assets/dash.mp4" muted data-start="22.0" data-duration="4.5" data-media-start="25" data-playback-rate="15" data-track-index="2" style="position:absolute; left:296px; top:224px; width:1328px; height:830px; object-fit:cover; object-position:left top; border-radius:0 0 18px 18px; pointer-events:none;"></video>
+      <video id="v-graph" class="clip" src="assets/results.mp4" muted data-start="26.5" data-duration="6.5" data-media-start="2" data-playback-rate="1.5" data-track-index="3" style="position:absolute; left:296px; top:224px; width:1328px; height:830px; object-fit:cover; object-position:left top; border-radius:0 0 18px 18px; pointer-events:none;"></video>
+
+      <video id="v-tour" class="clip" src="assets/dash.mp4" muted data-start="33.0" data-duration="7.2" data-media-start="289" data-playback-rate="1.5" data-track-index="4" style="position:absolute; left:296px; top:224px; width:1328px; height:830px; object-fit:cover; object-position:left top; border-radius:0 0 18px 18px; pointer-events:none;"></video>
+      <audio id="vo" src="assets/vo.mp3" data-start="0.4"></audio>
+
+      <!-- 5. What it becomes -->
+      <section id="s-fix" class="clip scene" data-start="40.2" data-duration="5" data-track-index="0">
+        <div class="cap" id="c5">And what to change.</div>
+        <div class="window" id="w-fix">
+          <div class="bar"><span class="dot"></span><span class="dot"></span><span class="dot"></span><span class="url">ai.engineer/code/2026 · rebuilt from the spec</span></div>
+          <div class="body"><div class="cam" id="cam-fix"><img src="assets/rebuild.png" alt="" /></div></div>
         </div>
       </section>
 
-      <!-- 3. How it works -->
-      <section id="s-how" class="clip" data-start="15" data-duration="16" data-track-index="0">
-        <div class="tag">How it works</div>
-        <h2 style="margin-top: 16px;">You type a goal. You get a list of fixes.</h2>
-        <div class="grid3">
-          <div class="card h-in"><span class="n step mono" style="color: var(--accent); font-size: 24px;">01 · GOAL</span><b>Say what a visitor wants</b><span>"Find the conference schedule."</span></div>
-          <div class="card h-in"><span class="n mono" style="color: var(--accent); font-size: 24px;">02 · MAP</span><b>Click through the site</b><span>Every page state it can reach, deduped.</span></div>
-          <div class="card h-in"><span class="n mono" style="color: var(--accent); font-size: 24px;">03 · REHEARSE</span><b>300 visitor journeys</b><span>Seeded, so the same site gives the same run.</span></div>
-          <div class="card h-in"><span class="n mono" style="color: var(--accent); font-size: 24px;">04 · VERIFY</span><b>Replay the risky ones</b><span>In a real browser, with screenshots.</span></div>
-          <div class="card h-in"><span class="n mono" style="color: var(--accent); font-size: 24px;">05 · FIND</span><b>Name each problem</b><span>Each one cites a Krug rule and says how sure it is.</span></div>
-          <div class="card h-in"><span class="n mono" style="color: var(--accent); font-size: 24px;">06 · SPEC</span><b>Rank the fixes</b><span>Biggest impact first, each tied to evidence.</span></div>
-        </div>
-      </section>
-
-      <!-- 4. Demo: target -->
-      <section id="s-demo" class="clip" data-start="31" data-duration="6" data-track-index="0">
-        <div class="tag">A real run · AIE Code Summit 2026</div>
-        <h2 style="margin-top: 16px; margin-bottom: 36px;"><span class="mono" style="font-size: 52px;">ai.engineer/code/2026</span><br />Goal: "find the conference schedule"</h2>
-        <div class="row" style="align-items: flex-start;">
-          <img id="img-site" class="shot" src="assets/aie-site.png" style="width: 1100px;" />
-          <div style="display: flex; flex-direction: column; gap: 24px; flex: 1;">
-            <div class="card d-in"><b>The visitor wants an answer</b><span>Not a form. Not a signup.</span></div>
-            <div class="card d-in"><b>Done = a schedule page loads</b><span>That is the only test.</span></div>
-            <div class="card d-in"><b>One API call</b><span>A real browser. 3.7 minutes.</span></div>
-          </div>
-        </div>
-      </section>
-
-      <!-- 5. Demo: dashboard -->
-      <section id="s-dash" class="clip" data-start="37" data-duration="9" data-track-index="0" style="justify-content: flex-start;">
-        <div class="tag">The dashboard · exp_15f495ed</div>
-        <h2 style="margin-top: 16px; margin-bottom: 28px;">15 states · 176 edges · <span style="color: var(--fail);">0 of 4 browser runs found the schedule</span></h2>
-        <div style="overflow: hidden; border-radius: 14px; width: 1520px; height: 800px;" class="shot">
-          <img id="img-dash" src="assets/dashboard.png" style="width: 1520px; display: block; transform-origin: 0 0;" />
-        </div>
-      </section>
-
-      <!-- 6. Demo: findings + spec -->
-      <section id="s-spec" class="clip" data-start="46" data-duration="11" data-track-index="0">
-        <div class="tag">What it found</div>
-        <h2 style="margin-top: 16px; margin-bottom: 16px;">23 findings. 2 proven in the browser.</h2>
-        <div class="finding f-in"><span class="pill fail">verified-failure</span><span>No run reached a schedule page</span><span class="k">testing-beats-arguing</span></div>
-        <div class="finding f-in"><span class="pill warn">reproducible-concern</span><span>The event is over. The page still says register.</span><span class="k">omit-words</span></div>
-        <div class="finding f-in"><span class="pill warn">reproducible-concern</span><span>No page name, no clear nav, no search</span><span class="k">navigation</span></div>
-        <div class="finding f-in"><span class="pill warn">reproducible-concern</span><span>68 links in the main nav</span><span class="k">navigation</span></div>
-        <div class="card f-in" style="margin-top: 28px; padding: 26px 34px;"><div class="spec"><span class="h">## Rebuild plan</span>
-<span class="h">### Truth pass</span>        <span class="c">Cut anything stale or wrong.</span>
-<span class="h">### Hierarchy pass</span>    <span class="c">7 nav items. One main button.</span>
-<span class="h">### Verification loop</span> <span class="c">Run the same checks again on staging.</span></div></div>
-      </section>
-
-      <!-- 7. Stack -->
-      <section id="s-stack" class="clip" data-start="57" data-duration="10" data-track-index="0">
-        <div class="tag">What runs it</div>
-        <h2 style="margin-top: 16px;">Live with keys. Fixtures without.</h2>
-        <div class="grid4">
-          <div class="card k-in"><b>Bright Data</b><span>Browser API, live</span></div>
-          <div class="card k-in"><b>Gemini</b><span>hydrogen, live</span></div>
-          <div class="card k-in"><b>Jev</b><span>scores each click; fixture for now</span></div>
-          <div class="card k-in"><b>Browserbase Stagehand</b><span>browser checks</span></div>
-          <div class="card k-in"><b>Sentry</b><span>errors and traces</span></div>
-          <div class="card k-in"><b>Tiger Data</b><span>stores each run</span></div>
-          <div class="card k-in"><b>Snowflake Cortex</b><span>search over past runs</span></div>
-          <div class="card k-in"><b>Terraform</b><span>Cloudflare + DigitalOcean</span></div>
-        </div>
-      </section>
-
-      <!-- 8. Software factory -->
-      <section id="s-factory" class="clip" data-start="67" data-duration="10" data-track-index="0">
-        <div class="tag">How it was built</div>
-        <h2 style="margin-top: 16px;">Agents write the code. Checks keep it honest.</h2>
-        <div class="grid3">
-          <div class="card x-in"><b>Lint rules</b><span>Shared types live in one place. Findings must cite Krug.</span></div>
-          <div class="card x-in"><b>Spec diff</b><span>A fixed copy of the AIE site shows when output changes.</span></div>
-          <div class="card x-in"><b>Hourly rebuild</b><span>An agent picks up any failure.</span></div>
-          <div class="card x-in"><b>Facts check</b><span>Docs, env and API can't drift from the code.</span></div>
-          <div class="card x-in"><b>Factory as code</b><span>Rules, review policy and automations live in the repo.</span></div>
-          <div class="card x-in"><b>Design check</b><span>Every dashboard change gets scanned.</span></div>
-        </div>
-      </section>
-
-      <!-- 9. Rebuild -->
-      <section id="s-rebuild" class="clip" data-start="77" data-duration="9" data-track-index="0" style="justify-content: flex-start;">
-        <div class="tag">What it becomes</div>
-        <h2 style="margin-top: 16px; margin-bottom: 28px;">The spec, applied to the same page.</h2>
-        <div class="row" style="align-items: flex-start;">
-          <div style="overflow: hidden; border-radius: 14px; width: 1152px; height: 720px;" class="shot">
-            <img id="img-rebuild" src="assets/rebuild.png" style="width: 1152px; display: block; transform-origin: 0 0;" />
-          </div>
-          <div style="display: flex; flex-direction: column; gap: 24px; flex: 1;">
-            <div class="card r-in"><b>Schedule is in the nav</b><span>One click from the top.</span></div>
-            <div class="card r-in"><b>7 nav items, not 68</b><span>Plus a search box.</span></div>
-            <div class="card r-in"><b>It says the event is over</b><span>One button: watch the talks.</span></div>
-          </div>
-        </div>
-      </section>
-
-      <!-- 10. End card -->
-      <section id="s-end" class="clip center" data-start="86" data-duration="6" data-track-index="0" style="align-items: center; text-align: center;">
-        <h1 class="e-in">Don't just build it. <span class="accent">Rehearse it.</span></h1>
-        <div class="mono e-in" style="margin-top: 44px; font-size: 44px;">github.com/khvni/rehearsal</div>
-        <div class="mono e-in" style="margin-top: 20px; font-size: 32px; color: var(--muted);">Try it: http://64.227.111.27</div>
+      <!-- 6. End -->
+      <section id="s-end" class="clip scene" data-start="45.2" data-duration="3.8" data-track-index="0">
+        <div class="mark e-in">Rehearsal</div>
+        <div class="small e-in" style="margin-top: 40px;">rehearsal.alikhani.co</div>
       </section>
     </div>
     <script>
       window.__timelines = window.__timelines || {};
       const tl = gsap.timeline({ paused: true });
-      const ease = "power3.out";
-      const enter = (sel, at, stagger = 0.12) =>
-        tl.fromTo(sel, { opacity: 0, y: 24 }, { opacity: 1, y: 0, duration: 0.5, ease, stagger }, at);
-      enter("#s-title .t-in", 0.2, 0.25);
-      enter("#s-problem .p-in", 6.2, 0.35);
-      enter("#s-how .h-in", 15.4, 1.6);
-      enter("#s-demo .tag, #s-demo h2", 31.2, 0.1);
-      tl.fromTo("#img-site", { opacity: 0, x: -30 }, { opacity: 1, x: 0, duration: 0.6, ease }, 31.5);
-      enter("#s-demo .d-in", 32.2, 0.7);
-      enter("#s-dash .tag, #s-dash h2", 37.2, 0.1);
-      tl.fromTo("#s-dash .shot", { opacity: 0, y: 30 }, { opacity: 1, y: 0, duration: 0.6, ease }, 37.4);
-      tl.to("#img-dash", { scale: 1.35, x: -60, y: -150, duration: 3, ease: "power2.inOut" }, 39.2);
-      tl.to("#img-dash", { scale: 1.35, x: -520, y: -150, duration: 2.6, ease: "power2.inOut" }, 42.4);
-      enter("#s-spec .tag, #s-spec h2", 46.2, 0.1);
-      enter("#s-spec .f-in", 46.6, 0.7);
-      enter("#s-stack .k-in", 57.4, 0.25);
-      enter("#s-factory .x-in", 67.4, 0.45);
-      enter("#s-rebuild .tag, #s-rebuild h2", 77.2, 0.1);
-      tl.fromTo("#s-rebuild .shot", { opacity: 0, y: 30 }, { opacity: 1, y: 0, duration: 0.6, ease }, 77.4);
-      enter("#s-rebuild .r-in", 78.4, 0.8);
-      tl.to("#img-rebuild", { scale: 1.25, x: -40, y: -60, duration: 4, ease: "power2.inOut" }, 81);
-      enter("#s-end .e-in", 86.3, 0.4);
+      const arrive = "expo.out";
+      const inLine = (sel, at) => tl.fromTo(sel, { opacity: 0, y: 8, filter: "blur(6px)" }, { opacity: 1, y: 0, filter: "blur(0px)", duration: 0.2, ease: "power2.out" }, at);
+      const outLine = (sel, at) => tl.to(sel, { opacity: 0, filter: "blur(6px)", duration: 0.18, ease: "power2.in" }, at);
+      const say = (sel, from, to) => { inLine(sel, from); outLine(sel, to); };
+
+      // 1. Hunt
+      tl.fromTo("#w-hunt", { opacity: 0, y: 40, scale: 0.98 }, { opacity: 1, y: 0, scale: 1, duration: 0.9, ease: arrive }, 0);
+      tl.fromTo("#v-site", { opacity: 0, y: 40, scale: 0.98 }, { opacity: 1, y: 0, scale: 1, duration: 0.9, ease: arrive }, 0);
+      say("#c1a", 0.5, 3.9);
+      say("#c1b", 4.3, 8.2);
+      tl.to(["#w-hunt", "#v-site"], { opacity: 0, scale: 0.96, duration: 0.35, ease: "power2.in" }, 8.2);
+
+      // 2. Premise
+      say("#l2a", 8.8, 11.2);
+      say("#l2b", 11.5, 13.9);
+
+      // 3. Title
+      tl.fromTo("#s-title .t-in", { opacity: 0, y: 10, filter: "blur(8px)" }, { opacity: 1, y: 0, filter: "blur(0px)", duration: 0.3, ease: "power2.out", stagger: 0.5 }, 14.4);
+      tl.to("#s-title .t-in", { opacity: 0, filter: "blur(8px)", duration: 0.2, ease: "power2.in" }, 17.5);
+
+      // 4. Dashboard
+      tl.fromTo("#w-dash", { opacity: 0, y: 40, scale: 0.98 }, { opacity: 1, y: 0, scale: 1, duration: 0.9, ease: arrive }, 17.8);
+      tl.fromTo("#v-launch", { opacity: 0, y: 40, scale: 0.98 }, { opacity: 1, y: 0, scale: 1, duration: 0.9, ease: arrive }, 17.8);
+      tl.fromTo("#v-run", { opacity: 0, scale: 0.98 }, { opacity: 1, scale: 1, duration: 0.25, ease: "power1.out" }, 21.95);
+      tl.fromTo("#v-graph", { opacity: 0, scale: 0.98 }, { opacity: 1, scale: 1, duration: 0.25, ease: "power1.out" }, 26.4);
+      tl.fromTo("#v-tour", { opacity: 0, scale: 0.98 }, { opacity: 1, scale: 1, duration: 0.25, ease: "power1.out" }, 32.9);
+      say("#c4a", 18.2, 21.6);
+      say("#c4b", 22.4, 25.6);
+      say("#c4c", 26.0, 29.2);
+      say("#c4d", 29.6, 32.6);
+      say("#c4e", 33.4, 36.4);
+      say("#c4f", 36.8, 40);
+      tl.to(["#w-dash", "#v-launch", "#v-run", "#v-graph", "#v-tour"], { opacity: 0, scale: 0.96, duration: 0.3, ease: "power2.in" }, 39.9);
+
+      // 5. Fix
+      tl.fromTo("#w-fix", { opacity: 0, y: 40, scale: 0.98 }, { opacity: 1, y: 0, scale: 1, duration: 0.9, ease: arrive }, 40.2);
+      say("#c5", 40.6, 44.9);
+      tl.fromTo("#cam-fix", { scale: 1 }, { scale: 1.12, duration: 4.4, ease: "power1.inOut" }, 40.6);
+      tl.to("#w-fix", { opacity: 0, scale: 0.96, duration: 0.3, ease: "power2.in" }, 44.9);
+
+      // 6. End
+      tl.fromTo("#s-end .e-in", { opacity: 0, y: 10, filter: "blur(8px)" }, { opacity: 1, y: 0, filter: "blur(0px)", duration: 0.3, ease: "power2.out", stagger: 0.4 }, 45.4);
+
       window.__timelines["main"] = tl;
       tl.seek(0);
     </script>
