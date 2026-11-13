@@ -13,9 +13,11 @@ process.env.REHEARSAL_ALLOW_PRIVATE = "1";
 process.env.REHEARSAL_BROWSER = "playwright";
 
 const html = readFileSync(path.join(process.cwd(), "tests", "evals", "fixtures", "aie-code-2026.html"), "utf8");
+// The fixture references third-party images (YouTube, Sessionize); CSP keeps the browser off the network.
+const CSP = "default-src 'self'; img-src 'self' data:; style-src 'self' 'unsafe-inline'; font-src 'self' data:";
 const server = createServer((req, res) => {
   if (req.url === "/" || req.url === "/code/2026") {
-    res.writeHead(200, { "content-type": "text/html" });
+    res.writeHead(200, { "content-type": "text/html", "content-security-policy": CSP });
     res.end(html);
   } else {
     res.writeHead(404);
