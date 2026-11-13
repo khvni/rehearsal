@@ -39,7 +39,7 @@ export async function generateSpec(experiment: Experiment, llm: LlmClient): Prom
 
   return {
     ...base,
-    summary: llmSpec?.summary ?? fallbackSummary(experiment),
+    summary: llmSpec?.summary ?? fallbackSummary(experiment, changes.length),
     changes:
       llmSpec?.changes && llmSpec.changes.length >= changes.length
         ? llmSpec.changes.map((c, i) => ({ ...c, rank: i + 1 }) as SpecChange)
@@ -68,10 +68,9 @@ Return JSON: {"summary": "<=2 short, plain sentences", "changes": [{"title","cha
 Order changes by impact. Rebuild plan = 3-4 phases for a cleaner version of the site, each phase listing concrete items.`;
 }
 
-function fallbackSummary(experiment: Experiment): string {
+function fallbackSummary(experiment: Experiment, changes: number): string {
   const verified = experiment.findings.filter((f) => f.evidenceType === "verified-failure").length;
   const concerns = experiment.findings.filter((f) => f.evidenceType === "reproducible-concern").length;
-  const changes = experiment.spec?.changes.length ?? experiment.findings.length;
   return `Rehearsal ran ${count(experiment.browserTests.length, "browser run")} on ${experiment.targetUrl}. It found ${count(verified, "verified failure")} and ${count(concerns, "reproducible concern")}. ${count(experiment.findings.length, "finding")} became ${count(changes, "change")}.`;
 }
 
