@@ -15,7 +15,7 @@ import { chromium } from "playwright";
 import { Orchestrator } from "../src/lib/orchestrator";
 import { specToMarkdown } from "../src/lib/analysis/spec";
 import { assertPublicUrl, politeDelay, robotsAllows } from "../src/lib/fetch/guards";
-import type { Experiment } from "../src/lib/contracts";
+import { SiteRunSummary, type Experiment, type SitePreflight } from "../src/lib/contracts";
 import { settleInterstitial, withTimeout } from "../src/lib/browser/playwright";
 
 const ROOT = process.cwd();
@@ -77,15 +77,6 @@ function parseArgs(argv: string[]): Args {
   return args;
 }
 
-interface Preflight {
-  status: number | null;
-  finalUrl: string;
-  title: string;
-  blocked: boolean;
-  blockReason?: string;
-  error?: string;
-}
-
 function detectBlock(status: number | null, html: string): string | undefined {
   const head = html.slice(0, 200_000);
   for (const [re, reason] of BLOCK_PATTERNS) if (re.test(head)) return reason;
@@ -95,7 +86,7 @@ function detectBlock(status: number | null, html: string): string | undefined {
 }
 
 /** One polite page load with the same UA as the local runner, to classify blocks and resolve redirects. */
-async function preflight(url: string): Promise<Preflight> {
+async function preflight(url: string): Promise<SitePreflight> {
   const target = await assertPublicUrl(url);
   await politeDelay(target);
   const browser = await chromium.launch({ headless: true });
@@ -140,7 +131,7 @@ function hostSlug(url: string): string {
   return new URL(url).hostname.replace(/^www\./, "");
 }
 
-async function runSite(args: Args & { url: string; goal: string }): Promise<Record<string, unknown>> {
+async function runSite(args: Args & { url: string; goal: string }): Promise<SiteRunSummary> {
   const started = Date.now();
   const slug = hostSlug(args.url);
   const outDir = path.join(RUNS_DIR, slug);
@@ -222,13 +213,13 @@ async function runSite(args: Args & { url: string; goal: string }): Promise<Reco
     (pre.blocked && !discoveryRecovered ? pre.blockReason : undefined) ??
     (states.length === 0 && pageFails[0] ? `discover: ${pageFails[0].error}` : undefined);
 
-  let status: string;
+  let status: SiteRunSummary["status"];
   if (exp?.status === "complete" && !blocked) status = "complete";
   else if (blocked) status = "blocked";
   else if (timedOut) status = "timeout";
   else status = "error";
 
-  const summary = {
+  const summary = SiteRunSummary.parse({
     site: slug,
     url: args.url,
     targetUrl,
@@ -278,7 +269,7 @@ async function runSite(args: Args & { url: string; goal: string }): Promise<Reco
     },
     durationsMs: { ...durations, total: Date.now() - started },
     ranAt: new Date(started).toISOString(),
-  };
+  });
   writeFileSync(path.join(outDir, "summary.json"), JSON.stringify(summary, null, 2) + "\n");
   if (exp?.spec) writeFileSync(path.join(outDir, "spec.md"), rel(specToMarkdown(exp.spec)));
   console.log(
@@ -289,27 +280,13 @@ async function runSite(args: Args & { url: string; goal: string }): Promise<Reco
   return summary;
 }
 
-interface SummaryRow {
-  site: string;
-  url: string;
-  goal: string;
-  status: string;
-  failureReason?: string;
-  preflight: { status: number | null };
-  discover: { states: number; edges: number; pageFailures: number };
-  simulate: { goalReachPct: number };
-  verify: { runs: number; passed: number; assertionsPassed?: number };
-  findings: { bySeverity: Record<string, number> };
-  durationsMs: Record<string, number>;
-}
-
 function writeTable(): void {
-  const rows: SummaryRow[] = readdirSync(RUNS_DIR, { withFileTypes: true })
+  const rows: SiteRunSummary[] = readdirSync(RUNS_DIR, { withFileTypes: true })
     .filter((d) => d.isDirectory() && existsSync(path.join(RUNS_DIR, d.name, "summary.json")))
-    .map((d) => JSON.parse(readFileSync(path.join(RUNS_DIR, d.name, "summary.json"), "utf8")) as SummaryRow)
+    .map((d) => JSON.parse(readFileSync(path.join(RUNS_DIR, d.name, "summary.json"), "utf8")) as SiteRunSummary)
     .sort((a, b) => a.site.localeCompare(b.site));
   const sec = (ms?: number) => (typeof ms === "number" ? `${Math.round(ms / 1000)}` : "–");
-  const sev = (r: SummaryRow) => {
+  const sev = (r: SiteRunSummary) => {
     const s = r.findings.bySeverity;
     return `${s.critical ?? 0}/${s.high ?? 0}/${s.medium ?? 0}/${s.low ?? 0}`;
   };
