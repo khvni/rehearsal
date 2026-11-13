@@ -59,7 +59,7 @@ const ThinkingIndicator = forwardRef<HTMLDivElement, ThinkingIndicatorProps>(
       {/* Static announcement — the cycling word display below is aria-hidden
           so screen readers hear one "Thinking…" instead of a re-announcement
           every 4 seconds. */}
-      <span className="sr-only">Thinking…</span>
+      <span className="sr-only">{words === DEFAULT_WORDS ? "Thinking…" : words[0]}</span>
       {showIcon && (
         <motion.svg
           aria-hidden
