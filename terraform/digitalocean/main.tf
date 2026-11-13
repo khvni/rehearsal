@@ -1,94 +1,84 @@
-terraform {
-  required_version = ">= 1.6"
-  required_providers {
-    digitalocean = {
-      source  = "digitalocean/digitalocean"
-      version = "~> 2.40"
-    }
+locals {
+  fqdn = var.domain == "" ? "" : (var.subdomain == "@" ? var.domain : "${var.subdomain}.${var.domain}")
+
+  # Only non-empty values are written to the droplet's env file.
+  app_env = {
+    for k, v in {
+      GEMINI_API_KEY     = var.gemini_api_key
+      JEV_API_KEY        = var.jev_api_key
+      BRIGHTDATA_API_KEY = var.brightdata_api_key
+      BRIGHTDATA_ZONE    = var.brightdata_zone
+      SENTRY_DSN         = var.sentry_dsn
+      DATABASE_URL       = var.database_url
+    } : k => v if v != ""
   }
 }
 
-variable "do_token" {
-  type      = string
-  sensitive = true
+resource "digitalocean_droplet" "rehearsal" {
+  name       = "rehearsal"
+  region     = var.region
+  size       = var.size
+  image      = var.image
+  ssh_keys   = var.ssh_key_fingerprints
+  monitoring = true
+  tags       = ["rehearsal"]
+
+  # Installs Node 22 + Chromium, builds the app, runs `next start` under systemd on
+  # 127.0.0.1:3000, and fronts it with Caddy (auto-HTTPS when a domain is set).
+  user_data = templatefile("${path.module}/cloud-init.yaml.tftpl", {
+    github_repo = var.github_repo
+    git_ref     = var.git_ref
+    site        = local.fqdn == "" ? ":80" : local.fqdn
+    env_file    = join("\n", concat(["NODE_ENV=production"], [for k, v in local.app_env : "${k}=${v}"]))
+  })
 }
 
-variable "github_repo" {
-  type    = string
-  default = "khvni/rehearsal"
-}
+resource "digitalocean_firewall" "rehearsal" {
+  name        = "rehearsal"
+  droplet_ids = [digitalocean_droplet.rehearsal.id]
 
-variable "region" {
-  type    = string
-  default = "sfo3"
-}
+  inbound_rule {
+    protocol         = "tcp"
+    port_range       = "22"
+    source_addresses = ["0.0.0.0/0", "::/0"]
+  }
 
-# App secrets are injected at deploy time via terraform -var or DO env vars.
-variable "gemini_api_key" { type = string, sensitive = true, default = "" }
-variable "jev_api_key" { type = string, sensitive = true, default = "" }
-variable "brightdata_api_key" { type = string, sensitive = true, default = "" }
-variable "brightdata_zone" { type = string, default = "" }
-variable "sentry_dsn" { type = string, sensitive = true, default = "" }
-variable "database_url" { type = string, sensitive = true, default = "" }
+  inbound_rule {
+    protocol         = "tcp"
+    port_range       = "80"
+    source_addresses = ["0.0.0.0/0", "::/0"]
+  }
 
-provider "digitalocean" {
-  token = var.do_token
-}
+  inbound_rule {
+    protocol         = "tcp"
+    port_range       = "443"
+    source_addresses = ["0.0.0.0/0", "::/0"]
+  }
 
-resource "digitalocean_app" "rehearsal" {
-  spec {
-    name   = "rehearsal"
-    region = var.region
+  outbound_rule {
+    protocol              = "tcp"
+    port_range            = "1-65535"
+    destination_addresses = ["0.0.0.0/0", "::/0"]
+  }
 
-    service {
-      name               = "web"
-      instance_count     = 1
-      instance_size_slug = "basic-xs"
+  outbound_rule {
+    protocol              = "udp"
+    port_range            = "1-65535"
+    destination_addresses = ["0.0.0.0/0", "::/0"]
+  }
 
-      github {
-        repo           = var.github_repo
-        branch         = "main"
-        deploy_on_push = true
-      }
-
-      build_command = "npm ci && npm run build"
-      run_command   = "npm start"
-
-      env {
-        key   = "GEMINI_API_KEY"
-        value = var.gemini_api_key
-        type  = "SECRET"
-      }
-      env {
-        key   = "JEV_API_KEY"
-        value = var.jev_api_key
-        type  = "SECRET"
-      }
-      env {
-        key   = "BRIGHTDATA_API_KEY"
-        value = var.brightdata_api_key
-        type  = "SECRET"
-      }
-      env {
-        key   = "BRIGHTDATA_ZONE"
-        value = var.brightdata_zone
-      }
-      env {
-        key   = "SENTRY_DSN"
-        value = var.sentry_dsn
-        type  = "SECRET"
-      }
-      env {
-        key   = "DATABASE_URL"
-        value = var.database_url
-        type  = "SECRET"
-      }
-
-      http_port = 3000
-    }
+  outbound_rule {
+    protocol              = "icmp"
+    destination_addresses = ["0.0.0.0/0", "::/0"]
   }
 }
 
-output "app_url" {
-  value = digitalocean_app.rehearsal.live_url
+resource "digitalocean_record" "rehearsal" {
+  count = var.domain == "" ? 0 : 1
+
+  domain = var.domain
+  type   = "A"
+  name   = var.subdomain
+  value  = digitalocean_droplet.rehearsal.ipv4_address
+  ttl    = 300
 }
