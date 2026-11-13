@@ -38,7 +38,7 @@ import { metricFindings } from "./analysis/metric-findings";
 import { metricsFromHtml } from "./browser/metrics";
 import { generateSpec, specToMarkdown } from "./analysis/spec";
 import { selectStore } from "./storage";
-import { withTrace, logEvent } from "./telemetry";
+import { captureError, logEvent, traceTags, withTrace } from "./telemetry";
 import { writeFileSync, mkdirSync } from "node:fs";
 import path from "node:path";
 
@@ -101,7 +101,7 @@ export class Orchestrator {
   async discover(id: string): Promise<Experiment> {
     const experiment = await this.mustGet(id);
     await this.update(experiment, "discovering");
-    return withTrace("discover", id, async () => {
+    return withTrace("discover", { experimentId: id, targetUrl: experiment.targetUrl }, async () => {
       const config = experiment.configuration;
       const builder = new GraphBuilder(config.maxStates, config.maxDepth);
       logEvent({ experimentId: id, stage: "discover", kind: "browser-runner", data: { runner: this.runner.name } });
@@ -161,6 +161,10 @@ export class Orchestrator {
             }
           } catch (e) {
             logEvent({ experimentId: id, stage: "discover", kind: "page-fail", data: { url, error: String(e).slice(0, 160) } });
+            await captureError(e, { url, depth, viewport: vpName }, {
+              tags: traceTags("discover", { experimentId: id, targetUrl: experiment.targetUrl }),
+              level: "warning",
+            });
           }
         }
       }
@@ -179,7 +183,7 @@ export class Orchestrator {
     }
     const exp = (await this.mustGet(id))!;
     await this.update(exp, "simulating");
-    return withTrace("simulate", id, async () => {
+    return withTrace("simulate", { experimentId: id, targetUrl: exp.targetUrl }, async () => {
       const config = exp.configuration;
       const graph = exp.graph!;
       const start = graph.states[0];
@@ -220,7 +224,7 @@ export class Orchestrator {
     if (exp.simulations.length === 0) await this.simulate(id);
     const e = (await this.mustGet(id))!;
     await this.update(e, "verifying");
-    return withTrace("verify", id, async () => {
+    return withTrace("verify", { experimentId: id, targetUrl: e.targetUrl }, async () => {
       const graph = e.graph!;
       const stateById = new Map(graph.states.map((s) => [s.stateId, s]));
       const adj = adjacency(graph);
@@ -265,7 +269,7 @@ export class Orchestrator {
     if (e.browserTests.length === 0) await this.verify(id);
     const exp = (await this.mustGet(id))!;
     await this.update(exp, "analyzing");
-    return withTrace("analyze", id, async () => {
+    return withTrace("analyze", { experimentId: id, targetUrl: exp.targetUrl }, async () => {
       const states = exp.graph?.states ?? [];
       const rules = ruleFindings({ states, runs: exp.browserTests, assertions: exp.assertions });
       const llm = await llmFindings({ llm: this.llm, states, runs: exp.browserTests, goal: exp.goal });
@@ -290,7 +294,7 @@ export class Orchestrator {
     if (e.findings.length === 0) await this.analyze(id);
     const exp = (await this.mustGet(id))!;
     await this.update(exp, "comparing");
-    return withTrace("compare", id, async () => {
+    return withTrace("compare", { experimentId: id, targetUrl: exp.targetUrl }, async () => {
       const finding = exp.findings.find((f) => /post-event|stale/i.test(f.title)) ?? exp.findings[0];
       if (!finding) {
         await this.update(exp, "created");
@@ -344,7 +348,7 @@ export class Orchestrator {
     const e = await this.mustGet(id);
     if (e.comparisons.length === 0) await this.compare(id);
     const exp = (await this.mustGet(id))!;
-    return withTrace("spec", id, async () => {
+    return withTrace("spec", { experimentId: id, targetUrl: exp.targetUrl }, async () => {
       exp.spec = await generateSpec(exp, this.llm);
       const dir = path.join(process.cwd(), "data", "experiments", exp.id);
       mkdirSync(dir, { recursive: true });

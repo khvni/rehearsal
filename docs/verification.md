@@ -35,7 +35,7 @@ stale key fails the check.
 - **Not deployed** (`NOT_DEPLOYED`) — code defaults (`GEMINI_MODEL_*`, `JEV_BASE_URL`,
   `JEV_MODEL`, `REHEARSAL_BROWSER`, `SENTRY_TRACES_SAMPLE_RATE`), aliases (`OPENROUTER_API_KEY`,
   `TIGERDATA_URL`), optional backends not provisioned yet (`BRIGHTDATA_BROWSER_*`,
-  `BROWSERBASE_*`, `STAGEHAND_MODEL*`, `SNOWFLAKE_*`), local-only (`STAGEHAND_CHROME_PATH`).
+  `BROWSERBASE_*`, `STAGEHAND_MODEL*`, `SNOWFLAKE_*`, `SENTRY_WEBHOOK_SECRET`, `GITHUB_TOKEN`), local-only (`STAGEHAND_CHROME_PATH`).
 - **Never deployed** — `REHEARSAL_ALLOW_PRIVATE` (disables the SSRF guard); fails if any
   stack maps it.
 

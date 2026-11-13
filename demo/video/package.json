@@ -1,0 +1,12 @@
+{
+  "name": "rehearsal-demo-video",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "npx --yes hyperframes@0.9.42 preview",
+    "check": "npx --yes hyperframes@0.9.42 check",
+    "render": "npx --yes hyperframes@0.9.42 render",
+    "publish": "npx --yes hyperframes@0.9.42 publish",
+    "capture": "node scripts/capture.mjs"
+  }
+}

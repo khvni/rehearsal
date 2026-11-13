@@ -482,3 +482,4 @@ export * from "./browser";
 export * from "./metrics";
 export * from "./ports";
 export * from "./ui";
+export * from "./telemetry";
