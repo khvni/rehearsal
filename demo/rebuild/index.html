@@ -146,7 +146,12 @@ section.block { padding: 64px 0; box-shadow: 0 -1px 0 var(--line); }
 .day li time { color: var(--muted); }
 
 .talks { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin-top: 28px; }
-.talk { padding: 16px 18px; border-radius: var(--radius); background: var(--surface); box-shadow: inset 0 0 0 1px var(--line); }
+.talk { position: relative; padding: 16px 18px; border-radius: var(--radius); background: var(--surface); box-shadow: inset 0 0 0 1px var(--line); transition: background-color 150ms ease; }
+.talk a { text-decoration: none; }
+.talk a::after { content: ""; position: absolute; inset: 0; border-radius: inherit; }
+.talk:focus-within { outline: 2px solid var(--accent); outline-offset: 2px; }
+.talk a:focus-visible { outline: none; }
+@media (hover: hover) and (pointer: fine) { .talk:hover { background: var(--surface-2); } }
 .talk h3 { font-size: 16px; font-weight: 650; line-height: 1.35; }
 .talk p { margin-top: 6px; color: var(--muted); font-size: 14px; }
 .talk[hidden] { display: none; }
@@ -284,20 +289,20 @@ body[data-phase="post"] .pre-only, body[data-phase="pre"] .post-only { display: 
       <h2 id="talks-h">Talks</h2>
       <a href="https://ai.engineer/code/2026#talks">All 50 sessions →</a>
     </div>
-    <p style="color:var(--muted)">Main-stage sessions from both days. Each links to a recording, an illustrated reading edition and a timestamped transcript on the live site.</p>
+    <p style="color:var(--muted)">Main-stage sessions from both days. Each opens the session page on the live site: recording, illustrated reading edition and timestamped transcript.</p>
     <div class="talks" id="talk-list">
-      <article class="talk"><h3>2026 in LLMs</h3><p>Simon Willison · Independent · Nov 11</p></article>
-      <article class="talk"><h3>Rethinking Claude Code Best Practices</h3><p>Lydia Hallie · Anthropic · Nov 11</p></article>
-      <article class="talk"><h3>All Code Is Slop (Except Mine)</h3><p>Lauren Tan · SpaceXSI · Nov 11</p></article>
-      <article class="talk"><h3>I deleted 90% of my harness (And It Got Better)</h3><p>Philipp Schmid · Google DeepMind · Nov 11</p></article>
-      <article class="talk"><h3>Software Factories: Escape from Trash Mountain</h3><p>Steve Yegge · Independent · Nov 11</p></article>
-      <article class="talk"><h3>How to build an agent that builds the culture</h3><p>Zach Bruggeman · Ramp · Nov 11</p></article>
-      <article class="talk"><h3>The Software Atelier</h3><p>Armin Ronacher · Earendil · Nov 12</p></article>
-      <article class="talk"><h3>A New Age of Software Engineering</h3><p>Walden Yan · Cognition · Nov 12</p></article>
-      <article class="talk"><h3>Choose the project you can verify</h3><p>Jarred Sumner · Anthropic · Nov 12</p></article>
-      <article class="talk"><h3>Software Engineering Is Becoming Factory Engineering</h3><p>Zach Lloyd · Warp · Nov 12</p></article>
-      <article class="talk"><h3>Build the company around the agent, not a pilot project</h3><p>Quinn Slack · Amp · Nov 12</p></article>
-      <article class="talk"><h3>Ambition in AI</h3><p>Jason Liu · OpenAI · Nov 12</p></article>
+      <article class="talk"><h3><a href="https://ai.engineer/code/2026/talks/simon-willison">2026 in LLMs</a></h3><p>Simon Willison · Independent · Nov 11</p></article>
+      <article class="talk"><h3><a href="https://ai.engineer/code/2026/talks/lydia-hallie">Rethinking Claude Code Best Practices</a></h3><p>Lydia Hallie · Anthropic · Nov 11</p></article>
+      <article class="talk"><h3><a href="https://ai.engineer/code/2026/talks/lauren-tan">All Code Is Slop (Except Mine)</a></h3><p>Lauren Tan · SpaceXSI · Nov 11</p></article>
+      <article class="talk"><h3><a href="https://ai.engineer/code/2026/talks/philipp-schmid">I deleted 90% of my harness (And It Got Better)</a></h3><p>Philipp Schmid · Google DeepMind · Nov 11</p></article>
+      <article class="talk"><h3><a href="https://ai.engineer/code/2026/talks/steve-yegge">Software Factories: Escape from Trash Mountain</a></h3><p>Steve Yegge · Independent · Nov 11</p></article>
+      <article class="talk"><h3><a href="https://ai.engineer/code/2026/talks/zach-bruggeman">How to build an agent that builds the culture</a></h3><p>Zach Bruggeman · Ramp · Nov 11</p></article>
+      <article class="talk"><h3><a href="https://ai.engineer/code/2026/talks/armin-ronacher">The Software Atelier</a></h3><p>Armin Ronacher · Earendil · Nov 12</p></article>
+      <article class="talk"><h3><a href="https://ai.engineer/code/2026/talks/walden-yan">A New Age of Software Engineering</a></h3><p>Walden Yan · Cognition · Nov 12</p></article>
+      <article class="talk"><h3><a href="https://ai.engineer/code/2026/talks/jarred-sumner">Choose the project you can verify</a></h3><p>Jarred Sumner · Anthropic · Nov 12</p></article>
+      <article class="talk"><h3><a href="https://ai.engineer/code/2026/talks/zach-lloyd">Software Engineering Is Becoming Factory Engineering</a></h3><p>Zach Lloyd · Warp · Nov 12</p></article>
+      <article class="talk"><h3><a href="https://ai.engineer/code/2026/talks/quinn-slack">Build the company around the agent, not a pilot project</a></h3><p>Quinn Slack · Amp · Nov 12</p></article>
+      <article class="talk"><h3><a href="https://ai.engineer/code/2026/talks/jason-liu">Ambition in AI</a></h3><p>Jason Liu · OpenAI · Nov 12</p></article>
     </div>
     <p class="empty" id="talk-empty" hidden>No main-stage talk matches. <a href="https://ai.engineer/code/2026#talks">Search all 50 sessions</a></p>
   </section>
