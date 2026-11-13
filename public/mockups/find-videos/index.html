@@ -97,6 +97,7 @@ h1 { font-size: 32px; line-height: 1.15; font-weight: 500; letter-spacing: -0.02
 ol.talks { list-style: none; margin: 0; padding: 0; }
 li.talk { border-top: 1px solid var(--line); }
 li.talk:first-child { border-top-color: transparent; }
+[hidden] { display: none !important; }
 li.talk.open, li.talk.open + li.talk { border-top-color: transparent; }
 
 .row {
@@ -293,41 +294,58 @@ function embedUrl(t, autoplay) {
 }
 const watchUrl = (t) => "https://www.youtube.com/watch?v=" + t.v + "&t=" + t.a + "s";
 
-function render() {
-  const terms = fold(q.value.trim()).split(/\s+/).filter(Boolean);
-  searchBox.classList.toggle("has-value", q.value.length > 0);
-  const shown = TALKS.filter((t) =>
-    (track === "all" || (track === "online") === t.o) && terms.every((term) => t.h.includes(term))
-  );
+function titleHtml(t, terms) {
+  return highlight(t.t, terms) + (t.o ? '<span class="tag">Online</span>' : "") + (t.x ? '<span class="tag">Excerpt</span>' : "");
+}
 
-  const total = TALKS.length;
-  countEl.textContent = shown.length === total ? total + " talks" : shown.length + " of " + total + " talks";
-
-  if (!shown.length) {
-    list.innerHTML = '<p class="empty">No talks match “' + esc(q.value.trim()) + '”. <button type="button" data-reset>Show all talks</button></p>';
-    return;
-  }
-
+// Rows are built once and filtered in place, so an open player keeps playing while it stays visible.
+function build() {
   let html = "";
   for (const d of [11, 12]) {
-    const items = shown.filter((t) => t.d === d);
-    if (!items.length) continue;
-    html += '<section class="day" aria-labelledby="day-' + d + '"><h2 id="day-' + d + '">' + DAYS[d].label +
+    html += '<section class="day" data-day="' + d + '" aria-labelledby="day-' + d + '"><h2 id="day-' + d + '">' + DAYS[d].label +
       ' <a href="https://www.youtube.com/watch?v=' + DAYS[d].stream + '">Full day ↗</a></h2><ol class="talks">';
-    for (const t of items) {
-      const open = t.s === openSlug;
-      html += '<li class="talk' + (open ? " open" : "") + '" id="' + t.s + '">' +
-        '<button class="row" type="button" aria-expanded="' + open + '" aria-controls="p-' + t.s + '" data-slug="' + t.s + '">' +
-          '<span class="title">' + highlight(t.t, terms) + (t.o ? '<span class="tag">Online</span>' : "") + (t.x ? '<span class="tag">Excerpt</span>' : "") + '</span>' +
+    for (const t of TALKS.filter((x) => x.d === d)) {
+      html += '<li class="talk" id="' + t.s + '">' +
+        '<button class="row" type="button" aria-expanded="false" aria-controls="p-' + t.s + '" data-slug="' + t.s + '">' +
+          '<span class="title">' + titleHtml(t, []) + '</span>' +
           '<span class="len">' + minutes(t) + '</span>' +
-          '<span class="who">' + highlight(who(t), terms) + '</span>' +
+          '<span class="who">' + esc(who(t)) + '</span>' +
         '</button>' +
-        '<div class="panel" id="p-' + t.s + '"><div><div class="panel-inner">' + (open ? panelHtml(t, false) : "") + '</div></div></div>' +
+        '<div class="panel" id="p-' + t.s + '"><div><div class="panel-inner"></div></div></div>' +
       '</li>';
     }
     html += "</ol></section>";
   }
-  list.innerHTML = html;
+  list.innerHTML = html + '<p class="empty" hidden></p>';
+}
+
+function render() {
+  const terms = fold(q.value.trim()).split(/\s+/).filter(Boolean);
+  searchBox.classList.toggle("has-value", q.value.length > 0);
+  const shown = new Set(TALKS.filter((t) =>
+    (track === "all" || (track === "online") === t.o) && terms.every((term) => t.h.includes(term))
+  ));
+
+  const total = TALKS.length;
+  countEl.textContent = shown.size === total ? total + " talks" : shown.size + " of " + total + " talks";
+
+  for (const t of TALKS) {
+    const li = document.getElementById(t.s);
+    const visible = shown.has(t);
+    li.hidden = !visible;
+    const inner = $(".panel-inner", li);
+    if (!visible) { inner.innerHTML = ""; continue; }
+    $(".title", li).innerHTML = titleHtml(t, terms);
+    $(".who", li).innerHTML = highlight(who(t), terms);
+    if (t.s === openSlug && !inner.firstChild) inner.innerHTML = panelHtml(t, false);
+  }
+  list.querySelectorAll(".day").forEach((sec) => {
+    sec.hidden = !TALKS.some((t) => t.d === Number(sec.dataset.day) && shown.has(t));
+  });
+
+  const empty = $(".empty", list);
+  empty.hidden = shown.size > 0;
+  empty.innerHTML = shown.size ? "" : 'No talks match “' + esc(q.value.trim()) + '”. <button type="button" data-reset>Show all talks</button>';
 }
 
 function panelHtml(t, autoplay) {
@@ -408,11 +426,12 @@ document.addEventListener("keydown", (e) => {
   }
   else if (e.key === "Enter" && document.activeElement === q) {
     e.preventDefault();
-    const first = list.querySelector(".row");
+    const first = list.querySelector("li.talk:not([hidden]) .row");
     if (first) { q.blur(); setOpen(first.dataset.slug); first.focus({ preventScroll: true }); }
   }
 });
 
+build();
 render();
 const initial = decodeURIComponent(location.hash.slice(1));
 if (initial && TALKS.some((t) => t.s === initial)) setOpen(initial, { autoplay: false, scroll: true });
