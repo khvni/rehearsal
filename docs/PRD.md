@@ -2,16 +2,16 @@
 
 **Version:** 3.0 — intent-driven journey audit
 **Date:** November 13, 2026
-**Status:** Supersedes PRD v2.0. v2.0's closed loop, adapters, safety rules, and CI gates stay; this revision changes *what* gets modeled and *how cheaply* it gets swept.
+**Status:** Replaces PRD v2.0. The v2.0 loop, adapters, safety rules and CI gates stay. This version changes *what* gets modeled and *how cheaply* it is swept.
 **Targets:** any public marketing or product site. Reference corpus: keysight.com, mtc.so, brightdata.com, devpost.com, mlh.io, tigerdata.com, sentry.io, snowflake.com, digitalocean.com, hyperframes.studio, heygen.com, plus ai.engineer/code/2026 (the v2.0 fixture).
-**Primary output:** still the **spec of changes** (`spec.md`), now organized by visitor intent and endpoint, with every change traced to a measured journey cost or a verified browser run.
-**Engineering reference:** [`docs/intent-model.md`](./intent-model.md) — schemas and algorithms to implement from.
+**Primary output:** still `spec.md`, the list of changes. It is now grouped by visitor intent and endpoint, and each change links to a measured journey cost or a verified browser run.
+**Engineering reference:** [`docs/intent-model.md`](./intent-model.md) has the schemas and algorithms to build from.
 
 ---
 
 ## 0. What changed from v2.0, and why
 
-v2.0 delivered a working closed loop on one page. Reading the code against the PRD shows it is a single-site, single-goal demo:
+v2.0 works end to end, but only on one page with one goal. The code shows why:
 
 - **Run setup:** you type one free-text goal.
 - **Discovery:** breadth-first crawl over regex-parsed HTML. Links are ranked by goal-keyword overlap.
@@ -19,7 +19,7 @@ v2.0 delivered a working closed loop on one page. Reading the code against the P
 - **Simulation:** 1,000 random walks over ≤30 states.
 - **Compare stage:** hard-coded to the stale-CTA finding (`/post-event|stale/`).
 
-None of this generalizes to sentry.io or devpost.com. v3.0 fixes it as follows.
+None of this works on sentry.io or devpost.com. Here is what v3.0 changes.
 
 | # | v2.0 issue | v3.0 change |
 |---|-----------|-------------|
@@ -27,14 +27,14 @@ None of this generalizes to sentry.io or devpost.com. v3.0 fixes it as follows.
 | 2 | **No notion of what matters on a site.** All states and actions have equal weight. Findings like "407 links" have no priority. | **Endpoint discovery + weighting.** Endpoints are classified into 12 classes. Each class gets an importance weight from (a) site archetype priors (SaaS / devtool / enterprise / event / community / agency / creative tool) and (b) owner overrides. Importance is kept **separate from prominence**, and the gap between them is itself a finding (§4). |
 | 3 | **Graph has no geometry.** `extractPage` regex-parses HTML, so there is no fold, no scroll height, no visual weight, and nothing to support hierarchy or scan claims. | **Rendered layout snapshot per state.** We record bounding boxes, fold index, and computed visual weight for every action and heading. Scroll becomes an explicit action in the graph, and the scan model (F-pattern / layer-cake / spotted) runs on real geometry (§5, §7). |
 | 4 | **"Decision tree" was implicit.** The state graph stores states + edges. Trajectories are sampled from it, and the tree is never materialized or costed. | **Journey ontology.** `Intent → Goal → Endpoint → JourneyTree`. The tree is unrolled from the graph per intent and persona. Each edge carries a cost vector: clicks, scroll px, modeled scan fixations, words read, decision entropy. The tree is what the dashboard shows and what the spec cites (§5). |
-| 5 | **1,000 Monte Carlo walks over ≤30 states.** Mostly redundant samples, and the results are noisy at any seed. | **Exact sweep.** Jev distributions become transition probabilities. Reach probability and expected cost per (intent, endpoint, persona) are computed **exactly** by dynamic programming over the absorbing chain. Monte Carlo stays only as a cross-check (eval) and for graphs above the exact-solve cap (§6). |
+| 5 | **1,000 Monte Carlo walks over ≤30 states.** Most samples repeat, and results are noisy at any seed. | **Exact sweep.** Jev distributions become transition probabilities. Reach probability and expected cost per (intent, endpoint, persona) are computed **exactly** by dynamic programming over the absorbing chain. Monte Carlo stays only as a cross-check (eval) and for graphs above the exact-solve cap (§6). |
 | 6 | **Jev asked one generic question per state.** The fixture is token overlap. Gemini usage per run was unbounded: assertion compile + findings + spec, plus Stagehand `act()` on every heal. | **Explicit cost tiers (§6.3).** Tier 0 is deterministic code (classification rules, layout, trunk test, scan model, DP). Tier 1 is Jev, with typed `choice`/`noul`/`score` questions cached by `(stateHash, intent, persona)`. Tier 2 is Gemini: **≤2 calls per run by default** (archetype tie-break if needed + spec narrative). It is never inside the per-state loop. |
 | 7 | **Krug metrics were rule-of-thumb.** `ruleFindings` = stale dates, vague labels, link count, missing identity. | **Krug-grounded metric set (§7).** Trunk-test score (6 checks), four-questions-above-fold, hierarchy alignment (rank correlation of importance vs prominence), folds-to-endpoint, modeled scan time, competing primary CTAs, words above fold. Each metric has a threshold → finding → Krug key. |
-| 8 | **Hard-coded to the AIE page.** Compare targets the stale finding by regex. Date rules assume an event site. Budgets (30 states / depth 3) are too small for mega-menu sites like snowflake.com. | **Site-agnostic by construction.** Archetype-gated rules (stale-date only fires for `event`). The variant generator chooses a patch from the top finding's *type* (promote CTA, relabel, add nav marker), not from regex on its title. Budgets are per-intent and endpoint-seeking (§6.1). The 12-site corpus is the eval set (§9). |
+| 8 | **Hard-coded to the AIE page.** Compare targets the stale finding by regex. Date rules assume an event site. Budgets (30 states / depth 3) are too small for mega-menu sites like snowflake.com. | **Works on any site.** Archetype-gated rules (stale-date only fires for `event`). The variant generator chooses a patch from the top finding's *type* (promote CTA, relabel, add nav marker), not from regex on its title. Budgets are per-intent and endpoint-seeking (§6.1). The 12-site corpus is the eval set (§9). |
 | 9 | **Comparison had a bug and weak deltas.** `backtracks` delta is populated from `steps.length`. Deltas are click counts only. | Deltas are re-expressed as **journey deltas**: Δ reach probability, Δ expected cost, Δ trunk score, Δ hierarchy alignment per affected endpoint. The `backtracks` bug is listed as a v3 fix item (§8 Phase 0). |
 | 10 | **Spec grouped by severity only.** | Spec is **grouped by intent → endpoint**: "RFQ: pricing is 3.2 folds + 2 clicks deep and below 9 competing CTAs." Severity ordering still applies within each group. Each change states the journey delta it is expected to produce, and the verified ones show the measured delta. |
 
-Unchanged from v2.0: adapters that no-op without keys, the evidence classes, the Krug citation requirement, the safety posture (public pages, politeness, **no form submission**), Terraform deploy, evals as a CI gate, and skill-sync.
+Kept from v2.0: adapters that no-op without keys, the evidence classes, Krug citations, the safety rules (public pages, politeness, **no form submission**), Terraform deploy, evals in CI, and skill-sync.
 
 ## 1. Product thesis (revised)
 

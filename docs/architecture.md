@@ -44,7 +44,7 @@ telemetry: Sentry (SENTRY_DSN) + data/events/*.jsonl → /api/hooks/sentry → f
    same assertions re-run; deltas recorded.
 6. **spec**: `generateSpec` merges findings → ordered changes + rebuild phases → `spec.md`.
 
-## Browser + fetch vendors
+## Browser and fetch vendors
 
 `src/lib/browser/runner.ts#selectRunner` picks a `BrowserRunner` from env (`runner.name` is
 logged as the `browser-runner` telemetry event at the start of discover):
@@ -84,8 +84,8 @@ Scraper API / datasets target search engines and prebuilt site scrapers, so they
 
 ## Environment variables
 
-All optional — `.env.example` is the template. `npm run check:facts` fails if code reads a
-variable that is missing here or in `.env.example`, or `.env.example` lists one nothing reads.
+All are optional. `.env.example` is the template. `npm run check:facts` fails if code reads
+a variable that is missing here or in `.env.example`, or if `.env.example` lists one nothing reads.
 
 | Variable | Read by | Effect when unset |
 |---|---|---|
@@ -112,6 +112,5 @@ keeps that list and its documented exemptions in sync with `.env.example`.
 
 ## Why adapters
 
-Every external system sits behind an interface selected by env vars. Keys absent ⇒
-fixture/plain implementation. The demo can never die because a key is missing, and evals
-run hermetically in CI.
+Each external system sits behind an interface picked by env vars. No key means a fixture
+or plain version, so a missing key can't break the demo and CI evals need no network.

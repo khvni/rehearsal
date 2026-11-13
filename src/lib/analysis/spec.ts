@@ -39,7 +39,7 @@ export async function generateSpec(experiment: Experiment, llm: LlmClient): Prom
 
   return {
     ...base,
-    summary: llmSpec?.summary ?? fallbackSummary(experiment),
+    summary: llmSpec?.summary ?? fallbackSummary(experiment, changes.length),
     changes:
       llmSpec?.changes && llmSpec.changes.length >= changes.length
         ? llmSpec.changes.map((c, i) => ({ ...c, rank: i + 1 }) as SpecChange)
@@ -64,14 +64,18 @@ Verified run failures:\n${JSON.stringify(
       r.assertions.filter((a) => !a.passed).map((a) => a.assertion.value),
     ),
   )}
-Return JSON: {"summary": "<=2 sentences", "changes": [{"title","change","rationale","effort":"S|M|L","krugPrinciple"?}], "rebuildPhases": [{"name","goal","items":[]}]}.
+Return JSON: {"summary": "<=2 short, plain sentences", "changes": [{"title","change","rationale","effort":"S|M|L","krugPrinciple"?}], "rebuildPhases": [{"name","goal","items":[]}]}.
 Order changes by impact. Rebuild plan = 3-4 phases for a cleaner version of the site, each phase listing concrete items.`;
 }
 
-function fallbackSummary(experiment: Experiment): string {
+function fallbackSummary(experiment: Experiment, changes: number): string {
   const verified = experiment.findings.filter((f) => f.evidenceType === "verified-failure").length;
   const concerns = experiment.findings.filter((f) => f.evidenceType === "reproducible-concern").length;
-  return `Rehearsal verified ${experiment.browserTests.length} browser runs against ${experiment.targetUrl}: ${verified} verified failure(s), ${concerns} reproducible concern(s). ${experiment.findings.length} total findings mapped to ${experiment.spec?.changes.length ?? experiment.findings.length} proposed changes.`;
+  return `Rehearsal ran ${count(experiment.browserTests.length, "browser run")} on ${experiment.targetUrl}. It found ${count(verified, "verified failure")} and ${count(concerns, "reproducible concern")}. ${count(experiment.findings.length, "finding")} became ${count(changes, "change")}.`;
+}
+
+function count(n: number, noun: string): string {
+  return `${n} ${noun}${n === 1 ? "" : "s"}`;
 }
 
 function fallbackPhases(changes: SpecChange[]): SpecReport["rebuildPhases"] {
@@ -80,18 +84,18 @@ function fallbackPhases(changes: SpecChange[]): SpecReport["rebuildPhases"] {
   return [
     {
       name: "Truth pass",
-      goal: "Remove anything stale or misleading — copy must match reality.",
-      items: high.length > 0 ? high : ["Audit all dates and CTAs for stale claims"],
+      goal: "Fix anything stale or wrong. The page should say what is true today.",
+      items: high.length > 0 ? high : ["Check every date and button for stale claims"],
     },
     {
       name: "Hierarchy pass",
-      goal: "One obvious primary action; scanning-friendly structure.",
-      items: ["Rebuild nav to ~7 items max", "Single dominant CTA above the fold", ...small.slice(0, 3)],
+      goal: "Make one action obvious and the page easy to scan.",
+      items: ["Cut the main nav to about 7 items", "Put one main call to action above the fold", ...small.slice(0, 3)],
     },
     {
       name: "Verification loop",
-      goal: "Rehearse the rebuild against the same assertions before shipping.",
-      items: ["Re-run experiment on staging", "Compare baseline vs. rebuild deltas"],
+      goal: "Run the same checks on the rebuild before it ships.",
+      items: ["Rerun the experiment on staging", "Compare the baseline with the rebuild"],
     },
   ];
 }
