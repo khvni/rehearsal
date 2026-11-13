@@ -21,6 +21,7 @@ import { selectJev, scoreActions } from "./decisions/jev";
 import { simulateTrajectories, selectTrajectories } from "./simulation";
 import { selectLlm } from "./analysis/gemini";
 import { endpointFindings, llmFindings, ruleFindings } from "./analysis/findings";
+import { collapseFindings } from "./analysis/dedupe";
 import { questionFindings } from "./analysis/question-findings";
 import {
   EXPECTED_CLASSES,
@@ -276,13 +277,13 @@ export class Orchestrator {
       const endpoints = await this.endpointAnalysis(exp);
       const graph = exp.graph?.states.length ? exp.graph : undefined;
       if (graph) exp.questions = await visitorQuestions(graph, exp.endpoints ?? [], detectSiteType(graph), this.llm);
-      exp.findings = dedupeFindings([
+      exp.findings = collapseFindings([
         ...rules,
         ...endpoints,
         ...metricFindings(states, { homepageUrl: exp.targetUrl }),
         ...questionFindings(exp.questions ?? [], graph),
         ...llm,
-      ]);
+      ], { states, runs: exp.browserTests.length });
       await this.update(exp, "created");
       return exp;
     });
@@ -462,12 +463,3 @@ Return ASSERTION_LIST as a JSON array of {kind, value, selector?}.`,
   }
 }
 
-function dedupeFindings(list: Experiment["findings"]): Experiment["findings"] {
-  const seen = new Set<string>();
-  return list.filter((f) => {
-    const key = `${f.category}|${f.title.trim().toLowerCase()}|${[...f.affectedStates].sort().join(",")}`;
-    if (seen.has(key)) return false;
-    seen.add(key);
-    return true;
-  });
-}
