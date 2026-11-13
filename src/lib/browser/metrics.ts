@@ -198,7 +198,7 @@ export async function measurePage(page: EvaluatingPage): Promise<PageMetrics | u
 const DROP_RE = /<(script|style|noscript|template|svg)\b[\s\S]*?<\/\1>/gi;
 const plain = (s: string) => s.replace(/<[^>]+>/g, " ").replace(/&nbsp;/g, " ").replace(/\s+/g, " ").trim();
 const attrOf = (tag: string, name: string) =>
-  tag.match(new RegExp(`\\b${name}\\s*=\\s*("([^"]*)"|'([^']*)'|[^\\s>]+)`, "i"))?.slice(2).find((v) => v !== undefined);
+  tag.match(new RegExp(`\\b${name}\\s*=\\s*("([^"]*)"|'([^']*)'|([^\\s>]+))`, "i"))?.slice(2).find((v) => v !== undefined);
 
 function firstBlock(html: string, tag: string): string | null {
   return html.match(new RegExp(`<${tag}\\b[^>]*>[\\s\\S]*?<\\/${tag}>`, "i"))?.[0] ?? null;
@@ -272,7 +272,7 @@ export function metricsFromHtml(html: string, pageUrl: string, viewport: Viewpor
       hasPrimaryNav: navItemCount >= 3 || hasMenuToggle,
       hasSearch:
         /<input\b[^>]*(type\s*=\s*["']?search|(name|placeholder|aria-label)\s*=\s*["'][^"']*search)/i.test(doc) || /role\s*=\s*["']search/i.test(doc),
-      hasYouAreHere: /aria-current\s*=\s*["']?(?!false)/i.test(doc) || /breadcrumb/i.test(doc),
+      hasYouAreHere: /aria-current\s*=\s*(?!["']?false\b)/i.test(doc) || /breadcrumb/i.test(doc),
     },
   };
 }
