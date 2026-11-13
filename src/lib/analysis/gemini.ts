@@ -1,4 +1,5 @@
 import type { LlmClient } from "../contracts";
+import { logEvent } from "../telemetry";
 
 /**
  * Gemini API client — REST over generativelanguage (stable across SDK churn).
@@ -10,16 +11,39 @@ export class GeminiClient implements LlmClient {
   private apiKey: string;
   private fast: string;
   private deep: string;
+  private maxCalls: number;
+  private calls = 0;
 
   constructor() {
     this.apiKey = process.env.GEMINI_API_KEY ?? "";
     this.fast = process.env.GEMINI_MODEL_FAST ?? "gemini-4-hydrogen";
     this.deep = process.env.GEMINI_MODEL_DEEP ?? "gemini-4-argon";
+    const max = Number(process.env.REHEARSAL_GEMINI_MAX_CALLS ?? 2);
+    this.maxCalls = Number.isFinite(max) && max >= 0 ? max : 2;
     if (!this.apiKey) throw new Error("GeminiClient requires GEMINI_API_KEY");
   }
 
+  resetBudget(): void {
+    this.calls = 0;
+  }
+
+  /** Over budget throws; every caller already falls back to its deterministic path on error. */
   async complete(prompt: string, opts?: { deep?: boolean; json?: boolean }): Promise<string> {
+    if (this.calls >= this.maxCalls) throw new Error(`Gemini call budget (${this.maxCalls}/run) exhausted`);
+    this.calls++;
     const model = opts?.deep ? this.deep : this.fast;
+    try {
+      return await this.generate(model, prompt, opts?.json ?? false);
+    } catch (err) {
+      if (model !== this.fast && isRetryableWithFastModel(err)) {
+        logEvent({ stage: "analyze", kind: "llm-fallback", data: { from: model, to: this.fast, error: String(err).slice(0, 160) } });
+        return await this.generate(this.fast, prompt, opts?.json ?? false);
+      }
+      throw err;
+    }
+  }
+
+  private async generate(model: string, prompt: string, json: boolean): Promise<string> {
     const res = await fetch(
       `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${this.apiKey}`,
       {
@@ -28,7 +52,7 @@ export class GeminiClient implements LlmClient {
         body: JSON.stringify({
           contents: [{ parts: [{ text: prompt }] }],
           generationConfig: {
-            ...(opts?.json ? { responseMimeType: "application/json" } : {}),
+            ...(json ? { responseMimeType: "application/json" } : {}),
             maxOutputTokens: 8192,
           },
         }),
@@ -41,6 +65,11 @@ export class GeminiClient implements LlmClient {
     };
     return data.candidates?.[0]?.content?.parts?.map((p) => p.text ?? "").join("") ?? "";
   }
+}
+
+/** Quota (429), missing model (404) or 5xx on the deep model: degrade to the fast model instead of silently losing findings. */
+function isRetryableWithFastModel(err: unknown): boolean {
+  return /failed: (429|404|5\d\d)/.test(String(err));
 }
 
 /** Deterministic offline stand-in: structured responses keyed by prompt shape. */

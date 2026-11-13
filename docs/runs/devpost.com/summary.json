@@ -53,16 +53,16 @@
   },
   "simulate": {
     "trajectories": 300,
-    "goalReachPct": 97.3,
+    "goalReachPct": 97,
     "outcomes": {
-      "goal-reached": 292,
-      "repetition-limit": 8
+      "goal-reached": 291,
+      "repetition-limit": 9
     }
   },
   "verify": {
     "runs": 4,
-    "passed": 0,
-    "failed": 4,
+    "passed": 1,
+    "failed": 3,
     "assertionsPassed": 2,
     "runsWithConsoleErrors": 4,
     "runErrors": []
@@ -81,48 +81,26 @@
       "variant": 2
     },
     "failedInteractions": {
-      "baseline": 0,
-      "variant": 0
+      "baseline": 1,
+      "variant": 1
     },
     "runtimeErrors": {
-      "baseline": 2,
+      "baseline": 1,
       "variant": 2
     },
     "findingReproduces": true
   },
-  "endpoints": {
-    "intent": "proposal",
-    "total": 8,
-    "byClass": {
-      "signup": {
-        "found": 3,
-        "reached": 3
-      },
-      "contact-form": {
-        "found": 1,
-        "reached": 1
-      },
-      "docs-answers": {
-        "found": 2,
-        "reached": 2
-      },
-      "schedule-event": {
-        "found": 2,
-        "reached": 2
-      }
-    }
-  },
   "findings": {
-    "total": 30,
+    "total": 31,
     "bySeverity": {
       "critical": 0,
       "high": 8,
       "medium": 18,
-      "low": 4
+      "low": 5
     },
     "byEvidence": {
       "verified-failure": 1,
-      "reproducible-concern": 25,
+      "reproducible-concern": 26,
       "hypothesis": 4
     },
     "titles": [
@@ -148,6 +126,7 @@
       "[high] Post-event page still invites registration",
       "[medium] Dense link surface increases scan cost",
       "[medium] Dense link surface increases scan cost",
+      "[low] Console errors during browser runs (7)",
       "[high] No pricing endpoint found",
       "[low] Heading outline is broken: skips h1→h3",
       "[low] Heading outline is broken: skips h1→h4",
@@ -159,13 +138,13 @@
     ]
   },
   "durationsMs": {
-    "discover": 32470,
-    "simulate": 17,
-    "verify": 16987,
-    "analyze": 41,
-    "compare": 1849,
-    "spec": 4,
-    "total": 54281
+    "discover": 33316,
+    "simulate": 18,
+    "verify": 15484,
+    "analyze": 47,
+    "compare": 9982,
+    "spec": 3,
+    "total": 61923
   },
-  "ranAt": "2026-11-13T21:55:52.325Z"
+  "ranAt": "2026-11-13T21:49:30.257Z"
 }

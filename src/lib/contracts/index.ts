@@ -192,6 +192,8 @@ export const BrowserRun = z.object({
   ),
   assertions: z.array(z.object({ assertion: Assertion, passed: z.boolean() })),
   errors: z.array(z.string()),
+  /** Page/console errors observed during the run — data for findings, not part of `success`. */
+  consoleErrorCount: z.number().int().nonnegative().default(0),
   screenshotPaths: z.array(z.string()),
   durationMs: z.number().int().nonnegative(),
 });
@@ -488,3 +490,4 @@ export * from "./browser";
 export * from "./metrics";
 export * from "./ports";
 export * from "./ui";
+export * from "./telemetry";

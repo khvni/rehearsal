@@ -5,12 +5,14 @@ import type {
   Endpoint,
   EndpointClass,
   EndpointJourney,
-  EvidenceType,
   Finding,
   LlmClient,
   SiteState,
 } from "../contracts";
 import { isVagueLabel } from "../browser/extract";
+import { isRunError } from "../browser/types";
+import { EvidenceType, KrugDimension, KrugPrinciple, Severity } from "../contracts";
+import { logEvent } from "../telemetry";
 import { rubricPromptSection } from "./rubric";
 
 let counter = 0;
@@ -140,8 +142,42 @@ export function ruleFindings(args: {
     void text;
   }
 
+  // 6. Console/page errors during browser runs — data, not a goal failure (K9: observed in testing).
+  findings.push(...consoleErrorFindings(runs, states));
+
   void assertions;
   return findings;
+}
+
+/**
+ * console-errors: one low-severity finding per viewport whose runs logged page/console errors.
+ * Attributed to the first discovered state in that viewport — every run begins at the target URL.
+ */
+function consoleErrorFindings(runs: BrowserRun[], states: SiteState[]): Finding[] {
+  const byViewport = new Map<string, BrowserRun[]>();
+  for (const run of runs) {
+    if (run.consoleErrorCount === 0) continue;
+    byViewport.set(run.viewport.name, [...(byViewport.get(run.viewport.name) ?? []), run]);
+  }
+  return [...byViewport].map(([viewport, noisy]) => {
+    const start = states.find((s) => s.viewport.name === viewport);
+    const total = noisy.reduce((n, r) => n + r.consoleErrorCount, 0);
+    const samples = [...new Set(noisy.flatMap((r) => r.errors.filter((e) => !isRunError(e))))].slice(0, 3);
+    return {
+      findingId: `f_console-errors_${viewport}`,
+      title: `Console errors during browser runs (${total})`,
+      category: "consistency",
+      severity: "low",
+      evidenceType: "reproducible-concern",
+      description: `console-errors: ${total} page/console errors across ${noisy.length} of ${runs.filter((r) => r.viewport.name === viewport).length} ${viewport} runs, e.g. ${samples.map((s) => `"${s.slice(0, 120)}"`).join(", ")}. The goal check is unaffected, but broken scripts are where unconventional, unpredictable behavior starts.`,
+      affectedStates: start ? [start.stateId] : [],
+      affectedActions: [],
+      evidencePaths: noisy.flatMap((r) => r.screenshotPaths).slice(0, 3),
+      recommendation: "Fix or silence the failing scripts so the page behaves the same for every visitor.",
+      verificationStatus: "reproduced",
+      krugPrinciple: "testing-beats-arguing",
+    } satisfies Finding;
+  });
 }
 
 /**
@@ -270,6 +306,7 @@ export async function llmFindings(args: {
       viewport: r.viewport.name,
       success: r.success,
       failedAssertions: r.assertions.filter((a) => !a.passed).map((a) => a.assertion),
+      consoleErrorCount: r.consoleErrorCount,
       errors: r.errors.slice(0, 10),
     })),
   };
@@ -288,22 +325,28 @@ Return FINDINGS_JSON: {"findings": [{"title","category"(rubric key),"severity","
       .map((f) => ({
         findingId: fid(),
         title: String(f.title),
-        category: (f.category ?? "clarity") as Finding["category"],
-        severity: (f.severity ?? "medium") as Finding["severity"],
-        evidenceType: (f.evidenceType ?? "hypothesis") as EvidenceType,
+        category: pick(KrugDimension, f.category, "clarity"),
+        severity: pick(Severity, f.severity, "medium"),
+        evidenceType: pick(EvidenceType, f.evidenceType, "hypothesis"),
         description: String(f.description),
         affectedStates: states.slice(0, 3).map((s) => s.stateId),
         affectedActions: [],
         evidencePaths: [],
         recommendation: String(f.recommendation ?? ""),
         verificationStatus: f.evidenceType === "verified-failure" ? "verified" : "unverified",
-        krugPrinciple: (f.krugPrinciple ?? "dont-make-me-think") as Finding["krugPrinciple"],
+        krugPrinciple: pick(KrugPrinciple, f.krugPrinciple, "dont-make-me-think"),
       }));
-  } catch {
+  } catch (err) {
+    logEvent({ stage: "analyze", kind: "llm-findings-failed", data: { llm: llm.name, error: String(err).slice(0, 160) } });
     return [];
   }
 }
 
 export function stripFences(s: string): string {
   return s.replace(/```json|```/g, "").trim();
+}
+
+/** LLM output is untrusted: coerce to a contract enum member or the given default. */
+function pick<T extends string>(schema: { safeParse(v: unknown): { success: boolean } }, value: unknown, fallback: T): T {
+  return schema.safeParse(value).success ? (value as T) : fallback;
 }

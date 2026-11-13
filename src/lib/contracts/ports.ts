@@ -19,6 +19,8 @@ export interface JevClient {
 export interface LlmClient {
   readonly name: string;
   complete(prompt: string, opts?: { deep?: boolean; json?: boolean }): Promise<string>;
+  /** Start a new per-run call budget (called when an experiment's discover stage begins). */
+  resetBudget?(): void;
 }
 
 export interface PageFetcher {

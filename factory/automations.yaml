@@ -33,3 +33,27 @@ automations:
       max_review_rounds), CI failures by check, and drift reported by
       npm run factory:check. Propose factory/** changes as a PR if a policy is
       being worked around repeatedly.
+
+  - name: sentry-first-responder
+    trigger: github-issue
+    # POST /api/hooks/sentry files the issue (docs/telemetry.md). Same trigger shape as the
+    # snapshot-health first responder: opened with, or labeled, first-responder; this entry
+    # additionally requires the `sentry` label.
+    event: issues.opened | issues.labeled
+    labels: [first-responder, sentry]
+    repo: khvni/rehearsal
+    kpi: >-
+      Zero unhandled stage exceptions per 24h on the corpus sweep; sweep p95
+      stage duration within budget (docs/telemetry.md).
+    prompt: >-
+      Job, not ticket: own the KPI above. Read the issue (it carries the Sentry
+      issue URL, culprit and the stage / experimentId / targetHost tags behind a
+      `<!-- sentry-issue:<id> -->` marker). Pull the latest event and stack trace
+      from Sentry (Sentry MCP or API). Reproduce on main with fixture adapters:
+      run the tagged stage against the matching tests/evals/fixtures page, or a
+      saved fixture of targetHost, never a live third-party form. If it does not
+      reproduce, comment with what you ran and stop. Otherwise fix the root cause
+      on devin/<ts>-sentry-<id> without weakening tests, add a regression eval
+      under tests/evals (listed in .devin/skills/rehearsal-testing/SKILL.md),
+      run npm run check + npm run test:e2e, and open a PR with `Fixes #<issue>`
+      linking the Sentry issue. Never merge.
