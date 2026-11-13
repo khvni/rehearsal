@@ -14,7 +14,7 @@ secret values, so use a private/remote backend for anything shared).
 One Ubuntu droplet; cloud-init installs Node 22 + Playwright Chromium, clones
 `github_repo@git_ref`, runs `npm ci && npm run build`, serves `next start` on
 `127.0.0.1:3000` under systemd, and fronts it with Caddy (port 80, or auto-HTTPS when
-`domain` is set). A firewall allows only 22/80/443 in.
+`domain` or `site_host` is set). A firewall allows only 22/80/443 in.
 
 | Variable | Required | Default | Notes |
 | --- | --- | --- | --- |
@@ -22,7 +22,8 @@ One Ubuntu droplet; cloud-init installs Node 22 + Playwright Chromium, clones
 | `region` | no | `sfo3` | |
 | `size` | no | `s-2vcpu-4gb` | build + Chromium want >= 4 GB |
 | `domain` | no | `""` | DO-managed zone; creates an A record |
-| `subdomain` | no | `rehearsal` | record name in `domain` (`@` = apex) |
+| `subdomain` | no | `rehearsal` | record name in `domain` when `site_host` is empty (`@` = apex) |
+| `site_host` | no | `""` | externally managed hostname; enables auto-HTTPS without creating a DO DNS record |
 | `ssh_key_fingerprints` | no | `[]` | DO SSH keys for shell access |
 | `github_repo` / `git_ref` | no | `khvni/rehearsal` / `main` | |
 | `gemini_api_key`, `jev_api_key`, `brightdata_api_key`, `brightdata_zone`, `sentry_dsn`, `database_url` | no | `""` | written to `/etc/rehearsal/env` (0600) |
@@ -35,6 +36,9 @@ terraform apply \
   -var="domain=example.com" \
   -var="gemini_api_key=$GEMINI_API_KEY"   # optional secrets, same pattern
 ```
+
+For externally managed DNS, set `site_host` instead of `domain`; it takes precedence
+and disables DigitalOcean DNS record creation.
 
 Outputs: `droplet_ip`, `app_url`. The first boot build takes ~10 minutes
 (`tail -f /var/log/cloud-init-output.log` on the droplet). Secrets passed here end up in

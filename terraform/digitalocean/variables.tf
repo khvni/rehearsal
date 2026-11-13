@@ -23,15 +23,21 @@ variable "image" {
 }
 
 variable "domain" {
-  description = "Optional DigitalOcean-managed DNS zone (e.g. example.com). Empty = serve on the droplet IP over plain HTTP."
+  description = "Optional DigitalOcean-managed DNS zone (e.g. example.com); ignored when site_host is set."
   type        = string
   default     = ""
 }
 
 variable "subdomain" {
-  description = "Record name created in var.domain for the app (\"@\" for the apex)."
+  description = "Record name created in var.domain when site_host is empty (\"@\" for the apex)."
   type        = string
   default     = "rehearsal"
+}
+
+variable "site_host" {
+  description = "Externally managed hostname for Caddy auto-HTTPS; no DigitalOcean DNS record is created."
+  type        = string
+  default     = ""
 }
 
 variable "ssh_key_fingerprints" {
