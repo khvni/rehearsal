@@ -46,14 +46,14 @@ export function StateGraph({
             <div className="node">
               <div className="node-title">{s.pageTitle}</div>
               <div className="node-url">{s.url.replace(/^https?:\/\//, "")}</div>
-              <div className="node-visits">{v.toLocaleString()} visits</div>
+              <div className={`node-visits ${v === 0 ? "zero" : ""}`}>{v.toLocaleString()} visits</div>
             </div>
           ),
         },
         style: {
           width,
           padding: 8,
-          borderRadius: 6,
+          borderRadius: 8,
           background: `color-mix(in oklab, var(--accent) ${pct}%, var(--panel))`,
           border: `1px solid color-mix(in oklab, var(--accent) ${Math.round(t * 100)}%, var(--border))`,
           color: "var(--text)",
@@ -68,7 +68,7 @@ export function StateGraph({
         id: `e${i}`,
         source: e.fromStateId,
         target: e.toStateId,
-        style: { stroke: "color-mix(in oklab, var(--accent) 55%, var(--border))" },
+        style: { stroke: "color-mix(in oklab, var(--accent) 40%, var(--border))", strokeOpacity: 0.6 },
       }));
 
     return { nodes, edges };
@@ -85,7 +85,7 @@ export function StateGraph({
         proOptions={{ hideAttribution: true }}
         colorMode="dark"
       >
-        <Background color="#23272e" />
+        <Background color="#1e232b" gap={20} />
         <Controls showInteractive={false} />
       </ReactFlow>
     </div>
@@ -95,9 +95,11 @@ export function StateGraph({
 export function HeatLegend({ max }: { max: number }) {
   return (
     <div className="legend">
-      <span>0</span>
+      <span className="legend-label">Visits</span>
+      <span className="tabular">0</span>
       <span className="legend-bar" aria-hidden />
-      <span className="tabular">{max.toLocaleString()} visits</span>
+      <span className="tabular">{max.toLocaleString()}</span>
+      <span className="legend-label">log scale</span>
     </div>
   );
 }

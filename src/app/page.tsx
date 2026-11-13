@@ -36,7 +36,7 @@ export default function Home() {
     <div className="page narrow">
       <div className="header">
         <h1>Rehearsal</h1>
-        <span className="meta">Simulate journeys. Verify in real browsers. Ship a rebuild spec.</span>
+        <p className="tagline">Simulate journeys. Verify in real browsers. Ship a rebuild spec.</p>
       </div>
       <form className="launch" onSubmit={start} aria-busy={busy}>
         <label className="field">
