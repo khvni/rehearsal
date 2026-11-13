@@ -55,32 +55,32 @@
       <section id="s-title" class="clip center" data-start="0" data-duration="6" data-track-index="0">
         <div class="tag t-in">khvni/rehearsal</div>
         <h1 class="t-in" style="margin-top: 28px;">Rehearsal</h1>
-        <div class="sub t-in" style="margin-top: 24px; font-size: 44px; color: var(--ink);">UX verification for websites, <span class="accent">grounded in Krug</span>.</div>
+        <div class="sub t-in" style="margin-top: 24px; font-size: 44px; color: var(--ink);">Test your site's visitor journeys, <span class="accent">before visitors do</span>.</div>
         <div class="sub t-in" style="margin-top: 36px; font-size: 30px;">Rehearse real visitor journeys in a browser. Get cited findings and a rebuild spec.</div>
       </section>
 
       <!-- 2. Problem -->
       <section id="s-problem" class="clip center" data-start="6" data-duration="9" data-track-index="0">
         <div class="tag p-in">The problem</div>
-        <h2 class="p-in" style="margin-top: 20px; font-size: 72px;">Websites get reviewed by opinion,<br />not by rehearsing real visitor journeys.</h2>
+        <h2 class="p-in" style="margin-top: 20px; font-size: 72px;">Sites get judged by opinion,<br />not by trying what visitors try.</h2>
         <div class="row" style="margin-top: 20px;">
-          <div class="card step p-in"><b>"Looks fine to me"</b><span>Stakeholder taste decides what ships.</span></div>
-          <div class="card step p-in"><b>No journey evidence</b><span>Nobody checks whether a visitor can actually reach the schedule, pricing or signup.</span></div>
-          <div class="card step p-in"><b>Found after launch</b><span>Real users hit the dead ends first.</span></div>
+          <div class="card step p-in"><b>"Looks fine to me"</b><span>Taste decides what ships.</span></div>
+          <div class="card step p-in"><b>No journey evidence</b><span>Nobody checks if a visitor can reach the schedule, pricing or signup.</span></div>
+          <div class="card step p-in"><b>Found after launch</b><span>Real users find the dead ends first.</span></div>
         </div>
       </section>
 
       <!-- 3. How it works -->
       <section id="s-how" class="clip" data-start="15" data-duration="16" data-track-index="0">
         <div class="tag">How it works</div>
-        <h2 style="margin-top: 16px;">Goal in. Verified journeys, cited findings and a spec out.</h2>
+        <h2 style="margin-top: 16px;">Give it a goal. Get back checked journeys, findings and a spec.</h2>
         <div class="grid3">
-          <div class="card h-in"><span class="n step mono" style="color: var(--accent); font-size: 24px;">01 · INTENT</span><b>Information · Quotation · Proposal</b><span>Classify the visitor goal as RFI / RFQ / RFP.</span></div>
-          <div class="card h-in"><span class="n mono" style="color: var(--accent); font-size: 24px;">02 · ENDPOINTS</span><b>Weighted endpoints</b><span>Detect answer, docs, pricing, register, demo-booking… and weight them by intent.</span></div>
-          <div class="card h-in"><span class="n mono" style="color: var(--accent); font-size: 24px;">03 · JOURNEYS</span><b>Journey decision tree</b><span>Discover deduped page states; Jev scores every action; 300 seeded journeys.</span></div>
-          <div class="card h-in"><span class="n mono" style="color: var(--accent); font-size: 24px;">04 · VERIFY</span><b>Browser verification</b><span>Riskiest paths replayed in a real browser, desktop + mobile, with assertions and screenshots.</span></div>
-          <div class="card h-in"><span class="n mono" style="color: var(--accent); font-size: 24px;">05 · ANALYZE</span><b>Krug-cited findings</b><span>verified-failure · reproducible-concern · hypothesis. Every finding cites a Krug principle.</span></div>
-          <div class="card h-in"><span class="n mono" style="color: var(--accent); font-size: 24px;">06 · SPEC</span><b>spec.md rebuild plan</b><span>Changes ranked by impact, each traced to evidence, plus a phased rebuild plan.</span></div>
+          <div class="card h-in"><span class="n step mono" style="color: var(--accent); font-size: 24px;">01 · INTENT</span><b>Information · Quotation · Proposal</b><span>Sort the visitor goal into RFI, RFQ or RFP.</span></div>
+          <div class="card h-in"><span class="n mono" style="color: var(--accent); font-size: 24px;">02 · ENDPOINTS</span><b>Weighted endpoints</b><span>Find the pages visitors want (pricing, docs, signup, demo) and weight them by intent.</span></div>
+          <div class="card h-in"><span class="n mono" style="color: var(--accent); font-size: 24px;">03 · JOURNEYS</span><b>Journey decision tree</b><span>Map unique page states. Jev scores each action. Run 300 seeded journeys.</span></div>
+          <div class="card h-in"><span class="n mono" style="color: var(--accent); font-size: 24px;">04 · VERIFY</span><b>Browser verification</b><span>Replay the riskiest paths in a real browser, desktop and mobile, with screenshots.</span></div>
+          <div class="card h-in"><span class="n mono" style="color: var(--accent); font-size: 24px;">05 · ANALYZE</span><b>Krug-cited findings</b><span>verified-failure · reproducible-concern · hypothesis. Each one cites a Krug principle.</span></div>
+          <div class="card h-in"><span class="n mono" style="color: var(--accent); font-size: 24px;">06 · SPEC</span><b>spec.md rebuild plan</b><span>Changes ranked by impact, each tied to evidence, plus a rebuild plan.</span></div>
         </div>
       </section>
 
@@ -91,7 +91,7 @@
         <div class="row" style="align-items: flex-start;">
           <img id="img-site" class="shot" src="assets/aie-site.png" style="width: 1100px;" />
           <div style="display: flex; flex-direction: column; gap: 24px; flex: 1;">
-            <div class="card d-in"><b>Intent: Information</b><span>RFI · the visitor wants an answer, not a form.</span></div>
+            <div class="card d-in"><b>Intent: Information</b><span>RFI: the visitor wants an answer, not a form.</span></div>
             <div class="card d-in"><b>Endpoint: schedule</b><span>Reached when a page matching "schedule" renders.</span></div>
             <div class="card d-in"><b>POST /api/experiments → /run</b><span>Real Next.js API, real browser, 3.7 min.</span></div>
           </div>
@@ -124,15 +124,15 @@
       <!-- 7. Stack -->
       <section id="s-stack" class="clip" data-start="57" data-duration="11" data-track-index="0">
         <div class="tag">Stack</div>
-        <h2 style="margin-top: 16px;">Every adapter falls back to fixtures. No keys, same pipeline.</h2>
+        <h2 style="margin-top: 16px;">No keys? Each adapter falls back to a fixture.</h2>
         <div class="grid4">
-          <div class="card k-in"><b>Gemini</b><span>hydrogen live now; argon deep model auto-falls back when quota-limited</span></div>
-          <div class="card k-in"><b>Jev</b><span>system-one action scoring (deterministic fixture; live endpoint pending)</span></div>
-          <div class="card k-in"><b>Bright Data</b><span>Web Unlocker + Browser API fetch</span></div>
-          <div class="card k-in"><b>Browserbase Stagehand</b><span>agentic browser verification</span></div>
+          <div class="card k-in"><b>Gemini</b><span>hydrogen is live; argon falls back to it when over quota</span></div>
+          <div class="card k-in"><b>Jev</b><span>scores actions (fixture for now; live endpoint pending)</span></div>
+          <div class="card k-in"><b>Bright Data</b><span>Web Unlocker and Browser API</span></div>
+          <div class="card k-in"><b>Browserbase Stagehand</b><span>trajectory runner (wired, untested)</span></div>
           <div class="card k-in"><b>Sentry</b><span>errors + traces, DSN-gated</span></div>
           <div class="card k-in"><b>Tiger Data</b><span>experiment store via DATABASE_URL</span></div>
-          <div class="card k-in"><b>Snowflake Cortex</b><span>Cortex Search knowledge base</span></div>
+          <div class="card k-in"><b>Snowflake Cortex</b><span>Cortex Search adapter (not called yet)</span></div>
           <div class="card k-in"><b>Terraform</b><span>Cloudflare + DigitalOcean stacks</span></div>
         </div>
       </section>
@@ -140,14 +140,14 @@
       <!-- 8. Software factory -->
       <section id="s-factory" class="clip" data-start="67" data-duration="10" data-track-index="0">
         <div class="tag">Built by a software factory</div>
-        <h2 style="margin-top: 16px;">Agents ship it. Gates keep it honest.</h2>
+        <h2 style="margin-top: 16px;">Agents write the code. Checks catch their mistakes.</h2>
         <div class="grid3">
-          <div class="card x-in"><b>Contracts-first lint</b><span>Custom ESLint rules: shared types live in src/lib/contracts; findings must cite Krug.</span></div>
-          <div class="card x-in"><b>spec-delta visual proof</b><span>Golden spec diff on the hermetic AIE fixture proves behavior changes.</span></div>
-          <div class="card x-in"><b>Hourly hermetic rebuild</b><span>Scheduled full rebuild + first-responder agent on failure.</span></div>
-          <div class="card x-in"><b>Layer-1 facts gate</b><span>check:facts catches contract, env, Krug-catalog and API drift.</span></div>
+          <div class="card x-in"><b>Contracts-first lint</b><span>Shared types must live in src/lib/contracts. Findings must cite Krug.</span></div>
+          <div class="card x-in"><b>Spec diff on every PR</b><span>Each PR diffs the spec from the recorded AIE page against a golden copy.</span></div>
+          <div class="card x-in"><b>Hourly rebuild</b><span>Main is rebuilt from scratch every hour. A failure files an issue.</span></div>
+          <div class="card x-in"><b>Facts check</b><span>check:facts flags docs, env vars and contracts that drift from the code.</span></div>
           <div class="card x-in"><b>Factory as code</b><span>Rulesets, review policy, automations and blueprints in factory/.</span></div>
-          <div class="card x-in"><b>Impeccable design check</b><span>Design-quality gate on dashboard changes.</span></div>
+          <div class="card x-in"><b>Impeccable design check</b><span>Scans the dashboard for design problems.</span></div>
         </div>
       </section>
 
