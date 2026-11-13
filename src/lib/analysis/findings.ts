@@ -7,10 +7,10 @@ import type {
   EndpointJourney,
   EvidenceType,
   Finding,
+  LlmClient,
   SiteState,
 } from "../contracts";
 import { isVagueLabel } from "../browser/extract";
-import type { LlmClient } from "./gemini";
 import { rubricPromptSection } from "./rubric";
 
 let counter = 0;

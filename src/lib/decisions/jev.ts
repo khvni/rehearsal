@@ -1,15 +1,17 @@
-import type { ActionNode, BehavioralProfile, DecisionQuestion, DecisionResult, SiteState } from "../contracts";
+import type {
+  ActionNode,
+  BehavioralProfile,
+  DecisionQuestion,
+  DecisionResult,
+  JevClient,
+  SiteState,
+} from "../contracts";
 
 /**
  * Jev / System One client.
  * Live path: OpenRouter decisions API (POST /api/alpha/decisions, model typesafe/jev-*).
  * Offline path: FixtureJevClient — deterministic typed answers from token overlap.
  */
-export interface JevClient {
-  readonly name: string;
-  decide(state: Record<string, unknown>, questions: DecisionQuestion[]): Promise<DecisionResult[]>;
-}
-
 interface RawDecisionEntry {
   type?: string;
   distribution?: Record<string, number>;
@@ -135,7 +137,7 @@ export function selectJev(): JevClient {
 
 // ── Action scoring ──────────────────────────────────────────────────────────
 
-export interface ScoredAction {
+interface ScoredAction {
   action: ActionNode;
   weight: number;
 }

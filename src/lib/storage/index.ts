@@ -1,13 +1,6 @@
 import { mkdirSync, readFileSync, writeFileSync, existsSync, readdirSync } from "node:fs";
 import path from "node:path";
-import { Experiment } from "../contracts";
-
-export interface ExperimentStore {
-  readonly name: string;
-  save(experiment: Experiment): Promise<void>;
-  get(id: string): Promise<Experiment | null>;
-  list(): Promise<Experiment[]>;
-}
+import { Experiment, type ExperimentStore } from "../contracts";
 
 /** Default persistence: JSON files under data/experiments/. */
 export class JsonFileStore implements ExperimentStore {

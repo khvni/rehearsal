@@ -1,7 +1,7 @@
 import type { ActionNode } from "../contracts";
 import { createHash } from "node:crypto";
 
-export interface ExtractedPage {
+interface ExtractedPage {
   title: string;
   visibleText: string;
   headings: string[];

@@ -1,9 +1,17 @@
-import type { BrowserRun, DomPatch, Viewport } from "../contracts";
+import type {
+  BrowserRun,
+  BrowserRunner,
+  DomPatch,
+  EnvVars,
+  OpenPageResult,
+  RunnerPreference,
+  TrajectoryArgs,
+  Viewport,
+} from "../contracts";
 import { BrightDataBrowserRunner, brightDataBrowserEndpoint } from "./brightdata";
 import { extractPage } from "./extract";
 import { PlaywrightRunner, checkAssertion } from "./playwright";
 import { StagehandRunner, stagehandModelFromEnv } from "./stagehand";
-import type { BrowserRunner, EnvVars, OpenPageResult, TrajectoryArgs } from "./types";
 
 /**
  * Routes state capture and trajectories to different backends, e.g. Bright Data for
@@ -31,8 +39,6 @@ export class CompositeRunner implements BrowserRunner {
     await Promise.all([this.capture.close(), this.trajectories.close()]);
   }
 }
-
-export type RunnerPreference = "auto" | "brightdata" | "stagehand" | "stagehand-local" | "playwright";
 
 /**
  * Pick a browser backend from env. Priority (auto):
@@ -72,5 +78,4 @@ export function runnerName(env: EnvVars = process.env): string {
   return selectRunner(env).name;
 }
 
-export type { BrowserRunner, OpenPageResult, TrajectoryAction, TrajectoryArgs } from "./types";
 export { BrightDataBrowserRunner, PlaywrightRunner, StagehandRunner, checkAssertion, extractPage };

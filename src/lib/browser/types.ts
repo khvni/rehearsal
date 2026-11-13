@@ -1,50 +1,4 @@
-import type { Assertion, BrowserRun, DomPatch, Viewport } from "../contracts";
-import type { PageMetrics } from "./metrics";
-
-export interface TrajectoryAction {
-  actionId?: string;
-  label: string;
-  href?: string;
-  role?: string;
-}
-
-export interface TrajectoryArgs {
-  url: string;
-  viewport: Viewport;
-  actions: TrajectoryAction[];
-  assertions: Assertion[];
-  runId: string;
-  patches?: DomPatch[];
-  maxSteps?: number;
-}
-
-export interface OpenPageResult {
-  html: string;
-  screenshotPath: string;
-  /** Layout metrics from the `measurePage` hook, taken in the same session as the screenshot. */
-  metrics?: PageMetrics;
-}
-
-/**
- * A browser backend. `openPage` captures one state (rendered HTML + screenshot)
- * and releases its session before returning; `runTrajectory` executes a
- * multi-step action sequence and checks assertions.
- */
-export interface BrowserRunner {
-  readonly name: string;
-  openPage(url: string, viewport: Viewport, opts?: { patches?: DomPatch[]; shotName?: string }): Promise<OpenPageResult>;
-  runTrajectory(args: TrajectoryArgs): Promise<BrowserRun>;
-  close(): Promise<void>;
-}
-
-/** Minimal page surface needed to evaluate assertions, implemented by every backend. */
-export interface AssertionProbe {
-  bodyText(): Promise<string>;
-  isVisible(selector: string): Promise<boolean>;
-  count(selector: string): Promise<number>;
-  title(): Promise<string>;
-  url(): Promise<string>;
-}
+import type { Assertion, AssertionProbe, BrowserRun, Viewport } from "../contracts";
 
 export async function evaluateAssertion(probe: AssertionProbe, a: Assertion): Promise<boolean> {
   try {
@@ -95,5 +49,3 @@ export function summarizeRun(args: {
 export function shouldShoot(i: number, total: number): boolean {
   return i % 3 === 2 || i === total - 1;
 }
-
-export type EnvVars = Record<string, string | undefined>;
