@@ -82,6 +82,31 @@ with `{ zone, url, format: "raw" }`) → Browserbase Fetch (`browserbase.fetch`)
 Every path runs `assertPublicUrl` + per-host politeness first. Bright Data SERP API and Web
 Scraper API / datasets target search engines and prebuilt site scrapers, so they are not wired.
 
+## Environment variables
+
+All optional — `.env.example` is the template. `npm run check:facts` fails if code reads a
+variable that is missing here or in `.env.example`, or `.env.example` lists one nothing reads.
+
+| Variable | Read by | Effect when unset |
+|---|---|---|
+| `GEMINI_API_KEY` | `analysis/gemini.ts`, `browser/stagehand.ts` | `FixtureLlmClient`; Stagehand falls back to the Browserbase Model Gateway |
+| `GEMINI_MODEL_FAST` / `GEMINI_MODEL_DEEP` | `analysis/gemini.ts` | `gemini-4-hydrogen` / `gemini-4-argon` |
+| `JEV_API_KEY` (or `OPENROUTER_API_KEY`) | `decisions/jev.ts` | `FixtureJevClient` |
+| `JEV_BASE_URL` / `JEV_MODEL` | `decisions/jev.ts` | `https://openrouter.ai/api/alpha/decisions` / `typesafe/jev-1.13` |
+| `BRIGHTDATA_API_KEY` + `BRIGHTDATA_ZONE` | `fetch/index.ts` | Web Unlocker skipped (both are required) |
+| `BRIGHTDATA_BROWSER_WS`, or `BRIGHTDATA_BROWSER_USER` + `BRIGHTDATA_BROWSER_PASSWORD` | `browser/brightdata.ts` | Bright Data Browser API skipped |
+| `BROWSERBASE_API_KEY` / `BROWSERBASE_PROJECT_ID` | `fetch/index.ts`, `browser/runner.ts` | Browserbase Fetch + Stagehand on Browserbase skipped |
+| `STAGEHAND_MODEL` / `STAGEHAND_MODEL_API_KEY` | `browser/stagehand.ts` | `google/$GEMINI_MODEL_FAST` with `GEMINI_API_KEY` |
+| `STAGEHAND_CHROME_PATH` | `browser/runner.ts` | Stagehand's default Chrome lookup (`stagehand-local` only) |
+| `REHEARSAL_BROWSER` | `browser/runner.ts` | `auto` |
+| `SENTRY_DSN` / `SENTRY_TRACES_SAMPLE_RATE` | `telemetry/index.ts` | Sentry off (JSONL event log still written) / `0.2` |
+| `TIGERDATA_URL` (or `DATABASE_URL`) | `storage/index.ts` | `JsonFileStore` under `data/experiments/` |
+| `SNOWFLAKE_ACCOUNT_URL`, `SNOWFLAKE_TOKEN`, `SNOWFLAKE_CORTEX_SERVICE` | `storage/index.ts` | Cortex Search disabled |
+| `REHEARSAL_ALLOW_PRIVATE` | `fetch/guards.ts` | SSRF guard enforced. `1` lets tests target localhost; never set it in a deployment |
+
+Terraform provisions the deploy subset (`terraform/README.md`); `scripts/verify-facts.ts`
+keeps that list and its documented exemptions in sync with `.env.example`.
+
 ## Why adapters
 
 Every external system sits behind an interface selected by env vars. Keys absent ⇒

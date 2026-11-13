@@ -32,7 +32,7 @@ offline on recorded fixtures (`tests/evals/fixtures/aie-code-2026.html`).
 ```bash
 npm ci
 cp .env.example .env        # fill in keys when you have them — all optional
-npm run check               # lint + typecheck + unit + evals + skill-sync
+npm run check               # lint + typecheck + unit + evals + skill-sync + facts
 npm run dev                 # http://localhost:3000
 ```
 
@@ -46,7 +46,9 @@ Then: paste the target URL + goal → Rehearse → watch the stages → open `sp
 
 ## API
 
-`POST /api/experiments` `{targetUrl, goal}` → `POST /api/experiments/:id/{discover|simulate|verify|analyze|compare|spec|run}` → `GET /api/experiments/:id` → `GET /api/experiments/:id/spec` (markdown).
+`POST /api/experiments` `{targetUrl, goal}` → `POST /api/experiments/:id/{discover|simulate|verify|analyze|compare|spec|run}` → `GET /api/experiments/:id` → `GET /api/experiments/:id/spec` (markdown). `GET /api/experiments` lists experiments. Full catalog: [docs/api.md](docs/api.md).
+
+Environment variables: [docs/architecture.md#environment-variables](docs/architecture.md#environment-variables).
 
 ## Engineering practices
 
@@ -55,6 +57,8 @@ Then: paste the target URL + goal → Rehearse → watch the stages → open `sp
 - **Skill sync**: `npm run check:skill-sync` fails if pipeline stages or eval files land
   without matching docs — testing skills stay updated *with* the commit.
 - **Contracts**: every module boundary is a zod-validated schema (`src/lib/contracts`).
+- **Facts gate**: `npm run check:facts` deterministically checks contract, env, Krug-catalog
+  and API-catalog drift ([docs/verification.md](docs/verification.md)).
 - **Determinism**: seeded RNG (mulberry32); same seed ⇒ identical trajectories.
 - **Safety**: SSRF guards (public http(s) only, no private IPs/metadata), robots.txt
   honoring, ≤1 req/2s per host, no form submission, variants never touch the live site.
