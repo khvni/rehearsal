@@ -102,6 +102,15 @@ describe("metricsFromHtml (HTML-only fallback)", () => {
     expect(m.trunkTest.hasSiteName).toBe(true);
     expect(m.trunkTest.hasSearch).toBe(false);
   });
+
+  it("reads unquoted attributes and ignores aria-current=false", () => {
+    const html = `<header><a href=/ class=logo>Acme</a><nav><a href=/a aria-current=false>A</a><a href=/b>B</a><a href=/c>C</a></nav></header>
+      <main><h1>Pricing</h1><a href=/start class=btn>Start</a></main>`;
+    const m = metricsFromHtml(html, "https://acme.example/pricing", VIEWPORTS.desktop);
+    expect(m.trunkTest.hasSiteName).toBe(true);
+    expect(m.trunkTest.hasYouAreHere).toBe(false);
+    expect(m.totalCtaCount).toBe(1);
+  });
 });
 
 describe("metricFindings rules", () => {
@@ -144,6 +153,6 @@ describe("metricFindings rules", () => {
     const [trunk] = metricFindings([mk("https://acme.example/", clean), deep]);
     expect(trunk.severity).toBe("high");
     expect(trunk.affectedStates).toEqual([deep.stateId]);
-    expect(trunk.title).toBe("Desktop: trunk test fails — missing site ID, page name, you-are-here indicator");
+    expect(trunk.title).toBe("Desktop: missing site ID, page name, you-are-here indicator (trunk test fails)");
   });
 });
