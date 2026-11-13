@@ -8,13 +8,15 @@ against the factory the same way they open PRs against `src/`.
 
 | File | What it defines | Applied by |
 | --- | --- | --- |
-| `branch-protection.json` | GitHub repository ruleset for `main`: PRs required, squash-only, linear history, no force-push or deletion, required checks `check` + `terraform`, zero required approvals (solo owner + agents). The file is the exact request body for the rulesets API. | `npm run factory:sync -- --apply` |
+| `branch-protection.json` | GitHub repository ruleset for `main`: PRs required, squash-only, linear history, no force-push or deletion, required checks `check`, `terraform`, `Devin Review`, zero required approvals (solo owner + agents). The file is the exact request body for the rulesets API. | `npm run factory:sync -- --apply` |
 | `review-policy.json` | Review triage: `bug` and `security` findings block merge; `code_quality` and `style` don't. After `max_review_rounds` (2) the PR goes to the orchestrator instead of another fix round. | Agents read it; `factory:check` validates it |
 | `automations.yaml` | Intended Devin automations (`nightly-corpus-audit`, `hourly-snapshot-health`, `weekly-factory-report`): trigger, schedule, prompt. | Spec only; the live automations mirror it |
 | `blueprint.yaml` | Devin environment blueprint (Node 22 at `~/.local/node`, `npm install`, Playwright Chromium). | Spec only; the repo blueprint in Devin settings mirrors it |
 
-`Devin Review` isn't a required check: it posts PR comments, not a GitHub check
-run, so the ruleset can't require it. `review-policy.json` covers it instead.
+`Devin Review` is also a required check. It reports as a commit status (not a
+check run) on PR head commits, so it is pinned by name only; `check` and
+`terraform` are pinned to GitHub Actions (`integration_id` 15368). If Devin
+Review stops reporting on PRs, drop it from `branch-protection.json` via PR.
 
 ## Changing the factory
 
