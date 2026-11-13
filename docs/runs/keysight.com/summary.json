@@ -3,8 +3,7 @@
   "url": "https://www.keysight.com",
   "targetUrl": "https://www.keysight.com/us/en/home.html",
   "goal": "find pricing or request a quote for an oscilloscope",
-  "status": "blocked",
-  "failureReason": "Cloudflare challenge",
+  "status": "complete",
   "runner": "local-playwright",
   "config": {
     "maxStates": 15,
@@ -30,26 +29,47 @@
     }
   ],
   "discover": {
-    "states": 1,
-    "edges": 0,
-    "pageFailures": 0,
-    "pageFailureSamples": [],
+    "states": 15,
+    "edges": 52,
+    "pageFailures": 1,
+    "pageFailureSamples": [
+      {
+        "url": "https://www.keysight.com/us/en/more-countries.html?prev_url=https%3A%2F%2Fwww.keysight.com%2Fus%2Fen%2Fhome.html",
+        "error": "Error: robots.txt disallows /us/en/more-countries.html"
+      }
+    ],
     "urls": [
-      "https://www.keysight.com/us/en/home.html"
+      "https://www.keysight.com/us/en/home.html",
+      "https://www.keysight.com/us/en/products/oscilloscopes.html",
+      "https://www.keysight.com/us/en/products/sampling-oscilloscopes.html",
+      "https://www.keysight.com/us/en/products/oscilloscopes/benchtop/essential-benchtop-oscilloscopes.html",
+      "https://www.keysight.com/us/en/products/oscilloscopes/benchtop/pro-benchtop-oscilloscopes.html",
+      "https://www.keysight.com/us/en/cmp/2026/Introducing-xr8-oscilloscope.html",
+      "https://www.keysight.com/us/en/about/newsroom/catalog/news-release.2026.1103_pr26-098-keysight-introduces-14-bit-low-profile-oscilloscope-for-high-channel-density-synchronized-test-systems.html",
+      "https://www.keysight.com/us/en/contact.html",
+      "https://www.keysight.com/us/en/passive-saml.login.html?env=https%3A%2F%2Fwww.keysight.com%2Fus%2Fen%2Fhome.html",
+      "https://www.keysight.com/ssoauth/logout",
+      "https://www.keysight.com.cn/cn/zh/home.html",
+      "https://www.keysight.com/jp/ja/home.html",
+      "https://www.keysight.com/tw/zh/home.html",
+      "https://www.keysight.com/kr/ko/home.html",
+      "https://www.keysight.com/br/pt/home.html"
     ]
   },
   "simulate": {
     "trajectories": 300,
-    "goalReachPct": 0,
+    "goalReachPct": 26.3,
     "outcomes": {
-      "dead-end": 300
+      "repetition-limit": 219,
+      "goal-reached": 79,
+      "dead-end": 2
     }
   },
   "verify": {
     "runs": 4,
-    "passed": 0,
-    "failed": 4,
-    "assertionsPassed": 0,
+    "passed": 1,
+    "failed": 3,
+    "assertionsPassed": 1,
     "runsWithConsoleErrors": 4,
     "runErrors": []
   },
@@ -59,46 +79,94 @@
       "variant": false
     },
     "interactionCount": {
-      "baseline": 0,
-      "variant": 0
+      "baseline": 4,
+      "variant": 4
     },
     "backtracks": {
-      "baseline": 0,
-      "variant": 0
+      "baseline": 4,
+      "variant": 4
     },
     "failedInteractions": {
       "baseline": 0,
       "variant": 0
     },
     "runtimeErrors": {
-      "baseline": 10,
-      "variant": 8
+      "baseline": 12,
+      "variant": 12
     },
     "findingReproduces": true
   },
+  "endpoints": {
+    "intent": "quotation",
+    "total": 26,
+    "byClass": {
+      "contact-form": {
+        "found": 5,
+        "reached": 5
+      },
+      "signup": {
+        "found": 2,
+        "reached": 2
+      },
+      "pricing": {
+        "found": 1,
+        "reached": 1
+      },
+      "docs-answers": {
+        "found": 5,
+        "reached": 2
+      },
+      "demo-video": {
+        "found": 3,
+        "reached": 2
+      },
+      "download": {
+        "found": 5,
+        "reached": 0
+      },
+      "schedule-event": {
+        "found": 5,
+        "reached": 0
+      }
+    }
+  },
   "findings": {
-    "total": 1,
+    "total": 13,
     "bySeverity": {
       "critical": 0,
-      "high": 1,
-      "medium": 0,
-      "low": 0
+      "high": 2,
+      "medium": 7,
+      "low": 4
     },
     "byEvidence": {
-      "verified-failure": 1
+      "verified-failure": 1,
+      "reproducible-concern": 10,
+      "hypothesis": 2
     },
     "titles": [
-      "[high] Assertion failed in browser: url-matches \"oscilloscope\""
+      "[high] Assertion failed in browser: url-matches \"oscilloscope\" (3 of 4 runs)",
+      "[medium] Ambiguous link labels (11)",
+      "[medium] Dense link surface increases scan cost (6 of 15 pages)",
+      "[low] Console errors during browser runs (49)",
+      "[medium] Desktop: homepage requires 8.01 screens of scrolling",
+      "[medium] Desktop: no single dominant call to action above the fold",
+      "[low] Desktop: primary navigation has 11 items",
+      "[low] Heading outline is broken: no h1",
+      "[medium] Desktop: missing page name (trunk test fails)",
+      "[high] Desktop: missing site ID, page name, primary navigation, search, you-are-here indicator (trunk test fails)",
+      "[medium] Desktop: missing page name, search (trunk test fails)",
+      "[medium] \"Is there a free tier or trial?\" has no answer path",
+      "[low] 1 of 13 expected visitor questions have no answer path"
     ]
   },
   "durationsMs": {
-    "discover": 19723,
-    "simulate": 2,
-    "verify": 26561,
-    "analyze": 4,
-    "compare": 3982,
-    "spec": 1,
-    "total": 53896
+    "discover": 192358,
+    "simulate": 49,
+    "verify": 16898,
+    "analyze": 68,
+    "compare": 4240,
+    "spec": 5,
+    "total": 218619
   },
-  "ranAt": "2026-11-13T21:12:29.808Z"
+  "ranAt": "2026-11-13T22:11:03.289Z"
 }

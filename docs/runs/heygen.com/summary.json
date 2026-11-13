@@ -53,17 +53,16 @@
   },
   "simulate": {
     "trajectories": 300,
-    "goalReachPct": 52,
+    "goalReachPct": 52.3,
     "outcomes": {
-      "goal-reached": 156,
       "repetition-limit": 143,
-      "max-depth": 1
+      "goal-reached": 157
     }
   },
   "verify": {
     "runs": 4,
-    "passed": 0,
-    "failed": 4,
+    "passed": 1,
+    "failed": 3,
     "assertionsPassed": 1,
     "runsWithConsoleErrors": 4,
     "runErrors": []
@@ -86,37 +85,83 @@
       "variant": 0
     },
     "runtimeErrors": {
-      "baseline": 12,
-      "variant": 23
+      "baseline": 11,
+      "variant": 20
     },
     "findingReproduces": true
   },
+  "endpoints": {
+    "intent": "quotation",
+    "total": 29,
+    "byClass": {
+      "pricing": {
+        "found": 5,
+        "reached": 2
+      },
+      "signup": {
+        "found": 5,
+        "reached": 5
+      },
+      "contact-form": {
+        "found": 3,
+        "reached": 1
+      },
+      "docs-answers": {
+        "found": 5,
+        "reached": 4
+      },
+      "demo-video": {
+        "found": 5,
+        "reached": 0
+      },
+      "download": {
+        "found": 3,
+        "reached": 0
+      },
+      "schedule-event": {
+        "found": 3,
+        "reached": 0
+      }
+    }
+  },
   "findings": {
-    "total": 3,
+    "total": 15,
     "bySeverity": {
       "critical": 0,
-      "high": 1,
-      "medium": 2,
-      "low": 0
+      "high": 2,
+      "medium": 7,
+      "low": 6
     },
     "byEvidence": {
       "verified-failure": 1,
-      "reproducible-concern": 2
+      "reproducible-concern": 14
     },
     "titles": [
-      "[high] Assertion failed in browser: url-matches \"pricing\"",
-      "[medium] Ambiguous link labels (1)",
-      "[medium] Dense link surface increases scan cost"
+      "[high] Assertion failed in browser: url-matches \"pricing\" (3 of 4 runs)",
+      "[medium] Ambiguous link labels (1) (2 of 15 pages)",
+      "[medium] Dense link surface increases scan cost (14 of 15 pages)",
+      "[low] Console errors during browser runs (33)",
+      "[medium] Endpoint buried: signup \"Get started , Business\"",
+      "[medium] Endpoint buried: signup \"Sign up with Google\"",
+      "[medium] Endpoint buried: signup \"Get started , Pro\"",
+      "[medium] Desktop: homepage requires 20.98 screens of scrolling",
+      "[medium] Desktop: no single dominant call to action above the fold",
+      "[low] Desktop: primary navigation has 9 items",
+      "[low] Heading outline is broken: skips h1→h3",
+      "[low] Heading outline is broken: skips h2→h4",
+      "[low] Desktop: largest text on the page is not the h1",
+      "[low] Desktop: missing search (trunk test fails)",
+      "[high] Desktop: missing primary navigation, search, you-are-here indicator (trunk test fails)"
     ]
   },
   "durationsMs": {
-    "discover": 36045,
-    "simulate": 50,
-    "verify": 18254,
-    "analyze": 6,
-    "compare": 5280,
+    "discover": 37985,
+    "simulate": 56,
+    "verify": 23074,
+    "analyze": 176,
+    "compare": 3678,
     "spec": 4,
-    "total": 62048
+    "total": 67144
   },
-  "ranAt": "2026-11-13T21:26:48.213Z"
+  "ranAt": "2026-11-13T22:26:35.966Z"
 }
