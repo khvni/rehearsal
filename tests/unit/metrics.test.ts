@@ -3,9 +3,9 @@ import { createServer, type Server } from "node:http";
 import { mkdtempSync } from "node:fs";
 import os from "node:os";
 import path from "node:path";
-import { VIEWPORTS, SiteState, type Viewport } from "@/lib/contracts";
+import { VIEWPORTS, SiteState, type PageMetrics, type Viewport } from "@/lib/contracts";
 import { PlaywrightRunner } from "@/lib/browser/playwright";
-import { metricsFromHtml, type PageMetrics } from "@/lib/browser/metrics";
+import { metricsFromHtml } from "@/lib/browser/metrics";
 import { metricFindings } from "@/lib/analysis/metric-findings";
 import { makeState } from "@/lib/graph";
 

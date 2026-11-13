@@ -1,10 +1,5 @@
+import type { PageFetcher } from "../contracts";
 import { assertPublicUrl, politeDelay } from "./guards";
-
-export interface PageFetcher {
-  /** Fetch fully-rendered or raw HTML for a public URL. */
-  fetchHtml(url: string): Promise<string>;
-  readonly name: string;
-}
 
 const UA =
   "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0 Safari/537.36 RehearsalBot/0.1";

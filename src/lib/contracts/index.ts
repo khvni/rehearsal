@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { PageMetrics } from "../browser/metrics";
+import { PageMetrics } from "./metrics";
 
 // ── Krug rubric ─────────────────────────────────────────────────────────────
 
@@ -414,3 +414,8 @@ export const Experiment = z.object({
   errors: z.array(z.string()).default([]),
 });
 export type Experiment = z.infer<typeof Experiment>;
+
+export * from "./browser";
+export * from "./metrics";
+export * from "./ports";
+export * from "./ui";

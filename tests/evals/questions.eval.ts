@@ -1,9 +1,14 @@
 import { describe, expect, it } from "vitest";
 import { readFileSync } from "node:fs";
 import path from "node:path";
-import { Experiment, VIEWPORTS, type BrowserRun, type StateGraph } from "@/lib/contracts";
-import type { BrowserRunner } from "@/lib/browser/types";
-import type { ExperimentStore } from "@/lib/storage";
+import {
+  Experiment,
+  VIEWPORTS,
+  type BrowserRun,
+  type BrowserRunner,
+  type ExperimentStore,
+  type StateGraph,
+} from "@/lib/contracts";
 import { FixtureJevClient } from "@/lib/decisions/jev";
 import { Orchestrator } from "@/lib/orchestrator";
 import { extractPage } from "@/lib/browser/extract";

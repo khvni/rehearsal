@@ -1,5 +1,4 @@
-import type { Experiment, SpecChange, SpecReport } from "../contracts";
-import type { LlmClient } from "./gemini";
+import type { Experiment, LlmClient, SpecChange, SpecReport } from "../contracts";
 import { stripFences } from "./findings";
 import { RUBRIC } from "./rubric";
 

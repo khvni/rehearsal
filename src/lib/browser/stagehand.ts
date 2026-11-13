@@ -1,34 +1,23 @@
 import { mkdirSync, writeFileSync } from "node:fs";
 import path from "node:path";
 import type { Locator, ModelConfig, Page, Stagehand, StagehandBrowser } from "@browserbasehq/stagehand";
-import type { BrowserRun, DomPatch, Viewport } from "../contracts";
+import type {
+  AssertionProbe,
+  BrowserRun,
+  BrowserRunner,
+  DomPatch,
+  EnvVars,
+  OpenPageResult,
+  StagehandRunnerOptions,
+  TrajectoryAction,
+  TrajectoryArgs,
+  Viewport,
+} from "../contracts";
 import { assertPublicUrl } from "../fetch/guards";
 import { compilePatches } from "../variants";
 import { measurePage } from "./metrics";
 import { DEFAULT_EVIDENCE_DIR } from "./playwright";
-import {
-  evaluateAssertion,
-  shouldShoot,
-  summarizeRun,
-  type AssertionProbe,
-  type BrowserRunner,
-  type EnvVars,
-  type OpenPageResult,
-  type TrajectoryAction,
-  type TrajectoryArgs,
-} from "./types";
-
-export type StagehandEnv = "browserbase" | "local";
-
-export interface StagehandRunnerOptions {
-  env: StagehandEnv;
-  browserbaseApiKey?: string;
-  browserbaseProjectId?: string;
-  /** Local Chrome/Chromium binary for env=local (Stagehand does not bundle a browser). */
-  executablePath?: string;
-  model?: ModelConfig;
-  evidenceDir?: string;
-}
+import { evaluateAssertion, shouldShoot, summarizeRun } from "./types";
 
 const NAV_TIMEOUT_MS = 60_000;
 /** Stagehand only exposes console events, so forward uncaught errors/rejections to console.error. */

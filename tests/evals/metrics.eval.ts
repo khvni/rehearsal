@@ -3,8 +3,8 @@ import { createServer, type Server } from "node:http";
 import { readFileSync } from "node:fs";
 import path from "node:path";
 import { chromium, type Browser } from "playwright";
-import { KrugPrinciple, VIEWPORTS, type Viewport } from "@/lib/contracts";
-import { measurePage, metricsFromHtml, type PageMetrics } from "@/lib/browser/metrics";
+import { KrugPrinciple, VIEWPORTS, type PageMetrics, type Viewport } from "@/lib/contracts";
+import { measurePage, metricsFromHtml } from "@/lib/browser/metrics";
 import { metricFindings } from "@/lib/analysis/metric-findings";
 import { makeState } from "@/lib/graph";
 

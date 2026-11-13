@@ -1,0 +1,114 @@
+name: snapshot-health
+
+# Hourly hermetic rebuild of main from scratch. Red → one `first-responder` issue
+# (a Devin Automation picks it up); green → that issue is closed. See docs/snapshot-health.md.
+on:
+  schedule:
+    - cron: "7 * * * *"
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - .github/workflows/snapshot-health.yml
+      - scripts/snapshot-health.ts
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+  actions: read
+  issues: write
+
+jobs:
+  snapshot:
+    name: snapshot
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: npm ci
+        run: npm ci
+      - name: Install Chromium
+        run: npx playwright install --with-deps chromium
+      - name: npm run check
+        run: npm run check
+      - name: npm run test:e2e
+        run: npm run test:e2e
+      - name: npm run build
+        run: npm run build
+      - name: Pipeline smoke (fixture, discover → spec)
+        run: npx tsx scripts/snapshot-health.ts
+
+      - name: Summary + first-responder issue
+        if: always()
+        uses: actions/github-script@v7
+        env:
+          MANAGE_ISSUE: ${{ github.ref == 'refs/heads/main' && github.event_name != 'pull_request' }}
+        with:
+          script: |
+            const TITLE = "Snapshot health: main is red";
+            const LABEL = "first-responder";
+            const { owner, repo } = context.repo;
+            const runUrl = `${context.serverUrl}/${owner}/${repo}/actions/runs/${context.runId}`;
+
+            const jobs = await github.paginate(github.rest.actions.listJobsForWorkflowRunAttempt, {
+              owner, repo, run_id: context.runId, attempt_number: Number(process.env.GITHUB_RUN_ATTEMPT),
+            });
+            const job = jobs.find((j) => j.name === "snapshot");
+            const steps = (job?.steps ?? []).filter((s) => s.status === "completed" && s.name !== "Summary + first-responder issue");
+            const secs = (s) => Math.round((new Date(s.completed_at) - new Date(s.started_at)) / 1000);
+            const failed = steps.find((s) => s.conclusion === "failure");
+            const icon = { success: "pass", failure: "FAIL", skipped: "skip", cancelled: "cancelled" };
+
+            await core.summary
+              .addHeading(`Snapshot health: ${failed ? "red" : "green"}`, 3)
+              .addTable([
+                [{ data: "Step", header: true }, { data: "Result", header: true }, { data: "Seconds", header: true }],
+                ...steps.map((s) => [s.name, icon[s.conclusion] ?? s.conclusion, String(secs(s))]),
+              ])
+              .addRaw(`\nSHA \`${context.sha.slice(0, 7)}\` · [run log](${runUrl})\n`)
+              .write();
+
+            if (process.env.MANAGE_ISSUE !== "true") {
+              core.info("Not a main schedule/dispatch run: skipping issue management.");
+              return;
+            }
+
+            const open = (await github.paginate(github.rest.issues.listForRepo, { owner, repo, state: "open", per_page: 100 }))
+              .filter((i) => !i.pull_request && i.title === TITLE);
+            const existing = open[0];
+
+            if (failed) {
+              const logUrl = job ? `${job.html_url}#step:${failed.number}:1` : runUrl;
+              const body = [
+                `\`main\` failed the hourly hermetic rebuild (\`.github/workflows/snapshot-health.yml\`).`,
+                ``,
+                `- **Failing step:** ${failed.name}`,
+                `- **Commit:** ${context.sha}`,
+                `- **Log:** ${logUrl}`,
+                `- **Run:** ${runUrl}`,
+                ``,
+                `Reproduce locally: \`npm ci && npx playwright install chromium && <failing step command>\` (see docs/snapshot-health.md).`,
+              ].join("\n");
+              if (existing) {
+                await github.rest.issues.createComment({ owner, repo, issue_number: existing.number, body });
+                core.notice(`Updated #${existing.number}`);
+              } else {
+                await github.rest.issues.createLabel({ owner, repo, name: LABEL, color: "d73a4a", description: "Snapshot health failure for the Devin first responder" }).catch(() => {});
+                const { data } = await github.rest.issues.create({ owner, repo, title: TITLE, body, labels: [LABEL] });
+                core.notice(`Opened #${data.number}`);
+              }
+              return;
+            }
+
+            if (job && steps.every((s) => s.conclusion === "success")) {
+              for (const issue of open) {
+                await github.rest.issues.createComment({ owner, repo, issue_number: issue.number, body: `main is green again: ${runUrl}` });
+                await github.rest.issues.update({ owner, repo, issue_number: issue.number, state: "closed", state_reason: "completed" });
+                core.notice(`Closed #${issue.number}`);
+              }
+            }
