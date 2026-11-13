@@ -40,9 +40,12 @@ export function compilePatches(patches: DomPatch[]): string {
       } catch (e) { /* patch failure recorded via console */ console.warn('rehearsal-patch', e); }
     }
   };
-  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', apply);
-  else apply();
-  new MutationObserver(apply).observe(document.documentElement, { childList: true, subtree: false });
+  const start = () => {
+    apply();
+    new MutationObserver(apply).observe(document.documentElement, { childList: true, subtree: false });
+  };
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', start);
+  else start();
 })();`;
 }
 
