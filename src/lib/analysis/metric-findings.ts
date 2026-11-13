@@ -205,7 +205,7 @@ export function metricFindings(states: SiteState[], opts: { homepageUrl?: string
     const missing = g.key.split("|")[2];
     out.push(
       finding("trunk-test", g, {
-        title: `${vpLabel(g.states[0])}: trunk test fails — missing ${missing}`,
+        title: `${vpLabel(g.states[0])}: missing ${missing} (trunk test fails)`,
         category: "navigation",
         krugPrinciple: "navigation",
         description: `On ${g.states.length} page(s) a visitor dropped in cold can't find: ${missing}. Persistent navigation should answer what site this is, what page they're on, the major sections, how to search and where they are.`,

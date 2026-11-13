@@ -114,7 +114,7 @@ describe("metricFindings rules", () => {
     expect(byRule("nav-overload")?.title).toMatch(/9 items/);
     expect(byRule("heading-outline")?.title).toMatch(/2 h1 elements; skips h2→h4/);
     expect(byRule("hierarchy-mismatch")).toBeDefined();
-    expect(byRule("trunk-test")?.title).toMatch(/missing search$/);
+    expect(byRule("trunk-test")?.title).toMatch(/missing search \(trunk test fails\)$/);
     expect(byRule("no-cta-above-fold")).toBeUndefined();
     for (const f of findings) {
       expect(f.affectedStates).toEqual([state.stateId]);
