@@ -1,0 +1,468 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>AI Engineer Code Summit 2026 · San Francisco · Nov 10–12</title>
+<meta name="description" content="AI Engineer Code Summit 2026: workshops Nov 10, talks Nov 11–12 at Hilton Union Square, San Francisco. Recordings, schedule, speakers, sponsors.">
+<style>
+:root {
+  --bg: oklch(0.17 0.012 70);
+  --surface: oklch(0.21 0.012 70);
+  --surface-2: oklch(0.25 0.012 70);
+  --line: oklch(0.32 0.01 70);
+  --text: oklch(0.96 0.008 80);
+  --muted: oklch(0.76 0.012 75);
+  --accent: oklch(0.82 0.16 75);
+  --accent-ink: oklch(0.2 0.03 70);
+  --ease-out: cubic-bezier(0.23, 1, 0.32, 1);
+  --radius: 14px;
+  --wrap: 1200px;
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+html { scroll-behavior: smooth; scroll-padding-top: 88px; }
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--text);
+  font: 400 16px/1.55 ui-sans-serif, -apple-system, BlinkMacSystemFont, "Segoe UI", Inter, Roboto, "Helvetica Neue", Arial, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+::selection { background: var(--accent); color: var(--accent-ink); }
+a { color: inherit; text-underline-offset: 3px; }
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; border-radius: 6px; }
+h1, h2, h3 { text-wrap: balance; margin: 0; letter-spacing: -0.02em; }
+p { text-wrap: pretty; margin: 0; }
+.wrap { max-width: var(--wrap); margin: 0 auto; padding: 0 32px; }
+.num { font-variant-numeric: tabular-nums; }
+
+/* Header: page name + nav + search + you-are-here */
+header.top {
+  position: sticky; top: 0; z-index: 10;
+  background: oklch(0.17 0.012 70 / 0.86);
+  backdrop-filter: saturate(1.4) blur(14px);
+  -webkit-backdrop-filter: saturate(1.4) blur(14px);
+  box-shadow: 0 1px 0 var(--line);
+}
+.top-row { display: flex; align-items: center; gap: 24px; height: 64px; }
+.brand { display: flex; align-items: center; gap: 10px; text-decoration: none; font-weight: 650; white-space: nowrap; }
+.brand svg { flex: none; }
+.brand small { color: var(--muted); font-weight: 500; }
+nav.primary { display: flex; gap: 2px; margin-left: 8px; }
+nav.primary a {
+  position: relative; padding: 8px 12px; border-radius: 8px; text-decoration: none;
+  color: var(--muted); font-size: 15px; font-weight: 500;
+  transition: color 150ms ease, background-color 150ms ease;
+}
+nav.primary a[aria-current="true"] { color: var(--text); }
+nav.primary a[aria-current="true"]::after {
+  content: ""; position: absolute; left: 12px; right: 12px; bottom: 2px; height: 2px;
+  border-radius: 2px; background: var(--accent);
+}
+@media (hover: hover) and (pointer: fine) { nav.primary a:hover { color: var(--text); background: var(--surface); } }
+.search {
+  margin-left: auto; display: flex; align-items: center; gap: 8px;
+  height: 40px; padding: 0 10px 0 12px; width: 240px; border-radius: 10px;
+  background: var(--surface); box-shadow: inset 0 0 0 1px var(--line); color: var(--muted);
+}
+.search input { all: unset; flex: 1; font-size: 14px; color: var(--text); min-width: 0; }
+.search input::placeholder { color: var(--muted); }
+kbd {
+  font: 500 12px/1 ui-sans-serif, system-ui, sans-serif; color: var(--muted);
+  padding: 4px 6px; border-radius: 5px; box-shadow: inset 0 0 0 1px var(--line);
+}
+.btn {
+  display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+  height: 44px; padding: 0 20px; border-radius: 12px; border: 0; cursor: pointer;
+  font: 650 15px/1 inherit; font-family: inherit; text-decoration: none; white-space: nowrap;
+  transition: transform 140ms var(--ease-out), background-color 150ms ease, box-shadow 150ms ease;
+}
+.btn:active { transform: scale(0.96); }
+.btn-primary { background: var(--accent); color: var(--accent-ink); box-shadow: 0 1px 0 oklch(1 0 0 / 0.25) inset, 0 6px 20px -8px oklch(0.82 0.16 75 / 0.55); }
+@media (hover: hover) and (pointer: fine) { .btn-primary:hover { background: oklch(0.86 0.15 78); } }
+.btn-sm { height: 40px; padding: 0 16px; font-size: 14px; border-radius: 10px; }
+.crumbs { display: flex; align-items: center; gap: 8px; height: 36px; font-size: 13px; color: var(--muted); }
+.crumbs a { text-decoration: none; }
+.crumbs [aria-current] { color: var(--text); }
+.crumbs .sep { opacity: 0.5; }
+
+/* State notice (truth pass) */
+.notice {
+  display: flex; align-items: center; gap: 14px; flex-wrap: wrap;
+  margin-top: 20px; padding: 10px 10px 10px 16px; border-radius: 12px;
+  background: var(--surface); box-shadow: inset 0 0 0 1px var(--line); font-size: 14px; color: var(--muted);
+}
+.notice strong { color: var(--text); font-weight: 600; }
+.dot { width: 8px; height: 8px; border-radius: 50%; background: var(--accent); flex: none; }
+.seg { margin-left: auto; display: inline-flex; padding: 3px; border-radius: 9px; background: var(--bg); box-shadow: inset 0 0 0 1px var(--line); }
+.seg button {
+  all: unset; cursor: pointer; padding: 6px 10px; border-radius: 6px; font-size: 13px; color: var(--muted);
+  transition: background-color 150ms ease, color 150ms ease;
+}
+.seg button[aria-pressed="true"] { background: var(--surface-2); color: var(--text); }
+
+/* Hero */
+.hero { padding: 40px 0 28px; display: grid; grid-template-columns: 1.35fr 1fr; gap: 56px; align-items: end; }
+.hero h1 { font-size: clamp(2.6rem, 4.6vw, 4.25rem); line-height: 1.02; font-weight: 750; letter-spacing: -0.035em; }
+.hero h1 span { color: var(--muted); font-weight: 600; }
+.lede { margin-top: 18px; font-size: 19px; color: var(--muted); max-width: 34em; }
+.cta-row { display: flex; align-items: center; gap: 20px; margin-top: 28px; }
+.cta-row .btn { height: 52px; padding: 0 26px; font-size: 17px; border-radius: 14px; }
+.cta-note { font-size: 14px; color: var(--muted); max-width: 22em; }
+.facts { display: grid; gap: 2px; border-radius: 18px; overflow: hidden; box-shadow: 0 0 0 1px var(--line), 0 20px 40px -24px oklch(0 0 0 / 0.7); }
+.fact { display: grid; grid-template-columns: 92px 1fr; gap: 16px; padding: 16px 20px; background: var(--surface); }
+.fact dt { color: var(--muted); font-size: 14px; padding-top: 2px; }
+.fact dd { margin: 0; font-weight: 600; }
+.fact dd small { display: block; font-weight: 400; color: var(--muted); font-size: 14px; margin-top: 2px; }
+
+/* Endpoint strip */
+.endpoints { display: grid; grid-template-columns: repeat(5, 1fr); gap: 12px; padding: 8px 0 56px; }
+.endpoint {
+  display: flex; flex-direction: column; gap: 4px; padding: 16px 18px; border-radius: var(--radius);
+  background: var(--surface); text-decoration: none; box-shadow: inset 0 0 0 1px var(--line);
+  transition: transform 160ms var(--ease-out), background-color 150ms ease;
+}
+.endpoint:active { transform: scale(0.98); }
+@media (hover: hover) and (pointer: fine) { .endpoint:hover { background: var(--surface-2); } }
+.endpoint b { display: flex; justify-content: space-between; align-items: center; font-size: 16px; font-weight: 650; }
+.endpoint span { font-size: 14px; color: var(--muted); }
+.endpoint svg { color: var(--muted); }
+
+/* Sections */
+section.block { padding: 64px 0; box-shadow: 0 -1px 0 var(--line); }
+.block-head { display: flex; align-items: baseline; justify-content: space-between; gap: 24px; margin-bottom: 28px; }
+.block-head h2 { font-size: 32px; font-weight: 700; }
+.block-head p { color: var(--muted); max-width: 36em; }
+.block-head a { color: var(--accent); font-weight: 600; text-decoration: none; white-space: nowrap; }
+
+.days { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; }
+.day { background: var(--surface); border-radius: 18px; padding: 22px; box-shadow: inset 0 0 0 1px var(--line); }
+.day h3 { font-size: 18px; }
+.day .sub { color: var(--muted); font-size: 14px; margin: 2px 0 14px; }
+.day ol { list-style: none; margin: 0; padding: 0; display: grid; gap: 0; }
+.day li { display: grid; grid-template-columns: 128px 1fr; gap: 12px; padding: 9px 0; box-shadow: 0 -1px 0 var(--line); font-size: 14px; }
+.day li time { color: var(--muted); }
+
+.talks { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin-top: 28px; }
+.talk { padding: 16px 18px; border-radius: var(--radius); background: var(--surface); box-shadow: inset 0 0 0 1px var(--line); }
+.talk h3 { font-size: 16px; font-weight: 650; line-height: 1.35; }
+.talk p { margin-top: 6px; color: var(--muted); font-size: 14px; }
+.talk[hidden] { display: none; }
+.empty { color: var(--muted); padding: 16px 0; }
+
+.speakers { display: grid; grid-template-columns: repeat(4, 1fr); gap: 0 24px; }
+.speaker { padding: 12px 0; box-shadow: 0 -1px 0 var(--line); }
+.speaker b { font-weight: 600; }
+.speaker span { color: var(--muted); font-size: 14px; display: block; }
+
+.price { display: grid; grid-template-columns: 1fr 1fr 1.2fr; gap: 16px; }
+.price > div { background: var(--surface); border-radius: 18px; padding: 22px; box-shadow: inset 0 0 0 1px var(--line); }
+.price .amt { font-size: 36px; font-weight: 700; letter-spacing: -0.02em; }
+.price .amt small { font-size: 15px; font-weight: 500; color: var(--muted); }
+.price p { color: var(--muted); font-size: 15px; margin-top: 6px; }
+
+.sponsor-tier { display: grid; grid-template-columns: 180px 1fr; gap: 24px; padding: 16px 0; box-shadow: 0 -1px 0 var(--line); }
+.sponsor-tier h3 { font-size: 14px; color: var(--muted); font-weight: 500; padding-top: 3px; }
+.marks { display: flex; flex-wrap: wrap; gap: 8px 22px; font-weight: 600; font-size: 17px; }
+
+.faq details { box-shadow: 0 -1px 0 var(--line); }
+.faq summary { list-style: none; cursor: pointer; display: flex; justify-content: space-between; align-items: center; padding: 18px 0; font-weight: 600; font-size: 17px; }
+.faq summary::-webkit-details-marker { display: none; }
+.faq summary svg { transition: transform 200ms var(--ease-out); color: var(--muted); }
+.faq details[open] summary svg { transform: rotate(45deg); }
+.faq details p { padding: 0 0 18px; color: var(--muted); max-width: 44em; }
+
+footer { padding: 32px 0 48px; box-shadow: 0 -1px 0 var(--line); color: var(--muted); font-size: 14px; }
+footer .wrap { display: flex; justify-content: space-between; gap: 24px; }
+.gen { display: inline-flex; align-items: center; gap: 8px; }
+
+/* Pre/post-event state */
+body[data-phase="post"] .pre-only, body[data-phase="pre"] .post-only { display: none; }
+
+/* One authored moment: hero enters once on load */
+@keyframes rise { from { opacity: 0; transform: translateY(8px); } }
+@keyframes fade { from { opacity: 0; } }
+.enter > * { animation: rise 520ms var(--ease-out) both; }
+.enter > *:nth-child(2) { animation-delay: 60ms; }
+.enter > *:nth-child(3) { animation-delay: 120ms; }
+.enter > *:nth-child(4) { animation-delay: 180ms; }
+@media (prefers-reduced-motion: reduce) {
+  html { scroll-behavior: auto; }
+  .enter > * { animation-name: fade; }
+}
+@media (max-width: 1100px) {
+  nav.primary { display: none; }
+  .hero { grid-template-columns: 1fr; gap: 28px; }
+  .endpoints { grid-template-columns: repeat(2, 1fr); }
+  .days, .talks, .price { grid-template-columns: 1fr; }
+  .speakers { grid-template-columns: repeat(2, 1fr); }
+  .search { width: auto; flex: 1; }
+}
+</style>
+</head>
+<body data-phase="post">
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <symbol id="arrow" viewBox="0 0 16 16"><path d="M3 8h10M9 4l4 4-4 4" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+  <symbol id="search" viewBox="0 0 16 16"><circle cx="7" cy="7" r="4.5" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="M10.5 10.5 14 14" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></symbol>
+  <symbol id="plus" viewBox="0 0 16 16"><path d="M8 3v10M3 8h10" stroke="currentColor" stroke-width="1.75" stroke-linecap="round"/></symbol>
+  <symbol id="play" viewBox="0 0 16 16"><path d="M5 3.5v9l7.5-4.5z" fill="currentColor"/></symbol>
+</svg>
+
+<header class="top">
+  <div class="wrap top-row">
+    <a class="brand" href="#top" aria-label="AI Engineer Code Summit 2026, top of page">
+      <svg width="28" height="28" viewBox="0 0 28 28" aria-hidden="true"><rect width="28" height="28" rx="7" fill="oklch(0.82 0.16 75)"/><path d="M8 19 12.5 9h3L20 19M10 15.5h8" fill="none" stroke="oklch(0.2 0.03 70)" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      Code Summit 2026 <small>AI Engineer</small>
+    </a>
+    <nav class="primary" aria-label="Sections">
+      <a href="#talks">Talks</a>
+      <a href="#schedule">Schedule</a>
+      <a href="#speakers">Speakers</a>
+      <a href="#register">Tickets</a>
+      <a href="#venue">Venue</a>
+      <a href="#sponsors">Sponsors</a>
+      <a href="#faq">FAQ</a>
+    </nav>
+    <label class="search" for="q">
+      <svg width="16" height="16" aria-hidden="true"><use href="#search"/></svg>
+      <input id="q" type="search" placeholder="Search talks, speakers" autocomplete="off">
+      <kbd aria-hidden="true">/</kbd>
+    </label>
+  </div>
+</header>
+
+<main id="top" class="wrap">
+  <nav class="crumbs" aria-label="You are here">
+    <a href="https://ai.engineer/">AI Engineer</a><span class="sep">/</span>
+    <a href="https://ai.engineer/code">Code Summit</a><span class="sep">/</span>
+    <span aria-current="page">2026 · San Francisco</span>
+  </nav>
+
+  <div class="notice" role="status">
+    <span class="dot" aria-hidden="true"></span>
+    <span class="post-only"><strong>This year's summit has ended.</strong> It ran Nov 10–12, 2026. Recordings of all 50 sessions are online.</span>
+    <span class="pre-only"><strong>Applications are open.</strong> Applying is free and doesn't reserve a seat.</span>
+    <div class="seg" role="group" aria-label="Preview page state">
+      <button type="button" data-phase="pre" aria-pressed="false">Before the event</button>
+      <button type="button" data-phase="post" aria-pressed="true">After the event</button>
+    </div>
+  </div>
+
+  <div class="hero">
+    <div class="enter">
+      <h1>AI Engineer Code Summit 2026 <span>San Francisco, Nov 10–12</span></h1>
+      <p class="lede">The second annual code-focused summit: a day of workshops and two days of single-track talks from engineers building and rolling out coding agents.</p>
+      <div class="cta-row post-only">
+        <a class="btn btn-primary" href="#talks"><svg width="16" height="16" aria-hidden="true"><use href="#play"/></svg>Watch the talks</a>
+        <p class="cta-note">Both days are on YouTube, with a reading edition and transcript for each session.</p>
+      </div>
+      <div class="cta-row pre-only">
+        <a class="btn btn-primary" href="#register">Register</a>
+        <p class="cta-note">Applying is free. If you're approved, we email you a link to buy a ticket.</p>
+      </div>
+    </div>
+    <dl class="facts enter">
+      <div class="fact"><dt>When</dt><dd class="num">Nov 10–12, 2026<small>Workshops Nov 10 · Talks &amp; expo Nov 11–12</small></dd></div>
+      <div class="fact"><dt>Where</dt><dd>Hilton Union Square<small>333 O'Farrell St, San Francisco, CA 94102</small></dd></div>
+      <div class="fact"><dt>Cost</dt><dd class="num">Free to apply<small>If approved: $1,499 + fees · Workshop add-on $299 + fees</small></dd></div>
+      <div class="fact"><dt>Format</dt><dd>Single track, by application<small>800 admitted last year · 1.5M talk views</small></dd></div>
+    </dl>
+  </div>
+
+  <nav class="endpoints" aria-label="Main destinations">
+    <a class="endpoint" href="#schedule"><b>Schedule <svg width="16" height="16" aria-hidden="true"><use href="#arrow"/></svg></b><span>Three days, all times PT</span></a>
+    <a class="endpoint" href="#speakers"><b>Speakers <svg width="16" height="16" aria-hidden="true"><use href="#arrow"/></svg></b><span>50 sessions</span></a>
+    <a class="endpoint" href="#sponsors"><b>Sponsors <svg width="16" height="16" aria-hidden="true"><use href="#arrow"/></svg></b><span>Presented by Google DeepMind</span></a>
+    <a class="endpoint" href="#register"><b>Register <svg width="16" height="16" aria-hidden="true"><use href="#arrow"/></svg></b><span class="post-only">Closed for 2026</span><span class="pre-only">Free to apply</span></a>
+    <a class="endpoint" href="#faq"><b>FAQ <svg width="16" height="16" aria-hidden="true"><use href="#arrow"/></svg></b><span>Tickets, format, recordings</span></a>
+  </nav>
+
+  <section class="block" id="talks" aria-labelledby="talks-h">
+    <div class="block-head">
+      <h2 id="talks-h">Talks</h2>
+      <a href="https://ai.engineer/code/2026#talks">All 50 sessions →</a>
+    </div>
+    <p style="color:var(--muted)">Main-stage sessions from both days. Each links to a recording, an illustrated reading edition and a timestamped transcript on the live site.</p>
+    <div class="talks" id="talk-list">
+      <article class="talk"><h3>2026 in LLMs</h3><p>Simon Willison · Independent · Nov 11</p></article>
+      <article class="talk"><h3>Rethinking Claude Code Best Practices</h3><p>Lydia Hallie · Anthropic · Nov 11</p></article>
+      <article class="talk"><h3>All Code Is Slop (Except Mine)</h3><p>Lauren Tan · SpaceXSI · Nov 11</p></article>
+      <article class="talk"><h3>I deleted 90% of my harness (And It Got Better)</h3><p>Philipp Schmid · Google DeepMind · Nov 11</p></article>
+      <article class="talk"><h3>Software Factories: Escape from Trash Mountain</h3><p>Steve Yegge · Independent · Nov 11</p></article>
+      <article class="talk"><h3>How to build an agent that builds the culture</h3><p>Zach Bruggeman · Ramp · Nov 11</p></article>
+      <article class="talk"><h3>The Software Atelier</h3><p>Armin Ronacher · Earendil · Nov 12</p></article>
+      <article class="talk"><h3>A New Age of Software Engineering</h3><p>Walden Yan · Cognition · Nov 12</p></article>
+      <article class="talk"><h3>Choose the project you can verify</h3><p>Jarred Sumner · Anthropic · Nov 12</p></article>
+      <article class="talk"><h3>Software Engineering Is Becoming Factory Engineering</h3><p>Zach Lloyd · Warp · Nov 12</p></article>
+      <article class="talk"><h3>Build the company around the agent, not a pilot project</h3><p>Quinn Slack · Amp · Nov 12</p></article>
+      <article class="talk"><h3>Ambition in AI</h3><p>Jason Liu · OpenAI · Nov 12</p></article>
+    </div>
+    <p class="empty" id="talk-empty" hidden>No main-stage talk matches. <a href="https://ai.engineer/code/2026#talks">Search all 50 sessions</a></p>
+  </section>
+
+  <section class="block" id="schedule" aria-labelledby="schedule-h">
+    <div class="block-head">
+      <h2 id="schedule-h">Schedule</h2>
+      <a href="https://ai.engineer/code/2026/schedule">Full 2026 schedule →</a>
+    </div>
+    <div class="days">
+      <div class="day">
+        <h3>Tue, Nov 10</h3><p class="sub">Workshops &amp; Welcome Reception</p>
+        <ol class="num">
+          <li><time>8:00 AM</time><span>Badge pickup and breakfast</span></li>
+          <li><time>9:00 AM – 12:40 PM</time><span>Morning workshops · Workshop talks</span></li>
+          <li><time>12:40 – 1:50 PM</time><span>Lunch</span></li>
+          <li><time>1:50 – 5:30 PM</time><span>Afternoon workshops · Workshop talks</span></li>
+          <li><time>5:30 – 8:30 PM</time><span>Welcome Reception (Expo Hall)</span></li>
+        </ol>
+      </div>
+      <div class="day">
+        <h3>Wed, Nov 11</h3><p class="sub">Keynotes &amp; Expo Talks</p>
+        <ol class="num">
+          <li><time>8:00 AM</time><span>Badge pickup and breakfast</span></li>
+          <li><time>9:00 – 10:40 AM</time><span>Morning featured keynotes</span></li>
+          <li><time>11:20 AM – 12:55 PM</time><span>Morning keynotes · Expo talks</span></li>
+          <li><time>2:05 – 3:40 PM</time><span>Afternoon keynotes · Expo talks</span></li>
+          <li><time>4:20 – 5:30 PM</time><span>Afternoon featured keynotes</span></li>
+        </ol>
+      </div>
+      <div class="day">
+        <h3>Thu, Nov 12</h3><p class="sub">Keynotes, Expo Talks &amp; Afterparty</p>
+        <ol class="num">
+          <li><time>8:00 AM</time><span>Badge pickup and breakfast</span></li>
+          <li><time>9:00 – 10:40 AM</time><span>Morning featured keynotes</span></li>
+          <li><time>11:20 AM – 12:55 PM</time><span>Morning keynotes · Expo talks</span></li>
+          <li><time>4:20 – 5:30 PM</time><span>Afternoon featured keynotes</span></li>
+          <li><time>6:30 – 9:30 PM</time><span>Official After Party</span></li>
+        </ol>
+      </div>
+    </div>
+  </section>
+
+  <section class="block" id="speakers" aria-labelledby="speakers-h">
+    <div class="block-head">
+      <h2 id="speakers-h">Speakers</h2>
+      <a href="https://ai.engineer/code/2026#speakers">All speakers →</a>
+    </div>
+    <div class="speakers">
+      <div class="speaker"><b>Simon Willison</b><span>Independent</span></div>
+      <div class="speaker"><b>Steve Yegge</b><span>Independent</span></div>
+      <div class="speaker"><b>Armin Ronacher</b><span>Earendil</span></div>
+      <div class="speaker"><b>Jarred Sumner</b><span>Anthropic</span></div>
+      <div class="speaker"><b>Lydia Hallie</b><span>Anthropic</span></div>
+      <div class="speaker"><b>Jason Liu</b><span>OpenAI</span></div>
+      <div class="speaker"><b>Quinn Slack</b><span>Amp</span></div>
+      <div class="speaker"><b>Zach Lloyd</b><span>Warp</span></div>
+      <div class="speaker"><b>Lauren Tan</b><span>SpaceXSI</span></div>
+      <div class="speaker"><b>Michelle Chen</b><span>Cloudflare</span></div>
+      <div class="speaker"><b>Natalie Serrino</b><span>Gimlet Labs</span></div>
+      <div class="speaker"><b>Dexter Horthy</b><span>Factory</span></div>
+      <div class="speaker"><b>Fabian Hedin</b><span>Lovable</span></div>
+      <div class="speaker"><b>Zach Bruggeman</b><span>Ramp</span></div>
+      <div class="speaker"><b>Thariq Shihipar</b><span>Independent</span></div>
+      <div class="speaker"><b>Melvin Johnson</b><span>Google DeepMind</span></div>
+    </div>
+  </section>
+
+  <section class="block" id="register" aria-labelledby="register-h">
+    <div class="block-head">
+      <h2 id="register-h">Tickets</h2>
+      <p class="post-only">Applications for 2026 are closed. Prices are shown for reference.</p>
+      <p class="pre-only">Attendance is by application. Applying is free and doesn't reserve a seat.</p>
+    </div>
+    <div class="price">
+      <div><p>Talks + expo · Nov 11–12</p><div class="amt num">$1,499 <small>+ fees</small></div><p>Final &amp; at-door price, if approved.</p></div>
+      <div><p>Workshop add-on · Nov 10</p><div class="amt num">$299 <small>+ fees</small></div><p>Hands-on workshops.</p></div>
+      <div>
+        <p class="post-only">Missed it? Watch the livestream recordings of both days or follow along on X.</p>
+        <p class="pre-only">Enter your email on the application. If you're approved, we email you a link to purchase.</p>
+        <div style="margin-top:16px">
+          <a class="btn btn-sm btn-primary post-only" href="#talks">Watch the talks</a>
+          <a class="btn btn-sm btn-primary pre-only" href="https://ai.engineer/code/2026#pricing">Register</a>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="block" id="venue" aria-labelledby="venue-h">
+    <div class="block-head">
+      <h2 id="venue-h">Venue</h2>
+      <a href="https://ai.engineer/code/2026#venue">Floorplan →</a>
+    </div>
+    <div class="days">
+      <div class="day"><h3>Hilton Union Square</h3><p class="sub">333 O'Farrell St, San Francisco, CA 94102</p></div>
+      <div class="day"><h3>Level 1 · Nov 10–12</h3><p class="sub">Registration, swag pickup &amp; expo floor</p></div>
+      <div class="day"><h3>Level 2</h3><p class="sub">Nov 10 workshops, breakfast &amp; lunch · Nov 11–12 keynotes, expo sessions &amp; lounges</p></div>
+    </div>
+  </section>
+
+  <section class="block" id="sponsors" aria-labelledby="sponsors-h">
+    <div class="block-head">
+      <h2 id="sponsors-h">Sponsors</h2>
+      <a href="mailto:sponsorships@ai.engineer">Become a sponsor →</a>
+    </div>
+    <div class="sponsor-tier"><h3>Presenting</h3><div class="marks"><span>Google DeepMind</span></div></div>
+    <div class="sponsor-tier"><h3>Lounges</h3><div class="marks"><span>Anthropic</span><span>OpenAI</span><span>Token Billionaires</span></div></div>
+    <div class="sponsor-tier"><h3>Partners</h3><div class="marks"><span>AWS</span><span>Cognition</span><span>Databricks</span><span>Exa</span><span>Factory</span><span>Sonar</span><span>Atlassian</span><span>Auth0</span><span>Cisco</span><span>CodeRabbit</span><span>Sentry</span><span>Pinecone</span><span>Render</span><span>Cloudflare</span><span>Datadog</span><span>Warp</span><span>Vercel</span><span>Firecrawl</span><span>Baseten</span><span>E2B</span></div></div>
+  </section>
+
+  <section class="block faq" id="faq" aria-labelledby="faq-h">
+    <div class="block-head"><h2 id="faq-h">FAQ</h2></div>
+    <details><summary>Where and when is the conference? <svg width="16" height="16" aria-hidden="true"><use href="#plus"/></svg></summary><p>Hilton Union Square, 333 O'Farrell St, San Francisco. Workshops on Tue, Nov 10; talks and expo on Wed–Thu, Nov 11–12, 2026.</p></details>
+    <details><summary>How do I get a ticket? <svg width="16" height="16" aria-hidden="true"><use href="#plus"/></svg></summary><p>Apply with your email. Applying is free and doesn't reserve a seat. If you're approved, you get an email with a link to buy a ticket ($1,499 + fees; workshop add-on $299 + fees).</p></details>
+    <details><summary>What's the format? <svg width="16" height="16" aria-hidden="true"><use href="#plus"/></svg></summary><p>A day of AIE workshops, two days of single-track sessions, the Summit Expo, and breaks for the hallway track.</p></details>
+    <details><summary>Who should attend? <svg width="16" height="16" aria-hidden="true"><use href="#plus"/></svg></summary><p>Engineers building coding agents, founders and engineering leaders rolling out coding and internal agents, and researchers advancing AI software engineering.</p></details>
+    <details><summary>Are talks recorded? <svg width="16" height="16" aria-hidden="true"><use href="#plus"/></svg></summary><p>Yes. Both days were livestreamed and are on YouTube, with a reading edition and transcript for each session.</p></details>
+  </section>
+</main>
+
+<footer>
+  <div class="wrap">
+    <span class="gen">Generated by Rehearsal from spec.md · a mockup, not the official site</span>
+    <span>Content from <a href="https://ai.engineer/code/2026">ai.engineer/code/2026</a></span>
+  </div>
+</footer>
+
+<script>
+(() => {
+  const body = document.body;
+  const segButtons = document.querySelectorAll(".seg button");
+  segButtons.forEach((b) => b.addEventListener("click", () => {
+    body.dataset.phase = b.dataset.phase;
+    segButtons.forEach((x) => x.setAttribute("aria-pressed", String(x === b)));
+  }));
+
+  const q = document.getElementById("q");
+  const talks = [...document.querySelectorAll("#talk-list .talk")];
+  const empty = document.getElementById("talk-empty");
+  q.addEventListener("input", () => {
+    const term = q.value.trim().toLowerCase();
+    let shown = 0;
+    talks.forEach((t) => {
+      const hit = !term || t.textContent.toLowerCase().includes(term);
+      t.hidden = !hit;
+      if (hit) shown++;
+    });
+    empty.hidden = shown > 0;
+    if (term) document.getElementById("talks").scrollIntoView({ block: "start" });
+  });
+  document.addEventListener("keydown", (e) => {
+    if (e.key === "/" && document.activeElement !== q) { e.preventDefault(); q.focus(); }
+    if (e.key === "Escape" && document.activeElement === q) { q.value = ""; q.dispatchEvent(new Event("input")); q.blur(); }
+  });
+
+  const links = [...document.querySelectorAll("nav.primary a")];
+  const sections = links.map((a) => document.querySelector(a.getAttribute("href")));
+  const io = new IntersectionObserver((entries) => {
+    entries.forEach((en) => {
+      if (!en.isIntersecting) return;
+      links.forEach((a) => a.setAttribute("aria-current", String(a.getAttribute("href") === "#" + en.target.id)));
+    });
+  }, { rootMargin: "-40% 0px -55% 0px" });
+  sections.forEach((s) => s && io.observe(s));
+})();
+</script>
+</body>
+</html>
