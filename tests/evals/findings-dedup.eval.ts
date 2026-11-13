@@ -35,7 +35,7 @@ function failedRun(runId: string, assertions: Assertion[]): BrowserRun {
   return {
     runId, viewport: VIEWPORTS.desktop, success: false, steps: [],
     assertions: assertions.map((assertion) => ({ assertion, passed: false })),
-    errors: [], screenshotPaths: [`/shots/${runId}.png`], durationMs: 0,
+    errors: [], consoleErrorCount: 0, screenshotPaths: [`/shots/${runId}.png`], durationMs: 0,
   };
 }
 
