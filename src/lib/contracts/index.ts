@@ -431,7 +431,7 @@ export const SiteRunSummary = z.object({
   url: z.string().url(),
   targetUrl: z.string().url(),
   goal: z.string(),
-  status: z.enum(["complete", "blocked", "timeout", "error"]),
+  status: z.enum(["complete", "blocked", "disallowed", "timeout", "error"]),
   failureReason: z.string().optional(),
   error: z.string().optional(),
   runner: z.string(),
@@ -467,6 +467,12 @@ export const SiteRunSummary = z.object({
     runErrors: z.array(z.string()),
   }),
   compare: Comparison.shape.deltas.nullable(),
+  endpoints: z.object({
+    intent: IntentCategory.optional(),
+    total: z.number().int(),
+    /** Per endpoint class: endpoints found vs. reached by at least one seeded journey. */
+    byClass: z.partialRecord(EndpointClass, z.object({ found: z.number().int(), reached: z.number().int() })),
+  }),
   findings: z.object({
     total: z.number().int(),
     bySeverity: z.record(z.string(), z.number().int()),
