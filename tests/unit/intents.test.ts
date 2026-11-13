@@ -107,6 +107,21 @@ describe("discoverEndpoints + weightEndpoints", () => {
     for (const e of eps) expect(() => Endpoint.parse(e)).not.toThrow();
   });
 
+  it("keeps an endpoint that is the start page itself", () => {
+    const pricing = makeState({ url: "https://acme.com/pricing", viewport: VIEWPORTS.desktop, title: "Pricing", visibleText: "Plans", actions: [] });
+    const eps = discoverEndpoints({ states: [pricing], edges: [] });
+    expect(eps).toHaveLength(1);
+    expect(eps[0]).toMatchObject({ class: "pricing", stateId: pricing.stateId });
+  });
+
+  it("ignores disabled CTAs", () => {
+    const home = makeState({
+      url: "https://acme.com/", viewport: VIEWPORTS.desktop, title: "Acme", visibleText: "",
+      actions: [{ type: "click", label: "Sign up", role: "button", enabled: false, safeToExecute: true }],
+    });
+    expect(discoverEndpoints({ states: [home], edges: [] }).filter((e) => e.class === "signup")).toEqual([]);
+  });
+
   it("is deterministic and sorted by weight; overrides lift a class", () => {
     const graph = saasGraph();
     const a = discoverEndpoints(graph);

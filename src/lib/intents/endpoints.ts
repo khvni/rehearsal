@@ -92,8 +92,7 @@ function endpointKeyUrl(raw: string): string {
   }
 }
 
-function classifyState(state: SiteState, isStart: boolean): EndpointClass | null {
-  if (isStart) return null;
+function classifyState(state: SiteState): EndpointClass | null {
   return classifyText(pathWords(state.url));
 }
 
@@ -128,13 +127,13 @@ export function discoverEndpoints(graph: StateGraph, opts: { intents?: IntentPro
 
   for (const state of graph.states) {
     const isStart = state.stateId === start.stateId;
-    const cls = classifyState(state, isStart);
+    const cls = classifyState(state);
     if (cls) {
       const url = endpointKeyUrl(state.url);
-      upsert({ key: `${cls}|${url}`, cls, url: state.url, label: state.pageTitle, stateId: state.stateId, onStart: false });
+      upsert({ key: `${cls}|${url}`, cls, url: state.url, label: state.pageTitle, stateId: state.stateId, onStart: isStart });
     }
     for (const action of state.actions) {
-      if (action.type !== "click" && action.type !== "navigate") continue;
+      if ((action.type !== "click" && action.type !== "navigate") || !action.enabled) continue;
       const acls = classifyAction(action);
       if (!acls) continue;
       const href = action.href ? endpointKeyUrl(action.href) : undefined;
