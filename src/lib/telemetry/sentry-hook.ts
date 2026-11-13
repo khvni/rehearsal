@@ -130,8 +130,11 @@ interface GithubIssue {
   number: number;
   state: string;
   body?: string | null;
+  labels?: (string | { name?: string })[];
   pull_request?: unknown;
 }
+
+const inflight = new Map<string, Promise<unknown>>();
 
 /** Open, update, or reopen the GitHub issue for this Sentry issue. No-op (logged) without a token. */
 export async function upsertFirstResponderIssue(alert: SentryAlert, opts: UpsertOptions): Promise<GithubIssueUpsert> {
@@ -139,20 +142,32 @@ export async function upsertFirstResponderIssue(alert: SentryAlert, opts: Upsert
     logEvent({ stage: "sentry-hook", kind: "notice", data: { message: "GITHUB_TOKEN unset: not filing", issueId: alert.issueId } });
     return { action: "skipped", reason: "GITHUB_TOKEN unset" };
   }
+  // Serialize deliveries for the same Sentry issue so concurrent alerts cannot both miss the lookup and file twice.
+  const prev = inflight.get(alert.issueId) ?? Promise.resolve();
+  const run = prev.catch(() => undefined).then(() => upsert(alert, opts.token!, opts));
+  inflight.set(alert.issueId, run);
+  try {
+    return await run;
+  } finally {
+    if (inflight.get(alert.issueId) === run) inflight.delete(alert.issueId);
+  }
+}
+
+async function upsert(alert: SentryAlert, token: string, opts: UpsertOptions): Promise<GithubIssueUpsert> {
   const repo = opts.repo ?? SENTRY_ISSUE_REPO;
   const doFetch = opts.fetch ?? fetch;
-  const gh = async (method: string, route: string, body?: unknown) => {
+  const gh = async (method: string, route: string, body?: unknown, tolerate: number[] = []) => {
     const res = await doFetch(`https://api.github.com/repos/${repo}${route}`, {
       method,
       headers: {
-        authorization: `Bearer ${opts.token}`,
+        authorization: `Bearer ${token}`,
         accept: "application/vnd.github+json",
         "x-github-api-version": "2022-11-28",
         ...(body ? { "content-type": "application/json" } : {}),
       },
       body: body ? JSON.stringify(body) : undefined,
     });
-    if (!res.ok && res.status !== 404 && res.status !== 422) {
+    if (!res.ok && !tolerate.includes(res.status)) {
       throw new Error(`GitHub ${method} ${route} → ${res.status}`);
     }
     return res;
@@ -160,7 +175,7 @@ export async function upsertFirstResponderIssue(alert: SentryAlert, opts: Upsert
 
   const marker = sentryMarker(alert.issueId);
   let existing: GithubIssue | undefined;
-  for (let page = 1; page <= 5 && !existing; page++) {
+  for (let page = 1; !existing; page++) {
     const res = await gh("GET", `/issues?labels=sentry&state=all&per_page=100&page=${page}`);
     const issues = (await res.json()) as GithubIssue[];
     existing = issues.find((i) => !i.pull_request && i.body?.includes(marker));
@@ -170,7 +185,8 @@ export async function upsertFirstResponderIssue(alert: SentryAlert, opts: Upsert
   const body = issueBody(alert);
   if (!existing) {
     for (const name of FIRST_RESPONDER_LABELS) {
-      await gh("POST", "/labels", { name, color: name === "sentry" ? "362d59" : "d73a4a" });
+      // 422 = label already exists.
+      await gh("POST", "/labels", { name, color: name === "sentry" ? "362d59" : "d73a4a" }, [422]);
     }
     const res = await gh("POST", "/issues", { title: issueTitle(alert), body, labels: [...FIRST_RESPONDER_LABELS] });
     const created = (await res.json()) as GithubIssue;
@@ -179,15 +195,14 @@ export async function upsertFirstResponderIssue(alert: SentryAlert, opts: Upsert
 
   const n = existing.number;
   const reopen = existing.state === "closed";
+  const armed = (existing.labels ?? []).some((l) => (typeof l === "string" ? l : l.name) === "first-responder");
+  // Ordered so a retry after any partial failure still re-arms: drop label → reopen → re-add label.
+  // A `labeled` event re-arms the first-responder Automation for the regression.
+  if (reopen) await gh("DELETE", `/issues/${n}/labels/first-responder`, undefined, [404]);
   await gh("PATCH", `/issues/${n}`, { body, ...(reopen ? { state: "open" } : {}) });
+  if (reopen || !armed) await gh("POST", `/issues/${n}/labels`, { labels: ["first-responder"] });
   await gh("POST", `/issues/${n}/comments`, {
     body: `Sentry fired again (${alert.reason})${alert.eventUrl ? `: ${alert.eventUrl}` : "."}`,
   });
-  if (reopen) {
-    // A `labeled` event re-arms the first-responder Automation for the regression.
-    await gh("DELETE", `/issues/${n}/labels/first-responder`);
-    await gh("POST", `/issues/${n}/labels`, { labels: ["first-responder"] });
-    return { action: "reopened", number: n };
-  }
-  return { action: "updated", number: n };
+  return reopen ? { action: "reopened", number: n } : { action: "updated", number: n };
 }

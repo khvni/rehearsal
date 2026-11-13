@@ -43,13 +43,18 @@ function jsonResponse(body: unknown, status = 200): Response {
 }
 
 /** In-memory GitHub issues API: records every call. */
-function fakeGithub(issues: { number: number; state: string; body: string }[] = []) {
+function fakeGithub(
+  issues: { number: number; state: string; body: string; labels?: string[] }[] = [],
+  fail: Record<string, number> = {},
+) {
   const calls: { method: string; path: string; body?: Record<string, unknown> }[] = [];
   const fetchMock = vi.fn(async (url: string | URL | Request, init?: RequestInit) => {
     const u = new URL(String(url));
     const method = init?.method ?? "GET";
     const body = init?.body ? (JSON.parse(String(init.body)) as Record<string, unknown>) : undefined;
     calls.push({ method, path: u.pathname + u.search, body });
+    const status = fail[`${method} ${u.pathname}`];
+    if (status) return jsonResponse({ message: "nope" }, status);
     if (method === "GET") return jsonResponse(issues);
     if (method === "POST" && u.pathname.endsWith("/issues")) return jsonResponse({ number: 42, state: "open" }, 201);
     return jsonResponse({}, method === "POST" ? 201 : 200);
@@ -142,6 +147,35 @@ describe("upsertFirstResponderIssue", () => {
     expect(gh.calls.find((c) => c.method === "POST" && c.path.endsWith("/issues/9/labels"))?.body).toEqual({
       labels: ["first-responder"],
     });
+  });
+
+  it("fails when GitHub rejects the issue write (not a silent success)", async () => {
+    const gh = fakeGithub([], { "POST /repos/khvni/rehearsal/issues": 422 });
+    await expect(upsertFirstResponderIssue(alert, { token: "t", fetch: gh.fetch })).rejects.toThrow(/422/);
+  });
+
+  it("re-arms an open issue that lost first-responder (retry after a partial reopen)", async () => {
+    const gh = fakeGithub([{ number: 9, state: "open", body: sentryMarker("1117540176"), labels: ["sentry"] }]);
+    expect((await upsertFirstResponderIssue(alert, { token: "t", fetch: gh.fetch })).action).toBe("updated");
+    expect(gh.calls.some((c) => c.method === "POST" && c.path.endsWith("/issues/9/labels"))).toBe(true);
+  });
+
+  it("serializes concurrent deliveries for the same Sentry issue", async () => {
+    const issues: { number: number; state: string; body: string; labels?: string[] }[] = [];
+    const gh = fakeGithub(issues);
+    const base = gh.fetch;
+    const fetchWithStore = (async (url: string | URL | Request, init?: RequestInit) => {
+      const res = await base(url, init);
+      if (init?.method === "POST" && new URL(String(url)).pathname.endsWith("/issues")) {
+        issues.push({ number: 42, state: "open", body: String(JSON.parse(String(init.body)).body), labels: ["first-responder", "sentry"] });
+      }
+      return res;
+    }) as typeof fetch;
+    const [a, b] = await Promise.all([
+      upsertFirstResponderIssue(alert, { token: "t", fetch: fetchWithStore }),
+      upsertFirstResponderIssue(alert, { token: "t", fetch: fetchWithStore }),
+    ]);
+    expect([a.action, b.action].sort()).toEqual(["created", "updated"]);
   });
 
   it("no-ops without GITHUB_TOKEN", async () => {
