@@ -191,6 +191,8 @@ export default function ExperimentPage() {
     compare: exp.variants.length + exp.comparisons.length > 0,
     spec: Boolean(exp.spec),
   };
+  // Stages run in order and analyze/compare may legitimately produce nothing, so a later stage implies earlier ones ran.
+  for (let i = STAGES.length - 2; i >= 0; i--) stageDone[STAGES[i]] ||= stageDone[STAGES[i + 1]];
   const nextStage = STAGES.find((s) => !stageDone[s]);
   const stageActive = (s: (typeof STAGES)[number]) =>
     pending === s || ((pending === "run" || RUNNING_STATUSES.includes(exp.status)) && s === nextStage);
