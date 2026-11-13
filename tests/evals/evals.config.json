@@ -8,6 +8,15 @@
     "minCoverageRatio": 0.5,
     "minSpecChangeCompleteness": 1.0,
     "maxAmbiguity": 1.0,
-    "requireStaleDateFinding": true
+    "requireStaleDateFinding": true,
+    "profileTrajectoriesPerSeed": 2000,
+    "minGoalReachedPerProfile": 100,
+    "maxImpatientToExploratoryStepRatio": 1.0,
+    "minGoalRetentionRate": 1.0,
+    "minRebuildPhases": 3,
+    "maxStatesPerStateHash": 1,
+    "minVagueLabelsDetected": 4,
+    "minPastDatesDetected": 1,
+    "requireStaleDateEvidence": true
   }
 }
