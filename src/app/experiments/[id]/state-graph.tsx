@@ -32,11 +32,11 @@ function heat(visits: number, max: number): number {
 const HEAT_STEPS = [0, 0.25, 0.5, 0.75, 1];
 
 function heatFill(t: number): string {
-  return `color-mix(in oklab, var(--accent) ${Math.round(t * 32)}%, var(--panel))`;
+  return `color-mix(in oklab, var(--hl) ${Math.round(t * 32)}%, var(--panel))`;
 }
 
 function heatBorder(t: number): string {
-  return `color-mix(in oklab, var(--accent) ${Math.round(25 + t * 60)}%, var(--border))`;
+  return `color-mix(in oklab, var(--hl) ${Math.round(25 + t * 60)}%, var(--border))`;
 }
 
 function shortPath(url: string): string {
@@ -169,7 +169,7 @@ export function StateGraph({
         target: e.target,
         zIndex: incident ? 1 : 0,
         style: {
-          stroke: incident ? "var(--accent)" : e.flow > 0 ? "var(--text-2)" : "var(--muted)",
+          stroke: incident ? "var(--hl)" : e.flow > 0 ? "var(--text-2)" : "var(--muted)",
           strokeWidth: e.flow > 0 ? 1 + e.w * 2.5 : 1,
           strokeOpacity: opacity,
           strokeDasharray: e.flow > 0 ? undefined : "3 4",
