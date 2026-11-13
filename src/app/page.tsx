@@ -34,13 +34,19 @@ export default function Home() {
 
   return (
     <div className="page narrow">
-      <div className="header">
-        <h1>Rehearsal</h1>
-        <p className="tagline">Simulate journeys. Verify in real browsers. Ship a rebuild spec.</p>
-      </div>
+      <nav className="topbar">
+        <span className="brand">
+          <span className="brand-mark" aria-hidden />
+          Rehearsal
+        </span>
+      </nav>
+      <header className="hero">
+        <h1>Find where visitors get stuck</h1>
+        <p className="lede">Give Rehearsal a page and a goal. It walks the site, replays the risky paths in real browsers, and writes up what to fix.</p>
+      </header>
       <form className="launch" onSubmit={start} aria-busy={busy}>
         <label className="field">
-          <span className="field-label">Site URL</span>
+          <span className="field-label">Page URL</span>
           <input
             type="url"
             required
@@ -62,6 +68,7 @@ export default function Home() {
             onChange={(e) => setGoal(e.target.value)}
             placeholder="What should a visitor be able to do?"
           />
+          <span className="field-hint">One task, in plain words. For example: find the price, or sign up.</span>
         </label>
         {error && (
           <p className="form-error" role="alert">
@@ -70,22 +77,31 @@ export default function Home() {
         )}
         <div className="row">
           <button type="submit" className="primary" disabled={busy || !url.trim() || !goal.trim()}>
-            {busy ? "Creating…" : "Rehearse"}
+            {busy ? "Starting…" : "Start rehearsal"}
           </button>
         </div>
       </form>
-      <section className="panel">
-        <header className="panel-head">
-          <h2>How it works</h2>
-        </header>
-        <ol className="how">
-          <li>Discover states and build a decision graph (Playwright + Bright Data)</li>
-          <li>Jev System One scores actions; 1000 seeded simulated journeys</li>
-          <li>Riskiest paths verified in real desktop and mobile browsers</li>
-          <li>Findings graded on Krug&apos;s rubric; a variant is applied and re-verified</li>
-          <li>Output: spec.md with every fix and a rebuild plan</li>
+      <section className="how" aria-labelledby="how-title">
+        <h2 id="how-title">What happens next</h2>
+        <ol>
+          {STEPS.map(([name, desc], i) => (
+            <li key={name}>
+              <span className="n">{i + 1}</span>
+              <span className="name">{name}</span>
+              <span className="desc">{desc}</span>
+            </li>
+          ))}
         </ol>
       </section>
     </div>
   );
 }
+
+const STEPS: [string, string][] = [
+  ["Discover", "Visit the page and map every state a visitor can reach."],
+  ["Simulate", "Run 1,000 seeded journeys toward your goal and count where they end up."],
+  ["Verify", "Replay the riskiest journeys in real desktop and mobile browsers."],
+  ["Analyze", "Grade each problem against Krug’s usability rules, with the evidence attached."],
+  ["Compare", "Patch the top problem, run it again, and check whether the fix holds."],
+  ["Spec", "Write spec.md: every fix, ranked, plus a rebuild plan."],
+];
