@@ -322,7 +322,7 @@ function writeTable(): void {
     .sort((a, b) => a.site.localeCompare(b.site));
   const sec = (ms?: number) => (typeof ms === "number" ? `${Math.round(ms / 1000)}` : "–");
   const eps = (r: SiteRunSummary) =>
-    Object.entries(r.endpoints.byClass)
+    Object.entries(r.endpoints?.byClass ?? {})
       .map(([k, v]) => `${k} ${v.reached}/${v.found}`)
       .join(", ") || "–";
   const sev = (r: SiteRunSummary) => {

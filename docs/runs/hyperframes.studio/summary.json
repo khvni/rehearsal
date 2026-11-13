@@ -57,6 +57,10 @@
     "runErrors": []
   },
   "compare": null,
+  "endpoints": {
+    "total": 0,
+    "byClass": {}
+  },
   "findings": {
     "total": 0,
     "bySeverity": {
@@ -69,9 +73,9 @@
     "titles": []
   },
   "durationsMs": {
-    "discover": 33719,
+    "discover": 33697,
     "simulate": 0,
-    "total": 99519
+    "total": 99625
   },
-  "ranAt": "2026-11-13T21:25:08.693Z"
+  "ranAt": "2026-11-13T22:02:25.574Z"
 }

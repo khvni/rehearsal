@@ -53,17 +53,17 @@
   },
   "simulate": {
     "trajectories": 300,
-    "goalReachPct": 96,
+    "goalReachPct": 97.3,
     "outcomes": {
-      "goal-reached": 288,
-      "repetition-limit": 12
+      "goal-reached": 292,
+      "repetition-limit": 8
     }
   },
   "verify": {
     "runs": 4,
     "passed": 0,
     "failed": 4,
-    "assertionsPassed": 3,
+    "assertionsPassed": 2,
     "runsWithConsoleErrors": 4,
     "runErrors": []
   },
@@ -90,32 +90,82 @@
     },
     "findingReproduces": true
   },
+  "endpoints": {
+    "intent": "proposal",
+    "total": 8,
+    "byClass": {
+      "signup": {
+        "found": 3,
+        "reached": 3
+      },
+      "contact-form": {
+        "found": 1,
+        "reached": 1
+      },
+      "docs-answers": {
+        "found": 2,
+        "reached": 2
+      },
+      "schedule-event": {
+        "found": 2,
+        "reached": 2
+      }
+    }
+  },
   "findings": {
-    "total": 3,
+    "total": 30,
     "bySeverity": {
       "critical": 0,
-      "high": 2,
-      "medium": 1,
-      "low": 0
+      "high": 8,
+      "medium": 18,
+      "low": 4
     },
     "byEvidence": {
       "verified-failure": 1,
-      "reproducible-concern": 2
+      "reproducible-concern": 25,
+      "hypothesis": 4
     },
     "titles": [
       "[high] Assertion failed in browser: url-matches \"hackathon\"",
       "[medium] Dense link surface increases scan cost",
-      "[high] Post-event page still invites registration"
+      "[medium] Dense link surface increases scan cost",
+      "[medium] Dense link surface increases scan cost",
+      "[high] Post-event page still invites registration",
+      "[medium] Dense link surface increases scan cost",
+      "[high] Post-event page still invites registration",
+      "[medium] Dense link surface increases scan cost",
+      "[high] Post-event page still invites registration",
+      "[medium] Dense link surface increases scan cost",
+      "[high] Post-event page still invites registration",
+      "[medium] Dense link surface increases scan cost",
+      "[high] Post-event page still invites registration",
+      "[medium] Dense link surface increases scan cost",
+      "[medium] Dense link surface increases scan cost",
+      "[medium] Dense link surface increases scan cost",
+      "[medium] Dense link surface increases scan cost",
+      "[medium] Dense link surface increases scan cost",
+      "[medium] Dense link surface increases scan cost",
+      "[high] Post-event page still invites registration",
+      "[medium] Dense link surface increases scan cost",
+      "[medium] Dense link surface increases scan cost",
+      "[high] No pricing endpoint found",
+      "[low] Heading outline is broken: skips h1→h3",
+      "[low] Heading outline is broken: skips h1→h4",
+      "[low] Desktop: missing you-are-here indicator (trunk test fails)",
+      "[medium] \"Is there a free tier or trial?\" has no answer path",
+      "[medium] \"Can I see it in action?\" has no answer path",
+      "[medium] \"Does it integrate with my tools?\" has no answer path",
+      "[low] 3 of 13 expected visitor questions have no answer path"
     ]
   },
   "durationsMs": {
-    "discover": 32445,
-    "simulate": 23,
-    "verify": 16060,
-    "analyze": 4,
-    "compare": 2225,
+    "discover": 32470,
+    "simulate": 17,
+    "verify": 16987,
+    "analyze": 41,
+    "compare": 1849,
     "spec": 4,
-    "total": 62425
+    "total": 54281
   },
-  "ranAt": "2026-11-13T21:18:38.616Z"
+  "ranAt": "2026-11-13T21:55:52.325Z"
 }

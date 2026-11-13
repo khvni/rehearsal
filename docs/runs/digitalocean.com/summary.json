@@ -58,10 +58,10 @@
   },
   "simulate": {
     "trajectories": 300,
-    "goalReachPct": 54,
+    "goalReachPct": 53.3,
     "outcomes": {
-      "goal-reached": 162,
-      "repetition-limit": 138
+      "goal-reached": 160,
+      "repetition-limit": 140
     }
   },
   "verify": {
@@ -78,56 +78,113 @@
       "variant": false
     },
     "interactionCount": {
-      "baseline": 7,
-      "variant": 7
+      "baseline": 6,
+      "variant": 6
     },
     "backtracks": {
-      "baseline": 7,
-      "variant": 7
+      "baseline": 6,
+      "variant": 6
     },
     "failedInteractions": {
       "baseline": 0,
       "variant": 0
     },
     "runtimeErrors": {
-      "baseline": 3,
-      "variant": 4
+      "baseline": 2,
+      "variant": 8
     },
     "findingReproduces": true
   },
+  "endpoints": {
+    "intent": "quotation",
+    "total": 27,
+    "byClass": {
+      "pricing": {
+        "found": 5,
+        "reached": 5
+      },
+      "signup": {
+        "found": 5,
+        "reached": 5
+      },
+      "contact-form": {
+        "found": 5,
+        "reached": 2
+      },
+      "docs-answers": {
+        "found": 5,
+        "reached": 0
+      },
+      "demo-video": {
+        "found": 2,
+        "reached": 0
+      },
+      "schedule-event": {
+        "found": 5,
+        "reached": 0
+      }
+    }
+  },
   "findings": {
-    "total": 10,
+    "total": 37,
     "bySeverity": {
       "critical": 0,
-      "high": 2,
-      "medium": 8,
-      "low": 0
+      "high": 5,
+      "medium": 26,
+      "low": 6
     },
     "byEvidence": {
       "verified-failure": 1,
-      "reproducible-concern": 9
+      "reproducible-concern": 36
     },
     "titles": [
       "[high] Assertion failed in browser: url-matches \"pricing\"",
       "[medium] Dense link surface increases scan cost",
+      "[medium] Dense link surface increases scan cost",
       "[medium] Ambiguous link labels (3)",
+      "[medium] Dense link surface increases scan cost",
       "[medium] Ambiguous link labels (1)",
+      "[medium] Dense link surface increases scan cost",
       "[medium] Ambiguous link labels (11)",
+      "[medium] Dense link surface increases scan cost",
+      "[high] Post-event page still invites registration",
+      "[medium] Dense link surface increases scan cost",
+      "[high] Post-event page still invites registration",
+      "[medium] Ambiguous link labels (3)",
+      "[medium] Dense link surface increases scan cost",
       "[high] Post-event page still invites registration",
       "[medium] Ambiguous link labels (63)",
+      "[medium] Dense link surface increases scan cost",
       "[medium] Ambiguous link labels (6)",
+      "[medium] Dense link surface increases scan cost",
+      "[medium] Dense link surface increases scan cost",
       "[medium] Ambiguous link labels (4)",
-      "[medium] Ambiguous link labels (2)"
+      "[medium] Dense link surface increases scan cost",
+      "[medium] Ambiguous link labels (2)",
+      "[medium] Dense link surface increases scan cost",
+      "[medium] Dense link surface increases scan cost",
+      "[medium] Dense link surface increases scan cost",
+      "[medium] Ambiguous link labels (6)",
+      "[medium] Dense link surface increases scan cost",
+      "[low] Desktop: homepage requires 6.76 screens of scrolling",
+      "[medium] Desktop: no single dominant call to action above the fold",
+      "[medium] Desktop: primary navigation has 17 items",
+      "[low] Heading outline is broken: skips h1→h3",
+      "[low] Heading outline is broken: no h1",
+      "[low] Desktop: missing search (trunk test fails)",
+      "[low] Desktop: missing search, you-are-here indicator (trunk test fails)",
+      "[high] Desktop: missing page name, search, you-are-here indicator (trunk test fails)",
+      "[low] Desktop: missing you-are-here indicator (trunk test fails)"
     ]
   },
   "durationsMs": {
-    "discover": 34458,
-    "simulate": 58,
-    "verify": 33142,
-    "analyze": 7,
-    "compare": 3494,
-    "spec": 6,
-    "total": 73412
+    "discover": 34854,
+    "simulate": 49,
+    "verify": 13763,
+    "analyze": 125,
+    "compare": 2659,
+    "spec": 5,
+    "total": 53482
   },
-  "ranAt": "2026-11-13T21:23:55.280Z"
+  "ranAt": "2026-11-13T22:01:32.090Z"
 }

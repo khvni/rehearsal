@@ -53,9 +53,10 @@
   },
   "simulate": {
     "trajectories": 300,
-    "goalReachPct": 0,
+    "goalReachPct": 2.7,
     "outcomes": {
-      "repetition-limit": 300
+      "repetition-limit": 292,
+      "goal-reached": 8
     }
   },
   "verify": {
@@ -72,50 +73,121 @@
       "variant": false
     },
     "interactionCount": {
-      "baseline": 6,
-      "variant": 6
+      "baseline": 7,
+      "variant": 7
     },
     "backtracks": {
-      "baseline": 6,
-      "variant": 6
+      "baseline": 7,
+      "variant": 7
     },
     "failedInteractions": {
-      "baseline": 0,
-      "variant": 0
+      "baseline": 1,
+      "variant": 1
     },
     "runtimeErrors": {
-      "baseline": 9,
-      "variant": 8
+      "baseline": 16,
+      "variant": 20
     },
     "findingReproduces": true
   },
+  "endpoints": {
+    "intent": "proposal",
+    "total": 36,
+    "byClass": {
+      "pricing": {
+        "found": 5,
+        "reached": 5
+      },
+      "contact-form": {
+        "found": 5,
+        "reached": 2
+      },
+      "signup": {
+        "found": 5,
+        "reached": 3
+      },
+      "docs-answers": {
+        "found": 5,
+        "reached": 2
+      },
+      "demo-video": {
+        "found": 5,
+        "reached": 0
+      },
+      "download": {
+        "found": 5,
+        "reached": 0
+      },
+      "next-steps": {
+        "found": 1,
+        "reached": 0
+      },
+      "schedule-event": {
+        "found": 5,
+        "reached": 0
+      }
+    }
+  },
   "findings": {
-    "total": 4,
+    "total": 37,
     "bySeverity": {
       "critical": 0,
-      "high": 2,
-      "medium": 2,
-      "low": 0
+      "high": 4,
+      "medium": 20,
+      "low": 13
     },
     "byEvidence": {
       "verified-failure": 1,
-      "reproducible-concern": 3
+      "reproducible-concern": 36
     },
     "titles": [
       "[high] Assertion failed in browser: url-matches \"trial\"",
       "[high] Post-event page still invites registration",
       "[medium] Dense link surface increases scan cost",
-      "[medium] Ambiguous link labels (1)"
+      "[medium] Dense link surface increases scan cost",
+      "[medium] Ambiguous link labels (1)",
+      "[medium] Dense link surface increases scan cost",
+      "[medium] Dense link surface increases scan cost",
+      "[medium] Dense link surface increases scan cost",
+      "[medium] Dense link surface increases scan cost",
+      "[medium] Dense link surface increases scan cost",
+      "[medium] Dense link surface increases scan cost",
+      "[medium] Dense link surface increases scan cost",
+      "[medium] Dense link surface increases scan cost",
+      "[medium] Dense link surface increases scan cost",
+      "[medium] Dense link surface increases scan cost",
+      "[medium] Dense link surface increases scan cost",
+      "[high] Post-event page still invites registration",
+      "[medium] Dense link surface increases scan cost",
+      "[medium] Ambiguous link labels (1)",
+      "[medium] Dense link surface increases scan cost",
+      "[medium] Desktop: homepage requires 8.37 screens of scrolling",
+      "[medium] Desktop: no single dominant call to action above the fold",
+      "[low] Desktop: primary navigation has 10 items",
+      "[low] Heading outline is broken: skips h1→h4, h2→h5, h4→h6, h2→h4",
+      "[low] Heading outline is broken: no h1; skips h2→h5, h2→h4",
+      "[low] Heading outline is broken: skips h2→h4",
+      "[low] Heading outline is broken: skips h1→h6, h2→h4, h2→h5",
+      "[low] Heading outline is broken: skips h1→h6, h2→h5, h4→h6, h2→h4",
+      "[low] Heading outline is broken: 2 h1 elements; skips h1→h6, h2→h5, h4→h6, h2→h4, h1→h4",
+      "[low] Heading outline is broken: skips h1→h6, h2→h5, h2→h4",
+      "[low] Heading outline is broken: skips h1→h6",
+      "[low] Heading outline is broken: skips h3→h5, h2→h6",
+      "[low] Heading outline is broken: skips h3→h6, h3→h5, h2→h4, h4→h6, h2→h6",
+      "[medium] Desktop: missing page name, you-are-here indicator (trunk test fails)",
+      "[high] Desktop: missing primary navigation, search, you-are-here indicator (trunk test fails)",
+      "[low] Desktop: missing you-are-here indicator (trunk test fails)",
+      "[low] Desktop: missing search, you-are-here indicator (trunk test fails)"
     ]
   },
   "durationsMs": {
-    "discover": 45292,
-    "simulate": 46,
-    "verify": 7677,
-    "analyze": 6,
-    "compare": 1790,
-    "spec": 4,
-    "total": 57452
+    "discover": 37331,
+    "simulate": 57,
+    "verify": 16370,
+    "analyze": 91,
+    "compare": 9794,
+    "spec": 5,
+    "total": 66551
   },
-  "ranAt": "2026-11-13T21:22:57.827Z"
+  "ranAt": "2026-11-13T22:00:25.536Z"
 }

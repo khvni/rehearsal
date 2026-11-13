@@ -53,18 +53,17 @@
   },
   "simulate": {
     "trajectories": 300,
-    "goalReachPct": 25,
+    "goalReachPct": 66.3,
     "outcomes": {
-      "repetition-limit": 215,
-      "goal-reached": 75,
-      "max-depth": 10
+      "goal-reached": 199,
+      "repetition-limit": 101
     }
   },
   "verify": {
     "runs": 4,
     "passed": 0,
     "failed": 4,
-    "assertionsPassed": 1,
+    "assertionsPassed": 0,
     "runsWithConsoleErrors": 4,
     "runErrors": []
   },
@@ -74,49 +73,100 @@
       "variant": false
     },
     "interactionCount": {
-      "baseline": 9,
-      "variant": 9
+      "baseline": 8,
+      "variant": 8
     },
     "backtracks": {
-      "baseline": 9,
-      "variant": 9
+      "baseline": 8,
+      "variant": 8
     },
     "failedInteractions": {
-      "baseline": 0,
-      "variant": 0
+      "baseline": 2,
+      "variant": 2
     },
     "runtimeErrors": {
-      "baseline": 8,
-      "variant": 16
+      "baseline": 5,
+      "variant": 12
     },
     "findingReproduces": true
   },
+  "endpoints": {
+    "intent": "proposal",
+    "total": 12,
+    "byClass": {
+      "signup": {
+        "found": 2,
+        "reached": 2
+      },
+      "schedule-event": {
+        "found": 2,
+        "reached": 2
+      },
+      "docs-answers": {
+        "found": 5,
+        "reached": 5
+      },
+      "contact-form": {
+        "found": 2,
+        "reached": 2
+      },
+      "next-steps": {
+        "found": 1,
+        "reached": 1
+      }
+    }
+  },
   "findings": {
-    "total": 3,
+    "total": 27,
     "bySeverity": {
       "critical": 0,
       "high": 2,
-      "medium": 1,
-      "low": 0
+      "medium": 18,
+      "low": 7
     },
     "byEvidence": {
       "verified-failure": 1,
-      "reproducible-concern": 2
+      "reproducible-concern": 24,
+      "hypothesis": 2
     },
     "titles": [
       "[high] Assertion failed in browser: url-matches \"chapter\"",
       "[medium] Dense link surface increases scan cost",
-      "[high] Post-event page still invites registration"
+      "[medium] Dense link surface increases scan cost",
+      "[medium] Dense link surface increases scan cost",
+      "[medium] Dense link surface increases scan cost",
+      "[medium] Dense link surface increases scan cost",
+      "[medium] Dense link surface increases scan cost",
+      "[medium] Dense link surface increases scan cost",
+      "[medium] Dense link surface increases scan cost",
+      "[medium] Dense link surface increases scan cost",
+      "[medium] Dense link surface increases scan cost",
+      "[medium] Dense link surface increases scan cost",
+      "[high] Post-event page still invites registration",
+      "[medium] Endpoint buried: docs-answers \"Support\"",
+      "[medium] Endpoint buried: docs-answers \"Support\"",
+      "[medium] Endpoint buried: docs-answers \"Support\"",
+      "[medium] Endpoint buried: docs-answers \"Get the guide ↗\"",
+      "[medium] Endpoint buried: schedule-event \"Schedule meeting ↗\"",
+      "[low] Endpoint buried: next-steps \"Schedule a call ↗\"",
+      "[low] Desktop: homepage requires 4.14 screens of scrolling",
+      "[low] Desktop: primary navigation has 8 items",
+      "[low] Heading outline is broken: skips h1→h3, h2→h4",
+      "[low] Desktop: missing search (trunk test fails)",
+      "[low] Desktop: missing search, you-are-here indicator (trunk test fails)",
+      "[medium] \"Why should I be here and not somewhere else?\" has no answer path",
+      "[medium] \"How much does it cost?\" has no answer path",
+      "[low] 2 of 15 expected visitor questions have no answer path"
     ]
   },
   "durationsMs": {
-    "discover": 55738,
-    "simulate": 35,
-    "verify": 58012,
-    "analyze": 4,
-    "compare": 13496,
-    "spec": 6,
-    "total": 135805
+    "discover": 59894,
+    "simulate": 13,
+    "verify": 49831,
+    "analyze": 515,
+    "compare": 19929,
+    "spec": 2,
+    "total": 137612
   },
-  "ranAt": "2026-11-13T21:13:23.705Z"
+  "ranAt": "2026-11-13T21:52:06.414Z"
 }

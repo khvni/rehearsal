@@ -53,11 +53,11 @@
   },
   "simulate": {
     "trajectories": 300,
-    "goalReachPct": 44.3,
+    "goalReachPct": 43,
     "outcomes": {
-      "goal-reached": 133,
-      "dead-end": 55,
-      "repetition-limit": 112
+      "goal-reached": 129,
+      "dead-end": 62,
+      "repetition-limit": 109
     }
   },
   "verify": {
@@ -91,34 +91,80 @@
     },
     "findingReproduces": true
   },
+  "endpoints": {
+    "intent": "quotation",
+    "total": 24,
+    "byClass": {
+      "pricing": {
+        "found": 5,
+        "reached": 5
+      },
+      "signup": {
+        "found": 4,
+        "reached": 3
+      },
+      "contact-form": {
+        "found": 2,
+        "reached": 1
+      },
+      "docs-answers": {
+        "found": 5,
+        "reached": 3
+      },
+      "demo-video": {
+        "found": 1,
+        "reached": 0
+      },
+      "download": {
+        "found": 5,
+        "reached": 0
+      },
+      "schedule-event": {
+        "found": 2,
+        "reached": 0
+      }
+    }
+  },
   "findings": {
-    "total": 5,
+    "total": 17,
     "bySeverity": {
       "critical": 0,
-      "high": 2,
-      "medium": 3,
-      "low": 0
+      "high": 3,
+      "medium": 10,
+      "low": 4
     },
     "byEvidence": {
       "verified-failure": 1,
-      "reproducible-concern": 4
+      "reproducible-concern": 16
     },
     "titles": [
       "[high] Assertion failed in browser: url-matches \"pricing\"",
       "[medium] Dense link surface increases scan cost",
+      "[medium] Dense link surface increases scan cost",
       "[high] Post-event page still invites registration",
       "[medium] Ambiguous link labels (1)",
-      "[medium] Ambiguous link labels (3)"
+      "[medium] Dense link surface increases scan cost",
+      "[medium] Dense link surface increases scan cost",
+      "[medium] Dense link surface increases scan cost",
+      "[medium] Ambiguous link labels (3)",
+      "[medium] Dense link surface increases scan cost",
+      "[medium] Dense link surface increases scan cost",
+      "[low] Desktop: homepage requires 5.7 screens of scrolling",
+      "[medium] Desktop: no single dominant call to action above the fold",
+      "[low] Desktop: primary navigation has 11 items",
+      "[low] Heading outline is broken: no h1",
+      "[low] Desktop: missing search (trunk test fails)",
+      "[high] Desktop: missing site ID, page name, primary navigation, search, you-are-here indicator (trunk test fails)"
     ]
   },
   "durationsMs": {
-    "discover": 32315,
+    "discover": 31450,
     "simulate": 17,
-    "verify": 4883,
-    "analyze": 3,
-    "compare": 1275,
+    "verify": 12885,
+    "analyze": 84,
+    "compare": 1338,
     "spec": 2,
-    "total": 40828
+    "total": 47965
   },
-  "ranAt": "2026-11-13T21:21:02.936Z"
+  "ranAt": "2026-11-13T21:58:12.602Z"
 }
