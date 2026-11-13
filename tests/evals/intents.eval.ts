@@ -161,7 +161,7 @@ describe("eval: orchestrator wires intents/endpoints through the pipeline (fixtu
         runId: args.runId, viewport: args.viewport, success: true,
         steps: args.actions.map((a) => ({ actionId: a.actionId, label: a.label, ok: true })),
         assertions: args.assertions.map((assertion) => ({ assertion, passed: true })),
-        errors: [], screenshotPaths: [], durationMs: 0,
+        errors: [], consoleErrorCount: 0, screenshotPaths: [], durationMs: 0,
       };
     },
     async close() {},

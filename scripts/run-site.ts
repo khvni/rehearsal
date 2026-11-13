@@ -255,9 +255,9 @@ async function runSite(args: Args & { url: string; goal: string }): Promise<Site
       runs: runs.length,
       passed: runs.filter((r) => r.success).length,
       failed: runs.filter((r) => !r.success).length,
-      // success also requires zero page/console errors; this isolates the goal assertion itself.
+      // success = navigation completed + goal assertion held; this isolates the assertion itself.
       assertionsPassed: runs.filter((r) => r.assertions.length > 0 && r.assertions.every((a) => a.passed)).length,
-      runsWithConsoleErrors: runs.filter((r) => r.errors.some((e) => !e.startsWith("run:"))).length,
+      runsWithConsoleErrors: runs.filter((r) => r.consoleErrorCount > 0).length,
       runErrors: runs.flatMap((r) => r.errors.filter((e) => e.startsWith("run:"))).slice(0, 3),
     },
     compare: exp?.comparisons[0]?.deltas ?? null,
@@ -298,7 +298,8 @@ function writeTable(): void {
     "Regenerate one site with `npm run site -- <url> --goal \"...\"`, all with `npm run site -- --all`.",
     "",
     "Columns: HTTP = preflight status; goal % = simulated trajectories reaching the compiled assertion;",
-    "verify = browser runs fully successful (assertions + no page/console errors); assert = runs whose goal assertion held;",
+    "verify = browser runs that completed navigation and passed the goal assertion; assert = runs whose goal assertion held",
+    "(console errors are reported as a low-severity finding, not a verify failure);",
     "findings = critical/high/medium/low; times in seconds.",
     "",
     "| Site | Goal | Status | HTTP | States | Edges | Goal % | Verify | Assert | Findings c/h/m/l | Discover s | Verify s | Total s | Notes |",
