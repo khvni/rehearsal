@@ -45,6 +45,12 @@ eval cases.** `npm run check:skill-sync` fails the build otherwise.
 
 - `discovery.spec.ts` — hermetic: serves the AIE fixture over localhost, verifies real-browser extraction + the stale-CTA precondition. Requires `REHEARSAL_ALLOW_PRIVATE=1` (set inside the spec).
 
+## Spec delta (PR comment, informational)
+
+- `npm run spec:delta` (`scripts/spec-delta.ts`) runs the full pipeline (`discover` → `spec`) on `tests/evals/fixtures/aie-code-2026.html` served from loopback (other same-origin paths get a deterministic stub page; every non-loopback request is aborted), with fixture Jev/LLM, seed 1337, maxStates 12, 200 trajectories, verifyCount 2, desktop only. `randomUUID` is replaced with a counter so ids — and the Jev tiebreak jitter keyed by them — are stable. Writes `data/spec-delta/{summary.json,delta.json,comment.md}`; `--screenshot` also starts `next start` (or `next dev` without a build) and captures `/experiments/<id>` to `dashboard.png`.
+- The summary (counts, findings grouped by digit-normalized title + Krug principle with max severity, endpoint classes with reached/discovered + top weight, spec headings) is diffed against `tests/golden/aie-code-2026.summary.json`. `.github/workflows/spec-delta.yml` posts/updates one sticky comment ("Rehearsal spec delta", marker `<!-- rehearsal-spec-delta -->`) and uploads the screenshot as the `rehearsal-spec-delta` artifact. Deltas never fail the job; a crash or an empty graph/spec does.
+- Update the golden with `npm run spec:delta -- --update-golden` and commit it in the same PR whenever a delta is intended: changes to findings rules/severity/titles, endpoint classification or weights, simulation/verification selection, spec generation, crawl limits, or the fixture itself. Don't update it to silence an unexplained delta — investigate first. If CI and local disagree (fonts/layout), regenerate from the CI artifact's `summary.json`.
+
 ## How to run
 
 - `npm run test` — unit tests
@@ -52,6 +58,7 @@ eval cases.** `npm run check:skill-sync` fails the build otherwise.
 - `npm run test:e2e` — Playwright hermetic browser tests (needs `npx playwright install chromium`)
 - `npm run check:skill-sync` — this file vs. PIPELINE_STAGES + eval files
 - `npm run check` — everything
+- `npm run spec:delta` — hermetic full-pipeline summary vs. golden (`-- --update-golden`, `-- --screenshot`)
 
 ## Rules
 
