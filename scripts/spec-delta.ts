@@ -23,6 +23,7 @@ import { summarizeRun } from "../src/lib/browser/types";
 import { executeTrajectory, watchPageErrors } from "../src/lib/browser/playwright";
 import { measurePage } from "../src/lib/browser/metrics";
 import { compilePatches } from "../src/lib/variants";
+import { assertPublicUrl } from "../src/lib/fetch/guards";
 
 // ── Determinism ─────────────────────────────────────────────────────────────
 // stateIds/actionIds/experiment ids come from randomUUID, and FixtureJevClient's tiebreak
@@ -301,6 +302,7 @@ class HermeticRunner implements BrowserRunner {
   }
 
   async openPage(url: string, viewport: Viewport, opts?: { patches?: DomPatch[]; shotName?: string }): Promise<OpenPageResult> {
+    await assertPublicUrl(url);
     const ctx = await this.context(viewport, opts?.patches);
     try {
       const page = await ctx.newPage();
@@ -317,6 +319,7 @@ class HermeticRunner implements BrowserRunner {
     const started = Date.now();
     const errors: string[] = [];
     let result: Awaited<ReturnType<typeof executeTrajectory>> = { steps: [], assertions: [], screenshots: [] };
+    await assertPublicUrl(a.url);
     const ctx = await this.context(a.viewport, a.patches);
     try {
       const page = await ctx.newPage();
@@ -342,6 +345,7 @@ class HermeticRunner implements BrowserRunner {
 
 async function waitForHttp(url: string, timeoutMs: number): Promise<void> {
   const deadline = Date.now() + timeoutMs;
+  await assertPublicUrl(url);
   while (Date.now() < deadline) {
     try {
       const res = await fetch(url);
@@ -360,7 +364,8 @@ async function screenshotDashboard(experimentId: string, outPng: string): Promis
   const nextBin = path.join(ROOT, "node_modules", "next", "dist", "bin", "next");
   const child: ChildProcess = spawn(process.execPath, [nextBin, built ? "start" : "dev", "-p", String(port)], {
     cwd: ROOT,
-    env: { ...process.env, NODE_ENV: built ? "production" : "development", REHEARSAL_BROWSER: "playwright" },
+    // JSON store only: the pipeline wrote to data/experiments, so a configured DB would not have this experiment.
+    env: { ...process.env, DATABASE_URL: "", TIGERDATA_URL: "", NODE_ENV: built ? "production" : "development", REHEARSAL_BROWSER: "playwright" },
     stdio: ["ignore", "inherit", "inherit"],
   });
   const base = `http://127.0.0.1:${port}`;
@@ -369,6 +374,7 @@ async function screenshotDashboard(experimentId: string, outPng: string): Promis
     await waitForHttp(`${base}/api/experiments/${experimentId}`, 90000);
     browser = await chromium.launch({ headless: true });
     const page = await browser.newPage({ viewport: { width: 1440, height: 900 }, deviceScaleFactor: 1 });
+    await assertPublicUrl(`${base}/experiments/${experimentId}`);
     await page.goto(`${base}/experiments/${experimentId}`, { waitUntil: "load", timeout: 60000 });
     await page.getByRole("heading", { name: "Findings" }).first().waitFor({ timeout: 30000 });
     await page.waitForTimeout(1500);
@@ -430,7 +436,14 @@ async function main(): Promise<void> {
   const delta = golden ? diffSummaries(golden, summary) : null;
   writeFileSync(path.join(OUT, "delta.json"), JSON.stringify(delta, null, 2) + "\n");
 
-  if (flag("--screenshot")) await screenshotDashboard(exp.id, path.join(OUT, "dashboard.png"));
+  if (flag("--screenshot")) {
+    // Dashboard capture is best-effort: a render failure must not discard the pipeline report.
+    try {
+      await screenshotDashboard(exp.id, path.join(OUT, "dashboard.png"));
+    } catch (e) {
+      console.warn("spec-delta: dashboard screenshot failed (continuing)\n", e);
+    }
+  }
 
   writeFileSync(path.join(OUT, "comment.md"), renderComment(golden, summary, delta));
   console.log(
