@@ -51,7 +51,7 @@ export async function evaluateAssertion(probe: AssertionProbe, a: Assertion): Pr
       case "text-absent":
         return !(await probe.bodyText()).toLowerCase().includes(a.value.toLowerCase());
       case "element-visible":
-        return a.selector ? probe.isVisible(a.selector) : false;
+        return a.selector ? await probe.isVisible(a.selector) : false;
       case "element-present":
         return a.selector ? (await probe.count(a.selector)) > 0 : false;
       case "title-matches":
