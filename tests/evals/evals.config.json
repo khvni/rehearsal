@@ -28,6 +28,24 @@
       "long-scroll",
       "nav-overload",
       "trunk-test"
-    ]
+    ],
+    "minQuestionBankSize": 30,
+    "minAieQuestions": 15,
+    "requiredAnsweredQuestions": [
+      "hp-what",
+      "hp-do",
+      "hp-start",
+      "when-where",
+      "attend",
+      "agenda",
+      "speakers",
+      "recordings"
+    ],
+    "requiredUnansweredQuestions": [
+      "cost",
+      "ctx-apply-criteria",
+      "contact"
+    ],
+    "maxAieUnansweredRatio": 0.35
   }
 }

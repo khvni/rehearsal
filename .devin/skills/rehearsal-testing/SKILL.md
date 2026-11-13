@@ -32,6 +32,11 @@ eval cases.** `npm run check:skill-sync` fails the build otherwise.
   - AIE fixture — `detectSiteType` = event; `discoverEndpoints` finds ≥1 `schedule-event` ("Explore all 50 sessions", "Schedule") and ≥1 `signup` whose label says apply; top endpoint weight ≥ 0.75; weights deterministic and in [0,1]; `defaultIntentsForSite` yields one goal per category; "find the conference schedule" → information targeting `schedule-event`; no endpoint findings when CTAs sit on the start page
   - synthetic journeys — orphaned /signup → `endpoint-unreachable` (navigation); pricing 4 clicks deep → `endpoint-deep` (mindless-choices, median 4, sample path recorded); absent expected class → `missing-endpoint-class`; `endpointJourneys` deterministic per seed
   - orchestrator wiring — fixture runner/store/adapters: `discover` stores `intents` + `endpoints`, endpoint class assertions (`endpointGoalAssertions`) make reaching /talks satisfy `goalSatisfiedInState`, `analyze` stores `journeys`, and the experiment round-trips through the `Experiment` contract (what GET /api/experiments/[id] serializes)
+- `questions.eval.ts` — unanswered visitor questions (`visitorQuestions` = bank + start-page context questions → answer detection) on the AIE fixture, thresholds in evals.config.json (`minQuestionBankSize`, `minAieQuestions`, `requiredAnsweredQuestions`, `requiredUnansweredQuestions`, `maxAieUnansweredRatio`):
+  - answered with cited start-state evidence — homepage what/do/start, `when-where` (Nov 10-12 + //LOCATION/venue), `attend` (apply CTA), `agenda`, `speakers`, `recordings`
+  - unanswered — `cost` (application-only, no price anywhere), `ctx-apply-criteria` (copy says "by application only" but never says who gets in or when), `contact` (the only contact-form CTA is sponsorship, which answers `sponsor` instead)
+  - `questionFindings` emits one `unanswered-question` finding per gap + an "N of M" summary, start screenshot as evidence; deterministic across runs with the fixture LLM
+  - orchestrator wiring — fixture adapters: `analyze` stores `questions` on the experiment, adds the `unanswered-question` findings, and the experiment round-trips through the `Experiment` contract
 
 - `metrics.eval.ts` — page metrics (`src/lib/browser/metrics.ts` `measurePage`) on the AIE fixture in hermetic local Chromium (loopback server, all other requests aborted, `networkidle` so layout settles): repeat measurements are identical; homepage fold ratio ≥ `metricsMinHomepageFoldRatio` with scroll time = screens × 1.5s; exactly `metricsExpectedH1Count` h1 and it is the largest text; ≥ `metricsMinNavItems` primary-nav items, ≥ `metricsMinCtas` CTAs, `primaryCtaAmbiguity` ≤ `metricsMaxPrimaryCtaAmbiguity`, ≥ `metricsMinFontSizeBuckets` font sizes; the HTML-only fallback matches the DOM facts and nulls layout fields; `metricFindings` emits every rule in `metricsRequiredRules`, no CTA-ambiguity finding, each with a Krug key + screenshot evidence
 
@@ -39,11 +44,18 @@ eval cases.** `npm run check:skill-sync` fails the build otherwise.
 
 - `metrics.test.ts` — `measurePage` via `PlaywrightRunner.openPage` on synthetic pages served from loopback (scroll, CTA prominence ties, heading skips/multiple h1, nav count, font buckets, trunk test), `metricsFromHtml` fallback, and each `metricFindings` rule (grouping, severity, evidence)
 - `core.test.ts` — contract parsing, extractor, graph dedup, mulberry32 determinism, profile shaping, fixture Jev scoring, patch compilation, rule findings, spec markdown
+- `questions.test.ts` — question bank shape, homepage-first ordering, context-derived questions, answer detection (endpoint class / URL / text, start-only homepage questions, endpoint label filters, re-answering stored questions), LLM refinement skip + keyword questions, `unanswered-question` findings + summary
 - `intents.test.ts` — `classifyGoal` keyword heuristics, LLM refinement fallback, endpoint label/path classification, `discoverEndpoints`/`weightEndpoints` determinism + overrides, optional Experiment fields
 
 ## Browser tests (tests/e2e/)
 
 - `discovery.spec.ts` — hermetic: serves the AIE fixture over localhost, verifies real-browser extraction + the stale-CTA precondition. Requires `REHEARSAL_ALLOW_PRIVATE=1` (set inside the spec).
+
+## Spec delta (PR comment, informational)
+
+- `npm run spec:delta` (`scripts/spec-delta.ts`) runs the full pipeline (`discover` → `spec`) on `tests/evals/fixtures/aie-code-2026.html` served from loopback (other same-origin paths get a deterministic stub page; every non-loopback request is aborted), with fixture Jev/LLM, seed 1337, maxStates 12, 200 trajectories, verifyCount 2, desktop only. `randomUUID` is replaced with a counter so ids — and the Jev tiebreak jitter keyed by them — are stable. Writes `data/spec-delta/{summary.json,delta.json,comment.md}`; `--screenshot` also starts `next start` (or `next dev` without a build) and captures `/experiments/<id>` to `dashboard.png`.
+- The summary (counts, findings grouped by digit-normalized title + Krug principle with max severity, endpoint classes with reached/discovered + top weight, spec headings) is diffed against `tests/golden/aie-code-2026.summary.json`. `.github/workflows/spec-delta.yml` posts/updates one sticky comment ("Rehearsal spec delta", marker `<!-- rehearsal-spec-delta -->`) and uploads the screenshot as the `rehearsal-spec-delta` artifact. Deltas never fail the job; a crash or an empty graph/spec does.
+- Update the golden with `npm run spec:delta -- --update-golden` and commit it in the same PR whenever a delta is intended: changes to findings rules/severity/titles, endpoint classification or weights, simulation/verification selection, spec generation, crawl limits, or the fixture itself. Don't update it to silence an unexplained delta — investigate first. If CI and local disagree (fonts/layout), regenerate from the CI artifact's `summary.json`.
 
 ## How to run
 
@@ -52,6 +64,7 @@ eval cases.** `npm run check:skill-sync` fails the build otherwise.
 - `npm run test:e2e` — Playwright hermetic browser tests (needs `npx playwright install chromium`)
 - `npm run check:skill-sync` — this file vs. PIPELINE_STAGES + eval files
 - `npm run check` — everything
+- `npm run spec:delta` — hermetic full-pipeline summary vs. golden (`-- --update-golden`, `-- --screenshot`)
 
 ## Rules
 

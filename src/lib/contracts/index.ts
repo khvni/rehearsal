@@ -351,6 +351,24 @@ export const EndpointJourney = z.object({
 });
 export type EndpointJourney = z.infer<typeof EndpointJourney>;
 
+/** A question a visitor is likely to have, and whether the site gives them a path to the answer. */
+export const VisitorQuestion = z.object({
+  questionId: z.string(),
+  intent: IntentCategory,
+  question: z.string(),
+  expectedEndpointClasses: z.array(EndpointClass),
+  answered: z.boolean(),
+  answeredBy: z
+    .object({ stateId: z.string(), url: z.string(), evidence: z.string() })
+    .optional(),
+  importance: z.number().min(0).max(1),
+  /** Where the question came from: the checked-in bank, the site's own copy, or LLM refinement. */
+  source: z.enum(["bank", "context", "llm"]).optional(),
+  /** Answer keywords (LLM-proposed questions carry their own detector words). */
+  keywords: z.array(z.string()).optional(),
+});
+export type VisitorQuestion = z.infer<typeof VisitorQuestion>;
+
 // ── Experiment ──────────────────────────────────────────────────────────────
 
 export const ExperimentStatus = z.enum([
@@ -392,6 +410,7 @@ export const Experiment = z.object({
   intents: z.array(IntentProfile).optional(),
   endpoints: z.array(Endpoint).optional(),
   journeys: z.array(EndpointJourney).optional(),
+  questions: z.array(VisitorQuestion).optional(),
   errors: z.array(z.string()).default([]),
 });
 export type Experiment = z.infer<typeof Experiment>;
