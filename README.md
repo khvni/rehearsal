@@ -1,5 +1,7 @@
 # Rehearsal
 
+> Hackathon submission (AIE x MLH @ Code Summit): [docs/submission.md](docs/submission.md)
+
 **Rehearse your website before users do.** Point Rehearsal at a public URL + a visitor goal;
 it maps the interface into a decision graph, simulates user journeys, verifies the risky ones
 in real browsers, applies a fix to an isolated variant, re-verifies it — and hands you a
