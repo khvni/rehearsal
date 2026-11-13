@@ -46,7 +46,7 @@ export class TigerDataStore implements ExperimentStore {
   private async conn(): Promise<import("pg").Client> {
     if (this.client) return this.client;
     const { Client } = await import("pg");
-    this.client = new Client({ connectionString: this.url });
+    this.client = new Client({ connectionString: this.url, ...sslOptions(this.url) });
     await this.client.connect();
     await this.client.query(`
       CREATE TABLE IF NOT EXISTS experiments (
@@ -137,4 +137,14 @@ export function selectStore(): ExperimentStore {
     }
   }
   return new JsonFileStore();
+}
+
+/**
+ * `sslmode=require` means "encrypt, don't verify the chain" in libpq, but node-postgres
+ * treats it as verify-full and rejects Tiger Cloud's CA. Honour the libpq meaning so a
+ * standard Tiger Data connection string works; verify-full/verify-ca stay strict.
+ */
+function sslOptions(url: string): { ssl?: { rejectUnauthorized: boolean } } {
+  const mode = /[?&]sslmode=([^&]+)/.exec(url)?.[1];
+  return mode === "require" || mode === "prefer" ? { ssl: { rejectUnauthorized: false } } : {};
 }
