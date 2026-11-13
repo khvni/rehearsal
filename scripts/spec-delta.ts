@@ -18,7 +18,7 @@ import { syncBuiltinESMExports } from "node:module";
 import path from "node:path";
 import { chromium, type Browser, type BrowserContext } from "playwright";
 import type { DomPatch, Experiment, Viewport } from "../src/lib/contracts";
-import type { BrowserRunner, OpenPageResult, TrajectoryArgs } from "../src/lib/browser/types";
+import type { BrowserRunner, OpenPageResult, TrajectoryArgs } from "../src/lib/contracts/browser";
 import { summarizeRun } from "../src/lib/browser/types";
 import { executeTrajectory, watchPageErrors } from "../src/lib/browser/playwright";
 import { measurePage } from "../src/lib/browser/metrics";
