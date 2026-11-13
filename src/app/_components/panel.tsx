@@ -8,6 +8,7 @@ export function Panel({
   state,
   busy,
   className,
+  enter = "fade",
   children,
 }: {
   title: string;
@@ -16,6 +17,7 @@ export function Panel({
   state: PanelState;
   busy?: boolean;
   className?: string;
+  enter?: "fade" | "none";
   children?: ReactNode;
 }) {
   return (
@@ -26,7 +28,7 @@ export function Panel({
         {busy && state.kind === "ready" && <span className="pill running">updating</span>}
         {actions && <div className="panel-actions">{actions}</div>}
       </header>
-      {state.kind === "ready" && children}
+      {state.kind === "ready" && <div className={`panel-body ${enter === "fade" ? "reveal" : ""}`}>{children}</div>}
       {state.kind === "loading" && (
         <div className="state">
           <div className="skeleton" />
