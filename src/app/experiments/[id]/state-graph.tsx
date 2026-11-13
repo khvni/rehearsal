@@ -152,7 +152,12 @@ export function StateGraph({
 
   // Polling hands us new graph objects every few seconds. Keep node objects
   // stable until the content changes, so React Flow keeps its measurements.
-  const sig = `${viewport}:${graph.states.length}:${graph.edges.length}:${simulations.length}`;
+  const sig = [
+    viewport,
+    graph.states.map((st) => st.stateId).join(","),
+    graph.edges.length,
+    simulations.map((t) => t.trajectoryId).join(","),
+  ].join("|");
   const [kept, setKept] = useState({ sig, base: fresh });
   if (kept.sig !== sig) setKept({ sig, base: fresh });
   const base = kept.sig === sig ? kept.base : fresh;
