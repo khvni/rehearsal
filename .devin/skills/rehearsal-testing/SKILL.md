@@ -32,10 +32,16 @@ eval cases.** `npm run check:skill-sync` fails the build otherwise.
   - AIE fixture — `detectSiteType` = event; `discoverEndpoints` finds ≥1 `schedule-event` ("Explore all 50 sessions", "Schedule") and ≥1 `signup` whose label says apply; top endpoint weight ≥ 0.75; weights deterministic and in [0,1]; `defaultIntentsForSite` yields one goal per category; "find the conference schedule" → information targeting `schedule-event`; no endpoint findings when CTAs sit on the start page
   - synthetic journeys — orphaned /signup → `endpoint-unreachable` (navigation); pricing 4 clicks deep → `endpoint-deep` (mindless-choices, median 4, sample path recorded); absent expected class → `missing-endpoint-class`; `endpointJourneys` deterministic per seed
   - orchestrator wiring — fixture runner/store/adapters: `discover` stores `intents` + `endpoints`, endpoint class assertions (`endpointGoalAssertions`) make reaching /talks satisfy `goalSatisfiedInState`, `analyze` stores `journeys`, and the experiment round-trips through the `Experiment` contract (what GET /api/experiments/[id] serializes)
+- `questions.eval.ts` — unanswered visitor questions (`visitorQuestions` = bank + start-page context questions → answer detection) on the AIE fixture, thresholds in evals.config.json (`minQuestionBankSize`, `minAieQuestions`, `requiredAnsweredQuestions`, `requiredUnansweredQuestions`, `maxAieUnansweredRatio`):
+  - answered with cited start-state evidence — homepage what/do/start, `when-where` (Nov 10-12 + //LOCATION/venue), `attend` (apply CTA), `agenda`, `speakers`, `recordings`
+  - unanswered — `cost` (application-only, no price anywhere), `ctx-apply-criteria` (copy says "by application only" but never says who gets in or when), `contact` (the only contact-form CTA is sponsorship, which answers `sponsor` instead)
+  - `questionFindings` emits one `unanswered-question` finding per gap + an "N of M" summary, start screenshot as evidence; deterministic across runs with the fixture LLM
+  - orchestrator wiring — fixture adapters: `analyze` stores `questions` on the experiment, adds the `unanswered-question` findings, and the experiment round-trips through the `Experiment` contract
 
 ## Unit tests (tests/unit/)
 
 - `core.test.ts` — contract parsing, extractor, graph dedup, mulberry32 determinism, profile shaping, fixture Jev scoring, patch compilation, rule findings, spec markdown
+- `questions.test.ts` — question bank shape, homepage-first ordering, context-derived questions, answer detection (endpoint class / URL / text, start-only homepage questions, endpoint label filters, re-answering stored questions), LLM refinement skip + keyword questions, `unanswered-question` findings + summary
 - `intents.test.ts` — `classifyGoal` keyword heuristics, LLM refinement fallback, endpoint label/path classification, `discoverEndpoints`/`weightEndpoints` determinism + overrides, optional Experiment fields
 
 ## Browser tests (tests/e2e/)

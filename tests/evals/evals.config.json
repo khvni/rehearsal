@@ -17,6 +17,24 @@
     "maxStatesPerStateHash": 1,
     "minVagueLabelsDetected": 4,
     "minPastDatesDetected": 1,
-    "requireStaleDateEvidence": true
+    "requireStaleDateEvidence": true,
+    "minQuestionBankSize": 30,
+    "minAieQuestions": 15,
+    "requiredAnsweredQuestions": [
+      "hp-what",
+      "hp-do",
+      "hp-start",
+      "when-where",
+      "attend",
+      "agenda",
+      "speakers",
+      "recordings"
+    ],
+    "requiredUnansweredQuestions": [
+      "cost",
+      "ctx-apply-criteria",
+      "contact"
+    ],
+    "maxAieUnansweredRatio": 0.35
   }
 }
