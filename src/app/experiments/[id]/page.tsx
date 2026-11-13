@@ -183,6 +183,18 @@ export default function ExperimentPage() {
   }
 
   const runs = exp.browserTests;
+  const stageDone: Record<(typeof STAGES)[number], boolean> = {
+    discover: (graph?.states.length ?? 0) > 0,
+    simulate: exp.simulations.length > 0,
+    verify: runs.length > 0,
+    analyze: findings.length > 0,
+    compare: exp.variants.length + exp.comparisons.length > 0,
+    spec: Boolean(exp.spec),
+  };
+  const nextStage = STAGES.find((s) => !stageDone[s]);
+  const stageActive = (s: (typeof STAGES)[number]) =>
+    pending === s || ((pending === "run" || RUNNING_STATUSES.includes(exp.status)) && s === nextStage);
+  const doneCount = STAGES.filter((s) => stageDone[s]).length;
   const statusClass = exp.status === "failed" ? "failed" : exp.status === "complete" ? "ok" : RUNNING_STATUSES.includes(exp.status) ? "running" : "";
   const specState: PanelState = (() => {
     const err = stageErrors.spec ?? (specDoc?.key === specKey ? specDoc?.error : undefined);
@@ -198,6 +210,7 @@ export default function ExperimentPage() {
       <div className="header">
         <h1>Experiment <span className="mono">{exp.id}</span></h1>
         <span className={`pill ${statusClass}`}>{exp.status}</span>
+        <span className="meta tabular">{exp.configuration.viewports.join(" + ")} · {exp.simulations.length.toLocaleString()} journeys</span>
       </div>
       <dl className="facts">
         <dt>URL</dt>
@@ -212,11 +225,23 @@ export default function ExperimentPage() {
         </button>
         <span className="divider" aria-hidden />
         {STAGES.map((s, i) => (
-          <button key={s} type="button" disabled={pending !== null} onClick={() => void runStage(s)}>
-            <span className="step-num tabular">{i + 1}</span>
+          <button
+            key={s}
+            type="button"
+            className={`stage ${stageDone[s] ? "done" : ""} ${stageActive(s) ? "active" : ""}`}
+            disabled={pending !== null}
+            onClick={() => void runStage(s)}
+          >
+            <span className="stage-mark" aria-hidden>{stageDone[s] ? "✓" : i + 1}</span>
             {pending === s ? `${s}…` : s}
           </button>
         ))}
+      </div>
+      <div className="progress" aria-label="Pipeline progress">
+        <div className="progress-track" role="progressbar" aria-valuemin={0} aria-valuemax={STAGES.length} aria-valuenow={doneCount}>
+          <div className={`progress-fill ${polling ? "running" : ""}`} style={{ transform: `scaleX(${doneCount / STAGES.length})` }} />
+        </div>
+        <span className="tabular">{doneCount}/{STAGES.length} stages</span>
       </div>
 
       {(stageErrors.run || exp.errors.length > 0) && (
@@ -258,9 +283,10 @@ export default function ExperimentPage() {
           title="Browser evidence"
           meta={<span className="tabular">{runs.filter((r) => r.success).length}/{runs.length} passed</span>}
           busy={busy("evidence")}
+          enter="none"
           state={panelState("evidence", runs.length > 0, "Verifying in real browsers…", "No browser runs yet. Run verify to replay the riskiest journeys.")}
         >
-          <div className="list">
+          <div className="list stagger">
             {runs.map((r) => (
               <div key={r.runId} className={`card ${r.success ? "pass" : "fail"}`}>
                 <div className="card-title">
@@ -292,9 +318,10 @@ export default function ExperimentPage() {
           title="Findings"
           meta={<SeverityCounts findings={findings} />}
           busy={busy("findings")}
+          enter="none"
           state={panelState("findings", findings.length > 0, "Grading against Krug's rubric…", "No findings yet. Run analyze after verify.")}
         >
-          <div className="list">
+          <div className="list stagger">
             {findingGroups.map(([principle, group]) => (
               <section key={principle} className="finding-group" aria-label={`${group.length} findings`}>
                 <div className="group-head">
