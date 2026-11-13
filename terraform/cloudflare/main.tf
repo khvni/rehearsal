@@ -29,7 +29,7 @@ resource "cloudflare_workers_script" "rehearsal" {
   ]
 
   lifecycle {
-    ignore_changes = [content, main_module, compatibility_date, compatibility_flags, assets]
+    ignore_changes = [content, content_file, content_sha256, content_type, files, main_module, compatibility_date, compatibility_flags, assets]
   }
 }
 
