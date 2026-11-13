@@ -49,59 +49,62 @@
     </style>
   </head>
   <body>
-    <div id="root" data-composition-id="main" data-start="0" data-duration="83" data-width="1920" data-height="1080">
+    <div id="root" data-composition-id="main" data-start="0" data-duration="92" data-width="1920" data-height="1080">
+      <!-- Voiceover slot. Add assets/vo.mp3, then uncomment:
+      <audio id="vo" src="assets/vo.mp3" data-start="0" data-duration="92" data-track-index="1"></audio>
+      -->
 
-      <!-- 1. Title -->
+      <!-- 1. Hook -->
       <section id="s-title" class="clip center" data-start="0" data-duration="6" data-track-index="0">
-        <div class="tag t-in">khvni/rehearsal</div>
-        <h1 class="t-in" style="margin-top: 28px;">Rehearsal</h1>
-        <div class="sub t-in" style="margin-top: 24px; font-size: 44px; color: var(--ink);">UX verification for websites, <span class="accent">grounded in Krug</span>.</div>
-        <div class="sub t-in" style="margin-top: 36px; font-size: 30px;">Rehearse real visitor journeys in a browser. Get cited findings and a rebuild spec.</div>
+        <div class="tag t-in">Rehearsal</div>
+        <h1 class="t-in" style="margin-top: 28px;">Can a visitor find the schedule?</h1>
+        <div class="sub t-in" style="margin-top: 24px; font-size: 44px; color: var(--ink);">We sent a browser to ai.engineer/code/2026 to find out. <span class="accent">It failed 4 times out of 4.</span></div>
+        <div class="sub t-in" style="margin-top: 36px; font-size: 30px;">Rehearsal is how we know, and it tells you what to fix.</div>
       </section>
 
       <!-- 2. Problem -->
       <section id="s-problem" class="clip center" data-start="6" data-duration="9" data-track-index="0">
         <div class="tag p-in">The problem</div>
-        <h2 class="p-in" style="margin-top: 20px; font-size: 72px;">Websites get reviewed by opinion,<br />not by rehearsing real visitor journeys.</h2>
+        <h2 class="p-in" style="margin-top: 20px; font-size: 72px;">Sites get reviewed by opinion.<br />Nobody checks if a visitor can get where they want.</h2>
         <div class="row" style="margin-top: 20px;">
-          <div class="card step p-in"><b>"Looks fine to me"</b><span>Stakeholder taste decides what ships.</span></div>
-          <div class="card step p-in"><b>No journey evidence</b><span>Nobody checks whether a visitor can actually reach the schedule, pricing or signup.</span></div>
-          <div class="card step p-in"><b>Found after launch</b><span>Real users hit the dead ends first.</span></div>
+          <div class="card step p-in"><b>"Looks fine to me"</b><span>Taste decides what ships.</span></div>
+          <div class="card step p-in"><b>Nobody walks the path</b><span>Can you reach the schedule? The price? The signup?</span></div>
+          <div class="card step p-in"><b>Users find it first</b><span>After launch, when it costs the most.</span></div>
         </div>
       </section>
 
       <!-- 3. How it works -->
       <section id="s-how" class="clip" data-start="15" data-duration="16" data-track-index="0">
         <div class="tag">How it works</div>
-        <h2 style="margin-top: 16px;">Goal in. Verified journeys, cited findings and a spec out.</h2>
+        <h2 style="margin-top: 16px;">You type a goal. You get a list of fixes.</h2>
         <div class="grid3">
-          <div class="card h-in"><span class="n step mono" style="color: var(--accent); font-size: 24px;">01 · INTENT</span><b>Information · Quotation · Proposal</b><span>Classify the visitor goal as RFI / RFQ / RFP.</span></div>
-          <div class="card h-in"><span class="n mono" style="color: var(--accent); font-size: 24px;">02 · ENDPOINTS</span><b>Weighted endpoints</b><span>Detect answer, docs, pricing, register, demo-booking… and weight them by intent.</span></div>
-          <div class="card h-in"><span class="n mono" style="color: var(--accent); font-size: 24px;">03 · JOURNEYS</span><b>Journey decision tree</b><span>Discover deduped page states; Jev scores every action; 300 seeded journeys.</span></div>
-          <div class="card h-in"><span class="n mono" style="color: var(--accent); font-size: 24px;">04 · VERIFY</span><b>Browser verification</b><span>Riskiest paths replayed in a real browser, desktop + mobile, with assertions and screenshots.</span></div>
-          <div class="card h-in"><span class="n mono" style="color: var(--accent); font-size: 24px;">05 · ANALYZE</span><b>Krug-cited findings</b><span>verified-failure · reproducible-concern · hypothesis. Every finding cites a Krug principle.</span></div>
-          <div class="card h-in"><span class="n mono" style="color: var(--accent); font-size: 24px;">06 · SPEC</span><b>spec.md rebuild plan</b><span>Changes ranked by impact, each traced to evidence, plus a phased rebuild plan.</span></div>
+          <div class="card h-in"><span class="n step mono" style="color: var(--accent); font-size: 24px;">01 · GOAL</span><b>Say what a visitor wants</b><span>"Find the conference schedule."</span></div>
+          <div class="card h-in"><span class="n mono" style="color: var(--accent); font-size: 24px;">02 · MAP</span><b>Click through the site</b><span>Every page state it can reach, deduped.</span></div>
+          <div class="card h-in"><span class="n mono" style="color: var(--accent); font-size: 24px;">03 · REHEARSE</span><b>300 visitor journeys</b><span>Seeded, so the same site gives the same run.</span></div>
+          <div class="card h-in"><span class="n mono" style="color: var(--accent); font-size: 24px;">04 · VERIFY</span><b>Replay the risky ones</b><span>In a real browser, with screenshots.</span></div>
+          <div class="card h-in"><span class="n mono" style="color: var(--accent); font-size: 24px;">05 · FIND</span><b>Name each problem</b><span>Each one cites a Krug rule and says how sure it is.</span></div>
+          <div class="card h-in"><span class="n mono" style="color: var(--accent); font-size: 24px;">06 · SPEC</span><b>Rank the fixes</b><span>Biggest impact first, each tied to evidence.</span></div>
         </div>
       </section>
 
       <!-- 4. Demo: target -->
       <section id="s-demo" class="clip" data-start="31" data-duration="6" data-track-index="0">
-        <div class="tag">Live demo · AIE Code Summit 2026</div>
+        <div class="tag">A real run · AIE Code Summit 2026</div>
         <h2 style="margin-top: 16px; margin-bottom: 36px;"><span class="mono" style="font-size: 52px;">ai.engineer/code/2026</span><br />Goal: "find the conference schedule"</h2>
         <div class="row" style="align-items: flex-start;">
           <img id="img-site" class="shot" src="assets/aie-site.png" style="width: 1100px;" />
           <div style="display: flex; flex-direction: column; gap: 24px; flex: 1;">
-            <div class="card d-in"><b>Intent: Information</b><span>RFI · the visitor wants an answer, not a form.</span></div>
-            <div class="card d-in"><b>Endpoint: schedule</b><span>Reached when a page matching "schedule" renders.</span></div>
-            <div class="card d-in"><b>POST /api/experiments → /run</b><span>Real Next.js API, real browser, 3.7 min.</span></div>
+            <div class="card d-in"><b>The visitor wants an answer</b><span>Not a form. Not a signup.</span></div>
+            <div class="card d-in"><b>Done = a schedule page loads</b><span>That is the only test.</span></div>
+            <div class="card d-in"><b>One API call</b><span>A real browser. 3.7 minutes.</span></div>
           </div>
         </div>
       </section>
 
       <!-- 5. Demo: dashboard -->
       <section id="s-dash" class="clip" data-start="37" data-duration="9" data-track-index="0" style="justify-content: flex-start;">
-        <div class="tag">Dashboard · exp_15f495ed</div>
-        <h2 style="margin-top: 16px; margin-bottom: 28px;">15 states · 176 edges · <span style="color: var(--fail);">0 / 4 browser runs passed</span></h2>
+        <div class="tag">The dashboard · exp_15f495ed</div>
+        <h2 style="margin-top: 16px; margin-bottom: 28px;">15 states · 176 edges · <span style="color: var(--fail);">0 of 4 browser runs found the schedule</span></h2>
         <div style="overflow: hidden; border-radius: 14px; width: 1520px; height: 800px;" class="shot">
           <img id="img-dash" src="assets/dashboard.png" style="width: 1520px; display: block; transform-origin: 0 0;" />
         </div>
@@ -109,52 +112,69 @@
 
       <!-- 6. Demo: findings + spec -->
       <section id="s-spec" class="clip" data-start="46" data-duration="11" data-track-index="0">
-        <div class="tag">Findings → spec.md</div>
-        <h2 style="margin-top: 16px; margin-bottom: 16px;">23 findings: 2 verified failures, 11 reproducible concerns, 10 hypotheses.</h2>
-        <div class="finding f-in"><span class="pill fail">verified-failure</span><span>No browser run reached a "schedule" URL</span><span class="k">testing-beats-arguing</span></div>
-        <div class="finding f-in"><span class="pill warn">reproducible-concern</span><span>Post-event page still invites registration</span><span class="k">omit-words</span></div>
-        <div class="finding f-in"><span class="pill warn">reproducible-concern</span><span>Trunk test fails: no page name, nav, search</span><span class="k">navigation</span></div>
-        <div class="finding f-in"><span class="pill warn">reproducible-concern</span><span>Primary navigation has 68 items</span><span class="k">navigation</span></div>
+        <div class="tag">What it found</div>
+        <h2 style="margin-top: 16px; margin-bottom: 16px;">23 findings. 2 proven in the browser.</h2>
+        <div class="finding f-in"><span class="pill fail">verified-failure</span><span>No run reached a schedule page</span><span class="k">testing-beats-arguing</span></div>
+        <div class="finding f-in"><span class="pill warn">reproducible-concern</span><span>The event is over. The page still says register.</span><span class="k">omit-words</span></div>
+        <div class="finding f-in"><span class="pill warn">reproducible-concern</span><span>No page name, no clear nav, no search</span><span class="k">navigation</span></div>
+        <div class="finding f-in"><span class="pill warn">reproducible-concern</span><span>68 links in the main nav</span><span class="k">navigation</span></div>
         <div class="card f-in" style="margin-top: 28px; padding: 26px 34px;"><div class="spec"><span class="h">## Rebuild plan</span>
-<span class="h">### Truth pass</span>        <span class="c">Remove anything stale or misleading.</span>
-<span class="h">### Hierarchy pass</span>    <span class="c">Nav to ~7 items; one dominant CTA above the fold.</span>
-<span class="h">### Verification loop</span> <span class="c">Re-run the same assertions on staging.</span></div></div>
+<span class="h">### Truth pass</span>        <span class="c">Cut anything stale or wrong.</span>
+<span class="h">### Hierarchy pass</span>    <span class="c">7 nav items. One main button.</span>
+<span class="h">### Verification loop</span> <span class="c">Run the same checks again on staging.</span></div></div>
       </section>
 
       <!-- 7. Stack -->
-      <section id="s-stack" class="clip" data-start="57" data-duration="11" data-track-index="0">
-        <div class="tag">Stack</div>
-        <h2 style="margin-top: 16px;">Every adapter falls back to fixtures. No keys, same pipeline.</h2>
+      <section id="s-stack" class="clip" data-start="57" data-duration="10" data-track-index="0">
+        <div class="tag">What runs it</div>
+        <h2 style="margin-top: 16px;">Live with keys. Fixtures without.</h2>
         <div class="grid4">
-          <div class="card k-in"><b>Gemini</b><span>hydrogen live now; argon deep model auto-falls back when quota-limited</span></div>
-          <div class="card k-in"><b>Jev</b><span>system-one action scoring (deterministic fixture; live endpoint pending)</span></div>
-          <div class="card k-in"><b>Bright Data</b><span>Web Unlocker + Browser API fetch</span></div>
-          <div class="card k-in"><b>Browserbase Stagehand</b><span>agentic browser verification</span></div>
-          <div class="card k-in"><b>Sentry</b><span>errors + traces, DSN-gated</span></div>
-          <div class="card k-in"><b>Tiger Data</b><span>experiment store via DATABASE_URL</span></div>
-          <div class="card k-in"><b>Snowflake Cortex</b><span>Cortex Search knowledge base</span></div>
-          <div class="card k-in"><b>Terraform</b><span>Cloudflare + DigitalOcean stacks</span></div>
+          <div class="card k-in"><b>Bright Data</b><span>Browser API, live</span></div>
+          <div class="card k-in"><b>Gemini</b><span>hydrogen, live</span></div>
+          <div class="card k-in"><b>Jev</b><span>scores each click; fixture for now</span></div>
+          <div class="card k-in"><b>Browserbase Stagehand</b><span>browser checks</span></div>
+          <div class="card k-in"><b>Sentry</b><span>errors and traces</span></div>
+          <div class="card k-in"><b>Tiger Data</b><span>stores each run</span></div>
+          <div class="card k-in"><b>Snowflake Cortex</b><span>search over past runs</span></div>
+          <div class="card k-in"><b>Terraform</b><span>Cloudflare + DigitalOcean</span></div>
         </div>
       </section>
 
       <!-- 8. Software factory -->
       <section id="s-factory" class="clip" data-start="67" data-duration="10" data-track-index="0">
-        <div class="tag">Built by a software factory</div>
-        <h2 style="margin-top: 16px;">Agents ship it. Gates keep it honest.</h2>
+        <div class="tag">How it was built</div>
+        <h2 style="margin-top: 16px;">Agents write the code. Checks keep it honest.</h2>
         <div class="grid3">
-          <div class="card x-in"><b>Contracts-first lint</b><span>Custom ESLint rules: shared types live in src/lib/contracts; findings must cite Krug.</span></div>
-          <div class="card x-in"><b>spec-delta visual proof</b><span>Golden spec diff on the hermetic AIE fixture proves behavior changes.</span></div>
-          <div class="card x-in"><b>Hourly hermetic rebuild</b><span>Scheduled full rebuild + first-responder agent on failure.</span></div>
-          <div class="card x-in"><b>Layer-1 facts gate</b><span>check:facts catches contract, env, Krug-catalog and API drift.</span></div>
-          <div class="card x-in"><b>Factory as code</b><span>Rulesets, review policy, automations and blueprints in factory/.</span></div>
-          <div class="card x-in"><b>Impeccable design check</b><span>Design-quality gate on dashboard changes.</span></div>
+          <div class="card x-in"><b>Lint rules</b><span>Shared types live in one place. Findings must cite Krug.</span></div>
+          <div class="card x-in"><b>Spec diff</b><span>A fixed copy of the AIE site shows when output changes.</span></div>
+          <div class="card x-in"><b>Hourly rebuild</b><span>An agent picks up any failure.</span></div>
+          <div class="card x-in"><b>Facts check</b><span>Docs, env and API can't drift from the code.</span></div>
+          <div class="card x-in"><b>Factory as code</b><span>Rules, review policy and automations live in the repo.</span></div>
+          <div class="card x-in"><b>Design check</b><span>Every dashboard change gets scanned.</span></div>
         </div>
       </section>
 
-      <!-- 9. End card -->
-      <section id="s-end" class="clip center" data-start="77" data-duration="6" data-track-index="0" style="align-items: center; text-align: center;">
+      <!-- 9. Rebuild -->
+      <section id="s-rebuild" class="clip" data-start="77" data-duration="9" data-track-index="0" style="justify-content: flex-start;">
+        <div class="tag">What it becomes</div>
+        <h2 style="margin-top: 16px; margin-bottom: 28px;">The spec, applied to the same page.</h2>
+        <div class="row" style="align-items: flex-start;">
+          <div style="overflow: hidden; border-radius: 14px; width: 1152px; height: 720px;" class="shot">
+            <img id="img-rebuild" src="assets/rebuild.png" style="width: 1152px; display: block; transform-origin: 0 0;" />
+          </div>
+          <div style="display: flex; flex-direction: column; gap: 24px; flex: 1;">
+            <div class="card r-in"><b>Schedule is in the nav</b><span>One click from the top.</span></div>
+            <div class="card r-in"><b>7 nav items, not 68</b><span>Plus a search box.</span></div>
+            <div class="card r-in"><b>It says the event is over</b><span>One button: watch the talks.</span></div>
+          </div>
+        </div>
+      </section>
+
+      <!-- 10. End card -->
+      <section id="s-end" class="clip center" data-start="86" data-duration="6" data-track-index="0" style="align-items: center; text-align: center;">
         <h1 class="e-in">Don't just build it. <span class="accent">Rehearse it.</span></h1>
         <div class="mono e-in" style="margin-top: 44px; font-size: 44px;">github.com/khvni/rehearsal</div>
+        <div class="mono e-in" style="margin-top: 20px; font-size: 32px; color: var(--muted);">Try it: http://64.227.111.27</div>
       </section>
     </div>
     <script>
@@ -177,7 +197,11 @@
       enter("#s-spec .f-in", 46.6, 0.7);
       enter("#s-stack .k-in", 57.4, 0.25);
       enter("#s-factory .x-in", 67.4, 0.45);
-      enter("#s-end .e-in", 77.3, 0.4);
+      enter("#s-rebuild .tag, #s-rebuild h2", 77.2, 0.1);
+      tl.fromTo("#s-rebuild .shot", { opacity: 0, y: 30 }, { opacity: 1, y: 0, duration: 0.6, ease }, 77.4);
+      enter("#s-rebuild .r-in", 78.4, 0.8);
+      tl.to("#img-rebuild", { scale: 1.25, x: -40, y: -60, duration: 4, ease: "power2.inOut" }, 81);
+      enter("#s-end .e-in", 86.3, 0.4);
       window.__timelines["main"] = tl;
       tl.seek(0);
     </script>
