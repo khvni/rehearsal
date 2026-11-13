@@ -15,6 +15,8 @@ import { selectJev, scoreActions, type JevClient } from "./decisions/jev";
 import { simulateTrajectories, selectTrajectories, type SimWeights } from "./simulation";
 import { selectLlm, type LlmClient } from "./analysis/gemini";
 import { llmFindings, ruleFindings } from "./analysis/findings";
+import { metricFindings } from "./analysis/metric-findings";
+import { metricsFromHtml } from "./browser/metrics";
 import { generateSpec, specToMarkdown } from "./analysis/spec";
 import { selectStore, type ExperimentStore } from "./storage";
 import { withTrace, logEvent } from "./telemetry";
@@ -109,7 +111,7 @@ export class Orchestrator {
           if (attempted.has(url) || depth > config.maxDepth || builder.full) continue;
           attempted.add(url);
           try {
-            const { html, screenshotPath } = await this.runner.openPage(url, viewport, {
+            const { html, screenshotPath, metrics } = await this.runner.openPage(url, viewport, {
               shotName: `${id}_${vpName}_d${depth}`,
             });
             const extracted = extractPage(html, url);
@@ -121,6 +123,7 @@ export class Orchestrator {
               actions: extracted.actions,
               screenshotPath,
             });
+            state.metrics = metrics ?? metricsFromHtml(html, url, viewport);
             const { state: canonical, isNew } = builder.add(state);
             if (!isNew && !builder.has(canonical.stateId)) continue;
             visited.set(url, canonical.stateId);
@@ -245,7 +248,7 @@ export class Orchestrator {
       const states = exp.graph?.states ?? [];
       const rules = ruleFindings({ states, runs: exp.browserTests, assertions: exp.assertions });
       const llm = await llmFindings({ llm: this.llm, states, runs: exp.browserTests, goal: exp.goal });
-      exp.findings = dedupeFindings([...rules, ...llm]);
+      exp.findings = dedupeFindings([...rules, ...metricFindings(states, { homepageUrl: exp.targetUrl }), ...llm]);
       await this.update(exp, "created");
       return exp;
     });

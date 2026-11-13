@@ -29,8 +29,11 @@ eval cases.** `npm run check:skill-sync` fails the build otherwise.
   - vague labels — finding on `fixtures/vague-labels.html` names exactly the vague labels found; no finding on the AIE fixture (`minVagueLabelsDetected`)
   - stale date — finding description cites every detected past date; no finding before the event ends (`minPastDatesDetected`, `requireStaleDateEvidence`)
 
+- `metrics.eval.ts` — page metrics (`src/lib/browser/metrics.ts` `measurePage`) on the AIE fixture in hermetic local Chromium (loopback server, all other requests aborted, `networkidle` so layout settles): repeat measurements are identical; homepage fold ratio ≥ `metricsMinHomepageFoldRatio` with scroll time = screens × 1.5s; exactly `metricsExpectedH1Count` h1 and it is the largest text; ≥ `metricsMinNavItems` primary-nav items, ≥ `metricsMinCtas` CTAs, `primaryCtaAmbiguity` ≤ `metricsMaxPrimaryCtaAmbiguity`, ≥ `metricsMinFontSizeBuckets` font sizes; the HTML-only fallback matches the DOM facts and nulls layout fields; `metricFindings` emits every rule in `metricsRequiredRules`, no CTA-ambiguity finding, each with a Krug key + screenshot evidence
+
 ## Unit tests (tests/unit/)
 
+- `metrics.test.ts` — `measurePage` via `PlaywrightRunner.openPage` on synthetic pages served from loopback (scroll, CTA prominence ties, heading skips/multiple h1, nav count, font buckets, trunk test), `metricsFromHtml` fallback, and each `metricFindings` rule (grouping, severity, evidence)
 - `core.test.ts` — contract parsing, extractor, graph dedup, mulberry32 determinism, profile shaping, fixture Jev scoring, patch compilation, rule findings, spec markdown
 
 ## Browser tests (tests/e2e/)

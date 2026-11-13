@@ -4,6 +4,7 @@ import { chromium, type Browser, type BrowserContext, type Page } from "playwrig
 import type { Assertion, BrowserRun, DomPatch, Viewport } from "../contracts";
 import { assertPublicUrl } from "../fetch/guards";
 import { compilePatches } from "../variants";
+import { measurePage } from "./metrics";
 import {
   evaluateAssertion,
   shouldShoot,
@@ -133,7 +134,8 @@ export class PlaywrightRunner implements BrowserRunner {
       await page.goto(url, { waitUntil: "domcontentloaded", timeout: 30000 });
       await page.waitForTimeout(1200);
       await page.screenshot({ path: screenshotPath, fullPage: false });
-      return { html: await page.content(), screenshotPath };
+      const metrics = await measurePage(page);
+      return { html: await page.content(), screenshotPath, metrics };
     } finally {
       await ctx.close();
     }
