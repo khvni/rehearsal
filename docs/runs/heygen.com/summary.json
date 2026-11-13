@@ -53,16 +53,16 @@
   },
   "simulate": {
     "trajectories": 300,
-    "goalReachPct": 51,
+    "goalReachPct": 52.3,
     "outcomes": {
-      "repetition-limit": 147,
-      "goal-reached": 153
+      "repetition-limit": 143,
+      "goal-reached": 157
     }
   },
   "verify": {
     "runs": 4,
-    "passed": 0,
-    "failed": 4,
+    "passed": 1,
+    "failed": 3,
     "assertionsPassed": 1,
     "runsWithConsoleErrors": 4,
     "runErrors": []
@@ -73,20 +73,20 @@
       "variant": false
     },
     "interactionCount": {
-      "baseline": 6,
-      "variant": 6
+      "baseline": 8,
+      "variant": 8
     },
     "backtracks": {
-      "baseline": 6,
-      "variant": 6
+      "baseline": 8,
+      "variant": 8
     },
     "failedInteractions": {
-      "baseline": 1,
-      "variant": 1
+      "baseline": 0,
+      "variant": 0
     },
     "runtimeErrors": {
-      "baseline": 13,
-      "variant": 21
+      "baseline": 11,
+      "variant": 20
     },
     "findingReproduces": true
   },
@@ -125,35 +125,22 @@
     }
   },
   "findings": {
-    "total": 28,
+    "total": 15,
     "bySeverity": {
       "critical": 0,
       "high": 2,
-      "medium": 21,
-      "low": 5
+      "medium": 7,
+      "low": 6
     },
     "byEvidence": {
       "verified-failure": 1,
-      "reproducible-concern": 27
+      "reproducible-concern": 14
     },
     "titles": [
-      "[high] Assertion failed in browser: url-matches \"pricing\"",
-      "[medium] Ambiguous link labels (1)",
-      "[medium] Dense link surface increases scan cost",
-      "[medium] Dense link surface increases scan cost",
-      "[medium] Dense link surface increases scan cost",
-      "[medium] Dense link surface increases scan cost",
-      "[medium] Dense link surface increases scan cost",
-      "[medium] Ambiguous link labels (1)",
-      "[medium] Dense link surface increases scan cost",
-      "[medium] Dense link surface increases scan cost",
-      "[medium] Dense link surface increases scan cost",
-      "[medium] Dense link surface increases scan cost",
-      "[medium] Dense link surface increases scan cost",
-      "[medium] Dense link surface increases scan cost",
-      "[medium] Dense link surface increases scan cost",
-      "[medium] Dense link surface increases scan cost",
-      "[medium] Dense link surface increases scan cost",
+      "[high] Assertion failed in browser: url-matches \"pricing\" (3 of 4 runs)",
+      "[medium] Ambiguous link labels (1) (2 of 15 pages)",
+      "[medium] Dense link surface increases scan cost (14 of 15 pages)",
+      "[low] Console errors during browser runs (33)",
       "[medium] Endpoint buried: signup \"Get started , Business\"",
       "[medium] Endpoint buried: signup \"Sign up with Google\"",
       "[medium] Endpoint buried: signup \"Get started , Pro\"",
@@ -168,13 +155,13 @@
     ]
   },
   "durationsMs": {
-    "discover": 36522,
-    "simulate": 76,
-    "verify": 23549,
-    "analyze": 195,
-    "compare": 12565,
+    "discover": 37985,
+    "simulate": 56,
+    "verify": 23074,
+    "analyze": 176,
+    "compare": 3678,
     "spec": 4,
-    "total": 75328
+    "total": 67144
   },
-  "ranAt": "2026-11-13T22:04:05.200Z"
+  "ranAt": "2026-11-13T22:26:35.966Z"
 }

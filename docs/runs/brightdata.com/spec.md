@@ -1,189 +1,114 @@
 # Rehearsal spec — https://brightdata.com/
 
 Goal: find pricing for the Web Unlocker
-Generated: 2026-11-13T21:55:52.281Z
+Generated: 2026-11-13T22:17:51.735Z
 
 ## Summary
-Rehearsal verified 5 browser runs against https://brightdata.com/: 1 verified failure(s), 26 reproducible concern(s). 27 total findings mapped to 27 proposed changes.
+Rehearsal verified 5 browser runs against https://brightdata.com/: 1 verified failure(s), 6 reproducible concern(s). 14 total findings mapped to 14 proposed changes.
 
 ## Changes (by impact)
 
-### 1. Assertion failed in browser: url-matches "unlocker" [M]
+### 1. Assertion failed in browser: url-matches "unlocker" (4 of 4 runs) [M]
 - Change: Inspect the failed assertion against the live page and correct the mismatch.
-- Rationale: Browser run run_t146_desktop (desktop) failed assertion url-matches on value "unlocker". [verified-failure; Can the intended outcome be verified?]
+- Rationale: Browser run run_t0_desktop (desktop) failed assertion url-matches on value "unlocker". Also: Browser run run_t1_desktop (desktop) failed assertion url-matches on value "unlocker". Browser run run_t2_desktop (desktop) failed assertion url-matches on value "unlocker". Browser run run_t3_desktop (desktop) failed assertion url-matches on value "unlocker". [verified-failure; Can the intended outcome be verified?]
 - Krug principle: testing-beats-arguing
-- Evidence: finding f_f4aceb75_26 (data/evidence/run_t146_desktop_0.png, data/evidence/run_t146_desktop_3.png, data/evidence/run_t146_desktop_5.png)
+- Evidence: finding f_3ed21dac_26 (data/evidence/run_t0_desktop_0.png, data/evidence/run_t1_desktop_0.png, data/evidence/run_t2_desktop_0.png, data/evidence/run_t3_desktop_0.png)
 
-### 2. No signup endpoint found [M]
-- Change: Add a clearly labeled signup destination and link it from the primary navigation.
-- Rationale: missing-endpoint-class: a saas site is expected to expose a signup endpoint, but none of the 15 discovered states or their links/CTAs classify as signup. [reproducible-concern; Can the intended outcome be verified?]
+### 2. Desktop: missing site ID, primary navigation, search (trunk test fails) [M]
+- Change: Add the missing trunk-test signals (site ID, primary navigation, search) to the persistent header on every page.
+- Rationale: On 1 page(s) a visitor dropped in cold can't find: site ID, primary navigation, search. Persistent navigation should answer what site this is, what page they're on, the major sections, how to search and where they are. [reproducible-concern; Is the next relevant action discoverable and conventional?]
 - Krug principle: navigation
-- Evidence: finding f_missing-endpoint-class_signup
+- Evidence: finding f_metric_trunk-test_4fcd36c3 (data/evidence/exp_a2aa965b_desktop_d0.png)
 
-### 3. Ambiguous link labels (1) [S]
-- Change: Rename vague labels to describe their destination explicitly.
-- Rationale: Actions like "Learn more" force users to guess where they lead. [reproducible-concern; How much interpretation does selecting an action require?]
-- Krug principle: dont-make-me-think
-- Evidence: finding f_7c199c62_29 (data/evidence/exp_4df08f7a_desktop_d0.png)
+### 3. "What can I do here?" has no answer path [M]
+- Change: Answer "What can I do here?" above the fold on the start page — the tagline and welcome blurb carry this burden.
+- Rationale: unanswered-question: visitors are likely to ask "What can I do here?" (proposal, importance 0.9). The start page doesn't answer it (looked for signup/contact-form/next-steps/download/schedule-event/pricing/demo-video/docs-answers). [reproducible-concern; Is the purpose of the page immediately apparent?]
+- Krug principle: homepage
+- Evidence: finding f_unanswered-question_hp-do (data/evidence/exp_a2aa965b_desktop_d0.png)
 
-### 4. Dense link surface increases scan cost [S]
-- Change: Group secondary links; keep the primary path visually dominant.
-- Rationale: 172 distinct links compete for attention on "Bright Data: Web Data Infrastructure for Humans & Agents". [reproducible-concern; Are important elements visually and semantically prioritized?]
-- Krug principle: scanning-not-reading
-- Evidence: finding f_a9c94126_30
+### 4. "Where do I start?" has no answer path [M]
+- Change: Answer "Where do I start?" above the fold on the start page — the tagline and welcome blurb carry this burden.
+- Rationale: unanswered-question: visitors are likely to ask "Where do I start?" (proposal, importance 0.9). The start page doesn't answer it (looked for signup). [reproducible-concern; Is the purpose of the page immediately apparent?]
+- Krug principle: homepage
+- Evidence: finding f_unanswered-question_hp-start (data/evidence/exp_a2aa965b_desktop_d0.png)
 
-### 5. Dense link surface increases scan cost [S]
-- Change: Group secondary links; keep the primary path visually dominant.
-- Rationale: 183 distinct links compete for attention on "Web Unlocker - Automated Web Unblocker". [reproducible-concern; Are important elements visually and semantically prioritized?]
-- Krug principle: scanning-not-reading
-- Evidence: finding f_f551246e_31
+### 5. 9 of 10 expected visitor questions have no answer path [M]
+- Change: Pick which questions the site should answer and which action each answer should lead to; start with "What can I do here?", "Where do I start?", "Why should I be here and not somewhere else?".
+- Rationale: unanswered-question summary: 1/10 likely visitor questions are answered by the 1 discovered states or their endpoints. Unanswered: "What can I do here?", "Where do I start?", "Why should I be here and not somewhere else?", "What's new?", "How do I follow along?", "How do I find something specific?", "Who is behind this?", "How do I get in touch?", "How do I join the community?". [hypothesis; Can the intended outcome be verified?]
+- Krug principle: homepage
+- Evidence: finding f_unanswered-questions-summary (data/evidence/exp_a2aa965b_desktop_d0.png)
 
-### 6. Dense link surface increases scan cost [S]
-- Change: Group secondary links; keep the primary path visually dominant.
-- Rationale: 150 distinct links compete for attention on "Web Unlocker Pricing Plans". [reproducible-concern; Are important elements visually and semantically prioritized?]
-- Krug principle: scanning-not-reading
-- Evidence: finding f_c6f00a82_32
+### 6. Desktop: no call to action above the fold on the homepage [S]
+- Change: Place one clearly styled primary action in the first screen.
+- Rationale: No button or button-styled link is visible in the first screen, so "What can I do here?" goes unanswered at a glance. [reproducible-concern; Is the purpose of the page immediately apparent?]
+- Krug principle: homepage
+- Evidence: finding f_metric_no-cta-above-fold_38f017e8 (data/evidence/exp_a2aa965b_desktop_d0.png)
 
-### 7. Dense link surface increases scan cost [S]
-- Change: Group secondary links; keep the primary path visually dominant.
-- Rationale: 135 distinct links compete for attention on "Crawl API Pricing Plans". [reproducible-concern; Are important elements visually and semantically prioritized?]
-- Krug principle: scanning-not-reading
-- Evidence: finding f_a8e142ae_33
+### 7. "Why should I be here and not somewhere else?" has no answer path [S]
+- Change: Answer "Why should I be here and not somewhere else?" above the fold on the start page — the tagline and welcome blurb carry this burden.
+- Rationale: unanswered-question: visitors are likely to ask "Why should I be here and not somewhere else?" (information, importance 0.7). The start page doesn't answer it (looked for matching copy). [reproducible-concern; Is the purpose of the page immediately apparent?]
+- Krug principle: homepage
+- Evidence: finding f_unanswered-question_hp-why (data/evidence/exp_a2aa965b_desktop_d0.png)
 
-### 8. Dense link surface increases scan cost [S]
-- Change: Group secondary links; keep the primary path visually dominant.
-- Rationale: 142 distinct links compete for attention on "SERP API Pricing Plans". [reproducible-concern; Are important elements visually and semantically prioritized?]
-- Krug principle: scanning-not-reading
-- Evidence: finding f_3f6edf6d_34
-
-### 9. Dense link surface increases scan cost [S]
-- Change: Group secondary links; keep the primary path visually dominant.
-- Rationale: 135 distinct links compete for attention on "Scraping Browser Pricing". [reproducible-concern; Are important elements visually and semantically prioritized?]
-- Krug principle: scanning-not-reading
-- Evidence: finding f_45653343_35
-
-### 10. Dense link surface increases scan cost [S]
-- Change: Group secondary links; keep the primary path visually dominant.
-- Rationale: 74 distinct links compete for attention on "Web Scraper API Pricing Plans". [reproducible-concern; Are important elements visually and semantically prioritized?]
-- Krug principle: scanning-not-reading
-- Evidence: finding f_ae40972f_36
-
-### 11. Dense link surface increases scan cost [S]
-- Change: Group secondary links; keep the primary path visually dominant.
-- Rationale: 136 distinct links compete for attention on "Custom Scraper Pricing - Free Trial". [reproducible-concern; Are important elements visually and semantically prioritized?]
-- Krug principle: scanning-not-reading
-- Evidence: finding f_ceb7849d_37
-
-### 12. Dense link surface increases scan cost [S]
-- Change: Group secondary links; keep the primary path visually dominant.
-- Rationale: 73 distinct links compete for attention on "Dataset Marketplace Pricing". [reproducible-concern; Are important elements visually and semantically prioritized?]
-- Krug principle: scanning-not-reading
-- Evidence: finding f_5f5e907e_38
-
-### 13. Dense link surface increases scan cost [S]
-- Change: Group secondary links; keep the primary path visually dominant.
-- Rationale: 135 distinct links compete for attention on "Archive API Pricing". [reproducible-concern; Are important elements visually and semantically prioritized?]
-- Krug principle: scanning-not-reading
-- Evidence: finding f_668fde8e_39
-
-### 14. Dense link surface increases scan cost [S]
-- Change: Group secondary links; keep the primary path visually dominant.
-- Rationale: 135 distinct links compete for attention on "Bright Insights Pricing". [reproducible-concern; Are important elements visually and semantically prioritized?]
-- Krug principle: scanning-not-reading
-- Evidence: finding f_f61367b9_40
-
-### 15. Dense link surface increases scan cost [S]
-- Change: Group secondary links; keep the primary path visually dominant.
-- Rationale: 135 distinct links compete for attention on "Managed Data Services Pricing Plans". [reproducible-concern; Are important elements visually and semantically prioritized?]
-- Krug principle: scanning-not-reading
-- Evidence: finding f_b0b896b5_41
-
-### 16. Dense link surface increases scan cost [S]
-- Change: Group secondary links; keep the primary path visually dominant.
-- Rationale: 151 distinct links compete for attention on "Residential Proxies Pricing". [reproducible-concern; Are important elements visually and semantically prioritized?]
-- Krug principle: scanning-not-reading
-- Evidence: finding f_1dcf525d_42
-
-### 17. Dense link surface increases scan cost [S]
-- Change: Group secondary links; keep the primary path visually dominant.
-- Rationale: 146 distinct links compete for attention on "Datacenter Proxies Pricing". [reproducible-concern; Are important elements visually and semantically prioritized?]
-- Krug principle: scanning-not-reading
-- Evidence: finding f_517cf346_43
-
-### 18. Dense link surface increases scan cost [S]
-- Change: Group secondary links; keep the primary path visually dominant.
-- Rationale: 153 distinct links compete for attention on "ISP Proxies Pricing". [reproducible-concern; Are important elements visually and semantically prioritized?]
-- Krug principle: scanning-not-reading
-- Evidence: finding f_237f7ae4_44
-
-### 19. Desktop: homepage requires 9.78 screens of scrolling [S]
-- Change: Pull the primary path and key facts into the first one or two screens; collapse or link out secondary sections.
-- Rationale: The homepage is 8803px tall at a 900px viewport — 9.78 screens, roughly 14.7s of scanning before a visitor has seen everything. Scanners satisfice on what's near the top. [reproducible-concern; Are important elements visually and semantically prioritized?]
-- Krug principle: scanning-not-reading
-- Evidence: finding f_metric_long-scroll_566fbc10 (data/evidence/exp_4df08f7a_desktop_d0.png)
-
-### 20. Desktop: no single dominant call to action above the fold [S]
-- Change: Make one primary action visibly dominant (size, fill, position) and demote the rest to secondary styling.
-- Rationale: 4 above-the-fold actions are equally prominent by size ("Start free", "Start free", "Start free", "Talk to sales") on "Web Unlocker Pricing Plans", so visitors must stop and compare instead of making a mindless choice. [reproducible-concern; How much interpretation does selecting an action require?]
-- Krug principle: mindless-choices
-- Evidence: finding f_metric_cta-ambiguity_23955fda (data/evidence/exp_4df08f7a_desktop_d1.png)
-
-### 21. Desktop: missing page name, you-are-here indicator (trunk test fails) [S]
-- Change: Add the missing trunk-test signals (page name, you-are-here indicator) to the persistent header on every page.
-- Rationale: On 1 page(s) a visitor dropped in cold can't find: page name, you-are-here indicator. Persistent navigation should answer what site this is, what page they're on, the major sections, how to search and where they are. [reproducible-concern; Is the next relevant action discoverable and conventional?]
+### 8. "What's new?" has no answer path [S]
+- Change: Decide whether visitors should get an answer to "What's new?"; if so, add it (or a clearly labeled link to it) where they arrive, and point it at the action you want them to take next.
+- Rationale: unanswered-question: visitors are likely to ask "What's new?" (information, importance 0.7). None of the 1 discovered states or their links answer it (looked for docs-answers/demo-video). [hypothesis; Is the next relevant action discoverable and conventional?]
 - Krug principle: navigation
-- Evidence: finding f_metric_trunk-test_8ef619cb (data/evidence/exp_4df08f7a_desktop_d1.png)
+- Evidence: finding f_unanswered-question_latest (data/evidence/exp_a2aa965b_desktop_d0.png)
 
-### 22. Heading outline is broken: skips h2→h4, h2→h5 [S]
-- Change: Use exactly one h1 naming the page, then nest h2/h3 without skipping levels.
-- Rationale: 1 page(s) have a heading outline with skips h2→h4, h2→h5 (h1: "Web Unlocker API"). Headings are the scanning skeleton; gaps and competing h1s blur what matters most. [reproducible-concern; Are important elements visually and semantically prioritized?]
-- Krug principle: scanning-not-reading
-- Evidence: finding f_metric_heading-outline_2ede6b14 (data/evidence/exp_4df08f7a_desktop_d1.png)
-
-### 23. Heading outline is broken: skips h1→h3 [S]
-- Change: Use exactly one h1 naming the page, then nest h2/h3 without skipping levels.
-- Rationale: 3 page(s) have a heading outline with skips h1→h3 (h1: "Web Unlocker API Pricing"). Headings are the scanning skeleton; gaps and competing h1s blur what matters most. [reproducible-concern; Are important elements visually and semantically prioritized?]
-- Krug principle: scanning-not-reading
-- Evidence: finding f_metric_heading-outline_b1106aad (data/evidence/exp_4df08f7a_desktop_d1.png)
-
-### 24. Heading outline is broken: no h1 [S]
-- Change: Use exactly one h1 naming the page, then nest h2/h3 without skipping levels.
-- Rationale: 1 page(s) have a heading outline with no h1. Headings are the scanning skeleton; gaps and competing h1s blur what matters most. [reproducible-concern; Are important elements visually and semantically prioritized?]
-- Krug principle: scanning-not-reading
-- Evidence: finding f_metric_heading-outline_ee185a40 (data/evidence/exp_4df08f7a_desktop_d1.png)
-
-### 25. Desktop: missing search (trunk test fails) [S]
-- Change: Add the missing trunk-test signals (search) to the persistent header on every page.
-- Rationale: On 2 page(s) a visitor dropped in cold can't find: search. Persistent navigation should answer what site this is, what page they're on, the major sections, how to search and where they are. [reproducible-concern; Is the next relevant action discoverable and conventional?]
+### 9. "How do I follow along?" has no answer path [S]
+- Change: Decide whether visitors should get an answer to "How do I follow along?"; if so, add it (or a clearly labeled link to it) where they arrive, and point it at the action you want them to take next.
+- Rationale: unanswered-question: visitors are likely to ask "How do I follow along?" (proposal, importance 0.7). None of the 1 discovered states or their links answer it (looked for next-steps). [hypothesis; Is the next relevant action discoverable and conventional?]
 - Krug principle: navigation
-- Evidence: finding f_metric_trunk-test_6dfb6555 (data/evidence/exp_4df08f7a_desktop_d0.png, data/evidence/exp_4df08f7a_desktop_d1.png)
+- Evidence: finding f_unanswered-question_subscribe (data/evidence/exp_a2aa965b_desktop_d0.png)
 
-### 26. Desktop: missing search, you-are-here indicator (trunk test fails) [S]
-- Change: Add the missing trunk-test signals (search, you-are-here indicator) to the persistent header on every page.
-- Rationale: On 11 page(s) a visitor dropped in cold can't find: search, you-are-here indicator. Persistent navigation should answer what site this is, what page they're on, the major sections, how to search and where they are. [reproducible-concern; Is the next relevant action discoverable and conventional?]
+### 10. "How do I find something specific?" has no answer path [S]
+- Change: Decide whether visitors should get an answer to "How do I find something specific?"; if so, add it (or a clearly labeled link to it) where they arrive, and point it at the action you want them to take next.
+- Rationale: unanswered-question: visitors are likely to ask "How do I find something specific?" (information, importance 0.6). None of the 1 discovered states or their links answer it (looked for matching copy). [hypothesis; Is the next relevant action discoverable and conventional?]
 - Krug principle: navigation
-- Evidence: finding f_metric_trunk-test_2ec22c22 (data/evidence/exp_4df08f7a_desktop_d1.png)
+- Evidence: finding f_unanswered-question_browse (data/evidence/exp_a2aa965b_desktop_d0.png)
 
-### 27. Desktop: missing you-are-here indicator (trunk test fails) [S]
-- Change: Add the missing trunk-test signals (you-are-here indicator) to the persistent header on every page.
-- Rationale: On 1 page(s) a visitor dropped in cold can't find: you-are-here indicator. Persistent navigation should answer what site this is, what page they're on, the major sections, how to search and where they are. [reproducible-concern; Is the next relevant action discoverable and conventional?]
+### 11. "Who is behind this?" has no answer path [S]
+- Change: Decide whether visitors should get an answer to "Who is behind this?"; if so, add it (or a clearly labeled link to it) where they arrive, and point it at the action you want them to take next.
+- Rationale: unanswered-question: visitors are likely to ask "Who is behind this?" (information, importance 0.6). None of the 1 discovered states or their links answer it (looked for matching copy). [hypothesis; Is the next relevant action discoverable and conventional?]
 - Krug principle: navigation
-- Evidence: finding f_metric_trunk-test_aee677af (data/evidence/exp_4df08f7a_desktop_d1.png)
+- Evidence: finding f_unanswered-question_who-writes (data/evidence/exp_a2aa965b_desktop_d0.png)
+
+### 12. Console errors during browser runs (32) [S]
+- Change: Fix or silence the failing scripts so the page behaves the same for every visitor.
+- Rationale: console-errors: 32 page/console errors across 4 of 4 desktop runs, e.g. "console: Failed to load resource: the server responded with a status of 429 ()", "console: Connecting to 'data:,' violates the following Content Security Policy directive: "connect-src 'self' https://ha", "console: Fetch API cannot load data:,. Refused to connect because it violates the document's Content Security Policy.". The goal check is unaffected, but broken scripts are where unconventional, unpredictable behavior starts. [reproducible-concern; Do labels and interactions behave predictably?]
+- Krug principle: testing-beats-arguing
+- Evidence: finding f_console-errors_desktop (data/evidence/run_t0_desktop_0.png, data/evidence/run_t1_desktop_0.png, data/evidence/run_t2_desktop_0.png)
+
+### 13. "How do I get in touch?" has no answer path [S]
+- Change: Decide whether visitors should get an answer to "How do I get in touch?"; if so, add it (or a clearly labeled link to it) where they arrive, and point it at the action you want them to take next.
+- Rationale: unanswered-question: visitors are likely to ask "How do I get in touch?" (proposal, importance 0.5). None of the 1 discovered states or their links answer it (looked for contact-form). [hypothesis; Is the next relevant action discoverable and conventional?]
+- Krug principle: navigation
+- Evidence: finding f_unanswered-question_contact (data/evidence/exp_a2aa965b_desktop_d0.png)
+
+### 14. "How do I join the community?" has no answer path [S]
+- Change: Decide whether visitors should get an answer to "How do I join the community?"; if so, add it (or a clearly labeled link to it) where they arrive, and point it at the action you want them to take next.
+- Rationale: unanswered-question: visitors are likely to ask "How do I join the community?" (proposal, importance 0.5). None of the 1 discovered states or their links answer it (looked for signup). [hypothesis; Is the next relevant action discoverable and conventional?]
+- Krug principle: navigation
+- Evidence: finding f_unanswered-question_join (data/evidence/exp_a2aa965b_desktop_d0.png)
 
 ## Rebuild plan
 
 ### Truth pass
 Goal: Remove anything stale or misleading — copy must match reality.
-- Assertion failed in browser: url-matches "unlocker"
-- No signup endpoint found
+- Assertion failed in browser: url-matches "unlocker" (4 of 4 runs)
+- Desktop: missing site ID, primary navigation, search (trunk test fails)
+- "What can I do here?" has no answer path
+- "Where do I start?" has no answer path
+- 9 of 10 expected visitor questions have no answer path
 
 ### Hierarchy pass
 Goal: One obvious primary action; scanning-friendly structure.
 - Rebuild nav to ~7 items max
 - Single dominant CTA above the fold
-- Ambiguous link labels (1)
-- Dense link surface increases scan cost
-- Dense link surface increases scan cost
+- Desktop: no call to action above the fold on the homepage
+- "Why should I be here and not somewhere else?" has no answer path
+- "What's new?" has no answer path
 
 ### Verification loop
 Goal: Rehearse the rebuild against the same assertions before shipping.

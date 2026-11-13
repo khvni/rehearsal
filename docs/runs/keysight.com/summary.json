@@ -30,7 +30,7 @@
   ],
   "discover": {
     "states": 15,
-    "edges": 51,
+    "edges": 52,
     "pageFailures": 1,
     "pageFailureSamples": [
       {
@@ -58,17 +58,17 @@
   },
   "simulate": {
     "trajectories": 300,
-    "goalReachPct": 26.7,
+    "goalReachPct": 26.3,
     "outcomes": {
-      "repetition-limit": 218,
-      "goal-reached": 80,
+      "repetition-limit": 219,
+      "goal-reached": 79,
       "dead-end": 2
     }
   },
   "verify": {
     "runs": 4,
-    "passed": 0,
-    "failed": 4,
+    "passed": 1,
+    "failed": 3,
     "assertionsPassed": 1,
     "runsWithConsoleErrors": 4,
     "runErrors": []
@@ -87,12 +87,12 @@
       "variant": 4
     },
     "failedInteractions": {
-      "baseline": 1,
-      "variant": 1
+      "baseline": 0,
+      "variant": 0
     },
     "runtimeErrors": {
-      "baseline": 22,
-      "variant": 28
+      "baseline": 12,
+      "variant": 12
     },
     "findingReproduces": true
   },
@@ -131,27 +131,23 @@
     }
   },
   "findings": {
-    "total": 17,
+    "total": 13,
     "bySeverity": {
       "critical": 0,
       "high": 2,
-      "medium": 12,
-      "low": 3
+      "medium": 7,
+      "low": 4
     },
     "byEvidence": {
       "verified-failure": 1,
-      "reproducible-concern": 14,
+      "reproducible-concern": 10,
       "hypothesis": 2
     },
     "titles": [
-      "[high] Assertion failed in browser: url-matches \"oscilloscope\"",
+      "[high] Assertion failed in browser: url-matches \"oscilloscope\" (3 of 4 runs)",
       "[medium] Ambiguous link labels (11)",
-      "[medium] Dense link surface increases scan cost",
-      "[medium] Dense link surface increases scan cost",
-      "[medium] Dense link surface increases scan cost",
-      "[medium] Dense link surface increases scan cost",
-      "[medium] Dense link surface increases scan cost",
-      "[medium] Dense link surface increases scan cost",
+      "[medium] Dense link surface increases scan cost (6 of 15 pages)",
+      "[low] Console errors during browser runs (49)",
       "[medium] Desktop: homepage requires 8.01 screens of scrolling",
       "[medium] Desktop: no single dominant call to action above the fold",
       "[low] Desktop: primary navigation has 11 items",
@@ -164,13 +160,13 @@
     ]
   },
   "durationsMs": {
-    "discover": 191987,
+    "discover": 192358,
     "simulate": 49,
-    "verify": 62821,
-    "analyze": 69,
-    "compare": 19354,
+    "verify": 16898,
+    "analyze": 68,
+    "compare": 4240,
     "spec": 5,
-    "total": 280046
+    "total": 218619
   },
-  "ranAt": "2026-11-13T21:47:26.364Z"
+  "ranAt": "2026-11-13T22:11:03.289Z"
 }

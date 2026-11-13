@@ -3,7 +3,8 @@
   "url": "https://brightdata.com",
   "targetUrl": "https://brightdata.com/",
   "goal": "find pricing for the Web Unlocker",
-  "status": "complete",
+  "status": "blocked",
+  "failureReason": "Cloudflare challenge",
   "runner": "local-playwright",
   "config": {
     "maxStates": 15,
@@ -16,10 +17,11 @@
     "seed": 1337
   },
   "preflight": {
-    "status": 200,
+    "status": 429,
     "finalUrl": "https://brightdata.com/",
-    "title": "Bright Data: Web Data Infrastructure for Humans & Agents",
-    "blocked": false
+    "title": "Just a moment...",
+    "blocked": true,
+    "blockReason": "Cloudflare challenge"
   },
   "robotsAllowsTarget": true,
   "assertions": [
@@ -29,42 +31,27 @@
     }
   ],
   "discover": {
-    "states": 15,
-    "edges": 240,
+    "states": 1,
+    "edges": 0,
     "pageFailures": 0,
     "pageFailureSamples": [],
     "urls": [
-      "https://brightdata.com/",
-      "https://brightdata.com/products/web-unlocker",
-      "https://brightdata.com/pricing/web-unlocker",
-      "https://brightdata.com/pricing/crawl-api",
-      "https://brightdata.com/pricing/serp",
-      "https://brightdata.com/pricing/scraping-browser",
-      "https://brightdata.com/pricing/web-scraper",
-      "https://brightdata.com/pricing/web-scraper/studio",
-      "https://brightdata.com/pricing/datasets",
-      "https://brightdata.com/pricing/archive-api",
-      "https://brightdata.com/pricing/insights",
-      "https://brightdata.com/pricing/managed-services",
-      "https://brightdata.com/pricing/proxy-network/residential-proxies",
-      "https://brightdata.com/pricing/proxy-network/datacenter-proxies",
-      "https://brightdata.com/pricing/proxy-network/isp-proxies"
+      "https://brightdata.com/"
     ]
   },
   "simulate": {
     "trajectories": 300,
-    "goalReachPct": 23.7,
+    "goalReachPct": 0,
     "outcomes": {
-      "repetition-limit": 229,
-      "goal-reached": 71
+      "dead-end": 300
     }
   },
   "verify": {
     "runs": 4,
     "passed": 0,
     "failed": 4,
-    "assertionsPassed": 1,
-    "runsWithConsoleErrors": 3,
+    "assertionsPassed": 0,
+    "runsWithConsoleErrors": 4,
     "runErrors": []
   },
   "compare": {
@@ -73,103 +60,66 @@
       "variant": false
     },
     "interactionCount": {
-      "baseline": 5,
-      "variant": 5
+      "baseline": 0,
+      "variant": 0
     },
     "backtracks": {
-      "baseline": 5,
-      "variant": 5
+      "baseline": 0,
+      "variant": 0
     },
     "failedInteractions": {
       "baseline": 0,
       "variant": 0
     },
     "runtimeErrors": {
-      "baseline": 0,
+      "baseline": 8,
       "variant": 0
     },
     "findingReproduces": true
   },
   "endpoints": {
     "intent": "quotation",
-    "total": 22,
-    "byClass": {
-      "contact-form": {
-        "found": 1,
-        "reached": 1
-      },
-      "pricing": {
-        "found": 3,
-        "reached": 3
-      },
-      "docs-answers": {
-        "found": 5,
-        "reached": 3
-      },
-      "demo-video": {
-        "found": 5,
-        "reached": 5
-      },
-      "download": {
-        "found": 3,
-        "reached": 0
-      },
-      "schedule-event": {
-        "found": 5,
-        "reached": 0
-      }
-    }
+    "total": 0,
+    "byClass": {}
   },
   "findings": {
-    "total": 27,
+    "total": 14,
     "bySeverity": {
       "critical": 0,
-      "high": 2,
-      "medium": 19,
-      "low": 6
+      "high": 5,
+      "medium": 6,
+      "low": 3
     },
     "byEvidence": {
       "verified-failure": 1,
-      "reproducible-concern": 26
+      "reproducible-concern": 6,
+      "hypothesis": 7
     },
     "titles": [
-      "[high] Assertion failed in browser: url-matches \"unlocker\"",
-      "[medium] Ambiguous link labels (1)",
-      "[medium] Dense link surface increases scan cost",
-      "[medium] Dense link surface increases scan cost",
-      "[medium] Dense link surface increases scan cost",
-      "[medium] Dense link surface increases scan cost",
-      "[medium] Dense link surface increases scan cost",
-      "[medium] Dense link surface increases scan cost",
-      "[medium] Dense link surface increases scan cost",
-      "[medium] Dense link surface increases scan cost",
-      "[medium] Dense link surface increases scan cost",
-      "[medium] Dense link surface increases scan cost",
-      "[medium] Dense link surface increases scan cost",
-      "[medium] Dense link surface increases scan cost",
-      "[medium] Dense link surface increases scan cost",
-      "[medium] Dense link surface increases scan cost",
-      "[medium] Dense link surface increases scan cost",
-      "[high] No signup endpoint found",
-      "[medium] Desktop: homepage requires 9.78 screens of scrolling",
-      "[medium] Desktop: no single dominant call to action above the fold",
-      "[low] Heading outline is broken: skips h2→h4, h2→h5",
-      "[low] Heading outline is broken: skips h1→h3",
-      "[low] Heading outline is broken: no h1",
-      "[low] Desktop: missing search (trunk test fails)",
-      "[low] Desktop: missing search, you-are-here indicator (trunk test fails)",
-      "[medium] Desktop: missing page name, you-are-here indicator (trunk test fails)",
-      "[low] Desktop: missing you-are-here indicator (trunk test fails)"
+      "[high] Assertion failed in browser: url-matches \"unlocker\" (4 of 4 runs)",
+      "[low] Console errors during browser runs (32)",
+      "[medium] Desktop: no call to action above the fold on the homepage",
+      "[high] Desktop: missing site ID, primary navigation, search (trunk test fails)",
+      "[high] \"What can I do here?\" has no answer path",
+      "[high] \"Where do I start?\" has no answer path",
+      "[medium] \"Why should I be here and not somewhere else?\" has no answer path",
+      "[medium] \"What's new?\" has no answer path",
+      "[medium] \"How do I follow along?\" has no answer path",
+      "[medium] \"How do I find something specific?\" has no answer path",
+      "[medium] \"Who is behind this?\" has no answer path",
+      "[low] \"How do I get in touch?\" has no answer path",
+      "[low] \"How do I join the community?\" has no answer path",
+      "[high] 9 of 10 expected visitor questions have no answer path"
     ]
   },
   "durationsMs": {
-    "discover": 33742,
-    "simulate": 47,
-    "verify": 46731,
-    "analyze": 26,
-    "compare": 4788,
-    "spec": 6,
-    "total": 88293
+    "discover": 19735,
+    "simulate": 3,
+    "verify": 68916,
+    "analyze": 8,
+    "compare": 1701,
+    "spec": 2,
+    "total": 108712
   },
-  "ranAt": "2026-11-13T21:54:24.029Z"
+  "ranAt": "2026-11-13T22:16:03.048Z"
 }

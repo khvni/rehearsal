@@ -56,10 +56,10 @@
   },
   "simulate": {
     "trajectories": 300,
-    "goalReachPct": 91.3,
+    "goalReachPct": 91,
     "outcomes": {
-      "goal-reached": 274,
-      "repetition-limit": 26
+      "goal-reached": 273,
+      "repetition-limit": 27
     }
   },
   "verify": {
@@ -76,16 +76,16 @@
       "variant": false
     },
     "interactionCount": {
-      "baseline": 5,
-      "variant": 5
+      "baseline": 6,
+      "variant": 6
     },
     "backtracks": {
-      "baseline": 5,
-      "variant": 5
+      "baseline": 6,
+      "variant": 6
     },
     "failedInteractions": {
-      "baseline": 1,
-      "variant": 1
+      "baseline": 0,
+      "variant": 0
     },
     "runtimeErrors": {
       "baseline": 0,
@@ -120,33 +120,21 @@
     }
   },
   "findings": {
-    "total": 28,
+    "total": 16,
     "bySeverity": {
       "critical": 0,
       "high": 2,
-      "medium": 19,
+      "medium": 7,
       "low": 7
     },
     "byEvidence": {
       "verified-failure": 1,
-      "reproducible-concern": 25,
+      "reproducible-concern": 13,
       "hypothesis": 2
     },
     "titles": [
-      "[high] Assertion failed in browser: url-matches \"schedule\"",
-      "[medium] Dense link surface increases scan cost",
-      "[medium] Dense link surface increases scan cost",
-      "[medium] Dense link surface increases scan cost",
-      "[medium] Dense link surface increases scan cost",
-      "[medium] Dense link surface increases scan cost",
-      "[medium] Dense link surface increases scan cost",
-      "[medium] Dense link surface increases scan cost",
-      "[medium] Dense link surface increases scan cost",
-      "[medium] Dense link surface increases scan cost",
-      "[medium] Dense link surface increases scan cost",
-      "[medium] Dense link surface increases scan cost",
-      "[medium] Dense link surface increases scan cost",
-      "[medium] Dense link surface increases scan cost",
+      "[high] Assertion failed in browser: url-matches \"schedule\" (4 of 4 runs)",
+      "[medium] Dense link surface increases scan cost (13 of 13 pages)",
       "[medium] Endpoint buried: signup \"Apply\"",
       "[medium] Endpoint buried: signup \"Sign Up\"",
       "[high] No pricing endpoint found",
@@ -164,13 +152,13 @@
     ]
   },
   "durationsMs": {
-    "discover": 32289,
-    "simulate": 21,
-    "verify": 39604,
-    "analyze": 124,
-    "compare": 10985,
-    "spec": 2,
-    "total": 85990
+    "discover": 32190,
+    "simulate": 13,
+    "verify": 21431,
+    "analyze": 118,
+    "compare": 3041,
+    "spec": 5,
+    "total": 59727
   },
-  "ranAt": "2026-11-13T21:56:46.609Z"
+  "ranAt": "2026-11-13T22:18:52.239Z"
 }

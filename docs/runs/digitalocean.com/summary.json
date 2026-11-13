@@ -58,16 +58,16 @@
   },
   "simulate": {
     "trajectories": 300,
-    "goalReachPct": 53.3,
+    "goalReachPct": 51.7,
     "outcomes": {
-      "goal-reached": 160,
-      "repetition-limit": 140
+      "goal-reached": 155,
+      "repetition-limit": 145
     }
   },
   "verify": {
     "runs": 4,
-    "passed": 0,
-    "failed": 4,
+    "passed": 1,
+    "failed": 3,
     "assertionsPassed": 1,
     "runsWithConsoleErrors": 4,
     "runErrors": []
@@ -78,12 +78,12 @@
       "variant": false
     },
     "interactionCount": {
-      "baseline": 6,
-      "variant": 6
+      "baseline": 8,
+      "variant": 8
     },
     "backtracks": {
-      "baseline": 6,
-      "variant": 6
+      "baseline": 8,
+      "variant": 8
     },
     "failedInteractions": {
       "baseline": 0,
@@ -91,7 +91,7 @@
     },
     "runtimeErrors": {
       "baseline": 2,
-      "variant": 8
+      "variant": 9
     },
     "findingReproduces": true
   },
@@ -126,46 +126,29 @@
     }
   },
   "findings": {
-    "total": 37,
+    "total": 20,
     "bySeverity": {
       "critical": 0,
-      "high": 5,
-      "medium": 26,
-      "low": 6
+      "high": 3,
+      "medium": 10,
+      "low": 7
     },
     "byEvidence": {
       "verified-failure": 1,
-      "reproducible-concern": 36
+      "reproducible-concern": 19
     },
     "titles": [
-      "[high] Assertion failed in browser: url-matches \"pricing\"",
-      "[medium] Dense link surface increases scan cost",
-      "[medium] Dense link surface increases scan cost",
-      "[medium] Ambiguous link labels (3)",
-      "[medium] Dense link surface increases scan cost",
+      "[high] Assertion failed in browser: url-matches \"pricing\" (3 of 4 runs)",
+      "[medium] Dense link surface increases scan cost (15 of 15 pages)",
+      "[medium] Ambiguous link labels (3) (2 of 15 pages)",
       "[medium] Ambiguous link labels (1)",
-      "[medium] Dense link surface increases scan cost",
       "[medium] Ambiguous link labels (11)",
-      "[medium] Dense link surface increases scan cost",
-      "[high] Post-event page still invites registration",
-      "[medium] Dense link surface increases scan cost",
-      "[high] Post-event page still invites registration",
-      "[medium] Ambiguous link labels (3)",
-      "[medium] Dense link surface increases scan cost",
-      "[high] Post-event page still invites registration",
+      "[high] Post-event page still invites registration (3 of 15 pages)",
       "[medium] Ambiguous link labels (63)",
-      "[medium] Dense link surface increases scan cost",
-      "[medium] Ambiguous link labels (6)",
-      "[medium] Dense link surface increases scan cost",
-      "[medium] Dense link surface increases scan cost",
+      "[medium] Ambiguous link labels (6) (2 of 15 pages)",
       "[medium] Ambiguous link labels (4)",
-      "[medium] Dense link surface increases scan cost",
       "[medium] Ambiguous link labels (2)",
-      "[medium] Dense link surface increases scan cost",
-      "[medium] Dense link surface increases scan cost",
-      "[medium] Dense link surface increases scan cost",
-      "[medium] Ambiguous link labels (6)",
-      "[medium] Dense link surface increases scan cost",
+      "[low] Console errors during browser runs (14)",
       "[low] Desktop: homepage requires 6.76 screens of scrolling",
       "[medium] Desktop: no single dominant call to action above the fold",
       "[medium] Desktop: primary navigation has 17 items",
@@ -178,13 +161,13 @@
     ]
   },
   "durationsMs": {
-    "discover": 34854,
-    "simulate": 49,
-    "verify": 13763,
-    "analyze": 125,
-    "compare": 2659,
-    "spec": 5,
-    "total": 53482
+    "discover": 34720,
+    "simulate": 51,
+    "verify": 49443,
+    "analyze": 128,
+    "compare": 3870,
+    "spec": 7,
+    "total": 90451
   },
-  "ranAt": "2026-11-13T22:01:32.090Z"
+  "ranAt": "2026-11-13T22:23:26.038Z"
 }
