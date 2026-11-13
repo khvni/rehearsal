@@ -77,7 +77,7 @@
         <div class="grid3">
           <div class="card h-in"><span class="n step mono" style="color: var(--accent); font-size: 24px;">01 · INTENT</span><b>Information · Quotation · Proposal</b><span>Classify the visitor goal as RFI / RFQ / RFP.</span></div>
           <div class="card h-in"><span class="n mono" style="color: var(--accent); font-size: 24px;">02 · ENDPOINTS</span><b>Weighted endpoints</b><span>Detect answer, docs, pricing, register, demo-booking… and weight them by intent.</span></div>
-          <div class="card h-in"><span class="n mono" style="color: var(--accent); font-size: 24px;">03 · JOURNEYS</span><b>Journey decision tree</b><span>Discover deduped page states; Jev scores every action; 1,000 seeded journeys.</span></div>
+          <div class="card h-in"><span class="n mono" style="color: var(--accent); font-size: 24px;">03 · JOURNEYS</span><b>Journey decision tree</b><span>Discover deduped page states; Jev scores every action; 300 seeded journeys.</span></div>
           <div class="card h-in"><span class="n mono" style="color: var(--accent); font-size: 24px;">04 · VERIFY</span><b>Browser verification</b><span>Riskiest paths replayed in a real browser, desktop + mobile, with assertions and screenshots.</span></div>
           <div class="card h-in"><span class="n mono" style="color: var(--accent); font-size: 24px;">05 · ANALYZE</span><b>Krug-cited findings</b><span>verified-failure · reproducible-concern · hypothesis. Every finding cites a Krug principle.</span></div>
           <div class="card h-in"><span class="n mono" style="color: var(--accent); font-size: 24px;">06 · SPEC</span><b>spec.md rebuild plan</b><span>Changes ranked by impact, each traced to evidence, plus a phased rebuild plan.</span></div>
@@ -100,8 +100,8 @@
 
       <!-- 5. Demo: dashboard -->
       <section id="s-dash" class="clip" data-start="37" data-duration="9" data-track-index="0" style="justify-content: flex-start;">
-        <div class="tag">Dashboard · exp_f07cd3a8</div>
-        <h2 style="margin-top: 16px; margin-bottom: 28px;">30 states · 400 edges · <span style="color: var(--fail);">0 / 10 browser runs passed</span></h2>
+        <div class="tag">Dashboard · exp_15f495ed</div>
+        <h2 style="margin-top: 16px; margin-bottom: 28px;">15 states · 176 edges · <span style="color: var(--fail);">0 / 4 browser runs passed</span></h2>
         <div style="overflow: hidden; border-radius: 14px; width: 1520px; height: 800px;" class="shot">
           <img id="img-dash" src="assets/dashboard.png" style="width: 1520px; display: block; transform-origin: 0 0;" />
         </div>
@@ -110,7 +110,7 @@
       <!-- 6. Demo: findings + spec -->
       <section id="s-spec" class="clip" data-start="46" data-duration="11" data-track-index="0">
         <div class="tag">Findings → spec.md</div>
-        <h2 style="margin-top: 16px; margin-bottom: 16px;">42 findings: 1 verified failure, 41 reproducible concerns.</h2>
+        <h2 style="margin-top: 16px; margin-bottom: 16px;">23 findings: 2 verified failures, 11 reproducible concerns, 10 hypotheses.</h2>
         <div class="finding f-in"><span class="pill fail">verified-failure</span><span>No browser run reached a "schedule" URL</span><span class="k">testing-beats-arguing</span></div>
         <div class="finding f-in"><span class="pill warn">reproducible-concern</span><span>Post-event page still invites registration</span><span class="k">omit-words</span></div>
         <div class="finding f-in"><span class="pill warn">reproducible-concern</span><span>Trunk test fails: no page name, nav, search</span><span class="k">navigation</span></div>
@@ -126,8 +126,8 @@
         <div class="tag">Stack</div>
         <h2 style="margin-top: 16px;">Every adapter falls back to fixtures. No keys, same pipeline.</h2>
         <div class="grid4">
-          <div class="card k-in"><b>Gemini</b><span>gemini-4-hydrogen (fast) + gemini-4-argon (deep)</span></div>
-          <div class="card k-in"><b>Jev</b><span>system-one action scoring and decisions</span></div>
+          <div class="card k-in"><b>Gemini</b><span>hydrogen live now; argon deep model auto-falls back when quota-limited</span></div>
+          <div class="card k-in"><b>Jev</b><span>system-one action scoring (deterministic fixture; live endpoint pending)</span></div>
           <div class="card k-in"><b>Bright Data</b><span>Web Unlocker + Browser API fetch</span></div>
           <div class="card k-in"><b>Browserbase Stagehand</b><span>agentic browser verification</span></div>
           <div class="card k-in"><b>Sentry</b><span>errors + traces, DSN-gated</span></div>
