@@ -3588,6 +3588,86 @@
       "recommendation": "Add the missing trunk-test signals (site ID, primary navigation, search, you-are-here indicator) to the persistent header on every page.",
       "verificationStatus": "reproduced",
       "krugPrinciple": "navigation"
+    },
+    {
+      "findingId": "f_unanswered-question_cost",
+      "title": "\"How much does it cost?\" has no answer path",
+      "category": "navigation",
+      "severity": "medium",
+      "evidenceType": "hypothesis",
+      "description": "unanswered-question: visitors are likely to ask \"How much does it cost?\" (quotation, importance 0.75). None of the 2 discovered states or their links answer it (looked for pricing).",
+      "affectedStates": [
+        "st_00000002"
+      ],
+      "affectedActions": [],
+      "evidencePaths": [],
+      "recommendation": "Decide whether visitors should get an answer to \"How much does it cost?\"; if so, add it (or a clearly labeled link to it) where they arrive, and point it at the action you want them to take next.",
+      "verificationStatus": "unverified",
+      "krugPrinciple": "navigation"
+    },
+    {
+      "findingId": "f_unanswered-question_ctx-apply-criteria",
+      "title": "\"Who gets accepted, and when will I hear back?\" has no answer path",
+      "category": "navigation",
+      "severity": "medium",
+      "evidenceType": "hypothesis",
+      "description": "unanswered-question: visitors are likely to ask \"Who gets accepted, and when will I hear back?\" (proposal, importance 0.7, raised by the site's own copy). None of the 2 discovered states or their links answer it (looked for matching copy).",
+      "affectedStates": [
+        "st_00000002"
+      ],
+      "affectedActions": [],
+      "evidencePaths": [],
+      "recommendation": "Decide whether visitors should get an answer to \"Who gets accepted, and when will I hear back?\"; if so, add it (or a clearly labeled link to it) where they arrive, and point it at the action you want them to take next.",
+      "verificationStatus": "unverified",
+      "krugPrinciple": "navigation"
+    },
+    {
+      "findingId": "f_unanswered-question_contact",
+      "title": "\"How do I contact the organizers?\" has no answer path",
+      "category": "navigation",
+      "severity": "low",
+      "evidenceType": "hypothesis",
+      "description": "unanswered-question: visitors are likely to ask \"How do I contact the organizers?\" (proposal, importance 0.5). None of the 2 discovered states or their links answer it (looked for contact-form).",
+      "affectedStates": [
+        "st_00000002"
+      ],
+      "affectedActions": [],
+      "evidencePaths": [],
+      "recommendation": "Decide whether visitors should get an answer to \"How do I contact the organizers?\"; if so, add it (or a clearly labeled link to it) where they arrive, and point it at the action you want them to take next.",
+      "verificationStatus": "unverified",
+      "krugPrinciple": "navigation"
+    },
+    {
+      "findingId": "f_unanswered-question_ctx-travel",
+      "title": "\"How do I get there and where should I stay?\" has no answer path",
+      "category": "navigation",
+      "severity": "low",
+      "evidenceType": "hypothesis",
+      "description": "unanswered-question: visitors are likely to ask \"How do I get there and where should I stay?\" (information, importance 0.45, raised by the site's own copy). None of the 2 discovered states or their links answer it (looked for matching copy).",
+      "affectedStates": [
+        "st_00000002"
+      ],
+      "affectedActions": [],
+      "evidencePaths": [],
+      "recommendation": "Decide whether visitors should get an answer to \"How do I get there and where should I stay?\"; if so, add it (or a clearly labeled link to it) where they arrive, and point it at the action you want them to take next.",
+      "verificationStatus": "unverified",
+      "krugPrinciple": "navigation"
+    },
+    {
+      "findingId": "f_unanswered-questions-summary",
+      "title": "4 of 18 expected visitor questions have no answer path",
+      "category": "goal-completion",
+      "severity": "low",
+      "evidenceType": "hypothesis",
+      "description": "unanswered-question summary: 14/18 likely visitor questions are answered by the 2 discovered states or their endpoints. Unanswered: \"How much does it cost?\", \"Who gets accepted, and when will I hear back?\", \"How do I contact the organizers?\", \"How do I get there and where should I stay?\".",
+      "affectedStates": [
+        "st_00000002"
+      ],
+      "affectedActions": [],
+      "evidencePaths": [],
+      "recommendation": "Pick which questions the site should answer and which action each answer should lead to; start with \"How much does it cost?\", \"Who gets accepted, and when will I hear back?\", \"How do I contact the organizers?\".",
+      "verificationStatus": "unverified",
+      "krugPrinciple": "navigation"
     }
   ],
   "variants": [
@@ -3643,7 +3723,7 @@
       "run_t1_desktop",
       "run_variant_var_00000006"
     ],
-    "summary": "Rehearsal verified 3 browser runs against https://ai.engineer/code/2026: 0 verified failure(s), 5 reproducible concern(s). 5 total findings mapped to 5 proposed changes.",
+    "summary": "Rehearsal verified 3 browser runs against https://ai.engineer/code/2026: 0 verified failure(s), 5 reproducible concern(s). 10 total findings mapped to 10 proposed changes.",
     "changes": [
       {
         "rank": 1,
@@ -3687,11 +3767,61 @@
       },
       {
         "rank": 5,
+        "title": "\"How much does it cost?\" has no answer path",
+        "findingId": "f_unanswered-question_cost",
+        "krugPrinciple": "navigation",
+        "change": "Decide whether visitors should get an answer to \"How much does it cost?\"; if so, add it (or a clearly labeled link to it) where they arrive, and point it at the action you want them to take next.",
+        "rationale": "unanswered-question: visitors are likely to ask \"How much does it cost?\" (quotation, importance 0.75). None of the 2 discovered states or their links answer it (looked for pricing). [hypothesis; Is the next relevant action discoverable and conventional?]",
+        "effort": "S",
+        "evidencePaths": []
+      },
+      {
+        "rank": 6,
+        "title": "\"Who gets accepted, and when will I hear back?\" has no answer path",
+        "findingId": "f_unanswered-question_ctx-apply-criteria",
+        "krugPrinciple": "navigation",
+        "change": "Decide whether visitors should get an answer to \"Who gets accepted, and when will I hear back?\"; if so, add it (or a clearly labeled link to it) where they arrive, and point it at the action you want them to take next.",
+        "rationale": "unanswered-question: visitors are likely to ask \"Who gets accepted, and when will I hear back?\" (proposal, importance 0.7, raised by the site's own copy). None of the 2 discovered states or their links answer it (looked for matching copy). [hypothesis; Is the next relevant action discoverable and conventional?]",
+        "effort": "S",
+        "evidencePaths": []
+      },
+      {
+        "rank": 7,
         "title": "Desktop: primary navigation has 11 items",
         "findingId": "f_metric_nav-overload_752dcb69",
         "krugPrinciple": "navigation",
         "change": "Group navigation into 7 or fewer top-level sections; move the rest into sub-navigation or the footer.",
         "rationale": "The top navigation exposes up to 11 visible items (more than 7), which makes the major sections harder to name at a glance. [reproducible-concern; Is the next relevant action discoverable and conventional?]",
+        "effort": "S",
+        "evidencePaths": []
+      },
+      {
+        "rank": 8,
+        "title": "\"How do I contact the organizers?\" has no answer path",
+        "findingId": "f_unanswered-question_contact",
+        "krugPrinciple": "navigation",
+        "change": "Decide whether visitors should get an answer to \"How do I contact the organizers?\"; if so, add it (or a clearly labeled link to it) where they arrive, and point it at the action you want them to take next.",
+        "rationale": "unanswered-question: visitors are likely to ask \"How do I contact the organizers?\" (proposal, importance 0.5). None of the 2 discovered states or their links answer it (looked for contact-form). [hypothesis; Is the next relevant action discoverable and conventional?]",
+        "effort": "S",
+        "evidencePaths": []
+      },
+      {
+        "rank": 9,
+        "title": "\"How do I get there and where should I stay?\" has no answer path",
+        "findingId": "f_unanswered-question_ctx-travel",
+        "krugPrinciple": "navigation",
+        "change": "Decide whether visitors should get an answer to \"How do I get there and where should I stay?\"; if so, add it (or a clearly labeled link to it) where they arrive, and point it at the action you want them to take next.",
+        "rationale": "unanswered-question: visitors are likely to ask \"How do I get there and where should I stay?\" (information, importance 0.45, raised by the site's own copy). None of the 2 discovered states or their links answer it (looked for matching copy). [hypothesis; Is the next relevant action discoverable and conventional?]",
+        "effort": "S",
+        "evidencePaths": []
+      },
+      {
+        "rank": 10,
+        "title": "4 of 18 expected visitor questions have no answer path",
+        "findingId": "f_unanswered-questions-summary",
+        "krugPrinciple": "navigation",
+        "change": "Pick which questions the site should answer and which action each answer should lead to; start with \"How much does it cost?\", \"Who gets accepted, and when will I hear back?\", \"How do I contact the organizers?\".",
+        "rationale": "unanswered-question summary: 14/18 likely visitor questions are answered by the 2 discovered states or their endpoints. Unanswered: \"How much does it cost?\", \"Who gets accepted, and when will I hear back?\", \"How do I contact the organizers?\", \"How do I get there and where should I stay?\". [hypothesis; Can the intended outcome be verified?]",
         "effort": "S",
         "evidencePaths": []
       }
@@ -3713,7 +3843,7 @@
           "Single dominant CTA above the fold",
           "Dense link surface increases scan cost",
           "Desktop: missing site ID (trunk test fails)",
-          "Desktop: primary navigation has 11 items"
+          "\"How much does it cost?\" has no answer path"
         ]
       },
       {
@@ -3977,6 +4107,268 @@
       "samplePath": [
         "EMAIL UPDATES"
       ]
+    }
+  ],
+  "questions": [
+    {
+      "questionId": "hp-what",
+      "intent": "information",
+      "question": "What is this event?",
+      "expectedEndpointClasses": [],
+      "answered": true,
+      "answeredBy": {
+        "stateId": "st_00000002",
+        "url": "https://ai.engineer/code/2026",
+        "evidence": "AIE CODE returns for its second annual code-focused summit."
+      },
+      "importance": 1,
+      "source": "bank"
+    },
+    {
+      "questionId": "hp-do",
+      "intent": "proposal",
+      "question": "What can I do here?",
+      "expectedEndpointClasses": [
+        "signup",
+        "contact-form",
+        "next-steps",
+        "download",
+        "schedule-event",
+        "pricing",
+        "demo-video",
+        "docs-answers"
+      ],
+      "answered": true,
+      "answeredBy": {
+        "stateId": "st_00000002",
+        "url": "https://ai.engineer/code/2026/talks",
+        "evidence": "schedule-event endpoint \"Explore all 50 sessions →\""
+      },
+      "importance": 0.9,
+      "source": "bank"
+    },
+    {
+      "questionId": "hp-start",
+      "intent": "proposal",
+      "question": "Where do I start?",
+      "expectedEndpointClasses": [
+        "signup"
+      ],
+      "answered": true,
+      "answeredBy": {
+        "stateId": "st_00000002",
+        "url": "https://ai.engineer/data#code-applications",
+        "evidence": "signup endpoint \"Apply through our MCP →\""
+      },
+      "importance": 0.9,
+      "source": "bank"
+    },
+    {
+      "questionId": "hp-why",
+      "intent": "information",
+      "question": "Why should I be here and not somewhere else?",
+      "expectedEndpointClasses": [],
+      "answered": true,
+      "answeredBy": {
+        "stateId": "st_00000002",
+        "url": "https://ai.engineer/code/2026",
+        "evidence": "& READ Recordings, essays & transcripts WHY ATTEND Built for practitioners APPLY TO ATTEND SPEAKERS First spea"
+      },
+      "importance": 0.7,
+      "source": "bank"
+    },
+    {
+      "questionId": "when-where",
+      "intent": "information",
+      "question": "When and where is it?",
+      "expectedEndpointClasses": [],
+      "answered": true,
+      "answeredBy": {
+        "stateId": "st_00000002",
+        "url": "https://ai.engineer/code/2026",
+        "evidence": "Summit 2026: AI Engineering Conference, Nov 10-12, San Francisco 01000011 01001111 01000100 01000101 010011 … 1001110 01000101 01000101 01010010 //LOCATION SAN FRANCISCO, CA //DATE NOV 10-12, 2026 Search… / WEL"
+      },
+      "importance": 1,
+      "source": "bank"
+    },
+    {
+      "questionId": "attend",
+      "intent": "proposal",
+      "question": "How do I attend or apply?",
+      "expectedEndpointClasses": [
+        "signup"
+      ],
+      "answered": true,
+      "answeredBy": {
+        "stateId": "st_00000002",
+        "url": "https://ai.engineer/data#code-applications",
+        "evidence": "signup endpoint \"Apply through our MCP →\""
+      },
+      "importance": 0.95,
+      "source": "bank"
+    },
+    {
+      "questionId": "agenda",
+      "intent": "information",
+      "question": "What's on the agenda?",
+      "expectedEndpointClasses": [
+        "schedule-event"
+      ],
+      "answered": true,
+      "answeredBy": {
+        "stateId": "st_00000002",
+        "url": "https://ai.engineer/code/2026/talks",
+        "evidence": "schedule-event endpoint \"Explore all 50 sessions →\""
+      },
+      "importance": 0.85,
+      "source": "bank"
+    },
+    {
+      "questionId": "speakers",
+      "intent": "information",
+      "question": "Who is speaking?",
+      "expectedEndpointClasses": [],
+      "answered": true,
+      "answeredBy": {
+        "stateId": "st_00000002",
+        "url": "https://ai.engineer/code/2026",
+        "evidence": "Built for practitioners APPLY TO ATTEND SPEAKERS First speakers announced PROGRAM Daily agenda VENUE Hilton"
+      },
+      "importance": 0.8,
+      "source": "bank"
+    },
+    {
+      "questionId": "cost",
+      "intent": "quotation",
+      "question": "How much does it cost?",
+      "expectedEndpointClasses": [
+        "pricing"
+      ],
+      "answered": false,
+      "importance": 0.75,
+      "source": "bank"
+    },
+    {
+      "questionId": "ctx-apply-criteria",
+      "intent": "proposal",
+      "question": "Who gets accepted, and when will I hear back?",
+      "expectedEndpointClasses": [],
+      "answered": false,
+      "importance": 0.7,
+      "source": "context"
+    },
+    {
+      "questionId": "format",
+      "intent": "information",
+      "question": "Is it in person or online?",
+      "expectedEndpointClasses": [],
+      "answered": true,
+      "answeredBy": {
+        "stateId": "st_00000002",
+        "url": "https://ai.engineer/code/2026",
+        "evidence": "speakers announced PROGRAM Daily agenda VENUE Hilton Union Square, SF SIDE EVENTS Events around the summi"
+      },
+      "importance": 0.6,
+      "source": "bank"
+    },
+    {
+      "questionId": "who-for",
+      "intent": "information",
+      "question": "Who is it for?",
+      "expectedEndpointClasses": [],
+      "answered": true,
+      "answeredBy": {
+        "stateId": "st_00000002",
+        "url": "https://ai.engineer/code/2026",
+        "evidence": "rdings, essays & transcripts WHY ATTEND Built for practitioners APPLY TO ATTEND SPEAKERS First speakers annou"
+      },
+      "importance": 0.6,
+      "source": "bank"
+    },
+    {
+      "questionId": "ctx-date",
+      "intent": "proposal",
+      "question": "What happens on Nov 10-12, and how do I take part?",
+      "expectedEndpointClasses": [
+        "schedule-event",
+        "signup"
+      ],
+      "answered": true,
+      "answeredBy": {
+        "stateId": "st_00000002",
+        "url": "https://ai.engineer/code/2026/talks",
+        "evidence": "schedule-event endpoint \"Explore all 50 sessions →\""
+      },
+      "importance": 0.55,
+      "source": "context"
+    },
+    {
+      "questionId": "contact",
+      "intent": "proposal",
+      "question": "How do I contact the organizers?",
+      "expectedEndpointClasses": [
+        "contact-form"
+      ],
+      "answered": false,
+      "importance": 0.5,
+      "source": "bank"
+    },
+    {
+      "questionId": "faq",
+      "intent": "information",
+      "question": "Where are the answers to common questions?",
+      "expectedEndpointClasses": [
+        "docs-answers"
+      ],
+      "answered": true,
+      "answeredBy": {
+        "stateId": "st_00000002",
+        "url": "https://ai.engineer/code/2026",
+        "evidence": "JSON SPONSORS First sponsors announced FAQ NOV 10-12, 2026 // SF, CA A YEAR OF AGENTIC CODING."
+      },
+      "importance": 0.5,
+      "source": "bank"
+    },
+    {
+      "questionId": "recordings",
+      "intent": "information",
+      "question": "Can I watch the talks if I can't attend?",
+      "expectedEndpointClasses": [
+        "demo-video"
+      ],
+      "answered": true,
+      "answeredBy": {
+        "stateId": "st_00000002",
+        "url": "https://www.youtube.com/watch?v=ZZ19zhYnDKY",
+        "evidence": "demo-video endpoint \"Watch on YouTube ↗\""
+      },
+      "importance": 0.5,
+      "source": "bank"
+    },
+    {
+      "questionId": "ctx-travel",
+      "intent": "information",
+      "question": "How do I get there and where should I stay?",
+      "expectedEndpointClasses": [],
+      "answered": false,
+      "importance": 0.45,
+      "source": "context"
+    },
+    {
+      "questionId": "sponsor",
+      "intent": "proposal",
+      "question": "How do I sponsor or partner?",
+      "expectedEndpointClasses": [
+        "contact-form"
+      ],
+      "answered": true,
+      "answeredBy": {
+        "stateId": "st_00000002",
+        "url": "https://ai.engineer/code/2026/guide/sponsorship",
+        "evidence": "contact-form endpoint \"BECOME A SPONSOR\""
+      },
+      "importance": 0.4,
+      "source": "bank"
     }
   ],
   "errors": []

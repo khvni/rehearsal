@@ -1,0 +1,111 @@
+{
+  "fixture": "tests/evals/fixtures/aie-code-2026.html",
+  "goal": "find the conference schedule",
+  "config": {
+    "seed": 1337,
+    "maxStates": 12,
+    "maxDepth": 3,
+    "trajectories": 200,
+    "verifyCount": 2,
+    "viewports": [
+      "desktop"
+    ]
+  },
+  "states": 12,
+  "edges": 45,
+  "trajectories": 200,
+  "goalReached": 43,
+  "verified": 2,
+  "verifiedPassed": 0,
+  "findings": [
+    {
+      "ruleOrTitle": "Assertion failed in browser: url-matches \"schedule\"",
+      "severity": "high",
+      "principle": "testing-beats-arguing",
+      "count": 1
+    },
+    {
+      "ruleOrTitle": "Desktop: missing site ID, primary navigation, search, you-are-here indicator (trunk test fails)",
+      "severity": "high",
+      "principle": "navigation",
+      "count": 1
+    },
+    {
+      "ruleOrTitle": "Post-event page still invites registration",
+      "severity": "high",
+      "principle": "omit-words",
+      "count": 1
+    },
+    {
+      "ruleOrTitle": "Dense link surface increases scan cost",
+      "severity": "medium",
+      "principle": "scanning-not-reading",
+      "count": 1
+    },
+    {
+      "ruleOrTitle": "Desktop: homepage requires # screens of scrolling",
+      "severity": "medium",
+      "principle": "scanning-not-reading",
+      "count": 1
+    },
+    {
+      "ruleOrTitle": "Desktop: missing site ID (trunk test fails)",
+      "severity": "medium",
+      "principle": "navigation",
+      "count": 1
+    },
+    {
+      "ruleOrTitle": "Desktop: primary navigation has # items",
+      "severity": "low",
+      "principle": "navigation",
+      "count": 1
+    }
+  ],
+  "endpoints": [
+    {
+      "class": "schedule-event",
+      "count": 2,
+      "reached": 2,
+      "weight": 0.9
+    },
+    {
+      "class": "signup",
+      "count": 1,
+      "reached": 1,
+      "weight": 0.76
+    },
+    {
+      "class": "demo-video",
+      "count": 5,
+      "reached": 5,
+      "weight": 0.6
+    },
+    {
+      "class": "contact-form",
+      "count": 1,
+      "reached": 1,
+      "weight": 0.45
+    },
+    {
+      "class": "next-steps",
+      "count": 1,
+      "reached": 1,
+      "weight": 0.4
+    }
+  ],
+  "specSections": [
+    "Summary",
+    "Changes (by impact)",
+    "#. Assertion failed in browser: url-matches \"schedule\" [M]",
+    "#. Post-event page still invites registration [M]",
+    "#. Desktop: missing site ID, primary navigation, search, you-are-here indicator (trunk test fails) [M]",
+    "#. Dense link surface increases scan cost [S]",
+    "#. Desktop: homepage requires # screens of scrolling [S]",
+    "#. Desktop: missing site ID (trunk test fails) [S]",
+    "#. Desktop: primary navigation has # items [S]",
+    "Rebuild plan",
+    "Truth pass",
+    "Hierarchy pass",
+    "Verification loop"
+  ]
+}

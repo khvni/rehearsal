@@ -14,6 +14,7 @@
     "test:e2e": "playwright test",
     "check:skill-sync": "tsx scripts/check-skill-sync.ts",
     "check:facts": "tsx scripts/verify-facts.ts",
+    "spec:delta": "tsx scripts/spec-delta.ts",
     "check": "npm run lint && npm run typecheck && npm run test && npm run eval && npm run check:skill-sync && npm run check:facts"
   },
   "dependencies": {
