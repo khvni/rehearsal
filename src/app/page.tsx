@@ -7,44 +7,85 @@ export default function Home() {
   const [url, setUrl] = useState("https://ai.engineer/code/2026");
   const [goal, setGoal] = useState("Determine whether someone can still register for the conference");
   const [busy, setBusy] = useState(false);
+  const [error, setError] = useState("");
   const router = useRouter();
 
   async function start(e: React.FormEvent) {
     e.preventDefault();
     setBusy(true);
+    setError("");
     try {
       const res = await fetch("/api/experiments", {
         method: "POST",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({ targetUrl: url, goal }),
+        body: JSON.stringify({ targetUrl: url.trim(), goal: goal.trim() }),
       });
-      const data = (await res.json()) as { id?: string; error?: string };
-      if (data.id) router.push(`/experiments/${data.id}`);
-      else alert(data.error ?? "failed");
-    } finally {
-      setBusy(false);
+      const data = (await res.json().catch(() => ({}))) as { id?: string; error?: string };
+      if (res.ok && data.id) {
+        router.push(`/experiments/${data.id}`);
+        return;
+      }
+      setError(data.error ?? `Request failed (${res.status})`);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : String(err));
     }
+    setBusy(false);
   }
 
   return (
-    <div className="page">
+    <div className="page narrow">
       <div className="header">
         <h1>Rehearsal</h1>
         <span className="meta">Simulate journeys. Verify in real browsers. Ship a rebuild spec.</span>
       </div>
-      <form className="form" onSubmit={start}>
-        <input value={url} onChange={(e) => setUrl(e.target.value)} placeholder="https://…" aria-label="Target URL" />
-        <input value={goal} onChange={(e) => setGoal(e.target.value)} placeholder="What should a visitor accomplish?" aria-label="Objective" />
-        <button type="submit" disabled={busy}>{busy ? "Creating…" : "Rehearse"}</button>
+      <form className="launch" onSubmit={start} aria-busy={busy}>
+        <label className="field">
+          <span className="field-label">Site URL</span>
+          <input
+            type="url"
+            required
+            value={url}
+            onChange={(e) => setUrl(e.target.value)}
+            placeholder="https://example.com"
+            autoComplete="url"
+            inputMode="url"
+            spellCheck={false}
+            aria-invalid={error ? true : undefined}
+          />
+        </label>
+        <label className="field">
+          <span className="field-label">Goal</span>
+          <textarea
+            required
+            rows={2}
+            value={goal}
+            onChange={(e) => setGoal(e.target.value)}
+            placeholder="What should a visitor be able to do?"
+          />
+        </label>
+        {error && (
+          <p className="form-error" role="alert">
+            {error}
+          </p>
+        )}
+        <div className="row">
+          <button type="submit" className="primary" disabled={busy || !url.trim() || !goal.trim()}>
+            {busy ? "Creating…" : "Rehearse"}
+          </button>
+        </div>
       </form>
-      <div className="panel">
-        <h3>How it works</h3>
-        <p className="step">1. Discover states → build a decision graph (Playwright + Bright Data)</p>
-        <p className="step">2. Jev System One scores actions → 1000 seeded simulated journeys</p>
-        <p className="step">3. Riskiest paths verified in real desktop + mobile browsers</p>
-        <p className="step">4. Findings graded on Krug&apos;s rubric → variant applied → re-verified</p>
-        <p className="step">5. Output: spec.md — every fix + a rebuild plan</p>
-      </div>
+      <section className="panel">
+        <header className="panel-head">
+          <h3>How it works</h3>
+        </header>
+        <ol className="how">
+          <li>Discover states and build a decision graph (Playwright + Bright Data)</li>
+          <li>Jev System One scores actions; 1000 seeded simulated journeys</li>
+          <li>Riskiest paths verified in real desktop and mobile browsers</li>
+          <li>Findings graded on Krug&apos;s rubric; a variant is applied and re-verified</li>
+          <li>Output: spec.md with every fix and a rebuild plan</li>
+        </ol>
+      </section>
     </div>
   );
 }
