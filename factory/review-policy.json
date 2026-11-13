@@ -1,0 +1,8 @@
+{
+  "blocking_severities": ["bug", "security"],
+  "non_blocking_severities": ["code_quality", "style"],
+  "max_review_rounds": 2,
+  "escalate_to": "orchestrator",
+  "on_non_blocking": "note in PR description or follow-up issue; do not start another review round",
+  "on_max_rounds_exceeded": "stop fixing, summarize the open blocking findings, hand the PR to the orchestrator session"
+}

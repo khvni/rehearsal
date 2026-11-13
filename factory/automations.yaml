@@ -1,0 +1,35 @@
+# Intended Devin automations for khvni/rehearsal.
+# Spec only: this file is NOT applied by scripts/factory-sync.ts. The live
+# automations are created in Devin and should mirror this list; change it here
+# first (via PR), then update the automation.
+automations:
+  - name: nightly-corpus-audit
+    trigger: schedule
+    schedule: "0 9 * * *" # 01:00 America/Los_Angeles (PST), daily
+    repo: khvni/rehearsal
+    prompt: >-
+      Run the Rehearsal pipeline against every target in the eval corpus
+      (tests/evals/fixtures) with npm run eval, compare findings and spec
+      output with the last run, and open a PR only if a golden needs an
+      intentional update. Report regressions with the failing eval names.
+
+  - name: hourly-snapshot-health
+    trigger: schedule
+    schedule: "0 * * * *" # hourly
+    repo: khvni/rehearsal
+    prompt: >-
+      On a fresh session from the current snapshot, verify the toolchain from
+      factory/blueprint.yaml: node -v reports v22, npm install is a no-op,
+      Playwright chromium launches, and npm run check passes on main. If any
+      step fails, report the failing command and its output; do not open a PR.
+
+  - name: weekly-factory-report
+    trigger: schedule
+    schedule: "0 16 * * 1" # Mondays 08:00 America/Los_Angeles (PST)
+    repo: khvni/rehearsal
+    prompt: >-
+      Summarize the last 7 days of agent work on khvni/rehearsal: merged PRs,
+      review rounds per PR against factory/review-policy.json (flag any PR over
+      max_review_rounds), CI failures by check, and drift reported by
+      npm run factory:check. Propose factory/** changes as a PR if a policy is
+      being worked around repeatedly.
