@@ -37,6 +37,18 @@
       "count": 1
     },
     {
+      "ruleOrTitle": "\"How much does it cost?\" has no answer path",
+      "severity": "medium",
+      "principle": "navigation",
+      "count": 1
+    },
+    {
+      "ruleOrTitle": "\"Who gets accepted, and when will I hear back?\" has no answer path",
+      "severity": "medium",
+      "principle": "navigation",
+      "count": 1
+    },
+    {
       "ruleOrTitle": "Dense link surface increases scan cost",
       "severity": "medium",
       "principle": "scanning-not-reading",
@@ -51,6 +63,24 @@
     {
       "ruleOrTitle": "Desktop: missing site ID (trunk test fails)",
       "severity": "medium",
+      "principle": "navigation",
+      "count": 1
+    },
+    {
+      "ruleOrTitle": "\"How do I contact the organizers?\" has no answer path",
+      "severity": "low",
+      "principle": "navigation",
+      "count": 1
+    },
+    {
+      "ruleOrTitle": "\"How do I get there and where should I stay?\" has no answer path",
+      "severity": "low",
+      "principle": "navigation",
+      "count": 1
+    },
+    {
+      "ruleOrTitle": "# of # expected visitor questions have no answer path",
+      "severity": "low",
       "principle": "navigation",
       "count": 1
     },
@@ -102,7 +132,12 @@
     "#. Dense link surface increases scan cost [S]",
     "#. Desktop: homepage requires # screens of scrolling [S]",
     "#. Desktop: missing site ID (trunk test fails) [S]",
+    "#. \"How much does it cost?\" has no answer path [S]",
+    "#. \"Who gets accepted, and when will I hear back?\" has no answer path [S]",
     "#. Desktop: primary navigation has # items [S]",
+    "#. \"How do I contact the organizers?\" has no answer path [S]",
+    "#. \"How do I get there and where should I stay?\" has no answer path [S]",
+    "#. # of # expected visitor questions have no answer path [S]",
     "Rebuild plan",
     "Truth pass",
     "Hierarchy pass",
