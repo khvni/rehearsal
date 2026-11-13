@@ -197,12 +197,13 @@ table.delta th { color: var(--muted); font-weight: 500; }
 .node-visits { font-size: 12px; color: var(--text); opacity: 0.8; font-variant-numeric: tabular-nums; }
 
 /* spec.md prose */
-.prose { max-width: 36em; color: var(--text); font-size: 14px; line-height: 1.65; }
+.prose { max-width: 32em; color: var(--text); font-size: 14px; line-height: 1.65; }
 .prose h1 { font-size: 20px; margin: 0 0 12px; overflow-wrap: anywhere; }
 .prose h2 { font-size: 15px; margin: 28px 0 10px; padding-bottom: 6px; border-bottom: 1px solid var(--border); }
 .prose h3 { font-size: 14px; margin: 20px 0 6px; display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
 .prose p { margin: 0 0 12px; color: var(--muted); }
-.prose ul { margin: 0 0 12px; padding-left: 18px; display: grid; gap: 4px; }
+.prose ul { margin: 0 0 12px; padding-left: 18px; display: grid; grid-template-columns: minmax(0, 1fr); gap: 4px; }
+.prose li { min-width: 0; overflow-wrap: anywhere; }
 .prose li::marker { color: var(--muted); }
 .prose .md-label { color: var(--muted); font-weight: 500; }
 .prose strong { color: var(--text); }
