@@ -4,16 +4,22 @@ import {
   ExperimentConfig,
   VIEWPORTS,
   type Assertion,
+  type BrowserRunner,
   type Comparison,
+  type ExperimentStore,
+  type JevClient,
+  type LlmClient,
+  type PageFetcher,
+  type SimWeights,
   type Variant,
 } from "./contracts";
-import { selectFetcher, type PageFetcher } from "./fetch";
+import { selectFetcher } from "./fetch";
 import { assertPublicUrl, robotsDisallowed } from "./fetch/guards";
-import { extractPage, selectRunner, type BrowserRunner } from "./browser/runner";
+import { extractPage, selectRunner } from "./browser/runner";
 import { GraphBuilder, makeState, adjacency } from "./graph";
-import { selectJev, scoreActions, type JevClient } from "./decisions/jev";
-import { simulateTrajectories, selectTrajectories, type SimWeights } from "./simulation";
-import { selectLlm, type LlmClient } from "./analysis/gemini";
+import { selectJev, scoreActions } from "./decisions/jev";
+import { simulateTrajectories, selectTrajectories } from "./simulation";
+import { selectLlm } from "./analysis/gemini";
 import { endpointFindings, llmFindings, ruleFindings } from "./analysis/findings";
 import { questionFindings } from "./analysis/question-findings";
 import {
@@ -30,7 +36,7 @@ import {
 import { metricFindings } from "./analysis/metric-findings";
 import { metricsFromHtml } from "./browser/metrics";
 import { generateSpec, specToMarkdown } from "./analysis/spec";
-import { selectStore, type ExperimentStore } from "./storage";
+import { selectStore } from "./storage";
 import { withTrace, logEvent } from "./telemetry";
 import { writeFileSync, mkdirSync } from "node:fs";
 import path from "node:path";
@@ -44,9 +50,8 @@ export const PIPELINE_STAGES = [
   "compare",
   "spec",
 ] as const;
-export type PipelineStage = (typeof PIPELINE_STAGES)[number];
 
-export interface OrchestratorDeps {
+interface OrchestratorDeps {
   fetcher?: PageFetcher;
   jev?: JevClient;
   llm?: LlmClient;

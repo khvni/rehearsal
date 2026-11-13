@@ -6,7 +6,7 @@ Rehearsal: a UX verification pipeline (see README.md + docs/PRD.md). Next.js 16 
 
 ## Non-negotiables
 
-1. **Contracts first.** All shared types live in `src/lib/contracts/index.ts` (zod).
+1. **Contracts first.** All shared types live in `src/lib/contracts/` (zod; siblings re-exported from `index.ts`).
    Never introduce a parallel type; extend the contract.
 2. **Skill sync is enforced.** Adding a pipeline stage or eval file requires updating
    `.devin/skills/rehearsal-testing/SKILL.md` in the same commit (`npm run check:skill-sync`).
@@ -17,6 +17,11 @@ Rehearsal: a UX verification pipeline (see README.md + docs/PRD.md). Next.js 16 
    and must cite a Krug principle (`docs/krug-principles.md`). No fabricated metrics.
 6. **Safety.** `assertPublicUrl` guards every outbound fetch/navigation; never submit
    forms on third-party sites; variants apply only inside isolated Playwright contexts.
+
+## Review policy
+
+Lint is the source of truth for repo rules (`eslint-rules/`). Only `bug`/`security` review findings block merge;
+feedback repeated twice becomes a lint rule or eval. See [docs/review-policy.md](docs/review-policy.md).
 
 ## Commands
 

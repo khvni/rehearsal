@@ -1,5 +1,4 @@
-import type { EndpointClass, IntentCategory, IntentProfile, SiteType, StateGraph } from "../contracts";
-import type { LlmClient } from "../analysis/gemini";
+import type { EndpointClass, IntentCategory, IntentProfile, LlmClient, SiteType, StateGraph } from "../contracts";
 import { detectSiteType } from "./endpoints";
 
 const QUOTATION =

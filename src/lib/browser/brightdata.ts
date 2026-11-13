@@ -1,12 +1,12 @@
 import { mkdirSync } from "node:fs";
 import path from "node:path";
 import { chromium, type Browser, type Page } from "playwright";
-import type { BrowserRun, DomPatch, Viewport } from "../contracts";
+import type { BrowserRun, BrowserRunner, DomPatch, EnvVars, OpenPageResult, TrajectoryArgs, Viewport } from "../contracts";
 import { assertPublicUrl } from "../fetch/guards";
 import { compilePatches } from "../variants";
 import { measurePage } from "./metrics";
 import { DEFAULT_EVIDENCE_DIR, executeTrajectory, watchPageErrors } from "./playwright";
-import { summarizeRun, type BrowserRunner, type EnvVars, type OpenPageResult, type TrajectoryArgs } from "./types";
+import { summarizeRun } from "./types";
 
 const BRIGHTDATA_HOST = "brd.superproxy.io:9222";
 /** Bright Data recommends a 2-minute navigation timeout for sites that need unlocking. */

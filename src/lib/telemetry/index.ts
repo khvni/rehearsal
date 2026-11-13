@@ -23,7 +23,7 @@ async function getSentry() {
 
 const LOG_DIR = path.join(process.cwd(), "data", "events");
 
-export interface TelemetryEvent {
+interface TelemetryEvent {
   experimentId?: string;
   stage: string;
   kind: string;

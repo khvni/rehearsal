@@ -3,12 +3,12 @@ import type {
   Endpoint,
   EndpointClass,
   IntentCategory,
+  LlmClient,
   SiteState,
   SiteType,
   StateGraph,
   VisitorQuestion,
 } from "../contracts";
-import type { LlmClient } from "../analysis/gemini";
 
 /**
  * Unanswered visitor questions: a checked-in bank of questions a visitor of each
@@ -18,7 +18,7 @@ import type { LlmClient } from "../analysis/gemini";
 
 type Detector = (state: SiteState) => string | null;
 
-export interface QuestionTemplate {
+interface QuestionTemplate {
   id: string;
   intent: IntentCategory;
   question: string;
