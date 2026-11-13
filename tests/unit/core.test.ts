@@ -208,6 +208,9 @@ describe("browser run success", () => {
     expect(f[0].affectedStates).toEqual([state.stateId]);
     expect(f[0].description).toContain("2 page/console errors across 2 of 3 desktop runs");
     expect(ruleFindings({ states: [state], runs: [clean], assertions: [] }).some((x) => x.findingId.startsWith("f_console-errors_"))).toBe(false);
+    const mobileRun = { ...noisy, runId: "r4", viewport: VIEWPORTS.mobile };
+    const mobile = ruleFindings({ states: [state], runs: [mobileRun], assertions: [] }).find((x) => x.findingId === "f_console-errors_mobile");
+    expect(mobile?.affectedStates).toEqual([]);
   });
 });
 

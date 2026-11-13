@@ -150,7 +150,7 @@ export function ruleFindings(args: {
 
 /**
  * console-errors: one low-severity finding per viewport whose runs logged page/console errors.
- * Attributed to the start state — every run begins at the target URL.
+ * Attributed to the first discovered state in that viewport — every run begins at the target URL.
  */
 function consoleErrorFindings(runs: BrowserRun[], states: SiteState[]): Finding[] {
   const byViewport = new Map<string, BrowserRun[]>();
@@ -158,8 +158,8 @@ function consoleErrorFindings(runs: BrowserRun[], states: SiteState[]): Finding[
     if (run.consoleErrorCount === 0) continue;
     byViewport.set(run.viewport.name, [...(byViewport.get(run.viewport.name) ?? []), run]);
   }
-  const start = states[0];
   return [...byViewport].map(([viewport, noisy]) => {
+    const start = states.find((s) => s.viewport.name === viewport);
     const total = noisy.reduce((n, r) => n + r.consoleErrorCount, 0);
     const samples = [...new Set(noisy.flatMap((r) => r.errors.filter((e) => !isRunError(e))))].slice(0, 3);
     return {
