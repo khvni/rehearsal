@@ -316,6 +316,7 @@ export default function ExperimentPage() {
                       <li key={i} className={s.ok ? "ok" : "fail"} title={s.error ?? s.label}>
                         {i > 0 && <ArrowIcon size={12} className="arrow" />}
                         {!s.ok && <CrossIcon size={12} />}
+                        {!s.ok && <span className="sr-only">Failed: </span>}
                         <span>{s.label}</span>
                       </li>
                     ))}
@@ -324,6 +325,7 @@ export default function ExperimentPage() {
                 {r.assertions.map((a, i) => (
                   <div key={i} className={`assert ${a.passed ? "ok" : "fail"}`}>
                     {a.passed ? <CheckIcon size={12} /> : <CrossIcon size={12} />}
+                    <span className="sr-only">{a.passed ? "Passed: " : "Failed: "}</span>
                     <span><span className="mono">{a.assertion.kind}</span> {a.assertion.value}</span>
                   </div>
                 ))}
