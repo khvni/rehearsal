@@ -16,6 +16,7 @@
     "check": "npm run lint && npm run typecheck && npm run test && npm run eval && npm run check:skill-sync"
   },
   "dependencies": {
+    "@browserbasehq/stagehand": "^4.4.0",
     "@sentry/nextjs": "^10.25.0",
     "@types/pg": "^8.23.1",
     "@xyflow/react": "^12.9.3",

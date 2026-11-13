@@ -11,7 +11,7 @@ eval cases.** `npm run check:skill-sync` fails the build otherwise.
 
 ## Pipeline stages (src/lib/orchestrator.ts, PIPELINE_STAGES)
 
-- `discover` — fetch + Playwright open page, extract elements, build deduplicated state graph
+- `discover` — fetch + browser runner (Bright Data → Stagehand → local Playwright) open page, extract elements, build deduplicated state graph
 - `simulate` — Jev scores actions per state; seeded sampler produces ≥500 trajectories
 - `verify` — risk-ranked trajectories executed in real desktop/mobile browsers; assertions checked
 - `analyze` — rule-based + Gemini findings, each classified by evidence type + Krug principle
