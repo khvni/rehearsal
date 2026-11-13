@@ -1,0 +1,40 @@
+name: factory-check
+
+on:
+  pull_request:
+    paths:
+      - "factory/**"
+      - "scripts/factory-sync.ts"
+      - ".github/workflows/factory-check.yml"
+  push:
+    branches: [main]
+    paths:
+      - "factory/**"
+      - "scripts/factory-sync.ts"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  factory:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      # Read-only. On PRs drift is expected (the PR proposes the change), so it
+      # only warns; on main it fails until the owner applies the ruleset.
+      # Missing permissions always skip with a notice.
+      - name: factory:check
+        run: npm run factory:check
+        env:
+          GH_TOKEN: ${{ github.token }}
+          FACTORY_DRIFT_MODE: ${{ github.event_name == 'pull_request' && 'warn' || 'strict' }}
