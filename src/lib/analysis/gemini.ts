@@ -1,4 +1,5 @@
 import type { LlmClient } from "../contracts";
+import { logEvent } from "../telemetry";
 
 /**
  * Gemini API client — REST over generativelanguage (stable across SDK churn).
@@ -35,7 +36,7 @@ export class GeminiClient implements LlmClient {
       return await this.generate(model, prompt, opts?.json ?? false);
     } catch (err) {
       if (model !== this.fast && isRetryableWithFastModel(err)) {
-        console.warn(`[gemini] ${model} unavailable (${String(err)}); falling back to ${this.fast}`);
+        logEvent({ stage: "analyze", kind: "llm-fallback", data: { from: model, to: this.fast, error: String(err).slice(0, 160) } });
         return await this.generate(this.fast, prompt, opts?.json ?? false);
       }
       throw err;

@@ -5,13 +5,14 @@ import type {
   Endpoint,
   EndpointClass,
   EndpointJourney,
-  EvidenceType,
   Finding,
   LlmClient,
   SiteState,
 } from "../contracts";
 import { isVagueLabel } from "../browser/extract";
 import { isRunError } from "../browser/types";
+import { EvidenceType, KrugDimension, KrugPrinciple, Severity } from "../contracts";
+import { logEvent } from "../telemetry";
 import { rubricPromptSection } from "./rubric";
 
 let counter = 0;
@@ -324,23 +325,28 @@ Return FINDINGS_JSON: {"findings": [{"title","category"(rubric key),"severity","
       .map((f) => ({
         findingId: fid(),
         title: String(f.title),
-        category: (f.category ?? "clarity") as Finding["category"],
-        severity: (f.severity ?? "medium") as Finding["severity"],
-        evidenceType: (f.evidenceType ?? "hypothesis") as EvidenceType,
+        category: pick(KrugDimension, f.category, "clarity"),
+        severity: pick(Severity, f.severity, "medium"),
+        evidenceType: pick(EvidenceType, f.evidenceType, "hypothesis"),
         description: String(f.description),
         affectedStates: states.slice(0, 3).map((s) => s.stateId),
         affectedActions: [],
         evidencePaths: [],
         recommendation: String(f.recommendation ?? ""),
         verificationStatus: f.evidenceType === "verified-failure" ? "verified" : "unverified",
-        krugPrinciple: (f.krugPrinciple ?? "dont-make-me-think") as Finding["krugPrinciple"],
+        krugPrinciple: pick(KrugPrinciple, f.krugPrinciple, "dont-make-me-think"),
       }));
   } catch (err) {
-    console.warn(`[llm-findings] ${llm.name} produced no findings: ${String(err)}`);
+    logEvent({ stage: "analyze", kind: "llm-findings-failed", data: { llm: llm.name, error: String(err).slice(0, 160) } });
     return [];
   }
 }
 
 export function stripFences(s: string): string {
   return s.replace(/```json|```/g, "").trim();
+}
+
+/** LLM output is untrusted: coerce to a contract enum member or the given default. */
+function pick<T extends string>(schema: { safeParse(v: unknown): { success: boolean } }, value: unknown, fallback: T): T {
+  return schema.safeParse(value).success ? (value as T) : fallback;
 }
