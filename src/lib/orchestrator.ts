@@ -94,12 +94,19 @@ export class Orchestrator {
 
       for (const vpName of config.viewports) {
         const viewport = VIEWPORTS[vpName];
-        const frontier: { url: string; depth: number }[] = [{ url: experiment.targetUrl, depth: 0 }];
-        const visited = new Set<string>();
+        const frontier: { url: string; depth: number; from?: { stateId: string; actionId: string } }[] = [
+          { url: experiment.targetUrl, depth: 0 },
+        ];
+        const visited = new Map<string, string>(); // url -> canonical stateId
+        const attempted = new Set<string>();
         while (frontier.length > 0) {
-          const { url, depth } = frontier.shift()!;
-          if (visited.has(url) || depth > config.maxDepth) continue;
-          visited.add(url);
+          const { url, depth, from } = frontier.shift()!;
+          if (visited.has(url)) {
+            if (from) builder.link(from.stateId, from.actionId, visited.get(url)!);
+            continue;
+          }
+          if (attempted.has(url) || depth > config.maxDepth || builder.full) continue;
+          attempted.add(url);
           try {
             const { html, screenshotPath, ctx } = await this.runner.openPage(url, viewport, {
               shotName: `${id}_${vpName}_d${depth}`,
@@ -115,12 +122,20 @@ export class Orchestrator {
             });
             const { state: canonical, isNew } = builder.add(state);
             await ctx?.close();
+            if (!isNew && !builder.has(canonical.stateId)) continue;
+            visited.set(url, canonical.stateId);
+            if (from) builder.link(from.stateId, from.actionId, canonical.stateId);
             if (!isNew) continue;
             if (depth < config.maxDepth) {
-              for (const a of canonical.actions) {
-                if (a.type === "click" && a.href && a.href.startsWith(new URL(experiment.targetUrl).origin)) {
-                  frontier.push({ url: a.href, depth: depth + 1 });
-                }
+              const origin = new URL(experiment.targetUrl).origin;
+              const goalWords = experiment.goal.toLowerCase().split(/[^a-z0-9]+/).filter((w) => w.length > 4);
+              const relevant = (label: string, href: string) =>
+                goalWords.some((w) => `${label} ${href}`.toLowerCase().includes(w)) ? 1 : 0;
+              const links = canonical.actions
+                .filter((a) => a.type === "click" && a.href && a.href.startsWith(origin))
+                .sort((a, b) => relevant(b.label, b.href!) - relevant(a.label, a.href!));
+              for (const a of links) {
+                frontier.push({ url: a.href!, depth: depth + 1, from: { stateId: canonical.stateId, actionId: a.actionId } });
               }
             }
           } catch (e) {
@@ -243,7 +258,7 @@ export class Orchestrator {
     const exp = (await this.mustGet(id))!;
     await this.update(exp, "comparing");
     return withTrace("compare", id, async () => {
-      const finding = exp.findings[0];
+      const finding = exp.findings.find((f) => /post-event|stale/i.test(f.title)) ?? exp.findings[0];
       if (!finding) {
         await this.update(exp, "created");
         return exp;
@@ -251,7 +266,12 @@ export class Orchestrator {
       const variant = await this.proposeVariant(exp, finding.findingId);
       exp.variants.push(variant);
 
-      const baselineActions = exp.browserTests[0]?.steps.map((s) => ({ label: s.label })) ?? [];
+      const actionById = new Map((exp.graph?.states ?? []).flatMap((st) => st.actions.map((a) => [a.actionId, a] as const)));
+      const baselineActions =
+        exp.browserTests[0]?.steps.map((s) => {
+          const a = s.actionId ? actionById.get(s.actionId) : undefined;
+          return { actionId: s.actionId, label: s.label, href: a?.href, role: a?.role };
+        }) ?? [];
       const run = await this.runner.runTrajectory({
         url: exp.targetUrl,
         viewport: VIEWPORTS.desktop,
@@ -318,7 +338,7 @@ export class Orchestrator {
         ? {
             op: "insertNotice" as const,
             selector: "body",
-            value: `This event has concluded — ${exp.goal.slice(0, 60)}. Recordings and future dates coming soon.`,
+            value: "This event has concluded. Recordings and future dates coming soon.",
           }
         : { op: "insertNotice" as const, selector: "body", value: "Rehearsal variant: content under review." };
     return {

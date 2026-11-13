@@ -53,7 +53,7 @@ export function ruleFindings(args: {
     const text = state.visibleText.toLowerCase();
 
     // 2. Stale-content heuristic: past-dated event copy still invites action.
-    const pastDates = extractPastDates(state.visibleText, now);
+    const pastDates = [...new Set(extractPastDates(state.visibleText, now).map((d) => d.toUpperCase()))];
     const hasApplyCta = /\b(apply|register|sign up|get tickets|buy tickets|submit application)\b/i.test(
       state.visibleText,
     );
@@ -116,7 +116,8 @@ export function ruleFindings(args: {
     }
 
     // 5. Missing H1-ish identity (trunk test, K6).
-    if (!state.pageTitle || state.pageTitle === state.url) {
+    const isDocument = !/\.(txt|ics|xml|json|pdf)$/i.test(new URL(state.url).pathname);
+    if (isDocument && (!state.pageTitle || state.pageTitle === state.url)) {
       findings.push({
         findingId: fid(),
         title: "Page lacks a readable title",
