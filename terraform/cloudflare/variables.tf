@@ -57,6 +57,11 @@ variable "brightdata_api_key" {
   default   = ""
 }
 
+variable "brightdata_zone" {
+  type    = string
+  default = ""
+}
+
 variable "sentry_dsn" {
   type      = string
   sensitive = true

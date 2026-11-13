@@ -1,14 +1,20 @@
 import { describe, expect, it } from "vitest";
 import { readFileSync } from "node:fs";
 import path from "node:path";
-import { Experiment, VIEWPORTS, type BrowserRun, type SiteState, type StateGraph } from "@/lib/contracts";
+import {
+  Experiment,
+  VIEWPORTS,
+  type BrowserRun,
+  type BrowserRunner,
+  type ExperimentStore,
+  type SiteState,
+  type StateGraph,
+} from "@/lib/contracts";
 import { extractPage } from "@/lib/browser/extract";
-import type { BrowserRunner } from "@/lib/browser/types";
 import { GraphBuilder, makeState } from "@/lib/graph";
 import { FixtureJevClient } from "@/lib/decisions/jev";
 import { FixtureLlmClient } from "@/lib/analysis/gemini";
 import { endpointFindings } from "@/lib/analysis/findings";
-import type { ExperimentStore } from "@/lib/storage";
 import { Orchestrator } from "@/lib/orchestrator";
 import {
   EXPECTED_CLASSES,

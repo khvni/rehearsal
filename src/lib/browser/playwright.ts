@@ -1,19 +1,21 @@
 import { mkdirSync } from "node:fs";
 import path from "node:path";
 import { chromium, type Browser, type BrowserContext, type Page } from "playwright";
-import type { Assertion, BrowserRun, DomPatch, Viewport } from "../contracts";
+import type {
+  Assertion,
+  AssertionProbe,
+  BrowserRun,
+  BrowserRunner,
+  DomPatch,
+  OpenPageResult,
+  PlaywrightStepOptions,
+  TrajectoryArgs,
+  Viewport,
+} from "../contracts";
 import { assertPublicUrl } from "../fetch/guards";
 import { compilePatches } from "../variants";
 import { measurePage } from "./metrics";
-import {
-  evaluateAssertion,
-  shouldShoot,
-  summarizeRun,
-  type AssertionProbe,
-  type BrowserRunner,
-  type OpenPageResult,
-  type TrajectoryArgs,
-} from "./types";
+import { evaluateAssertion, shouldShoot, summarizeRun } from "./types";
 
 export const DEFAULT_EVIDENCE_DIR = path.join(process.cwd(), "data", "evidence");
 const USER_AGENT = "Rehearsal/0.1 (+https://github.com/khvni/rehearsal)";
@@ -30,13 +32,6 @@ export function playwrightProbe(page: Page): AssertionProbe {
 
 export async function checkAssertion(page: Page, a: Assertion): Promise<boolean> {
   return evaluateAssertion(playwrightProbe(page), a);
-}
-
-export interface PlaywrightStepOptions {
-  /** Navigation timeout for goto/load waits. */
-  navTimeoutMs: number;
-  /** Prefer clicking a same-origin link over page.goto (keeps remote sessions on one in-page flow). */
-  preferClick: boolean;
 }
 
 /** Shared Playwright trajectory loop used by the local and Bright Data runners. */

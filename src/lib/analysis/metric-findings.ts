@@ -1,7 +1,6 @@
 import { createHash } from "node:crypto";
-import type { Finding, SiteState } from "../contracts";
+import type { Finding, PageMetrics, SiteState } from "../contracts";
 import { normalizeUrl } from "../browser/extract";
-import type { PageMetrics } from "../browser/metrics";
 
 /** Rule thresholds for metric findings (docs/krug-principles.md K2/K4/K6/K7). */
 export const METRIC_RULES = {
