@@ -1,5 +1,4 @@
-import { z } from "zod";
-import type { Viewport } from "../contracts";
+import { PageMetrics, type EvaluatingPage, type Viewport } from "../contracts";
 
 /** Seconds a visitor spends per screen of scrolling while scanning (rough Krug-style glance budget). */
 export const SCROLL_SEC_PER_SCREEN = 1.5;
@@ -8,43 +7,6 @@ export const CTA_PROMINENCE_TIE = 0.75;
 /** Search triggers, menu toggles and dismiss buttons are utilities, not calls to action. */
 const UTILITY_CONTROL_LABEL = /^\s*(search|open menu|close|menu|toggle)\b/i;
 
-/**
- * Scanning/usability measurements for one rendered page (Krug K2/K4/K6/K7).
- * `source: "browser"` = measured in a real layout via page.evaluate; `"html"` = DOM-only
- * fallback where layout-dependent fields are null.
- */
-export const PageMetrics = z.object({
-  source: z.enum(["browser", "html"]),
-  pageHeightPx: z.number().nullable(),
-  viewportHeightPx: z.number(),
-  /** pageHeight / viewportHeight = screens of scrolling. */
-  foldRatio: z.number().nullable(),
-  estimatedScrollTimeSec: z.number().nullable(),
-  aboveFoldCtaCount: z.number().int().nullable(),
-  totalCtaCount: z.number().int(),
-  /** Above-fold CTAs tied for most prominent (area x font size); 1 = a clear primary action. */
-  primaryCtaAmbiguity: z.number().int().nullable(),
-  primaryCtaLabels: z.array(z.string()),
-  headingOutline: z.object({
-    h1Count: z.number().int(),
-    h1Text: z.array(z.string()),
-    skippedLevels: z.array(z.string()),
-  }),
-  navItemCount: z.number().int(),
-  /** Visible text characters per rendered font size, largest size first. */
-  fontSizeBuckets: z.array(z.object({ px: z.number(), chars: z.number().int() })).nullable(),
-  /** Visible above-the-fold text characters per 10,000 px² of viewport. */
-  textDensity: z.number().nullable(),
-  largestTextIsH1: z.boolean().nullable(),
-  trunkTest: z.object({
-    hasSiteName: z.boolean(),
-    hasPageName: z.boolean(),
-    hasPrimaryNav: z.boolean(),
-    hasSearch: z.boolean(),
-    hasYouAreHere: z.boolean(),
-  }),
-});
-export type PageMetrics = z.infer<typeof PageMetrics>;
 
 /**
  * Plain-JS expression evaluated in the page (Playwright, Bright Data CDP, Stagehand).
@@ -177,11 +139,6 @@ export const MEASURE_SCRIPT = `(() => {
     trunkTest: { hasSiteName, hasPageName, hasPrimaryNav: navItems.size >= 3 || hasMenuToggle, hasSearch, hasYouAreHere },
   };
 })()`;
-
-/** Anything with a string-expression `evaluate` — Playwright pages (local or CDP) and Stagehand pages. */
-export interface EvaluatingPage {
-  evaluate(expression: string): Promise<unknown>;
-}
 
 /** The runner hook: measure the currently loaded page. Never throws — returns undefined on failure. */
 export async function measurePage(page: EvaluatingPage): Promise<PageMetrics | undefined> {

@@ -14,6 +14,7 @@
     "test:e2e": "playwright test",
     "check:skill-sync": "tsx scripts/check-skill-sync.ts",
     "design:check": "sh .devin/skills/impeccable/scripts/impeccable detect src/app",
+    "spec:delta": "tsx scripts/spec-delta.ts",
     "check": "npm run lint && npm run typecheck && npm run test && npm run eval && npm run check:skill-sync"
   },
   "dependencies": {

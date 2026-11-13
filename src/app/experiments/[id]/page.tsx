@@ -3,10 +3,10 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
-import type { Experiment, Finding, KrugPrinciple, Viewport } from "@/lib/contracts";
+import type { Experiment, Finding, KrugPrinciple, PanelState, Viewport } from "@/lib/contracts";
 import { KrugChip, SEVERITY_ORDER, SeverityChip } from "../../_components/chips";
 import { Markdown } from "../../_components/markdown";
-import { Panel, type PanelState } from "../../_components/panel";
+import { Panel } from "../../_components/panel";
 import { HeatLegend, StateGraph, visitCounts } from "./state-graph";
 
 const STAGES = ["discover", "simulate", "verify", "analyze", "compare", "spec"] as const;

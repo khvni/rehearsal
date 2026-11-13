@@ -8,6 +8,7 @@ import {
   type Assertion,
   type BehavioralProfile,
   type Finding,
+  type SimWeights,
   type SiteState,
   type StateGraph,
   type Trajectory,
@@ -19,7 +20,6 @@ import {
   rankForVerification,
   selectTrajectories,
   simulateTrajectories,
-  type SimWeights,
 } from "@/lib/simulation";
 import { extractPastDates, ruleFindings } from "@/lib/analysis/findings";
 import { generateSpec, specToMarkdown } from "@/lib/analysis/spec";

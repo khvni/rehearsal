@@ -1,10 +1,5 @@
 import type { ReactNode } from "react";
-
-export type PanelState =
-  | { kind: "ready" }
-  | { kind: "loading"; label: string }
-  | { kind: "empty"; message: string }
-  | { kind: "error"; message: string; onRetry?: () => void };
+import type { PanelState } from "@/lib/contracts";
 
 export function Panel({
   title,

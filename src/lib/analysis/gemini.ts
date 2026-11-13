@@ -1,13 +1,10 @@
+import type { LlmClient } from "../contracts";
+
 /**
  * Gemini API client — REST over generativelanguage (stable across SDK churn).
  * Models: gemini-4-hydrogen (fast/cheap structured calls), gemini-4-argon
  * (findings, recommendations, spec generation).
  */
-export interface LlmClient {
-  readonly name: string;
-  complete(prompt: string, opts?: { deep?: boolean; json?: boolean }): Promise<string>;
-}
-
 export class GeminiClient implements LlmClient {
   readonly name = "gemini";
   private apiKey: string;
