@@ -25,6 +25,8 @@ import {
   intentForGoal,
   endpointGoalAssertions,
 } from "./intents";
+import { metricFindings } from "./analysis/metric-findings";
+import { metricsFromHtml } from "./browser/metrics";
 import { generateSpec, specToMarkdown } from "./analysis/spec";
 import { selectStore, type ExperimentStore } from "./storage";
 import { withTrace, logEvent } from "./telemetry";
@@ -119,7 +121,7 @@ export class Orchestrator {
           if (attempted.has(url) || depth > config.maxDepth || builder.full) continue;
           attempted.add(url);
           try {
-            const { html, screenshotPath } = await this.runner.openPage(url, viewport, {
+            const { html, screenshotPath, metrics } = await this.runner.openPage(url, viewport, {
               shotName: `${id}_${vpName}_d${depth}`,
             });
             const extracted = extractPage(html, url);
@@ -131,6 +133,7 @@ export class Orchestrator {
               actions: extracted.actions,
               screenshotPath,
             });
+            state.metrics = metrics ?? metricsFromHtml(html, url, viewport);
             const { state: canonical, isNew } = builder.add(state);
             if (!isNew && !builder.has(canonical.stateId)) continue;
             visited.set(url, canonical.stateId);
@@ -258,7 +261,12 @@ export class Orchestrator {
       const rules = ruleFindings({ states, runs: exp.browserTests, assertions: exp.assertions });
       const llm = await llmFindings({ llm: this.llm, states, runs: exp.browserTests, goal: exp.goal });
       const endpoints = await this.endpointAnalysis(exp);
-      exp.findings = dedupeFindings([...rules, ...endpoints, ...llm]);
+      exp.findings = dedupeFindings([
+        ...rules,
+        ...endpoints,
+        ...metricFindings(states, { homepageUrl: exp.targetUrl }),
+        ...llm,
+      ]);
       await this.update(exp, "created");
       return exp;
     });
@@ -441,7 +449,7 @@ Return ASSERTION_LIST as a JSON array of {kind, value, selector?}.`,
 function dedupeFindings(list: Experiment["findings"]): Experiment["findings"] {
   const seen = new Set<string>();
   return list.filter((f) => {
-    const key = `${f.category}|${f.title.toLowerCase().slice(0, 40)}`;
+    const key = `${f.category}|${f.title.trim().toLowerCase()}|${[...f.affectedStates].sort().join(",")}`;
     if (seen.has(key)) return false;
     seen.add(key);
     return true;

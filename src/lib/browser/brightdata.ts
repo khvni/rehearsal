@@ -4,6 +4,7 @@ import { chromium, type Browser, type Page } from "playwright";
 import type { BrowserRun, DomPatch, Viewport } from "../contracts";
 import { assertPublicUrl } from "../fetch/guards";
 import { compilePatches } from "../variants";
+import { measurePage } from "./metrics";
 import { DEFAULT_EVIDENCE_DIR, executeTrajectory, watchPageErrors } from "./playwright";
 import { summarizeRun, type BrowserRunner, type EnvVars, type OpenPageResult, type TrajectoryArgs } from "./types";
 
@@ -71,7 +72,8 @@ export class BrightDataBrowserRunner implements BrowserRunner {
       await page.goto(url, { waitUntil: "domcontentloaded", timeout: BRIGHTDATA_NAV_TIMEOUT_MS });
       await page.waitForTimeout(1200);
       await page.screenshot({ path: screenshotPath, fullPage: false });
-      return { html: await page.content(), screenshotPath };
+      const metrics = await measurePage(page);
+      return { html: await page.content(), screenshotPath, metrics };
     });
   }
 
