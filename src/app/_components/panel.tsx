@@ -9,6 +9,7 @@ export function Panel({
   busy,
   className,
   enter = "fade",
+  emptyAction,
   children,
 }: {
   title: string;
@@ -18,6 +19,7 @@ export function Panel({
   busy?: boolean;
   className?: string;
   enter?: "fade" | "none";
+  emptyAction?: ReactNode;
   children?: ReactNode;
 }) {
   return (
@@ -25,29 +27,30 @@ export function Panel({
       <header className="panel-head">
         <h2>{title}</h2>
         {meta && <span className="panel-meta">{meta}</span>}
-        {busy && state.kind === "ready" && <span className="pill running">updating</span>}
+        {busy && state.kind === "ready" && <span className="pill running">Updating</span>}
         {actions && <div className="panel-actions">{actions}</div>}
       </header>
       {state.kind === "ready" && <div className={`panel-body ${enter === "fade" ? "reveal" : ""}`}>{children}</div>}
       {state.kind === "loading" && (
-        <div className="state">
+        <div className="state" role="status">
           <div className="skeleton" />
           <div className="skeleton short" />
-          <div className="skeleton" />
           <p className="state-text">{state.label}</p>
         </div>
       )}
       {state.kind === "empty" && (
-        <div className="state">
+        <div className="state reveal">
           <p className="state-text">{state.message}</p>
+          {emptyAction}
         </div>
       )}
       {state.kind === "error" && (
-        <div className="state error" role="alert">
+        <div className="state error reveal" role="alert">
+          <p className="state-title">This step failed</p>
           <p className="state-text">{state.message}</p>
           {state.onRetry && (
             <button type="button" onClick={state.onRetry}>
-              Retry
+              Try again
             </button>
           )}
         </div>

@@ -6,6 +6,7 @@ import { useParams } from "next/navigation";
 import type { Experiment, Finding, KrugPrinciple, PanelState, Viewport } from "@/lib/contracts";
 import { KrugChip, SEVERITY_ORDER, SeverityChip } from "../../_components/chips";
 import { Markdown } from "../../_components/markdown";
+import { CheckIcon, CrossIcon, ArrowIcon, DownloadIcon } from "../../_components/icons";
 import { Panel } from "../../_components/panel";
 import { HeatLegend, StateGraph, visitCounts } from "./state-graph";
 
@@ -116,9 +117,10 @@ export default function ExperimentPage() {
       <div className="page">
         <TopBar />
         <div className="state error page-state" role="alert">
-          <p className="state-text">Couldn&apos;t load experiment {id}: {loadError}</p>
+          <p className="state-title">Couldn&apos;t load this experiment</p>
+          <p className="state-text">{loadError}</p>
           <div className="row">
-            <button type="button" onClick={() => void refresh()}>Retry</button>
+            <button type="button" onClick={() => void refresh()}>Try again</button>
             <Link href="/" className="button-link">New experiment</Link>
           </div>
         </div>
@@ -130,7 +132,7 @@ export default function ExperimentPage() {
     return (
       <div className="page">
         <TopBar />
-        <div className="state page-state" aria-busy>
+        <div className="state page-state" role="status" aria-busy>
           <div className="skeleton" />
           <div className="skeleton short" />
           <p className="state-text">Loading experiment…</p>
@@ -168,8 +170,8 @@ export default function ExperimentPage() {
   let graphState = panelState(
     "graph",
     (graph?.states.length ?? 0) > 0,
-    "Discovering states…",
-    "No states yet. Run discover to crawl the target and build the graph.",
+    "Mapping the site’s states…",
+    "Nothing mapped yet. Discover visits the page and records every state a visitor can reach.",
   );
   if (graphState.kind === "ready" && viewportStates.length === 0) {
     graphState = {
@@ -203,52 +205,55 @@ export default function ExperimentPage() {
     if (err && !specDoc?.md) return { kind: "error", message: err, onRetry: specKey ? () => void loadSpec() : () => void runStage("spec") };
     if (specDoc?.md) return { kind: "ready" };
     if (busy("spec") || (specKey && specDoc?.key !== specKey)) return { kind: "loading", label: "Writing spec.md…" };
-    return { kind: "empty", message: "No spec yet. Run spec after analyze to generate the rebuild plan." };
+    return { kind: "empty", message: "No spec yet. It lists every fix, ranked, once the earlier steps have run." };
   })();
+
+  const runButton = (stage: (typeof STAGES)[number]) => (
+    <button type="button" disabled={pending !== null} onClick={() => void runStage(stage)}>
+      Run {stage}
+    </button>
+  );
+  const passed = runs.filter((r) => r.success).length;
 
   return (
     <div className="page">
       <TopBar />
-      <div className="header">
-        <h1>Experiment <span className="mono">{exp.id}</span></h1>
-        <span className={`pill ${statusClass}`}>{exp.status}</span>
-        <span className="meta tabular">{exp.configuration.viewports.join(" + ")} · {exp.simulations.length.toLocaleString()} journeys</span>
-      </div>
-      <dl className="facts">
-        <dt>URL</dt>
-        <dd className="mono"><a href={exp.targetUrl} target="_blank" rel="noreferrer">{exp.targetUrl}</a></dd>
-        <dt>Goal</dt>
-        <dd>{exp.goal}</dd>
-      </dl>
-
-      <div className="toolbar" role="toolbar" aria-label="Pipeline stages">
-        <button type="button" className="primary" disabled={pending !== null} onClick={() => void runStage("run")}>
-          {pending === "run" ? "Running pipeline…" : "Run all"}
-        </button>
-        <span className="divider" aria-hidden />
-        {STAGES.map((s, i) => (
-          <button
-            key={s}
-            type="button"
-            className={`stage ${stageDone[s] ? "done" : ""} ${stageActive(s) ? "active" : ""}`}
-            disabled={pending !== null}
-            onClick={() => void runStage(s)}
-          >
-            <span className="stage-mark" aria-hidden>{stageDone[s] ? "✓" : i + 1}</span>
-            {pending === s ? `${s}…` : s}
-          </button>
-        ))}
-      </div>
-      <div className="progress" aria-label="Pipeline progress">
-        <div className="progress-track" role="progressbar" aria-valuemin={0} aria-valuemax={STAGES.length} aria-valuenow={doneCount}>
-          <div className={`progress-fill ${polling ? "running" : ""}`} style={{ transform: `scaleX(${doneCount / STAGES.length})` }} />
+      <header className="exp-head">
+        <h1>{exp.goal}</h1>
+        <div className="exp-meta">
+          <span className={`pill ${statusClass}`}>{exp.status}</span>
+          <a className="mono" href={exp.targetUrl} target="_blank" rel="noreferrer">{exp.targetUrl}</a>
+          <span className="tabular">{exp.configuration.viewports.join(" + ")}</span>
+          <span className="tabular">{exp.simulations.length.toLocaleString()} journeys</span>
+          <span className="mono">{exp.id}</span>
         </div>
-        <span className="tabular">{doneCount}/{STAGES.length} stages</span>
+      </header>
+
+      <div className="pipeline">
+        <ol className="steps-bar" role="toolbar" aria-label="Pipeline stages">
+          {STAGES.map((s, i) => (
+            <li key={s}>
+              <button
+                type="button"
+                className={`step ${stageDone[s] ? "done" : ""} ${stageActive(s) ? "active" : ""}`}
+                disabled={pending !== null}
+                onClick={() => void runStage(s)}
+                aria-label={`${STAGE_LABEL[s]}: ${stageActive(s) ? "running" : stageDone[s] ? "done" : "not run"}. Run this step.`}
+              >
+                <span className="step-mark" aria-hidden>{stageDone[s] ? <CheckIcon size={12} /> : i + 1}</span>
+                <span className="step-name">{STAGE_LABEL[s]}</span>
+              </button>
+            </li>
+          ))}
+        </ol>
+        <button type="button" className="primary pipeline-run" disabled={pending !== null} onClick={() => void runStage("run")}>
+          {pending === "run" ? "Running…" : doneCount === STAGES.length ? "Run again" : "Run all steps"}
+        </button>
       </div>
 
       {(stageErrors.run || exp.errors.length > 0) && (
         <div className="banner" role="alert">
-          {stageErrors.run && <div>Pipeline failed: {stageErrors.run}</div>}
+          {stageErrors.run && <div>The run stopped: {stageErrors.run}</div>}
           {exp.errors.map((e, i) => (
             <div key={i}>{e}</div>
           ))}
@@ -258,9 +263,11 @@ export default function ExperimentPage() {
       <div className="grid">
         <Panel
           title="Decision graph"
-          meta={<span className="tabular">{viewportStates.length} states · {viewportEdges.length} edges</span>}
+          className="span-2"
+          meta={<span className="tabular">{viewportStates.length} states · {viewportEdges.length} links</span>}
           busy={busy("graph")}
           state={graphState}
+          emptyAction={!graph ? runButton("discover") : undefined}
           actions={
             <div className="segmented" role="group" aria-label="Viewport">
               {(["desktop", "mobile"] as const).map((v) => (
@@ -271,44 +278,53 @@ export default function ExperimentPage() {
             </div>
           }
         >
-          {graph && <StateGraph graph={graph} visits={visits} viewport={viewport} />}
+          {graph && <StateGraph graph={graph} simulations={exp.simulations} viewport={viewport} />}
           <div className="graph-foot">
-            <span className="mono">
-              {viewport} · {viewportStates[0]?.viewport.width ?? (viewport === "mobile" ? 390 : 1440)}×
-              {viewportStates[0]?.viewport.height ?? (viewport === "mobile" ? 844 : 900)}
+            {exp.simulations.length > 0 ? <HeatLegend max={maxVisits} /> : <span>Run simulate to shade states by how often journeys reach them.</span>}
+            <span className="graph-hint">
+              <span>Hover a state to trace its links</span>
+              <span className="mono tabular">
+                {viewportStates[0]?.viewport.width ?? (viewport === "mobile" ? 390 : 1440)}×{viewportStates[0]?.viewport.height ?? (viewport === "mobile" ? 844 : 900)}
+              </span>
             </span>
-            {exp.simulations.length > 0 ? <HeatLegend max={maxVisits} /> : <span className="muted">Run simulate to color nodes by visits</span>}
           </div>
         </Panel>
 
         <Panel
-          title="Browser evidence"
-          meta={<span className="tabular">{runs.filter((r) => r.success).length}/{runs.length} passed</span>}
+          title="Browser runs"
+          meta={runs.length > 0 && <span className="tabular">{passed} of {runs.length} passed</span>}
           busy={busy("evidence")}
           enter="none"
-          state={panelState("evidence", runs.length > 0, "Verifying in real browsers…", "No browser runs yet. Run verify to replay the riskiest journeys.")}
+          emptyAction={runButton("verify")}
+          state={panelState("evidence", runs.length > 0, "Replaying journeys in real browsers…", "No browser runs yet. Verify replays the riskiest journeys on desktop and mobile.")}
         >
           <div className="list stagger">
             {runs.map((r) => (
-              <div key={r.runId} className={`card ${r.success ? "pass" : "fail"}`}>
+              <div key={r.runId} className="card">
                 <div className="card-title">
-                  <span className={`chip ${r.success ? "pass" : "fail"}`}>{r.success ? "passed" : "failed"}</span>
+                  <span className={`chip ${r.success ? "pass" : "fail"}`}>
+                    {r.success ? <CheckIcon size={12} /> : <CrossIcon size={12} />}
+                    {r.success ? "Passed" : "Failed"}
+                  </span>
                   <span className="mono">{r.runId}</span>
                   <span className="muted">{r.viewport.name}</span>
                   <span className="muted tabular right">{r.durationMs.toLocaleString()} ms</span>
                 </div>
                 {r.steps.length > 0 && (
-                  <ol className="steps">
+                  <ol className="run-path" aria-label="Steps">
                     {r.steps.map((s, i) => (
-                      <li key={i} className={s.ok ? "ok" : "fail"} title={s.error}>
-                        {s.ok ? "✓" : "✗"} {s.label}
+                      <li key={i} className={s.ok ? "ok" : "fail"} title={s.error ?? s.label}>
+                        {i > 0 && <ArrowIcon size={12} className="arrow" />}
+                        {!s.ok && <CrossIcon size={12} />}
+                        <span>{s.label}</span>
                       </li>
                     ))}
                   </ol>
                 )}
                 {r.assertions.map((a, i) => (
                   <div key={i} className={`assert ${a.passed ? "ok" : "fail"}`}>
-                    {a.passed ? "✓" : "✗"} <span className="mono">{a.assertion.kind}</span> {a.assertion.value}
+                    {a.passed ? <CheckIcon size={12} /> : <CrossIcon size={12} />}
+                    <span><span className="mono">{a.assertion.kind}</span> {a.assertion.value}</span>
                   </div>
                 ))}
               </div>
@@ -321,7 +337,8 @@ export default function ExperimentPage() {
           meta={<SeverityCounts findings={findings} />}
           busy={busy("findings")}
           enter="none"
-          state={panelState("findings", findings.length > 0, "Grading against Krug's rubric…", "No findings yet. Run analyze after verify.")}
+          emptyAction={runs.length > 0 ? runButton("analyze") : undefined}
+          state={panelState("findings", findings.length > 0, "Grading against Krug’s rubric…", runs.length > 0 ? "No findings yet. Analyze grades what the browser runs found." : "No findings yet. They come from the browser runs, so run verify first.")}
         >
           <div className="list stagger">
             {findingGroups.map(([principle, group]) => (
@@ -334,12 +351,12 @@ export default function ExperimentPage() {
                   <article key={f.findingId} className="card">
                     <div className="chips">
                       <SeverityChip severity={f.severity} />
-                      <span className="chip evidence">{f.evidenceType}</span>
-                      <span className="card-meta mono">{f.category} · {f.verificationStatus}</span>
+                      <span className="chip">{EVIDENCE_LABEL[f.evidenceType] ?? f.evidenceType}</span>
+                      <span className="card-meta">{f.category} · {f.verificationStatus}</span>
                     </div>
                     <h3 className="card-heading">{f.title}</h3>
                     <p className="card-body">{f.description}</p>
-                    <p className="card-rec">{f.recommendation}</p>
+                    <p className="card-rec"><b>Fix:</b> {f.recommendation}</p>
                   </article>
                 ))}
               </section>
@@ -349,40 +366,46 @@ export default function ExperimentPage() {
 
         <Panel
           title="Baseline vs variant"
-          meta={<span className="tabular">{exp.variants.length} variants · {exp.comparisons.length} comparisons</span>}
+          className="span-2"
+          meta={exp.variants.length + exp.comparisons.length > 0 && <span className="tabular">{exp.variants.length} variants · {exp.comparisons.length} comparisons</span>}
           busy={busy("comparisons")}
+          emptyAction={findings.length > 0 ? runButton("compare") : undefined}
           state={panelState(
             "comparisons",
             exp.variants.length + exp.comparisons.length > 0,
-            "Re-verifying variants…",
-            "No variants yet. Run compare to patch the top finding and re-verify.",
+            "Patching the page and running it again…",
+            "No variant yet. Compare patches the top finding and runs the same journey again.",
           )}
         >
-          <div className="list">
-            {exp.comparisons.map((c, i) => (
-              <table key={i} className="delta tabular">
-                <thead>
-                  <tr><th>Metric</th><th>Baseline</th><th>Variant</th></tr>
-                </thead>
-                <tbody>
-                  <tr><td>Goal completed</td><td>{c.deltas.goalCompleted.baseline ? "yes" : "no"}</td><td>{c.deltas.goalCompleted.variant ? "yes" : "no"}</td></tr>
-                  <tr><td>Interactions</td><td>{c.deltas.interactionCount.baseline}</td><td>{c.deltas.interactionCount.variant}</td></tr>
-                  <tr><td>Failed interactions</td><td>{c.deltas.failedInteractions.baseline}</td><td>{c.deltas.failedInteractions.variant}</td></tr>
-                  <tr><td>Runtime errors</td><td>{c.deltas.runtimeErrors.baseline}</td><td>{c.deltas.runtimeErrors.variant}</td></tr>
-                  <tr><td>Finding reproduces</td><td colSpan={2}>{c.deltas.findingReproduces ? "yes" : "no"}</td></tr>
-                </tbody>
-              </table>
-            ))}
-            {exp.variants.map((v) => (
-              <div key={v.variantId} className="card">
-                <div className="card-title">
-                  <span className="mono">{v.variantId}</span>
-                  <span className={`chip variant-${v.status}`}>{v.status}</span>
+          <div className="compare">
+            <div>
+              {exp.comparisons.map((c, i) => (
+                <table key={i} className="delta">
+                  <thead>
+                    <tr><th>Metric</th><th>Baseline</th><th>Variant</th></tr>
+                  </thead>
+                  <tbody>
+                    <tr><td>Goal reached</td><td>{c.deltas.goalCompleted.baseline ? "Yes" : "No"}</td><td className={delta(Number(c.deltas.goalCompleted.variant), Number(c.deltas.goalCompleted.baseline))}>{c.deltas.goalCompleted.variant ? "Yes" : "No"}</td></tr>
+                    <tr><td>Interactions</td><td>{c.deltas.interactionCount.baseline}</td><td className={delta(c.deltas.interactionCount.baseline, c.deltas.interactionCount.variant)}>{c.deltas.interactionCount.variant}</td></tr>
+                    <tr><td>Failed interactions</td><td>{c.deltas.failedInteractions.baseline}</td><td className={delta(c.deltas.failedInteractions.baseline, c.deltas.failedInteractions.variant)}>{c.deltas.failedInteractions.variant}</td></tr>
+                    <tr><td>Runtime errors</td><td>{c.deltas.runtimeErrors.baseline}</td><td className={delta(c.deltas.runtimeErrors.baseline, c.deltas.runtimeErrors.variant)}>{c.deltas.runtimeErrors.variant}</td></tr>
+                    <tr><td>Finding still happens</td><td colSpan={2} className={c.deltas.findingReproduces ? "worse" : "better"}>{c.deltas.findingReproduces ? "Yes" : "No"}</td></tr>
+                  </tbody>
+                </table>
+              ))}
+            </div>
+            <div>
+              {exp.variants.map((v) => (
+                <div key={v.variantId} className="card">
+                  <div className="card-title">
+                    <span className={`chip variant-${v.status}`}>{v.status}</span>
+                    <span className="mono">{v.variantId}</span>
+                  </div>
+                  <p className="card-body">{v.description}</p>
+                  <div className="card-meta mono">{v.patches.map((p) => `${p.op} ${p.selector}`).join(" · ")}</div>
                 </div>
-                <p className="card-body">{v.description}</p>
-                <div className="card-meta mono">{v.patches.map((p) => `${p.op} ${p.selector}`).join(" · ")}</div>
-              </div>
-            ))}
+              ))}
+            </div>
           </div>
         </Panel>
       </div>
@@ -392,9 +415,11 @@ export default function ExperimentPage() {
         className="spec-panel"
         busy={busy("spec")}
         state={specState}
+        emptyAction={findings.length > 0 ? runButton("spec") : undefined}
         actions={
           specDoc?.md ? (
             <a className="button-link" href={`/api/experiments/${id}/spec`} download={`${exp.id}-spec.md`}>
+              <DownloadIcon size={14} />
               Download
             </a>
           ) : undefined
@@ -406,10 +431,35 @@ export default function ExperimentPage() {
   );
 }
 
+const STAGE_LABEL: Record<(typeof STAGES)[number], string> = {
+  discover: "Discover",
+  simulate: "Simulate",
+  verify: "Verify",
+  analyze: "Analyze",
+  compare: "Compare",
+  spec: "Spec",
+};
+
+const EVIDENCE_LABEL: Record<string, string> = {
+  "verified-failure": "Verified failure",
+  "reproducible-concern": "Reproducible concern",
+  hypothesis: "Hypothesis",
+};
+
+/** Lower is better for every numeric delta shown; goal reached is passed as (variant, baseline). */
+function delta(baseline: number, variant: number): string | undefined {
+  if (variant < baseline) return "better";
+  if (variant > baseline) return "worse";
+  return undefined;
+}
+
 function TopBar() {
   return (
     <nav className="topbar">
-      <Link href="/" className="brand">Rehearsal</Link>
+      <Link href="/" className="brand">
+        <span className="brand-mark" aria-hidden />
+        Rehearsal
+      </Link>
       <Link href="/">New experiment</Link>
     </nav>
   );
@@ -417,11 +467,11 @@ function TopBar() {
 
 function SeverityCounts({ findings }: { findings: Experiment["findings"] }) {
   const counts = SEVERITY_ORDER.map((s) => [s, findings.filter((f) => f.severity === s).length] as const).filter(([, n]) => n > 0);
-  if (counts.length === 0) return <span className="tabular">0</span>;
+  if (counts.length === 0) return null;
   return (
     <span className="sev-counts tabular">
       {counts.map(([s, n]) => (
-        <span key={s} className={`dot-count sev-${s}`}>{n} {s}</span>
+        <span key={s} className={`sev-count sev-${s}`}>{n} {s}</span>
       ))}
     </span>
   );
