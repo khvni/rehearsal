@@ -182,7 +182,7 @@ export function StateGraph({
   return (
     <div className={`graph-wrap ${viewport}`}>
       <ReactFlow
-        key={viewport}
+        key={`${viewport}:${base.nodes.length}:${simulations.length}`}
         nodes={nodes}
         edges={edges}
         fitView

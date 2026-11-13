@@ -5,9 +5,17 @@ import Link from "next/link";
 import { useParams } from "next/navigation";
 import type { Experiment, Finding, KrugPrinciple, PanelState, Viewport } from "@/lib/contracts";
 import { KrugChip, SEVERITY_ORDER, SeverityChip } from "../../_components/chips";
+import { KRUG_PRINCIPLES } from "../../_components/krug";
 import { Markdown } from "../../_components/markdown";
 import { CheckIcon, CrossIcon, ArrowIcon, DownloadIcon } from "../../_components/icons";
 import { Panel } from "../../_components/panel";
+import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
+import { Badge } from "@/components/ui/badge";
+import { Banner, BannerDescription, BannerTitle } from "@/components/ui/banner";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardGroup } from "@/components/ui/card";
+import { Tabs, TabsItem } from "@/components/ui/tabs";
+import { ThinkingStep, ThinkingSteps, ThinkingStepsContent, ThinkingStepsHeader } from "@/components/ui/thinking-steps";
 import { HeatLegend, StateGraph, visitCounts } from "./state-graph";
 
 const STAGES = ["discover", "simulate", "verify", "analyze", "compare", "spec"] as const;
@@ -171,7 +179,7 @@ export default function ExperimentPage() {
     "graph",
     (graph?.states.length ?? 0) > 0,
     "Mapping the site’s states…",
-    "Nothing mapped yet. Discover visits the page and records every state a visitor can reach.",
+    "Nothing mapped yet.",
   );
   if (graphState.kind === "ready" && viewportStates.length === 0) {
     graphState = {
@@ -199,19 +207,20 @@ export default function ExperimentPage() {
   const stageActive = (s: (typeof STAGES)[number]) =>
     pending === s || ((pending === "run" || RUNNING_STATUSES.includes(exp.status)) && s === nextStage);
   const doneCount = STAGES.filter((s) => stageDone[s]).length;
-  const statusClass = exp.status === "failed" ? "failed" : exp.status === "complete" ? "ok" : RUNNING_STATUSES.includes(exp.status) ? "running" : "";
+  const live = pending !== null || RUNNING_STATUSES.includes(exp.status);
+  const statusColor = exp.status === "failed" ? "red" : exp.status === "complete" ? "green" : RUNNING_STATUSES.includes(exp.status) ? "blue" : "gray";
   const specState: PanelState = (() => {
     const err = stageErrors.spec ?? (specDoc?.key === specKey ? specDoc?.error : undefined);
     if (err && !specDoc?.md) return { kind: "error", message: err, onRetry: specKey ? () => void loadSpec() : () => void runStage("spec") };
     if (specDoc?.md) return { kind: "ready" };
     if (busy("spec") || (specKey && specDoc?.key !== specKey)) return { kind: "loading", label: "Writing spec.md…" };
-    return { kind: "empty", message: "No spec yet. It lists every fix, ranked, once the earlier steps have run." };
+    return { kind: "empty", message: "No spec yet." };
   })();
 
   const runButton = (stage: (typeof STAGES)[number]) => (
-    <button type="button" disabled={pending !== null} onClick={() => void runStage(stage)}>
+    <Button variant="secondary" size="compact" disabled={pending !== null} onClick={() => void runStage(stage)}>
       Run {stage}
-    </button>
+    </Button>
   );
   const passed = runs.filter((r) => r.success).length;
 
@@ -221,11 +230,9 @@ export default function ExperimentPage() {
       <header className="exp-head">
         <h1>{exp.goal}</h1>
         <div className="exp-meta">
-          <span className={`pill ${statusClass}`}>{exp.status}</span>
+          <Badge variant="dot" color={statusColor}>{exp.status}</Badge>
           <a className="mono" href={exp.targetUrl} target="_blank" rel="noreferrer">{exp.targetUrl}</a>
-          <span className="tabular">{exp.configuration.viewports.join(" + ")}</span>
           <span className="tabular">{exp.simulations.length.toLocaleString()} journeys</span>
-          <span className="mono">{exp.id}</span>
         </div>
       </header>
 
@@ -246,18 +253,39 @@ export default function ExperimentPage() {
             </li>
           ))}
         </ol>
-        <button type="button" className="primary pipeline-run" disabled={pending !== null} onClick={() => void runStage("run")}>
+        <Button className="pipeline-run" loading={pending === "run"} disabled={pending !== null} onClick={() => void runStage("run")}>
           {pending === "run" ? "Running…" : doneCount === STAGES.length ? "Run again" : "Run all steps"}
-        </button>
+        </Button>
       </div>
 
+      {live && (
+        <ThinkingSteps className="live">
+          <ThinkingStepsHeader>{`Rehearsing, step ${Math.min(doneCount + 1, STAGES.length)} of ${STAGES.length}`}</ThinkingStepsHeader>
+          <ThinkingStepsContent>
+            {STAGES.map((s, i) => (
+              <ThinkingStep
+                key={s}
+                label={STAGE_LABEL[s]}
+                description={STAGE_LINE[s]}
+                status={stageActive(s) ? "active" : stageDone[s] ? "complete" : "pending"}
+                isLast={i === STAGES.length - 1}
+              />
+            ))}
+          </ThinkingStepsContent>
+        </ThinkingSteps>
+      )}
+
       {(stageErrors.run || exp.errors.length > 0) && (
-        <div className="banner" role="alert">
-          {stageErrors.run && <div>The run stopped: {stageErrors.run}</div>}
-          {exp.errors.map((e, i) => (
-            <div key={i}>{e}</div>
-          ))}
-        </div>
+        <Banner status="error" className="run-banner">
+          <BannerTitle>{stageErrors.run ? `The run stopped: ${stageErrors.run}` : "A step reported an error"}</BannerTitle>
+          {exp.errors.length > 0 && (
+            <BannerDescription>
+              {exp.errors.map((e, i) => (
+                <span key={i} className="block">{e}</span>
+              ))}
+            </BannerDescription>
+          )}
+        </Banner>
       )}
 
       <div className="grid">
@@ -269,24 +297,22 @@ export default function ExperimentPage() {
           state={graphState}
           emptyAction={!graph ? runButton("discover") : undefined}
           actions={
-            <div className="segmented" role="group" aria-label="Viewport">
-              {(["desktop", "mobile"] as const).map((v) => (
-                <button key={v} type="button" aria-pressed={viewport === v} onClick={() => setViewport(v)}>
-                  {v} <span className="tabular count">{byViewport[v]}</span>
-                </button>
+            <Tabs
+              idPrefix="viewport"
+              aria-label="Viewport"
+              size="compact"
+              selectedIndex={VIEWPORTS.indexOf(viewport)}
+              onSelect={(i) => setViewport(VIEWPORTS[i])}
+            >
+              {VIEWPORTS.map((v, i) => (
+                <TabsItem key={v} index={i} label={`${VIEWPORT_LABEL[v]} ${byViewport[v]}`} />
               ))}
-            </div>
+            </Tabs>
           }
         >
           {graph && <StateGraph graph={graph} simulations={exp.simulations} viewport={viewport} />}
           <div className="graph-foot">
-            {exp.simulations.length > 0 ? <HeatLegend max={maxVisits} /> : <span>Run simulate to shade states by how often journeys reach them.</span>}
-            <span className="graph-hint">
-              <span>Hover a state to trace its links</span>
-              <span className="mono tabular">
-                {viewportStates[0]?.viewport.width ?? (viewport === "mobile" ? 390 : 1440)}×{viewportStates[0]?.viewport.height ?? (viewport === "mobile" ? 844 : 900)}
-              </span>
-            </span>
+            {exp.simulations.length > 0 ? <HeatLegend max={maxVisits} /> : <span>Run simulate to shade the busy states.</span>}
           </div>
         </Panel>
 
@@ -296,16 +322,16 @@ export default function ExperimentPage() {
           busy={busy("evidence")}
           enter="none"
           emptyAction={runButton("verify")}
-          state={panelState("evidence", runs.length > 0, "Replaying journeys in real browsers…", "No browser runs yet. Verify replays the riskiest journeys on desktop and mobile.")}
+          state={panelState("evidence", runs.length > 0, "Replaying journeys…", "Nobody has tried it yet.")}
         >
-          <div className="list stagger">
-            {runs.map((r) => (
-              <div key={r.runId} className="card">
+          <CardGroup className="list stagger" fluidHover={false}>
+            {runs.map((r, idx) => (
+              <Card key={r.runId} index={idx} className="run-card">
+                <CardContent className="card">
                 <div className="card-title">
-                  <span className={`chip ${r.success ? "pass" : "fail"}`}>
-                    {r.success ? <CheckIcon size={12} /> : <CrossIcon size={12} />}
+                  <Badge variant="dot" color={r.success ? "green" : "red"}>
                     {r.success ? "Passed" : "Failed"}
-                  </span>
+                  </Badge>
                   <span className="mono">{r.runId}</span>
                   <span className="muted">{r.viewport.name}</span>
                   <span className="muted tabular right">{r.durationMs.toLocaleString()} ms</span>
@@ -329,9 +355,10 @@ export default function ExperimentPage() {
                     <span><span className="mono">{a.assertion.kind}</span> {a.assertion.value}</span>
                   </div>
                 ))}
-              </div>
+                </CardContent>
+              </Card>
             ))}
-          </div>
+          </CardGroup>
         </Panel>
 
         <Panel
@@ -340,20 +367,25 @@ export default function ExperimentPage() {
           busy={busy("findings")}
           enter="none"
           emptyAction={runs.length > 0 ? runButton("analyze") : undefined}
-          state={panelState("findings", findings.length > 0, "Grading against Krug’s rubric…", runs.length > 0 ? "No findings yet. Analyze grades what the browser runs found." : "No findings yet. They come from the browser runs, so run verify first.")}
+          state={panelState("findings", findings.length > 0, "Grading…", runs.length > 0 ? "Nothing graded yet." : "Nothing to grade until verify runs.")}
         >
-          <div className="list stagger">
-            {findingGroups.map(([principle, group]) => (
-              <section key={principle} className="finding-group" aria-label={`${group.length} findings`}>
-                <div className="group-head">
-                  <KrugChip principle={principle} />
-                  <span className="muted tabular">{group.length}</span>
-                </div>
+          <Accordion type="multiple" className="list w-full" defaultValue={findingGroups.slice(0, 1).map(([p]) => p)}>
+            {findingGroups.map(([principle, group], gi) => (
+              <AccordionItem key={principle} value={principle} index={gi} className="finding-group">
+                <AccordionTrigger>
+                  <span className="group-trigger">
+                    {KRUG_PRINCIPLES[principle].name}
+                    <span className="group-count tabular">{group.length}</span>
+                  </span>
+                </AccordionTrigger>
+                <AccordionContent>
+                <section className="finding-list stagger" aria-label={`${group.length} findings`}>
                 {group.map((f) => (
-                  <article key={f.findingId} className="card">
+                  <article key={f.findingId} className="finding">
                     <div className="chips">
                       <SeverityChip severity={f.severity} />
-                      <span className="chip">{EVIDENCE_LABEL[f.evidenceType] ?? f.evidenceType}</span>
+                      <KrugChip principle={principle} />
+                      <Badge variant="dot" color={f.evidenceType === "verified-failure" ? "red" : f.evidenceType === "hypothesis" ? "gray" : "blue"}>{EVIDENCE_LABEL[f.evidenceType] ?? f.evidenceType}</Badge>
                       <span className="card-meta">{f.category} · {f.verificationStatus}</span>
                     </div>
                     <h3 className="card-heading">{f.title}</h3>
@@ -361,9 +393,11 @@ export default function ExperimentPage() {
                     <p className="card-rec"><b>Fix:</b> {f.recommendation}</p>
                   </article>
                 ))}
-              </section>
+                </section>
+                </AccordionContent>
+              </AccordionItem>
             ))}
-          </div>
+          </Accordion>
         </Panel>
 
         <Panel
@@ -375,8 +409,8 @@ export default function ExperimentPage() {
           state={panelState(
             "comparisons",
             exp.variants.length + exp.comparisons.length > 0,
-            "Patching the page and running it again…",
-            "No variant yet. Compare patches the top finding and runs the same journey again.",
+            "Rehearsing the fix…",
+            "No second take yet.",
           )}
         >
           <div className="compare">
@@ -400,7 +434,7 @@ export default function ExperimentPage() {
               {exp.variants.map((v) => (
                 <div key={v.variantId} className="card">
                   <div className="card-title">
-                    <span className={`chip variant-${v.status}`}>{v.status}</span>
+                    <Badge variant="dot" className="capitalize" color={v.status === "rejected" ? "red" : v.status === "proposed" ? "gray" : "green"}>{v.status}</Badge>
                     <span className="mono">{v.variantId}</span>
                   </div>
                   <p className="card-body">{v.description}</p>
@@ -442,6 +476,18 @@ const STAGE_LABEL: Record<(typeof STAGES)[number], string> = {
   spec: "Spec",
 };
 
+const STAGE_LINE: Record<(typeof STAGES)[number], string> = {
+  discover: "Walks the page and maps every state",
+  simulate: "Sends a thousand pretend visitors",
+  verify: "Replays the risky paths in real browsers",
+  analyze: "Grades what went wrong",
+  compare: "Patches the page and tries again",
+  spec: "Writes up what to fix",
+};
+
+const VIEWPORTS = ["desktop", "mobile"] as const;
+const VIEWPORT_LABEL: Record<(typeof VIEWPORTS)[number], string> = { desktop: "Desktop", mobile: "Mobile" };
+
 const EVIDENCE_LABEL: Record<string, string> = {
   "verified-failure": "Verified failure",
   "reproducible-concern": "Reproducible concern",
@@ -458,11 +504,10 @@ function delta(baseline: number, variant: number): string | undefined {
 function TopBar() {
   return (
     <nav className="topbar">
-      <Link href="/" className="brand">
-        <span className="brand-mark" aria-hidden />
+      <Link href="/" className="brand wordmark">
         Rehearsal
       </Link>
-      <Link href="/">New experiment</Link>
+      <Link href="/" className="new-link">New experiment</Link>
     </nav>
   );
 }
