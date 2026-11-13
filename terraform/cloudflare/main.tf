@@ -1,50 +1,49 @@
-terraform {
-  required_version = ">= 1.6"
-  required_providers {
-    cloudflare = {
-      source  = "cloudflare/cloudflare"
-      version = "~> 5.12"
-    }
+locals {
+  secrets = {
+    GEMINI_API_KEY     = var.gemini_api_key
+    JEV_API_KEY        = var.jev_api_key
+    BRIGHTDATA_API_KEY = var.brightdata_api_key
+    SENTRY_DSN         = var.sentry_dsn
   }
 }
 
-variable "cloudflare_api_token" {
-  type      = string
-  sensitive = true
-}
-
-variable "account_id" {
-  type = string
-}
-
-variable "worker_name" {
-  type    = string
-  default = "rehearsal"
-}
-
-provider "cloudflare" {
-  api_token = var.cloudflare_api_token
-}
-
 # Next.js deploys to Cloudflare via @opennextjs/cloudflare (`opennextjs-cloudflare build && deploy`).
-# This stack manages the Worker script slot + env bindings; the bundle is uploaded by wrangler
-# during deploy. For a fully-Terraform-managed variant, swap in cloudflare_workers_script with
-# content_file pointing at the built .open-next/worker.js bundle.
+# This stack owns the Worker script slot, its secret bindings, workers.dev and the custom domain;
+# the real bundle is uploaded by wrangler, so Terraform ignores later code changes.
 resource "cloudflare_workers_script" "rehearsal" {
-  account_id  = var.account_id
-  script_name = var.worker_name
-  # Placeholder module — the real bundle ships via `opennextjs-cloudflare deploy`.
-  content = "export default { async fetch(request, env, ctx) { return fetch(request); } };"
+  account_id          = var.account_id
+  script_name         = var.worker_name
+  main_module         = "worker.js"
+  compatibility_date  = "2025-09-01"
+  compatibility_flags = ["nodejs_compat"]
+
+  # Placeholder module until the first `opennextjs-cloudflare deploy`.
+  content = "export default { async fetch() { return new Response(\"Rehearsal: deploy pending\", { status: 503 }); } };"
 
   bindings = [
-    { name = "GEMINI_API_KEY", type = "secret_text", text = var.gemini_api_key },
-    { name = "JEV_API_KEY", type = "secret_text", text = var.jev_api_key },
-    { name = "BRIGHTDATA_API_KEY", type = "secret_text", text = var.brightdata_api_key },
-    { name = "SENTRY_DSN", type = "secret_text", text = var.sentry_dsn },
+    for name, value in local.secrets : {
+      name = name
+      type = "secret_text"
+      text = value
+    } if value != ""
   ]
+
+  lifecycle {
+    ignore_changes = [content, main_module, compatibility_date, compatibility_flags, assets]
+  }
 }
 
-variable "gemini_api_key" { type = string, sensitive = true, default = "" }
-variable "jev_api_key" { type = string, sensitive = true, default = "" }
-variable "brightdata_api_key" { type = string, sensitive = true, default = "" }
-variable "sentry_dsn" { type = string, sensitive = true, default = "" }
+resource "cloudflare_workers_script_subdomain" "rehearsal" {
+  account_id  = var.account_id
+  script_name = cloudflare_workers_script.rehearsal.script_name
+  enabled     = true
+}
+
+resource "cloudflare_workers_custom_domain" "rehearsal" {
+  count = var.domain == "" ? 0 : 1
+
+  account_id = var.account_id
+  zone_id    = var.zone_id
+  hostname   = var.domain
+  service    = cloudflare_workers_script.rehearsal.script_name
+}
