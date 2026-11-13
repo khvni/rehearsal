@@ -131,6 +131,7 @@ const STACK_EXEMPT: Record<string, Record<string, string>> = {
 const NOT_DEPLOYED: Record<string, string> = {
   GEMINI_MODEL_FAST: "has a code default",
   GEMINI_MODEL_DEEP: "has a code default",
+  REHEARSAL_GEMINI_MAX_CALLS: "has a code default",
   JEV_BASE_URL: "has a code default",
   JEV_MODEL: "has a code default",
   OPENROUTER_API_KEY: "alias of JEV_API_KEY",
@@ -396,7 +397,7 @@ async function writeFixtures(): Promise<void> {
             runId: args.runId, viewport: args.viewport, success: true,
             steps: args.actions.map((a) => ({ actionId: a.actionId, label: a.label, ok: true })),
             assertions: args.assertions.map((assertion) => ({ assertion, passed: true })),
-            errors: [], screenshotPaths: [], durationMs: 0,
+            errors: [], consoleErrorCount: 0, screenshotPaths: [], durationMs: 0,
           };
         },
         async close() {},
