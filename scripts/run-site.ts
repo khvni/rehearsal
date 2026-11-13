@@ -33,7 +33,7 @@ const BLOCK_PATTERNS: [RegExp, string][] = [
   [/_incapsula_resource|incapsula incident/i, "Imperva/Incapsula block"],
   [/akamai.*(reference|access denied)|errors\.edgesuite\.net/i, "Akamai block"],
   [/are you a robot|verify (that )?you are (a )?human/i, "captcha wall"],
-  [/<title>\s*(access denied|403 forbidden|request blocked|pardon our interruption)/i, "access denied page"],
+  [/<title>\s*(access denied|(403 )?forbidden|request blocked|pardon our interruption|(429 )?too many requests|rate limit(ed)?|(503 )?service unavailable)/i, "access denied page"],
 ];
 
 interface Args {
@@ -238,7 +238,9 @@ async function runSite(args: Args & { url: string; goal: string }): Promise<Site
     ? detectBlock(null, `<title>${startState.pageTitle}</title>${startState.visibleText}`)
     : undefined;
   // A blocked preflight only counts if discovery could not get past it either.
-  const discoveryRecovered = states.length > 0 && !stateBlock;
+  // A lone captured state after an HTTP-status block is usually that same error page.
+  const httpBlocked = /^HTTP \d+/.test(pre.blockReason ?? "");
+  const discoveryRecovered = !stateBlock && states.length > (httpBlocked ? 1 : 0);
   const blocked = (pre.blocked && !discoveryRecovered) || !!stateBlock || (states.length === 0 && pageFails.length > 0);
   const blockReason =
     stateBlock ??
