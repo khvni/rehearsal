@@ -17,6 +17,8 @@ tester.run("contracts-first", rehearsal.rules["contracts-first"], {
     { code: "export const n = 1; export function g() {}" },
     { code: "export interface ButtonProps { label: string }", filename: "src/app/button.tsx" },
     { code: 'export { Panel } from "./panel";' },
+    { code: "const n = 1; function f() {} export { n, f };" },
+    { code: 'export * from "./values";' },
   ],
   invalid: [
     { code: "export interface Runner { run(): void }", errors: [{ messageId: "moveToContracts" }] },
@@ -26,7 +28,12 @@ tester.run("contracts-first", rehearsal.rules["contracts-first"], {
     { code: 'export const E2 = z.enum(["a"]).optional();', errors: [{ messageId: "moveToContracts" }] },
     { code: "export interface ButtonProps { label: string }", filename: "src/lib/x.ts", errors: [{ messageId: "moveToContracts" }] },
     { code: 'export type { A } from "./types";', errors: [{ messageId: "typeReexport" }] },
-    { code: 'export { type A, type B } from "./types";', errors: [{ messageId: "typeReexport" }] },
+    { code: 'export { type A, type B } from "./types";', errors: [{ messageId: "typeReexport" }, { messageId: "typeReexport" }] },
+    { code: 'export { type A, value } from "./mod";', errors: [{ messageId: "typeReexport" }] },
+    { code: 'export type * from "./types";', errors: [{ messageId: "typeReexport" }] },
+    { code: "interface Runner { run(): void } export { Runner };", errors: [{ messageId: "moveToContracts" }] },
+    { code: "const S = z.string(); export { S as Schema };", errors: [{ messageId: "moveToContracts" }] },
+    { code: "enum E { A } export { E };", errors: [{ messageId: "moveToContracts" }] },
   ],
 });
 

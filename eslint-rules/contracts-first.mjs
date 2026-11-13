@@ -1,7 +1,8 @@
 /**
  * Shared types live in src/lib/contracts (AGENTS.md "Contracts first").
  * Flags exported type aliases, interfaces, enums, zod schemas and type re-exports
- * declared outside src/lib/contracts. React `*Props` types in .tsx files are allowed.
+ * declared outside src/lib/contracts, including `export { X }` of a local one.
+ * React `*Props` types in .tsx files are allowed.
  */
 
 function isZodExpression(node) {
@@ -35,22 +36,40 @@ const contractsFirst = {
       if (!allowed(name)) context.report({ node, messageId: "moveToContracts", data: { kind, name } });
     };
 
+    /** Kind of each top-level declaration that would be a contract if exported. */
+    const contractKinds = new Map();
+    const kindOf = (decl) => {
+      if (decl.type === "TSTypeAliasDeclaration") return [[decl.id, "type"]];
+      if (decl.type === "TSInterfaceDeclaration") return [[decl.id, "interface"]];
+      if (decl.type === "TSEnumDeclaration") return [[decl.id, "enum"]];
+      if (decl.type === "VariableDeclaration") {
+        return decl.declarations
+          .filter((d) => d.id.type === "Identifier" && d.init && isZodExpression(d.init))
+          .map((d) => [d.id, "zod schema"]);
+      }
+      return [];
+    };
+
     return {
+      Program(program) {
+        for (const stmt of program.body) {
+          const decl = stmt.type === "ExportNamedDeclaration" ? stmt.declaration : stmt;
+          if (decl) for (const [id, kind] of kindOf(decl)) contractKinds.set(id.name, kind);
+        }
+      },
+      ExportAllDeclaration(node) {
+        if (node.exportKind === "type") context.report({ node, messageId: "typeReexport" });
+      },
       ExportNamedDeclaration(node) {
-        const decl = node.declaration;
-        if (!decl) {
-          const typeOnly =
-            node.exportKind === "type" ||
-            (node.specifiers.length > 0 && node.specifiers.every((s) => s.exportKind === "type"));
-          if (typeOnly) context.report({ node, messageId: "typeReexport" });
+        if (node.declaration) {
+          for (const [id, kind] of kindOf(node.declaration)) report(id, kind, id.name);
           return;
         }
-        if (decl.type === "TSTypeAliasDeclaration") report(decl.id, "type", decl.id.name);
-        else if (decl.type === "TSInterfaceDeclaration") report(decl.id, "interface", decl.id.name);
-        else if (decl.type === "TSEnumDeclaration") report(decl.id, "enum", decl.id.name);
-        else if (decl.type === "VariableDeclaration") {
-          for (const d of decl.declarations) {
-            if (d.id.type === "Identifier" && d.init && isZodExpression(d.init)) report(d.id, "zod schema", d.id.name);
+        for (const spec of node.specifiers) {
+          if (node.exportKind === "type" || spec.exportKind === "type") {
+            context.report({ node: spec, messageId: "typeReexport" });
+          } else if (!node.source && spec.local.type === "Identifier" && contractKinds.has(spec.local.name)) {
+            report(spec, contractKinds.get(spec.local.name), spec.local.name);
           }
         }
       },
