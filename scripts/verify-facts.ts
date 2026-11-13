@@ -41,7 +41,7 @@ function walk(dir: string, match: (file: string) => boolean): string[] {
   for (const entry of readdirSync(abs).sort()) {
     const p = path.join(abs, entry);
     if (statSync(p).isDirectory()) out.push(...walk(rel(p), match));
-    else if (match(p)) out.push(rel(p));
+    else if (match(rel(p))) out.push(rel(p));
   }
   return out;
 }
