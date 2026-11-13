@@ -11,7 +11,7 @@ findings = critical/high/medium/low; times in seconds.
 
 | Site | Goal | Status | HTTP | States | Edges | Goal % | Verify | Assert | Findings c/h/m/l | Discover s | Verify s | Total s | Notes |
 |---|---|---|---|---|---|---|---|---|---|---|---|---|---|
-| [ai.engineer](ai.engineer/summary.json) | find the schedule and register to attend | error | 200 | 0 | 0 | 0 | 0/0 | 0/0 | 0/0/0/0 | – | – | 5 | self-signed certificate in certificate chain |
+| [ai.engineer](ai.engineer/summary.json) | find the schedule and register to attend | complete | 200 | 15 | 176 | 100 | 0/4 | 0/4 | 2/5/11/5 | 159 | 47 | 283 |  |
 | [brightdata.com](brightdata.com/summary.json) | find pricing for the Web Unlocker | complete | 200 | 15 | 191 | 24.3 | 0/4 | 1/4 | 0/1/2/0 | 83 | 32 | 123 |  |
 | [devpost.com](devpost.com/summary.json) | find an upcoming hackathon to join | complete | 200 | 15 | 110 | 97 | 1/4 | 2/4 | 0/8/18/5 | 33 | 15 | 62 |  |
 | [digitalocean.com](digitalocean.com/summary.json) | find droplet pricing | complete | 200 | 15 | 321 | 54 | 0/4 | 1/4 | 0/2/8/0 | 34 | 33 | 73 | 1 page failures |

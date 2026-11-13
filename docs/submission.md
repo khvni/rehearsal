@@ -25,7 +25,7 @@ The demo ([docs/demo-script.md](demo-script.md)) runs on the AI Engineer Code Su
 
 That run also exposed a bad finding. The top "verified failure" was `url-matches "schedule"`, and that is an artifact of an LLM-compiled assertion, not a usability problem. PRD v3.0 ([docs/PRD.md §0](PRD.md)) was written because of it. It replaces free-text goals with the RFI/RFQ/RFP intent model ([docs/intent-model.md](intent-model.md)), so success means *an endpoint was reached*. Endpoint discovery and weighting, endpoint journeys, page metrics and visitor questions shipped in PRs #7–#9.
 
-### 11-site sweep (pending merge: PR #19, `devin/multi-site-sweep`)
+### 11-site sweep 
 
 `npm run site -- --all` runs the headless `Orchestrator.runAll` against the live reference corpus on the **keyless** stack (local Playwright, fixture Jev/LLM). Budget: 15 states, 300 trajectories, 4 verify runs, desktop, seed 1337. The full table and the per-site `summary.json` + `spec.md` are in `docs/runs/README.md` on that branch.
 
@@ -94,7 +94,7 @@ Every module named here exists on `main` unless marked otherwise. Every vendor a
 
 The repo was built by agents under rules that are themselves versioned code.
 
-- **Orchestration:** 19 PRs so far (#1–#19). Each was opened by a Devin SWE-2 Lightning subagent on its own file slice, and an orchestrator session (poteto-mode) fanned out the work and merged the PRs. 15 are merged (`git log --oneline main` = 16 commits, including the initial scaffold). #17–#19 are open. #16 is an issue the factory filed itself (below).
+- **Orchestration:** 29+ PRs so far. Each was opened by a Devin SWE-2 Lightning subagent on its own file slice, and an orchestrator session (poteto-mode) fanned out the work and merged the PRs. All merged; #16 is an issue the factory filed itself (below). #16 is an issue the factory filed itself (below).
 - **Factory as code** ([docs/factory.md](factory.md), `factory/`): `branch-protection.json` (the exact rulesets-API body: PRs required, squash-only, linear history, required checks `check`, `terraform`, `Devin Review`), `review-policy.json`, `automations.yaml` (nightly corpus audit, hourly snapshot health, weekly factory report), `blueprint.yaml`. `npm run factory:check` diffs these files against the live ruleset, and `.github/workflows/factory-check.yml` runs it. `npm run factory:sync -- --apply` applies them.
 - **Review policy** ([docs/review-policy.md](review-policy.md)): only `bug` and `security` findings block merge, with at most 2 review rounds. Feedback repeated twice becomes a lint rule or an eval. Devin Review left a review on 16 of the 19 PRs (#1–#15, #17).
 - **Lint as back pressure** (`eslint-rules/`): `rehearsal/contracts-first` means no exported type or zod schema outside `src/lib/contracts`. Devin Review had flagged this on early PRs, and it became a rule in PR #10. `rehearsal/finding-cites-krug` means every Finding literal must set `krugPrinciple`. Lint also bans `any` and `console`, with `--max-warnings 0`. The rules have unit tests in `tests/unit/eslint-rules.test.ts`.
@@ -103,24 +103,26 @@ The repo was built by agents under rules that are themselves versioned code.
 - **CI** (`.github/workflows/`): `ci.yml` runs lint, typecheck, unit, evals, skill-sync, facts and hermetic Playwright e2e. `spec-delta.yml` runs the full keyless pipeline on every PR, diffs `spec.md` against a golden, and posts a sticky PR comment with a dashboard screenshot. `snapshot-health.yml` rebuilds `main` from scratch every hour ([docs/snapshot-health.md](snapshot-health.md)).
 - **It caught a real break:** the hourly rebuild found `main` red after a merge and filed issue #16 ("Snapshot health: main is red"). PR #17 is the fix (runner types moved into contracts).
 - **Determinism:** seeded RNG, fixture adapters, and 5 eval suites with thresholds (`tests/evals/*.eval.ts`, `evals.config.json`). There are about 100 unit, eval and e2e cases, all hermetic.
-- **Design check** (pending merge, PR #18): `docs/design-check.md` + `.github/workflows/design-check.yml` run an Impeccable design audit of the dashboard.
+- **Design check** (in CI): `docs/design-check.md` + `.github/workflows/design-check.yml` run an Impeccable design audit of the dashboard.
 - **Security:** a Devin Security scan was run with 13 triaged findings. The orchestrator reported this; the scan results are not stored in the repo, so the number can't be checked from code here.
 
 ## What's real vs. wired
 
 | Area | Status |
 |---|---|
-| Keyless deterministic pipeline (discover → spec, fixture Jev/LLM, local Playwright) | **Proven**: CI on every PR, hourly rebuild, spec-delta golden, 11-site live sweep (PR #19) |
+| Keyless deterministic pipeline (discover → spec, fixture Jev/LLM, local Playwright) | **Proven**: CI on every PR, hourly rebuild, spec-delta golden, 11-site live sweep |
 | Intent model, endpoint weighting, page metrics, visitor questions, Krug-cited findings | **Proven** in evals and the sweep |
 | Factory (rulesets, review policy, lint rules, check:facts, skill-sync, snapshot health) | **Proven**: running in CI. Applying the ruleset needs repo admin (`factory:sync -- --apply`) |
-| Gemini, Jev, Bright Data (Unlocker + Browser API), Browserbase/Stagehand | **Implemented and routed.** Exercised live only where keys were supplied |
-| Sentry, Tiger Data | **Implemented, env-gated.** Live only with `SENTRY_DSN` / `DATABASE_URL` |
-| Snowflake Cortex Search | **Adapter only.** Not yet called by the pipeline |
-| DigitalOcean / Cloudflare Terraform | **Validated** (`fmt` + `validate` in CI). Not applied from this repo |
-| HyperFrames demo video | **Not in repo yet** |
-
-<!-- Orchestrator: update the vendor rows with which keys were exercised live. -->
-
+| **Gemini** `GEMINI_API_KEY` | **Live-verified** 2026-11-13: `gemini-4-hydrogen` returns findings on the real key. `gemini-4-argon` hits HTTP 429 (quota/billing) on the supplied key; the client falls back to hydrogen and logs the event (PR #24). `REHEARSAL_GEMINI_MAX_CALLS` caps calls per run |
+| **Bright Data** `BRIGHTDATA_API_KEY`, `BRIGHTDATA_ZONE`, `BRIGHTDATA_BROWSER_WS` | **Live-verified**: zones `rehearsal_unlocker` + `rehearsal_browser` created via the Account Management API (admin key). Web Unlocker fetched keysight.com (200, the site local Playwright is blocked on); Browser API CDP session loaded ai.engineer in ~6s and the live AIE run used `brightdata-browser-api` for browser verification |
+| **Tiger Data** `TIGERDATA_URL` | **Live-verified**: `TigerDataStore` connects and lists experiments (PostgreSQL 18.6 + TimescaleDB). Requires the `sslmode=require` handling in `src/lib/storage/index.ts` (PRs #26/#28) |
+| **Sentry** `SENTRY_DSN` + `SENTRY_WEBHOOK_SECRET` | **Wired**: SDK `register()` + `onRequestError` in `src/instrumentation.ts`, stage spans, `POST /api/hooks/sentry` → `first-responder` GitHub issue (PR #21). Live telemetry needs the DSN deployed + the Sentry internal integration/alert rule configured (docs/telemetry.md) |
+| **Jev** `JEV_BASE_URL`/`JEV_API_KEY` | **Fixture only**: the supplied key 401s against OpenRouter's decisions endpoint; needs the real Jev endpoint/model. Pipeline falls back to the deterministic fixture scorer |
+| **Browserbase Stagehand** `BROWSERBASE_*` | **Wired, untested**: trajectory runner route; no key supplied |
+| **Snowflake Cortex Search** | **Out of scope** — dropped; Postgres (Tiger Data) covers the knowledge store for this build |
+| **DigitalOcean** Terraform stack | **Live**: `terraform apply` completed 14:19 PST — app deployed at http://146.190.113.82 (droplet `s-2vcpu-4gb`, sfo3; cloud-init build ~10min). Secrets passed via env, written to `/etc/rehearsal/env` |
+| **Cloudflare** Terraform stack | **Validated** (`fmt` + `validate` in CI); not applied |
+| **HyperFrames** demo video | **Rendered**: `demo/video/out/rehearsal-demo.mp4` (1920×1080, ~83s, hyperframes@0.9.42); project in `demo/video/` |
 ## How to run
 
 ```bash
@@ -132,3 +134,16 @@ npm run dev                 # http://localhost:3000
 ```
 
 Paste `https://ai.engineer/code/2026` and a goal, click **Rehearse**, watch the stages run, then open `spec.md`. API: `POST /api/experiments` → `POST /api/experiments/:id/run` → `GET /api/experiments/:id/spec` ([docs/api.md](api.md)). Hermetic browser tests: `npx playwright install chromium && npm run test:e2e`.
+
+## DevRelay / MLH submission fields
+
+- **Project name:** Rehearsal
+- **short_description:** UX verification agent that rehearses real visitor journeys on a public site and returns an evidence-backed, prioritized rebuild spec.
+- **description:** See README — Rehearsal maps visitor intents (Information/Quotation/Proposal) to weighted site endpoints, builds the journey decision tree, verifies it in real browsers, and outputs a Krug-grounded spec.md of fixes plus a rebuild plan.
+- **technologies:** TypeScript, Next.js 16, Playwright, Zod, Terraform, Gemini API (gemini-4-hydrogen/argon), Bright Data Web Unlocker + Browser API, Browserbase Stagehand, Jev (system-one decision model), Sentry SDK, Tiger Data (Postgres/TimescaleDB), DigitalOcean, HyperFrames.
+- **ai_tools (what built it):** Devin (SWE-2 Lightning subagents + orchestrator) on Cognition's harness.
+- **github link:** https://github.com/khvni/rehearsal
+- **demo video:** `demo/video/out/rehearsal-demo.mp4` (in repo) — attach it in the form.
+- **live demo:** http://146.190.113.82 (DigitalOcean droplet).
+- **extra_links:** "11-site sweep" → docs/runs/README.md · "Factory as code" → docs/factory.md · "Telemetry" → docs/telemetry.md
+- **sponsor_usage:** Gemini API — fast+deep models drive assertion compilation and rubric findings with deterministic fallback and per-run budget (REHEARSAL_GEMINI_MAX_CALLS); DigitalOcean — droplet stack in terraform/digitalocean deployed at the live demo URL; Tiger Data — experiments persist to Postgres/TimescaleDB via TigerDataStore (verified live); Bright Data — Web Unlocker fetches protected pages and Browser API sessions power state capture + verification (zones created via Account Management API); HyperFrames — the demo video is a HyperFrames composition (demo/video) rendered with hyperframes@0.9.42; Sentry — SDK wiring, stage spans, and a signed webhook that files first-responder issues; System One Models — Jev drives per-state action scoring in simulate; Software Factory — factory-as-code in factory/, contracts-first lint, spec-delta CI, hourly snapshot rebuilds, layered verification.

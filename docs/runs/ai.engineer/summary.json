@@ -1,0 +1,150 @@
+{
+  "site": "ai.engineer",
+  "url": "https://ai.engineer/code/2026",
+  "targetUrl": "https://ai.engineer/code/2026",
+  "goal": "find the schedule and register to attend",
+  "status": "complete",
+  "runner": "local-playwright",
+  "config": {
+    "maxStates": 15,
+    "trajectories": 300,
+    "verifyCount": 4,
+    "maxDepth": 3,
+    "viewports": [
+      "desktop"
+    ],
+    "seed": 1337
+  },
+  "preflight": {
+    "status": 200,
+    "finalUrl": "https://ai.engineer/code/2026",
+    "title": "AI Engineer Code Summit 2026: AI Engineering Conference, Nov 10-12, San Francisco",
+    "blocked": false
+  },
+  "robotsAllowsTarget": true,
+  "assertions": [
+    {
+      "kind": "text-present",
+      "value": "Schedule"
+    },
+    {
+      "kind": "url-matches",
+      "value": ".*(register|confirm).*"
+    },
+    {
+      "kind": "element-visible",
+      "selector": ".confirmation, #confirmation, [data-testid='registration-confirmation']",
+      "value": "true"
+    }
+  ],
+  "discover": {
+    "states": 15,
+    "edges": 176,
+    "pageFailures": 0,
+    "pageFailureSamples": [],
+    "urls": [
+      "https://ai.engineer/code/2026",
+      "https://ai.engineer/code/2026?",
+      "https://ai.engineer/code/2026/schedule",
+      "https://ai.engineer/code/2026/llms.txt",
+      "https://ai.engineer/data",
+      "https://ai.engineer/code/2026/guide/sponsorship",
+      "https://ai.engineer/code/2026/talks",
+      "https://ai.engineer/code/2026?view=companies",
+      "https://ai.engineer/code/2026?day=11",
+      "https://ai.engineer/code/2026?day=12",
+      "https://ai.engineer/code/2026/talks/natalie-serrino",
+      "https://ai.engineer/code/2026/talks/lydia-hallie",
+      "https://ai.engineer/code/2026/talks/michelle-chen",
+      "https://ai.engineer/code/2026/talks/lauren-tan",
+      "https://ai.engineer/code/2026/talks/online-inference-security"
+    ]
+  },
+  "simulate": {
+    "trajectories": 300,
+    "goalReachPct": 100,
+    "outcomes": {
+      "goal-reached": 300
+    }
+  },
+  "verify": {
+    "runs": 4,
+    "passed": 0,
+    "failed": 4,
+    "assertionsPassed": 0,
+    "runsWithConsoleErrors": 0,
+    "runErrors": []
+  },
+  "compare": {
+    "goalCompleted": {
+      "baseline": false,
+      "variant": false
+    },
+    "interactionCount": {
+      "baseline": 0,
+      "variant": 0
+    },
+    "backtracks": {
+      "baseline": 0,
+      "variant": 0
+    },
+    "failedInteractions": {
+      "baseline": 0,
+      "variant": 0
+    },
+    "runtimeErrors": {
+      "baseline": 0,
+      "variant": 0
+    },
+    "findingReproduces": true
+  },
+  "findings": {
+    "total": 23,
+    "bySeverity": {
+      "critical": 2,
+      "high": 5,
+      "medium": 11,
+      "low": 5
+    },
+    "byEvidence": {
+      "verified-failure": 2,
+      "reproducible-concern": 11,
+      "hypothesis": 10
+    },
+    "titles": [
+      "[high] Assertion failed in browser: url-matches \".*(register|confirm).*\" (4 of 4 runs)",
+      "[high] Assertion failed in browser: element-visible \"true\" (4 of 4 runs)",
+      "[high] Post-event page still invites registration (6 of 15 pages)",
+      "[medium] Dense link surface increases scan cost (12 of 15 pages)",
+      "[medium] Desktop: homepage requires 16.01 screens of scrolling",
+      "[medium] Desktop: no single dominant call to action above the fold",
+      "[medium] Desktop: primary navigation has 68 items",
+      "[low] Heading outline is broken: 3 h1 elements",
+      "[low] Heading outline is broken: no h1",
+      "[low] Desktop: largest text on the page is not the h1",
+      "[low] Desktop: missing you-are-here indicator (trunk test fails)",
+      "[high] Desktop: missing site ID, page name, primary navigation, search, you-are-here indicator (trunk test fails)",
+      "[high] Desktop: missing page name, primary navigation, search, you-are-here indicator (trunk test fails)",
+      "[medium] \"How much does it cost?\" has no answer path",
+      "[low] 1 of 23 expected visitor questions have no answer path",
+      "[critical] Registration flow is undiscoverable from the landing page and fails goal completion",
+      "[critical] Global header navigation on subpages routes to a different, past event (World's Fair 2025)",
+      "[medium] Links labeled 'Schedule' behave inconsistently across pages",
+      "[medium] Contradictory pre-event and post-event messaging obscures whether attendance is open",
+      "[medium] Repeated text strings, binary headers, and duplicated link labels add visual noise",
+      "[medium] Stacked navigation bars and redundant per-talk links weaken visual hierarchy",
+      "[medium] Broken recovery path when navigating back from subpages",
+      "[medium] Generic 'button' labels and developer-centric routing increase cognitive effort"
+    ]
+  },
+  "durationsMs": {
+    "discover": 159181,
+    "simulate": 10128,
+    "verify": 46713,
+    "analyze": 32824,
+    "compare": 8983,
+    "spec": 19808,
+    "total": 283200
+  },
+  "ranAt": "2026-11-13T22:17:15.719Z"
+}
