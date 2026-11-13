@@ -64,7 +64,9 @@ export const MEASURE_SCRIPT = `(() => {
     if (visCache.has(el)) return visCache.get(el);
     const r = el.getBoundingClientRect();
     const s = style(el);
-    const v = r.width >= 1 && r.height >= 1 && s.visibility !== "hidden" && s.display !== "none" && Number(s.opacity) > 0;
+    const v =
+      r.width >= 1 && r.height >= 1 && s.visibility !== "hidden" && s.display !== "none" && Number(s.opacity) > 0 &&
+      (typeof el.checkVisibility !== "function" || el.checkVisibility({ checkOpacity: true, checkVisibilityCSS: true }));
     visCache.set(el, v);
     return v;
   };
