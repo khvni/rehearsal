@@ -18,6 +18,17 @@
     "minVagueLabelsDetected": 4,
     "minPastDatesDetected": 1,
     "requireStaleDateEvidence": true,
+    "metricsMinHomepageFoldRatio": 4,
+    "metricsExpectedH1Count": 1,
+    "metricsMinNavItems": 8,
+    "metricsMinCtas": 3,
+    "metricsMaxPrimaryCtaAmbiguity": 2,
+    "metricsMinFontSizeBuckets": 4,
+    "metricsRequiredRules": [
+      "long-scroll",
+      "nav-overload",
+      "trunk-test"
+    ],
     "minQuestionBankSize": 30,
     "minAieQuestions": 15,
     "requiredAnsweredQuestions": [

@@ -1,4 +1,5 @@
 import type { Assertion, BrowserRun, DomPatch, Viewport } from "../contracts";
+import type { PageMetrics } from "./metrics";
 
 export interface TrajectoryAction {
   actionId?: string;
@@ -20,6 +21,8 @@ export interface TrajectoryArgs {
 export interface OpenPageResult {
   html: string;
   screenshotPath: string;
+  /** Layout metrics from the `measurePage` hook, taken in the same session as the screenshot. */
+  metrics?: PageMetrics;
 }
 
 /**

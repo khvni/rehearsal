@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { PageMetrics } from "../browser/metrics";
 
 // ── Krug rubric ─────────────────────────────────────────────────────────────
 
@@ -72,6 +73,7 @@ export const SiteState = z.object({
   actions: z.array(ActionNode),
   screenshotPath: z.string().optional(),
   stateHash: z.string(),
+  metrics: PageMetrics.optional(),
   metadata: z
     .object({
       modalOpen: z.boolean().optional(),

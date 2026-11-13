@@ -19,14 +19,14 @@ jobs:
           node-version: 22
           cache: npm
       - run: npm ci
+      - name: Install Chromium
+        run: npx playwright install --with-deps chromium
       - run: npm run lint
       - run: npm run typecheck
       - run: npm run test
       - name: Evals gate
         run: npm run eval
       - run: npm run check:skill-sync
-      - name: Install Chromium
-        run: npx playwright install --with-deps chromium
       - name: E2E (hermetic fixtures)
         run: npm run test:e2e
 

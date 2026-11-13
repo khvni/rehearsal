@@ -38,8 +38,11 @@ eval cases.** `npm run check:skill-sync` fails the build otherwise.
   - `questionFindings` emits one `unanswered-question` finding per gap + an "N of M" summary, start screenshot as evidence; deterministic across runs with the fixture LLM
   - orchestrator wiring — fixture adapters: `analyze` stores `questions` on the experiment, adds the `unanswered-question` findings, and the experiment round-trips through the `Experiment` contract
 
+- `metrics.eval.ts` — page metrics (`src/lib/browser/metrics.ts` `measurePage`) on the AIE fixture in hermetic local Chromium (loopback server, all other requests aborted, `networkidle` so layout settles): repeat measurements are identical; homepage fold ratio ≥ `metricsMinHomepageFoldRatio` with scroll time = screens × 1.5s; exactly `metricsExpectedH1Count` h1 and it is the largest text; ≥ `metricsMinNavItems` primary-nav items, ≥ `metricsMinCtas` CTAs, `primaryCtaAmbiguity` ≤ `metricsMaxPrimaryCtaAmbiguity`, ≥ `metricsMinFontSizeBuckets` font sizes; the HTML-only fallback matches the DOM facts and nulls layout fields; `metricFindings` emits every rule in `metricsRequiredRules`, no CTA-ambiguity finding, each with a Krug key + screenshot evidence
+
 ## Unit tests (tests/unit/)
 
+- `metrics.test.ts` — `measurePage` via `PlaywrightRunner.openPage` on synthetic pages served from loopback (scroll, CTA prominence ties, heading skips/multiple h1, nav count, font buckets, trunk test), `metricsFromHtml` fallback, and each `metricFindings` rule (grouping, severity, evidence)
 - `core.test.ts` — contract parsing, extractor, graph dedup, mulberry32 determinism, profile shaping, fixture Jev scoring, patch compilation, rule findings, spec markdown
 - `questions.test.ts` — question bank shape, homepage-first ordering, context-derived questions, answer detection (endpoint class / URL / text, start-only homepage questions, endpoint label filters, re-answering stored questions), LLM refinement skip + keyword questions, `unanswered-question` findings + summary
 - `intents.test.ts` — `classifyGoal` keyword heuristics, LLM refinement fallback, endpoint label/path classification, `discoverEndpoints`/`weightEndpoints` determinism + overrides, optional Experiment fields

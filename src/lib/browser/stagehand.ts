@@ -4,6 +4,7 @@ import type { Locator, ModelConfig, Page, Stagehand, StagehandBrowser } from "@b
 import type { BrowserRun, DomPatch, Viewport } from "../contracts";
 import { assertPublicUrl } from "../fetch/guards";
 import { compilePatches } from "../variants";
+import { measurePage } from "./metrics";
 import { DEFAULT_EVIDENCE_DIR } from "./playwright";
 import {
   evaluateAssertion,
@@ -162,8 +163,9 @@ export class StagehandRunner implements BrowserRunner {
       await page.goto(url, { waitUntil: "domcontentloaded", timeout: NAV_TIMEOUT_MS });
       await page.waitForTimeout(1200);
       const screenshotPath = await this.shoot(page, String(opts?.shotName ?? Date.now()));
+      const metrics = await measurePage(page);
       const html = await page.evaluate<string>("document.documentElement.outerHTML");
-      return { html, screenshotPath };
+      return { html, screenshotPath, metrics };
     });
   }
 
