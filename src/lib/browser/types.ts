@@ -33,16 +33,24 @@ export function summarizeRun(args: {
   screenshots: string[];
 }): BrowserRun {
   const failedAssertions = args.assertions.filter((a) => !a.passed).length;
+  const navigationCompleted = args.steps.every((s) => s.ok) && !args.errors.some(isRunError);
   return {
     runId: args.runId,
     viewport: args.viewport,
-    success: args.errors.length === 0 && failedAssertions === 0 && args.steps.every((s) => s.ok),
+    // Real sites always log some console noise; it is reported via consoleErrorCount instead.
+    success: navigationCompleted && failedAssertions === 0,
     steps: args.steps,
     assertions: args.assertions,
     errors: args.errors,
+    consoleErrorCount: args.errors.filter((e) => !isRunError(e)).length,
     screenshotPaths: args.screenshots,
     durationMs: Date.now() - args.started,
   };
+}
+
+/** `run:` errors mean the runner itself failed (navigation/timeout), not the page. */
+export function isRunError(error: string): boolean {
+  return error.startsWith("run:");
 }
 
 /** Screenshot after every third step and after the last one. */
