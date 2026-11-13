@@ -27,6 +27,8 @@ jobs:
       - name: Evals gate
         run: npm run eval
       - run: npm run check:skill-sync
+      - name: Facts (contract/env/catalog/API drift)
+        run: npm run check:facts
       - name: E2E (hermetic fixtures)
         run: npm run test:e2e
 
