@@ -13,6 +13,7 @@
     "eval": "vitest run tests/evals --reporter=dot",
     "test:e2e": "playwright test",
     "check:skill-sync": "tsx scripts/check-skill-sync.ts",
+    "design:check": "sh .devin/skills/impeccable/scripts/impeccable detect src/app",
     "check": "npm run lint && npm run typecheck && npm run test && npm run eval && npm run check:skill-sync"
   },
   "dependencies": {

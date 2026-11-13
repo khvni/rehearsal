@@ -1,0 +1,80 @@
+name: design-check
+
+# Impeccable anti-pattern scan for Rehearsal's own dashboard UI (src/app).
+# It never runs against, or feeds into, the sites Rehearsal audits. See docs/design-check.md.
+
+on:
+  pull_request:
+    paths:
+      - "src/app/**"
+      - "src/components/**"
+      - "PRODUCT.md"
+      - ".impeccable/**"
+      - ".devin/skills/impeccable/**"
+      - ".github/workflows/design-check.yml"
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+env:
+  IMPECCABLE: sh .devin/skills/impeccable/scripts/impeccable
+
+jobs:
+  static:
+    name: static scan (src/app)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Detect anti-patterns in source
+        run: $IMPECCABLE detect --github src/app
+
+  rendered:
+    name: rendered scan (/ and an experiment page)
+    runs-on: ubuntu-latest
+    env:
+      REHEARSAL_ALLOW_PRIVATE: "1"
+      NEXT_TELEMETRY_DISABLED: "1"
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - name: Install Chromium
+        run: npx playwright install --with-deps chromium
+      - name: Use Playwright's Chromium for the detector
+        run: echo "IMPECCABLE_BROWSER=$(node -p "require('playwright').chromium.executablePath()")" >> "$GITHUB_ENV"
+      - run: npm run build
+      - name: Start fixture server and dashboard
+        run: |
+          python3 -m http.server 8765 --bind 127.0.0.1 --directory tests/evals/fixtures > fixture.log 2>&1 &
+          npm run start -- -p 3000 > app.log 2>&1 &
+          for _ in $(seq 60); do curl -sf http://localhost:3000/ > /dev/null && exit 0; sleep 1; done
+          cat app.log; exit 1
+      - name: Scan home page
+        run: $IMPECCABLE detect --github http://localhost:3000/
+      - name: Run a fixture-backed experiment
+        id: experiment
+        run: |
+          id=$(curl -sf -XPOST localhost:3000/api/experiments -H 'content-type: application/json' \
+            -d '{"targetUrl":"http://127.0.0.1:8765/aie-code-2026.html","goal":"Determine whether someone can still register for the conference"}' \
+            | node -e 'let s="";process.stdin.on("data",d=>s+=d).on("end",()=>process.stdout.write(JSON.parse(s).id??""))') || id=""
+          status=""
+          if [ -n "$id" ]; then
+            status=$(curl -sf --max-time 600 -XPOST "localhost:3000/api/experiments/$id/run" \
+              | node -e 'let s="";process.stdin.on("data",d=>s+=d).on("end",()=>{const j=JSON.parse(s);process.stdout.write(j.status??"")})') || status=""
+          fi
+          if [ "$status" = "complete" ]; then
+            echo "id=$id" >> "$GITHUB_OUTPUT"
+          else
+            echo "::notice title=design-check::Fixture experiment did not complete (id='$id', status='$status'); experiment page scan skipped. Pipeline health is ci.yml's job, not this check's."
+            tail -50 app.log
+          fi
+      - name: Scan experiment page
+        if: steps.experiment.outputs.id != ''
+        run: $IMPECCABLE detect --github "http://localhost:3000/experiments/${{ steps.experiment.outputs.id }}"

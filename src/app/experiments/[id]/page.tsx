@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
-import type { Experiment, Viewport } from "@/lib/contracts";
+import type { Experiment, Finding, KrugPrinciple, Viewport } from "@/lib/contracts";
 import { KrugChip, SEVERITY_ORDER, SeverityChip } from "../../_components/chips";
 import { Markdown } from "../../_components/markdown";
 import { Panel, type PanelState } from "../../_components/panel";
@@ -105,6 +105,11 @@ export default function ExperimentPage() {
       ),
     [exp?.findings],
   );
+  const findingGroups = useMemo(() => {
+    const groups = new Map<KrugPrinciple, Finding[]>();
+    for (const f of findings) groups.set(f.krugPrinciple, [...(groups.get(f.krugPrinciple) ?? []), f]);
+    return [...groups];
+  }, [findings]);
 
   if (loadError && !exp) {
     return (
@@ -290,19 +295,25 @@ export default function ExperimentPage() {
           state={panelState("findings", findings.length > 0, "Grading against Krug's rubric…", "No findings yet. Run analyze after verify.")}
         >
           <div className="list">
-            {findings.map((f) => (
-              <article key={f.findingId} className={`card sev-${f.severity}`}>
-                <div className="chips">
-                  <SeverityChip severity={f.severity} />
-                  <KrugChip principle={f.krugPrinciple} />
+            {findingGroups.map(([principle, group]) => (
+              <section key={principle} className="finding-group" aria-label={`${group.length} findings`}>
+                <div className="group-head">
+                  <KrugChip principle={principle} />
+                  <span className="muted tabular">{group.length}</span>
                 </div>
-                <h4 className="card-heading">{f.title}</h4>
-                <p className="card-body">{f.description}</p>
-                <p className="card-rec">{f.recommendation}</p>
-                <div className="card-meta mono">
-                  {f.evidenceType} · {f.category} · {f.verificationStatus}
-                </div>
-              </article>
+                {group.map((f) => (
+                  <article key={f.findingId} className="card">
+                    <div className="chips">
+                      <SeverityChip severity={f.severity} />
+                      <span className="chip evidence">{f.evidenceType}</span>
+                      <span className="card-meta mono">{f.category} · {f.verificationStatus}</span>
+                    </div>
+                    <h3 className="card-heading">{f.title}</h3>
+                    <p className="card-body">{f.description}</p>
+                    <p className="card-rec">{f.recommendation}</p>
+                  </article>
+                ))}
+              </section>
             ))}
           </div>
         </Panel>
