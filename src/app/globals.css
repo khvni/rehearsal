@@ -166,8 +166,8 @@ button.primary:hover:not(:disabled) { background: #6aaefb; }
 .group-head { display: flex; align-items: center; gap: 8px; padding-bottom: 4px; }
 .card-title { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; }
 .card-heading { margin: 0; font-size: 14px; font-weight: 600; }
-.card-body { margin: 0; max-width: 60ch; color: var(--muted); font-size: 13px; overflow-wrap: anywhere; }
-.card-rec { margin: 0; max-width: 60ch; font-size: 13px; color: var(--text); }
+.card-body { margin: 0; max-width: 32em; color: var(--muted); font-size: 13px; overflow-wrap: anywhere; }
+.card-rec { margin: 0; max-width: 32em; font-size: 13px; color: var(--text); }
 .card-meta { color: var(--muted); font-size: 11px; overflow-wrap: anywhere; }
 .steps { margin: 0; padding: 0; list-style: none; display: flex; flex-wrap: wrap; gap: 4px 10px; font-size: 12px; }
 .steps li { max-width: 220px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
@@ -197,7 +197,7 @@ table.delta th { color: var(--muted); font-weight: 500; }
 .node-visits { font-size: 12px; color: var(--text); opacity: 0.8; font-variant-numeric: tabular-nums; }
 
 /* spec.md prose */
-.prose { max-width: 68ch; color: var(--text); font-size: 14px; line-height: 1.65; }
+.prose { max-width: 36em; color: var(--text); font-size: 14px; line-height: 1.65; }
 .prose h1 { font-size: 20px; margin: 0 0 12px; overflow-wrap: anywhere; }
 .prose h2 { font-size: 15px; margin: 28px 0 10px; padding-bottom: 6px; border-bottom: 1px solid var(--border); }
 .prose h3 { font-size: 14px; margin: 20px 0 6px; display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
