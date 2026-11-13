@@ -104,18 +104,20 @@ function gh(args: string[], input?: string): unknown {
     return out.trim() ? JSON.parse(out) : null;
   } catch (err) {
     const e = err as { code?: string; stderr?: string; stdout?: string; message: string };
-    if (e.code === "ENOENT") throw new GhError("gh CLI not installed", undefined);
+    if (e.code === "ENOENT") throw new GhError("gh CLI not installed", 401);
     const text = (e.stderr?.trim().split("\n")[0] ?? "") || e.stdout?.trim() || e.message;
-    const status = Number(text.match(/HTTP (\d{3})/)?.[1]) || undefined;
+    const unauthenticated = /gh auth login|not logged in/i.test(`${e.stderr ?? ""}`);
+    const status = Number(text.match(/HTTP (\d{3})/)?.[1]) || (unauthenticated ? 401 : undefined);
     throw new GhError(text, status);
   }
 }
 
 const isPermissionError = (err: unknown): boolean =>
-  err instanceof GhError && (err.status === undefined || [401, 403, 404].includes(err.status));
+  err instanceof GhError && err.status !== undefined && [401, 403, 404].includes(err.status);
 
 function fetchLive(name: string): (Ruleset & { id: number }) | null {
-  const list = gh([`repos/${repo}/rulesets?includes_parents=false`]) as { id: number; name: string }[];
+  const pages = gh(["--paginate", "--slurp", `repos/${repo}/rulesets?includes_parents=false&per_page=100`]);
+  const list = (pages as { id: number; name: string }[][]).flat();
   const match = list.find((r) => r.name === name);
   return match ? (gh([`repos/${repo}/rulesets/${match.id}`]) as Ruleset & { id: number }) : null;
 }
@@ -169,7 +171,7 @@ function drift(desired: Ruleset, live: Ruleset | null): string[] {
 function ownerCommands(name: string): string {
   return [
     `# Run as the repo owner (needs admin on ${repo}):`,
-    `id=$(gh api "repos/${repo}/rulesets?includes_parents=false" --jq '.[] | select(.name=="${name}") | .id')`,
+    `id=$(gh api --paginate "repos/${repo}/rulesets?includes_parents=false&per_page=100" --jq '.[] | select(.name=="${name}") | .id')`,
     `if [ -n "$id" ]; then`,
     `  gh api --method PUT "repos/${repo}/rulesets/$id" --input ${rulesetPath}`,
     `else`,
@@ -228,5 +230,10 @@ if (!mode) {
   process.exit(64);
 }
 const desired = loadFactory();
-if (mode === "apply") apply(desired);
-else check(desired);
+try {
+  if (mode === "apply") apply(desired);
+  else check(desired);
+} catch (err) {
+  console.error(`factory: ${(err as Error).message}`);
+  process.exit(1);
+}

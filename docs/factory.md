@@ -40,7 +40,7 @@ npm run factory:sync -- --apply  # create or update the ruleset (needs repo admi
 prints the exact `gh api` commands for the owner to run:
 
 ```sh
-id=$(gh api "repos/khvni/rehearsal/rulesets?includes_parents=false" --jq '.[] | select(.name=="main-protection") | .id')
+id=$(gh api --paginate "repos/khvni/rehearsal/rulesets?includes_parents=false&per_page=100" --jq '.[] | select(.name=="main-protection") | .id')
 if [ -n "$id" ]; then
   gh api --method PUT "repos/khvni/rehearsal/rulesets/$id" --input factory/branch-protection.json
 else
