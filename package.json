@@ -14,9 +14,12 @@
     "test:e2e": "playwright test",
     "check:skill-sync": "tsx scripts/check-skill-sync.ts",
     "check:facts": "tsx scripts/verify-facts.ts",
+    "design:check": "sh .devin/skills/impeccable/scripts/impeccable detect src/app",
     "spec:delta": "tsx scripts/spec-delta.ts",
     "site": "tsx scripts/run-site.ts",
-    "check": "npm run lint && npm run typecheck && npm run test && npm run eval && npm run check:skill-sync && npm run check:facts"
+    "check": "npm run lint && npm run typecheck && npm run test && npm run eval && npm run check:skill-sync && npm run check:facts",
+    "factory:sync": "tsx scripts/factory-sync.ts",
+    "factory:check": "tsx scripts/factory-sync.ts --check"
   },
   "dependencies": {
     "@browserbasehq/stagehand": "^4.4.0",

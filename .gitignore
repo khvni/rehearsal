@@ -19,3 +19,7 @@ test-results/
 data/
 test-results/
 playwright-report/
+
+# impeccable engine binary: the skill launcher downloads a checksum-verified copy on demand
+.devin/skills/impeccable/scripts/bin/
+.impeccable/config.local.json
