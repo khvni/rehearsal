@@ -86,10 +86,8 @@ export class HttpJevClient implements JevClient {
     const requestBytes = JSON.stringify(body).length;
     const responseBytes = Number(res.headers.get("content-length") ?? 0);
     this.usage.calls++;
-    this.usage.inputTokens += estTokens(requestBytes);
     if (!res.ok) throw new Error(`Jev request failed: ${res.status}`);
     const text = await res.text();
-    this.usage.outputTokens += estTokens(responseBytes || text.length);
     logEvent({
       experimentId: ctx?.experimentId,
       stage: "simulate",
@@ -107,6 +105,9 @@ export class HttpJevClient implements JevClient {
     if (raw.usage) {
       this.usage.inputTokens += raw.usage.input_tokens ?? 0;
       this.usage.outputTokens += raw.usage.output_tokens ?? 0;
+    } else {
+      this.usage.inputTokens += estTokens(requestBytes);
+      this.usage.outputTokens += estTokens(responseBytes || text.length);
     }
     const decisions = raw.decisions ?? raw.questions ?? raw.answers ?? {};
     return questions.map((q) => {
