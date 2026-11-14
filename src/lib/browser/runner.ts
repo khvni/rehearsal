@@ -11,6 +11,7 @@ import type {
 import { BrightDataBrowserRunner, brightDataBrowserEndpoint } from "./brightdata";
 import { extractPage } from "./extract";
 import { PlaywrightRunner, checkAssertion } from "./playwright";
+import { chromiumSandboxEnabled } from "./sandbox";
 import { StagehandRunner, stagehandModelFromEnv } from "./stagehand";
 
 /**
@@ -53,23 +54,25 @@ export function selectRunner(env: EnvVars = process.env): BrowserRunner {
   const bdEndpoint = brightDataBrowserEndpoint(env);
   const bbKey = env.BROWSERBASE_API_KEY;
   const model = stagehandModelFromEnv(env);
+  const sandbox = chromiumSandboxEnabled(env);
+  const playwright = () => new PlaywrightRunner(undefined, sandbox);
   const brightdata = () => new BrightDataBrowserRunner(bdEndpoint!);
   const browserbase = () =>
     new StagehandRunner({ env: "browserbase", browserbaseApiKey: bbKey, browserbaseProjectId: env.BROWSERBASE_PROJECT_ID, model });
 
   switch (pref) {
     case "playwright":
-      return new PlaywrightRunner();
+      return playwright();
     case "brightdata":
-      return bdEndpoint ? brightdata() : new PlaywrightRunner();
+      return bdEndpoint ? brightdata() : playwright();
     case "stagehand":
-      return bbKey ? browserbase() : new PlaywrightRunner();
+      return bbKey ? browserbase() : playwright();
     case "stagehand-local":
-      return new StagehandRunner({ env: "local", executablePath: env.STAGEHAND_CHROME_PATH || undefined, model });
+      return new StagehandRunner({ env: "local", executablePath: env.STAGEHAND_CHROME_PATH || undefined, chromiumSandbox: sandbox, model });
     default:
       if (bdEndpoint) return bbKey ? new CompositeRunner(brightdata(), browserbase()) : brightdata();
       if (bbKey) return browserbase();
-      return new PlaywrightRunner();
+      return playwright();
   }
 }
 

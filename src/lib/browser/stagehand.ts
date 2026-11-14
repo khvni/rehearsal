@@ -145,7 +145,7 @@ export class StagehandRunner implements BrowserRunner {
         : await localBrowser.launch({
             headless: true,
             viewport: vp,
-            chromiumSandbox: chromiumSandboxEnabled(),
+            chromiumSandbox: this.opts.chromiumSandbox ?? chromiumSandboxEnabled(),
             ...(this.opts.executablePath ? { executablePath: this.opts.executablePath } : {}),
           });
     let sh: Stagehand | undefined;
