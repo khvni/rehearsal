@@ -18,7 +18,9 @@ const MAX_NAV = 6;
 const MAX_PAGES = 24;
 const STATUS_RE =
   /\b(applications?|registration|tickets?|sales?|enrollment|signups?|early[- ]bird|waitlist)\s+(are|is)\s+(now\s+)?(open|closed|live|sold out|available)\b[^.\n]{0,60}/i;
-const STALE_RE = /\b(stale|outdated|out[- ]of[- ]date|old date|past (event|date)|expired|last year)\b/i;
+// Matches the stale-event finding's wording and its spec change ("dates in the past",
+// "event that already happened", "this event has ended"), not just the word "stale".
+const STALE_RE = /\b(stale|outdated|out[- ]of[- ]date|old date|past (event|date)|expired|last year|already happened|dates? in the past|has ended)\b/i;
 
 function normUrl(url: string | undefined): string | undefined {
   if (!url) return undefined;
