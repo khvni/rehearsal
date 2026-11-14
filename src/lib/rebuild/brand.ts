@@ -296,7 +296,13 @@ export function brandSignalsFromHtml(html: string, pageUrl: string): BrandSignal
       return tag ? attr(tag, "content") || undefined : undefined;
     };
     const themeColor = metaContent("name", "theme-color");
-    const siteName = metaContent("property", "og:site_name") ?? metaContent("name", "og:site_name") ?? metaContent("name", "application-name");
+    const titleText = doc.match(/<title[^>]*>([\s\S]*?)<\/title>/i)?.[1]?.replace(/<[^>]*>/g, "") ?? "";
+    const siteName =
+      metaContent("property", "og:site_name") ??
+      metaContent("name", "og:site_name") ??
+      metaContent("name", "application-name") ??
+      metaContent("name", "apple-mobile-web-app-title") ??
+      nameFromTitle(metaContent("property", "og:title") ?? metaContent("name", "twitter:title") ?? titleText);
 
     const links = [...doc.matchAll(/<link\b[^>]*>/gi)].map((m) => m[0]);
     const relIs = (t: string, re: RegExp) => re.test(attr(t, "rel") ?? "");

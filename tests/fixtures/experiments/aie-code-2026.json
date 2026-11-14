@@ -2149,7 +2149,7 @@
             "type": "click",
             "label": "Apply through our MCP →",
             "role": "link",
-            "href": "https://ai.engineer/data#code-applications",
+            "href": "https://ai.engineer/data",
             "enabled": true,
             "safeToExecute": true
           },
@@ -2507,6 +2507,113 @@
             "hasSearch": true,
             "hasYouAreHere": true
           }
+        },
+        "brand": {
+          "cssVars": {},
+          "colors": [
+            "#f8df8c",
+            "#f8e18e",
+            "#a3a3a3",
+            "#2a2a2a",
+            "#1f1f1f",
+            "#0b0b0b",
+            "#101010",
+            "#161616",
+            "#252525",
+            "#6b6b6b",
+            "#0f0f0f",
+            "#0a0a0a",
+            "#151515",
+            "#3b3b3b",
+            "#ffe9ad",
+            "#666666"
+          ],
+          "fonts": [],
+          "faviconUrl": "https://ai.engineer/favicon.ico",
+          "themeColor": "#ffffff",
+          "siteName": "AI Engineer Code Summit 2026",
+          "navItems": [
+            {
+              "label": "WELCOME AIE Code Summit 2026",
+              "href": "https://ai.engineer/code/2026#welcome"
+            },
+            {
+              "label": "WATCH & READ",
+              "href": "https://ai.engineer/code/2026#livestream"
+            },
+            {
+              "label": "WHY ATTEND",
+              "href": "https://ai.engineer/code/2026#why-attend"
+            },
+            {
+              "label": "APPLY TO ATTEND",
+              "href": "https://ai.engineer/code/2026#access"
+            },
+            {
+              "label": "SPEAKERS",
+              "href": "https://ai.engineer/code/2026#speakers"
+            },
+            {
+              "label": "PROGRAM Daily agenda",
+              "href": "https://ai.engineer/code/2026#program"
+            },
+            {
+              "label": "VENUE Hilton Union Square, SF",
+              "href": "https://ai.engineer/code/2026#venue"
+            },
+            {
+              "label": "SIDE EVENTS",
+              "href": "https://ai.engineer/code/2026#side-events"
+            },
+            {
+              "label": "FOR AGENTS",
+              "href": "https://ai.engineer/code/2026#developers"
+            },
+            {
+              "label": "SPONSORS",
+              "href": "https://ai.engineer/code/2026#sponsors"
+            },
+            {
+              "label": "FAQ",
+              "href": "https://ai.engineer/code/2026#faq"
+            },
+            {
+              "label": "Schedule",
+              "href": "https://ai.engineer/code/2026?"
+            },
+            {
+              "label": "Companies A–Z",
+              "href": "https://ai.engineer/code/2026?view=companies"
+            },
+            {
+              "label": "Both days 50",
+              "href": "https://ai.engineer/code/2026?"
+            },
+            {
+              "label": "Nov 11 27",
+              "href": "https://ai.engineer/code/2026?day=11"
+            },
+            {
+              "label": "Nov 12 23",
+              "href": "https://ai.engineer/code/2026?day=12"
+            },
+            {
+              "label": "November 11",
+              "href": "https://ai.engineer/code/2026#recording-company-2026-11-11"
+            },
+            {
+              "label": "0:11:26 Gimlet Labs",
+              "href": "https://ai.engineer/code/2026#recording-company-session-natalie-serrino"
+            },
+            {
+              "label": "0:00:00 Anthropic",
+              "href": "https://ai.engineer/code/2026#recording-company-session-lydia-hallie"
+            },
+            {
+              "label": "0:40:09 Cloudflare",
+              "href": "https://ai.engineer/code/2026#recording-company-session-michelle-chen"
+            }
+          ]
         }
       },
       {
@@ -2550,6 +2657,13 @@
             "hasSearch": false,
             "hasYouAreHere": false
           }
+        },
+        "brand": {
+          "cssVars": {},
+          "colors": [],
+          "fonts": [],
+          "siteName": "AIE Code 2026",
+          "navItems": []
         }
       }
     ],
@@ -3434,6 +3548,7 @@
         }
       ],
       "errors": [],
+      "consoleErrorCount": 0,
       "screenshotPaths": [],
       "durationMs": 0
     },
@@ -3467,6 +3582,7 @@
         }
       ],
       "errors": [],
+      "consoleErrorCount": 0,
       "screenshotPaths": [],
       "durationMs": 0
     },
@@ -3501,6 +3617,7 @@
         }
       ],
       "errors": [],
+      "consoleErrorCount": 0,
       "screenshotPaths": [],
       "durationMs": 0
     }
@@ -3699,8 +3816,8 @@
           "variant": 2
         },
         "backtracks": {
-          "baseline": 2,
-          "variant": 2
+          "baseline": 1,
+          "variant": 1
         },
         "failedInteractions": {
           "baseline": 0,
@@ -3723,7 +3840,7 @@
       "run_t1_desktop",
       "run_variant_var_00000006"
     ],
-    "summary": "Rehearsal verified 3 browser runs against https://ai.engineer/code/2026: 0 verified failure(s), 5 reproducible concern(s). 10 total findings mapped to 10 proposed changes.",
+    "summary": "Rehearsal ran 3 browser runs on https://ai.engineer/code/2026. It found 0 verified failures and 5 reproducible concerns. 10 findings became 10 changes.",
     "changes": [
       {
         "rank": 1,
@@ -3829,7 +3946,7 @@
     "rebuildPhases": [
       {
         "name": "Truth pass",
-        "goal": "Remove anything stale or misleading — copy must match reality.",
+        "goal": "Fix anything stale or wrong. The page should say what is true today.",
         "items": [
           "Post-event page still invites registration",
           "Desktop: missing site ID, primary navigation, search, you-are-here indicator (trunk test fails)"
@@ -3837,10 +3954,10 @@
       },
       {
         "name": "Hierarchy pass",
-        "goal": "One obvious primary action; scanning-friendly structure.",
+        "goal": "Make one action obvious and the page easy to scan.",
         "items": [
-          "Rebuild nav to ~7 items max",
-          "Single dominant CTA above the fold",
+          "Cut the main nav to about 7 items",
+          "Put one main call to action above the fold",
           "Dense link surface increases scan cost",
           "Desktop: missing site ID (trunk test fails)",
           "\"How much does it cost?\" has no answer path"
@@ -3848,10 +3965,10 @@
       },
       {
         "name": "Verification loop",
-        "goal": "Rehearse the rebuild against the same assertions before shipping.",
+        "goal": "Run the same checks on the rebuild before it ships.",
         "items": [
-          "Re-run experiment on staging",
-          "Compare baseline vs. rebuild deltas"
+          "Rerun the experiment on staging",
+          "Compare the baseline with the rebuild"
         ]
       }
     ]
@@ -3924,7 +4041,7 @@
     {
       "endpointId": "ep_signup_406df8b3",
       "class": "signup",
-      "url": "https://ai.engineer/data#code-applications",
+      "url": "https://ai.engineer/data",
       "label": "Apply through our MCP →",
       "weight": 0.76,
       "sourceStateId": "st_00000002",
@@ -4157,7 +4274,7 @@
       "answered": true,
       "answeredBy": {
         "stateId": "st_00000002",
-        "url": "https://ai.engineer/data#code-applications",
+        "url": "https://ai.engineer/data",
         "evidence": "signup endpoint \"Apply through our MCP →\""
       },
       "importance": 0.9,
@@ -4201,7 +4318,7 @@
       "answered": true,
       "answeredBy": {
         "stateId": "st_00000002",
-        "url": "https://ai.engineer/data#code-applications",
+        "url": "https://ai.engineer/data",
         "evidence": "signup endpoint \"Apply through our MCP →\""
       },
       "importance": 0.95,
@@ -4371,5 +4488,289 @@
       "source": "bank"
     }
   ],
+  "rebuild": {
+    "generatedAt": "2026-11-13T12:00:00.000Z",
+    "brand": {
+      "name": "AI Engineer Code Summit 2026",
+      "colors": {
+        "ink": "#0a0a0a",
+        "surface": "#ffffff",
+        "muted": "#6b6b6b",
+        "line": "#ededed",
+        "accent": "#f8df8c"
+      },
+      "fonts": {
+        "sans": "ui-sans-serif, system-ui, -apple-system, \"Segoe UI\", Roboto, Helvetica, Arial, sans-serif"
+      },
+      "cssVars": {},
+      "faviconUrl": "https://ai.engineer/favicon.ico",
+      "navItems": [
+        {
+          "label": "WELCOME AIE Code Summit 2026",
+          "href": "https://ai.engineer/code/2026#welcome"
+        },
+        {
+          "label": "WATCH & READ",
+          "href": "https://ai.engineer/code/2026#livestream"
+        },
+        {
+          "label": "WHY ATTEND",
+          "href": "https://ai.engineer/code/2026#why-attend"
+        },
+        {
+          "label": "APPLY TO ATTEND",
+          "href": "https://ai.engineer/code/2026#access"
+        },
+        {
+          "label": "SPEAKERS",
+          "href": "https://ai.engineer/code/2026#speakers"
+        },
+        {
+          "label": "PROGRAM Daily agenda",
+          "href": "https://ai.engineer/code/2026#program"
+        },
+        {
+          "label": "VENUE Hilton Union Square, SF",
+          "href": "https://ai.engineer/code/2026#venue"
+        },
+        {
+          "label": "SIDE EVENTS",
+          "href": "https://ai.engineer/code/2026#side-events"
+        },
+        {
+          "label": "FOR AGENTS",
+          "href": "https://ai.engineer/code/2026#developers"
+        },
+        {
+          "label": "SPONSORS",
+          "href": "https://ai.engineer/code/2026#sponsors"
+        },
+        {
+          "label": "FAQ",
+          "href": "https://ai.engineer/code/2026#faq"
+        },
+        {
+          "label": "Schedule",
+          "href": "https://ai.engineer/code/2026?"
+        },
+        {
+          "label": "Companies A–Z",
+          "href": "https://ai.engineer/code/2026?view=companies"
+        },
+        {
+          "label": "Both days 50",
+          "href": "https://ai.engineer/code/2026?"
+        },
+        {
+          "label": "Nov 11 27",
+          "href": "https://ai.engineer/code/2026?day=11"
+        },
+        {
+          "label": "Nov 12 23",
+          "href": "https://ai.engineer/code/2026?day=12"
+        },
+        {
+          "label": "November 11",
+          "href": "https://ai.engineer/code/2026#recording-company-2026-11-11"
+        },
+        {
+          "label": "0:11:26 Gimlet Labs",
+          "href": "https://ai.engineer/code/2026#recording-company-session-natalie-serrino"
+        },
+        {
+          "label": "0:00:00 Anthropic",
+          "href": "https://ai.engineer/code/2026#recording-company-session-lydia-hallie"
+        },
+        {
+          "label": "0:40:09 Cloudflare",
+          "href": "https://ai.engineer/code/2026#recording-company-session-michelle-chen"
+        }
+      ],
+      "ctaLabels": [
+        "Watch at 0:00:00 ↗",
+        "Watch on YouTube ↗",
+        "Schedule",
+        "Watch at 0:11:26 ↗",
+        "Watch at 0:40:09 ↗",
+        "Watch at 1:01:02 ↗",
+        "Watch at 1:30:40 ↗",
+        "Watch at 1:37:50 ↗",
+        "Watch at 1:50:46 ↗",
+        "Watch at 1:58:35 ↗",
+        "Watch at 2:21:16 ↗",
+        "Watch at 2:46:35 ↗"
+      ],
+      "tone": "playful",
+      "voiceNotes": [
+        "Uses emoji in copy",
+        "Sentences average about 10 words"
+      ]
+    },
+    "goals": [
+      {
+        "goalId": "goal_a415ca3a",
+        "slug": "find-the-conference-schedule",
+        "title": "Find the conference schedule",
+        "goal": "find the conference schedule",
+        "source": "experiment-goal",
+        "endpointClass": "schedule-event",
+        "targetUrl": "https://ai.engineer/code/2026/talks",
+        "sourceLabel": "Explore all 50 sessions →",
+        "weight": 1
+      },
+      {
+        "goalId": "goal_b8570957",
+        "slug": "watch-at-0-00-00",
+        "title": "Watch at 0:00:00 ↗",
+        "goal": "Watch at 0:00:00 ↗",
+        "source": "cta",
+        "endpointClass": "demo-video",
+        "targetUrl": "https://www.youtube.com/watch?v=vlfCjWuv4es&amp;t=0s",
+        "sourceLabel": "Watch at 0:00:00 ↗",
+        "weight": 0.82
+      },
+      {
+        "goalId": "goal_11e9ba26",
+        "slug": "schedule",
+        "title": "Schedule",
+        "goal": "Schedule",
+        "source": "cta",
+        "endpointClass": "schedule-event",
+        "targetUrl": "https://ai.engineer/code/2026?",
+        "sourceLabel": "Schedule",
+        "weight": 0.76
+      },
+      {
+        "goalId": "goal_4aea93b2",
+        "slug": "apply-through-our-mcp",
+        "title": "Apply through our MCP →",
+        "goal": "Apply through our MCP →",
+        "source": "cta",
+        "endpointClass": "signup",
+        "targetUrl": "https://ai.engineer/data",
+        "sourceLabel": "Apply through our MCP →",
+        "weight": 0.74
+      },
+      {
+        "goalId": "goal_9bc7cfc8",
+        "slug": "watch-on-youtube",
+        "title": "Watch on YouTube ↗",
+        "goal": "Watch on YouTube ↗",
+        "source": "cta",
+        "endpointClass": "demo-video",
+        "targetUrl": "https://www.youtube.com/watch?v=ZZ19zhYnDKY",
+        "sourceLabel": "Watch on YouTube ↗",
+        "weight": 0.7
+      },
+      {
+        "goalId": "goal_5f91c860",
+        "slug": "watch-the-demo",
+        "title": "Watch the demo",
+        "goal": "Watch a demo or video",
+        "source": "endpoint",
+        "endpointClass": "demo-video",
+        "targetUrl": "https://www.youtube.com/watch?v=y9JtCCZP2MQ",
+        "sourceLabel": "Watch on YouTube ↗",
+        "weight": 0.67
+      },
+      {
+        "goalId": "goal_57cd145b",
+        "slug": "watch-at-0-11-26",
+        "title": "Watch at 0:11:26 ↗",
+        "goal": "Watch at 0:11:26 ↗",
+        "source": "cta",
+        "endpointClass": "demo-video",
+        "targetUrl": "https://www.youtube.com/watch?v=ZZ19zhYnDKY&amp;t=686s",
+        "sourceLabel": "Watch at 0:11:26 ↗",
+        "weight": 0.63
+      },
+      {
+        "goalId": "goal_a462f6b8",
+        "slug": "watch-at-0-40-09",
+        "title": "Watch at 0:40:09 ↗",
+        "goal": "Watch at 0:40:09 ↗",
+        "source": "cta",
+        "endpointClass": "demo-video",
+        "targetUrl": "https://www.youtube.com/watch?v=ZZ19zhYnDKY&amp;t=2409s",
+        "sourceLabel": "Watch at 0:40:09 ↗",
+        "weight": 0.61
+      }
+    ],
+    "pages": [
+      {
+        "slug": "find-the-conference-schedule",
+        "goal": "find the conference schedule",
+        "title": "Find the conference schedule · AI Engineer Code Summit 2026",
+        "summary": "One primary CTA (“Explore all 50 sessions →”) for “find the conference schedule”, 5 nav items, 3 sections; applies “Post-event page still invites registration”.",
+        "html": "<!doctype html>\n<html lang=\"en\">\n<head>\n<meta charset=\"utf-8\">\n<meta name=\"viewport\" content=\"width=device-width, initial-scale=1\">\n<title>Find the conference schedule · AI Engineer Code Summit 2026</title>\n<link rel=\"icon\" href=\"https://ai.engineer/favicon.ico\">\n<style>:root{--ink:#0a0a0a;--surface:#ffffff;--muted:#6b6b6b;--line:#ededed;--accent:#f8df8c;--on-accent:#0a0a0a;--link:#0a0a0a;--sans:ui-sans-serif, system-ui, -apple-system, \"Segoe UI\", Roboto, Helvetica, Arial, sans-serif;--mono:ui-monospace, SFMono-Regular, Menlo, monospace}\n*{box-sizing:border-box}\nhtml{-webkit-text-size-adjust:100%}\nbody{margin:0;background:var(--surface);color:var(--ink);font-family:var(--sans);font-size:16px;line-height:1.55;-webkit-font-smoothing:antialiased}\na{color:var(--link)}\n.wrap{max-width:44rem;margin:0 auto;padding:0 1.25rem}\nheader.site{position:sticky;top:0;z-index:10;background:var(--surface);border-bottom:1px solid var(--line)}\nheader.site .wrap{display:flex;align-items:center;justify-content:space-between;gap:1rem;min-height:3.5rem;flex-wrap:wrap}\n.brand{display:inline-flex;align-items:center;color:var(--ink);text-decoration:none;font-weight:600}\n.brand img{display:block;height:28px;width:auto}\nnav ul{display:flex;flex-wrap:wrap;gap:.25rem 1rem;list-style:none;margin:0;padding:0;font-size:.9375rem}\nnav a{color:var(--ink);text-decoration:none}\nnav a:hover{text-decoration:underline}\n.hero{padding:3.5rem 0 2.5rem;border-bottom:1px solid var(--line)}\nh1{font-size:clamp(1.875rem,4vw,2.5rem);line-height:1.15;margin:0 0 1rem;font-weight:600;text-wrap:balance}\n.lede{font-size:1.125rem;color:var(--muted);margin:0 0 1.75rem;max-width:36em}\n.act{display:flex;flex-wrap:wrap;align-items:center;gap:.75rem 1rem}\n.cta{display:inline-flex;align-items:center;min-height:2.75rem;padding:.625rem 1.25rem;border-radius:.5rem;background:var(--accent);color:var(--on-accent);font-weight:600;text-decoration:none}\n.cta:hover{filter:brightness(1.08)}\n.cta:focus-visible,a:focus-visible{outline:2px solid var(--accent);outline-offset:3px}\n.status{font-size:.9375rem;color:var(--muted)}\nmain section{padding:2rem 0;border-bottom:1px solid var(--line)}\nh2{font-size:1.25rem;line-height:1.3;margin:0 0 .75rem;font-weight:600}\nmain p{margin:0 0 .75rem;max-width:38em}\nmain ul{margin:0;padding-left:1.25rem}\nmain li{margin:.25rem 0}\nul.links{list-style:none;padding:0}\nfooter.site{padding:2rem 0 3rem;color:var(--muted);font-size:.875rem}\nfooter.site ul.links{display:flex;flex-wrap:wrap;gap:.25rem 1rem;list-style:none;padding:0;margin:.5rem 0 0}\nfooter.site a{color:var(--muted)}\n@media (max-width:640px){.hero{padding:2.5rem 0 2rem}nav ul{gap:.25rem .75rem}}</style>\n</head>\n<body>\n<header class=\"site\"><div class=\"wrap\"><a class=\"brand\" href=\"https://ai.engineer/code/2026\"><span class=\"name\">AI Engineer Code Summit 2026</span></a><nav aria-label=\"Primary\"><ul><li><a href=\"https://ai.engineer/code/2026#welcome\">WELCOME AIE Code Summit 2026</a></li><li><a href=\"https://ai.engineer/code/2026?\">Schedule</a></li><li><a href=\"https://ai.engineer/code/2026?view=companies\">Companies A–Z</a></li><li><a href=\"https://ai.engineer/code/2026?day=11\">Nov 11 27</a></li><li><a href=\"https://ai.engineer/code/2026?day=12\">Nov 12 23</a></li></ul></nav></div></header>\n<main>\n<section class=\"hero\"><div class=\"wrap\"><h1>Find the conference schedule</h1><p class=\"lede\">Search… / WELCOME AIE Code Summit 2026 WATCH &amp; READ Recordings, essays &amp; transcripts WHY ATTEND Built for practitioners APPLY TO ATTEND SPEAKERS First speakers announced PROGRAM Daily agenda VENUE Hilton Union Square…</p><div class=\"act\"><a class=\"cta\" href=\"https://ai.engineer/code/2026/talks\">Explore all 50 sessions →</a></div></div></section>\n<div class=\"wrap\">\n<section><h2>Sessions</h2><p>AIE CODE returns for its second annual code-focused summit. Catch up on the year with the world’s top agentic engineers, sharing the workflows and breakthroughs changing how software gets built.</p><ul><li>800 admitted last year. 1.5 million talk views worldwide.</li><li>A highly selective gathering. Invitations by application only.</li><li>Rewatch both conference days, or browse individual sessions for their illustrated reading editions, recordings, and full timestamped transcripts. Separate…</li></ul></section>\n<section><h2>AI Engineer Code Summit 2026: AI Engineering Conference, Nov 10-12, San…</h2><ul><li>Explore all 50 sessions → Wednesday, November 11</li><li>Schedule Companies A–Z Both days 50 Nov 11 27 Nov 12 23</li><li>Search talks, speakers, or companies Track All sessions Main stage Online track Remarks</li></ul></section>\n<section><h2>Where to go next</h2><ul class=\"links\"><li><a href=\"https://ai.engineer/code/2026\">Schedule</a></li><li><a href=\"https://ai.engineer/data\">Apply through our MCP →</a></li><li><a href=\"https://www.youtube.com/watch?v=ZZ19zhYnDKY\">Watch on YouTube ↗</a></li><li><a href=\"https://www.youtube.com/watch?v=y9JtCCZP2MQ\">Watch on YouTube ↗</a></li><li><a href=\"https://www.youtube.com/watch?v=vlfCjWuv4es&amp;t=0s\">Watch at 0:00:00 ↗</a></li><li><a href=\"https://www.youtube.com/watch?v=_7P580m4kPY&amp;t=0s\">Watch at 0:00:00 ↗</a></li></ul></section>\n</div>\n</main>\n<footer class=\"site\"><div class=\"wrap\"><p>Rebuilt from ai.engineer for the goal “find the conference schedule”. Applies: Post-event page still invites registration; Desktop: missing site ID, primary navigation, search, you-are-here indicator (trunk test fails); Dense link surface increases scan cost.</p><ul class=\"links\"><li><a href=\"https://ai.engineer/code/2026/guide/sponsorship\">BECOME A SPONSOR</a></li></ul></div></footer>\n</body>\n</html>",
+        "source": "template",
+        "bytes": 5661
+      },
+      {
+        "slug": "watch-at-0-00-00",
+        "goal": "Watch at 0:00:00 ↗",
+        "title": "Watch at 0:00:00 ↗ · AI Engineer Code Summit 2026",
+        "summary": "One primary CTA (“Watch at 0:00:00 ↗”) for “Watch at 0:00:00 ↗”, 5 nav items, 2 sections; applies “Post-event page still invites registration”.",
+        "html": "<!doctype html>\n<html lang=\"en\">\n<head>\n<meta charset=\"utf-8\">\n<meta name=\"viewport\" content=\"width=device-width, initial-scale=1\">\n<title>Watch at 0:00:00 ↗ · AI Engineer Code Summit 2026</title>\n<link rel=\"icon\" href=\"https://ai.engineer/favicon.ico\">\n<style>:root{--ink:#0a0a0a;--surface:#ffffff;--muted:#6b6b6b;--line:#ededed;--accent:#f8df8c;--on-accent:#0a0a0a;--link:#0a0a0a;--sans:ui-sans-serif, system-ui, -apple-system, \"Segoe UI\", Roboto, Helvetica, Arial, sans-serif;--mono:ui-monospace, SFMono-Regular, Menlo, monospace}\n*{box-sizing:border-box}\nhtml{-webkit-text-size-adjust:100%}\nbody{margin:0;background:var(--surface);color:var(--ink);font-family:var(--sans);font-size:16px;line-height:1.55;-webkit-font-smoothing:antialiased}\na{color:var(--link)}\n.wrap{max-width:44rem;margin:0 auto;padding:0 1.25rem}\nheader.site{position:sticky;top:0;z-index:10;background:var(--surface);border-bottom:1px solid var(--line)}\nheader.site .wrap{display:flex;align-items:center;justify-content:space-between;gap:1rem;min-height:3.5rem;flex-wrap:wrap}\n.brand{display:inline-flex;align-items:center;color:var(--ink);text-decoration:none;font-weight:600}\n.brand img{display:block;height:28px;width:auto}\nnav ul{display:flex;flex-wrap:wrap;gap:.25rem 1rem;list-style:none;margin:0;padding:0;font-size:.9375rem}\nnav a{color:var(--ink);text-decoration:none}\nnav a:hover{text-decoration:underline}\n.hero{padding:3.5rem 0 2.5rem;border-bottom:1px solid var(--line)}\nh1{font-size:clamp(1.875rem,4vw,2.5rem);line-height:1.15;margin:0 0 1rem;font-weight:600;text-wrap:balance}\n.lede{font-size:1.125rem;color:var(--muted);margin:0 0 1.75rem;max-width:36em}\n.act{display:flex;flex-wrap:wrap;align-items:center;gap:.75rem 1rem}\n.cta{display:inline-flex;align-items:center;min-height:2.75rem;padding:.625rem 1.25rem;border-radius:.5rem;background:var(--accent);color:var(--on-accent);font-weight:600;text-decoration:none}\n.cta:hover{filter:brightness(1.08)}\n.cta:focus-visible,a:focus-visible{outline:2px solid var(--accent);outline-offset:3px}\n.status{font-size:.9375rem;color:var(--muted)}\nmain section{padding:2rem 0;border-bottom:1px solid var(--line)}\nh2{font-size:1.25rem;line-height:1.3;margin:0 0 .75rem;font-weight:600}\nmain p{margin:0 0 .75rem;max-width:38em}\nmain ul{margin:0;padding-left:1.25rem}\nmain li{margin:.25rem 0}\nul.links{list-style:none;padding:0}\nfooter.site{padding:2rem 0 3rem;color:var(--muted);font-size:.875rem}\nfooter.site ul.links{display:flex;flex-wrap:wrap;gap:.25rem 1rem;list-style:none;padding:0;margin:.5rem 0 0}\nfooter.site a{color:var(--muted)}\n@media (max-width:640px){.hero{padding:2.5rem 0 2rem}nav ul{gap:.25rem .75rem}}</style>\n</head>\n<body>\n<header class=\"site\"><div class=\"wrap\"><a class=\"brand\" href=\"https://ai.engineer/code/2026\"><span class=\"name\">AI Engineer Code Summit 2026</span></a><nav aria-label=\"Primary\"><ul><li><a href=\"https://ai.engineer/code/2026#welcome\">WELCOME AIE Code Summit 2026</a></li><li><a href=\"https://ai.engineer/code/2026?\">Schedule</a></li><li><a href=\"https://ai.engineer/code/2026?view=companies\">Companies A–Z</a></li><li><a href=\"https://ai.engineer/code/2026?day=11\">Nov 11 27</a></li><li><a href=\"https://ai.engineer/code/2026?day=12\">Nov 12 23</a></li></ul></nav></div></header>\n<main>\n<section class=\"hero\"><div class=\"wrap\"><h1>Watch at 0:00:00 ↗</h1><p class=\"lede\">Search… / WELCOME AIE Code Summit 2026 WATCH &amp; READ Recordings, essays &amp; transcripts WHY ATTEND Built for practitioners APPLY TO ATTEND SPEAKERS First speakers announced PROGRAM Daily agenda VENUE Hilton Union Square…</p><div class=\"act\"><a class=\"cta\" href=\"https://www.youtube.com/watch?v=vlfCjWuv4es&amp;amp;t=0s\">Watch at 0:00:00 ↗</a></div></div></section>\n<div class=\"wrap\">\n<section><h2>AI Engineer Code Summit 2026: AI Engineering Conference, Nov 10-12, San…</h2><p>AIE CODE returns for its second annual code-focused summit. Catch up on the year with the world’s top agentic engineers, sharing the workflows and breakthroughs changing how software gets built.</p><ul><li>800 admitted last year. 1.5 million talk views worldwide.</li><li>A highly selective gathering. Invitations by application only.</li><li>Rewatch both conference days, or browse individual sessions for their illustrated reading editions, recordings, and full timestamped transcripts. Separate…</li></ul></section>\n<section><h2>Where to go next</h2><ul class=\"links\"><li><a href=\"https://ai.engineer/code/2026/talks\">Explore all 50 sessions →</a></li><li><a href=\"https://ai.engineer/code/2026\">Schedule</a></li><li><a href=\"https://ai.engineer/data\">Apply through our MCP →</a></li><li><a href=\"https://www.youtube.com/watch?v=ZZ19zhYnDKY\">Watch on YouTube ↗</a></li><li><a href=\"https://www.youtube.com/watch?v=y9JtCCZP2MQ\">Watch on YouTube ↗</a></li><li><a href=\"https://www.youtube.com/watch?v=vlfCjWuv4es&amp;t=0s\">Watch at 0:00:00 ↗</a></li></ul></section>\n</div>\n</main>\n<footer class=\"site\"><div class=\"wrap\"><p>Rebuilt from ai.engineer for the goal “Watch at 0:00:00 ↗”. Applies: Post-event page still invites registration; Desktop: missing site ID, primary navigation, search, you-are-here indicator (trunk test fails); Dense link surface increases scan cost.</p><ul class=\"links\"><li><a href=\"https://ai.engineer/code/2026/guide/sponsorship\">BECOME A SPONSOR</a></li></ul></div></footer>\n</body>\n</html>",
+        "source": "template",
+        "bytes": 5374
+      },
+      {
+        "slug": "schedule",
+        "goal": "Schedule",
+        "title": "Schedule · AI Engineer Code Summit 2026",
+        "summary": "One primary CTA (“Schedule”) for “Schedule”, 5 nav items, 2 sections; applies “Post-event page still invites registration”.",
+        "html": "<!doctype html>\n<html lang=\"en\">\n<head>\n<meta charset=\"utf-8\">\n<meta name=\"viewport\" content=\"width=device-width, initial-scale=1\">\n<title>Schedule · AI Engineer Code Summit 2026</title>\n<link rel=\"icon\" href=\"https://ai.engineer/favicon.ico\">\n<style>:root{--ink:#0a0a0a;--surface:#ffffff;--muted:#6b6b6b;--line:#ededed;--accent:#f8df8c;--on-accent:#0a0a0a;--link:#0a0a0a;--sans:ui-sans-serif, system-ui, -apple-system, \"Segoe UI\", Roboto, Helvetica, Arial, sans-serif;--mono:ui-monospace, SFMono-Regular, Menlo, monospace}\n*{box-sizing:border-box}\nhtml{-webkit-text-size-adjust:100%}\nbody{margin:0;background:var(--surface);color:var(--ink);font-family:var(--sans);font-size:16px;line-height:1.55;-webkit-font-smoothing:antialiased}\na{color:var(--link)}\n.wrap{max-width:44rem;margin:0 auto;padding:0 1.25rem}\nheader.site{position:sticky;top:0;z-index:10;background:var(--surface);border-bottom:1px solid var(--line)}\nheader.site .wrap{display:flex;align-items:center;justify-content:space-between;gap:1rem;min-height:3.5rem;flex-wrap:wrap}\n.brand{display:inline-flex;align-items:center;color:var(--ink);text-decoration:none;font-weight:600}\n.brand img{display:block;height:28px;width:auto}\nnav ul{display:flex;flex-wrap:wrap;gap:.25rem 1rem;list-style:none;margin:0;padding:0;font-size:.9375rem}\nnav a{color:var(--ink);text-decoration:none}\nnav a:hover{text-decoration:underline}\n.hero{padding:3.5rem 0 2.5rem;border-bottom:1px solid var(--line)}\nh1{font-size:clamp(1.875rem,4vw,2.5rem);line-height:1.15;margin:0 0 1rem;font-weight:600;text-wrap:balance}\n.lede{font-size:1.125rem;color:var(--muted);margin:0 0 1.75rem;max-width:36em}\n.act{display:flex;flex-wrap:wrap;align-items:center;gap:.75rem 1rem}\n.cta{display:inline-flex;align-items:center;min-height:2.75rem;padding:.625rem 1.25rem;border-radius:.5rem;background:var(--accent);color:var(--on-accent);font-weight:600;text-decoration:none}\n.cta:hover{filter:brightness(1.08)}\n.cta:focus-visible,a:focus-visible{outline:2px solid var(--accent);outline-offset:3px}\n.status{font-size:.9375rem;color:var(--muted)}\nmain section{padding:2rem 0;border-bottom:1px solid var(--line)}\nh2{font-size:1.25rem;line-height:1.3;margin:0 0 .75rem;font-weight:600}\nmain p{margin:0 0 .75rem;max-width:38em}\nmain ul{margin:0;padding-left:1.25rem}\nmain li{margin:.25rem 0}\nul.links{list-style:none;padding:0}\nfooter.site{padding:2rem 0 3rem;color:var(--muted);font-size:.875rem}\nfooter.site ul.links{display:flex;flex-wrap:wrap;gap:.25rem 1rem;list-style:none;padding:0;margin:.5rem 0 0}\nfooter.site a{color:var(--muted)}\n@media (max-width:640px){.hero{padding:2.5rem 0 2rem}nav ul{gap:.25rem .75rem}}</style>\n</head>\n<body>\n<header class=\"site\"><div class=\"wrap\"><a class=\"brand\" href=\"https://ai.engineer/code/2026\"><span class=\"name\">AI Engineer Code Summit 2026</span></a><nav aria-label=\"Primary\"><ul><li><a href=\"https://ai.engineer/code/2026#welcome\">WELCOME AIE Code Summit 2026</a></li><li><a href=\"https://ai.engineer/code/2026?\">Schedule</a></li><li><a href=\"https://ai.engineer/code/2026?view=companies\">Companies A–Z</a></li><li><a href=\"https://ai.engineer/code/2026?day=11\">Nov 11 27</a></li><li><a href=\"https://ai.engineer/code/2026?day=12\">Nov 12 23</a></li></ul></nav></div></header>\n<main>\n<section class=\"hero\"><div class=\"wrap\"><h1>Schedule</h1><p class=\"lede\">Search… / WELCOME AIE Code Summit 2026 WATCH &amp; READ Recordings, essays &amp; transcripts WHY ATTEND Built for practitioners APPLY TO ATTEND SPEAKERS First speakers announced PROGRAM Daily agenda VENUE Hilton Union Square…</p><div class=\"act\"><a class=\"cta\" href=\"https://ai.engineer/code/2026?\">Schedule</a></div></div></section>\n<div class=\"wrap\">\n<section><h2>AI Engineer Code Summit 2026: AI Engineering Conference, Nov 10-12, San…</h2><p>AIE CODE returns for its second annual code-focused summit. Catch up on the year with the world’s top agentic engineers, sharing the workflows and breakthroughs changing how software gets built.</p><ul><li>800 admitted last year. 1.5 million talk views worldwide.</li><li>A highly selective gathering. Invitations by application only.</li><li>Rewatch both conference days, or browse individual sessions for their illustrated reading editions, recordings, and full timestamped transcripts. Separate…</li></ul></section>\n<section><h2>Where to go next</h2><ul class=\"links\"><li><a href=\"https://ai.engineer/code/2026/talks\">Explore all 50 sessions →</a></li><li><a href=\"https://ai.engineer/code/2026\">Schedule</a></li><li><a href=\"https://ai.engineer/data\">Apply through our MCP →</a></li><li><a href=\"https://www.youtube.com/watch?v=ZZ19zhYnDKY\">Watch on YouTube ↗</a></li><li><a href=\"https://www.youtube.com/watch?v=y9JtCCZP2MQ\">Watch on YouTube ↗</a></li><li><a href=\"https://www.youtube.com/watch?v=vlfCjWuv4es&amp;t=0s\">Watch at 0:00:00 ↗</a></li></ul></section>\n</div>\n</main>\n<footer class=\"site\"><div class=\"wrap\"><p>Rebuilt from ai.engineer for the goal “Schedule”. Applies: Post-event page still invites registration; Desktop: missing site ID, primary navigation, search, you-are-here indicator (trunk test fails); Dense link surface increases scan cost.</p><ul class=\"links\"><li><a href=\"https://ai.engineer/code/2026/guide/sponsorship\">BECOME A SPONSOR</a></li></ul></div></footer>\n</body>\n</html>",
+        "source": "template",
+        "bytes": 5300
+      },
+      {
+        "slug": "apply-through-our-mcp",
+        "goal": "Apply through our MCP →",
+        "title": "Apply through our MCP → · AI Engineer Code Summit 2026",
+        "summary": "One primary CTA (“Apply through our MCP →”) for “Apply through our MCP →”, 5 nav items, 2 sections; applies “Post-event page still invites registration”.",
+        "html": "<!doctype html>\n<html lang=\"en\">\n<head>\n<meta charset=\"utf-8\">\n<meta name=\"viewport\" content=\"width=device-width, initial-scale=1\">\n<title>Apply through our MCP → · AI Engineer Code Summit 2026</title>\n<link rel=\"icon\" href=\"https://ai.engineer/favicon.ico\">\n<style>:root{--ink:#0a0a0a;--surface:#ffffff;--muted:#6b6b6b;--line:#ededed;--accent:#f8df8c;--on-accent:#0a0a0a;--link:#0a0a0a;--sans:ui-sans-serif, system-ui, -apple-system, \"Segoe UI\", Roboto, Helvetica, Arial, sans-serif;--mono:ui-monospace, SFMono-Regular, Menlo, monospace}\n*{box-sizing:border-box}\nhtml{-webkit-text-size-adjust:100%}\nbody{margin:0;background:var(--surface);color:var(--ink);font-family:var(--sans);font-size:16px;line-height:1.55;-webkit-font-smoothing:antialiased}\na{color:var(--link)}\n.wrap{max-width:44rem;margin:0 auto;padding:0 1.25rem}\nheader.site{position:sticky;top:0;z-index:10;background:var(--surface);border-bottom:1px solid var(--line)}\nheader.site .wrap{display:flex;align-items:center;justify-content:space-between;gap:1rem;min-height:3.5rem;flex-wrap:wrap}\n.brand{display:inline-flex;align-items:center;color:var(--ink);text-decoration:none;font-weight:600}\n.brand img{display:block;height:28px;width:auto}\nnav ul{display:flex;flex-wrap:wrap;gap:.25rem 1rem;list-style:none;margin:0;padding:0;font-size:.9375rem}\nnav a{color:var(--ink);text-decoration:none}\nnav a:hover{text-decoration:underline}\n.hero{padding:3.5rem 0 2.5rem;border-bottom:1px solid var(--line)}\nh1{font-size:clamp(1.875rem,4vw,2.5rem);line-height:1.15;margin:0 0 1rem;font-weight:600;text-wrap:balance}\n.lede{font-size:1.125rem;color:var(--muted);margin:0 0 1.75rem;max-width:36em}\n.act{display:flex;flex-wrap:wrap;align-items:center;gap:.75rem 1rem}\n.cta{display:inline-flex;align-items:center;min-height:2.75rem;padding:.625rem 1.25rem;border-radius:.5rem;background:var(--accent);color:var(--on-accent);font-weight:600;text-decoration:none}\n.cta:hover{filter:brightness(1.08)}\n.cta:focus-visible,a:focus-visible{outline:2px solid var(--accent);outline-offset:3px}\n.status{font-size:.9375rem;color:var(--muted)}\nmain section{padding:2rem 0;border-bottom:1px solid var(--line)}\nh2{font-size:1.25rem;line-height:1.3;margin:0 0 .75rem;font-weight:600}\nmain p{margin:0 0 .75rem;max-width:38em}\nmain ul{margin:0;padding-left:1.25rem}\nmain li{margin:.25rem 0}\nul.links{list-style:none;padding:0}\nfooter.site{padding:2rem 0 3rem;color:var(--muted);font-size:.875rem}\nfooter.site ul.links{display:flex;flex-wrap:wrap;gap:.25rem 1rem;list-style:none;padding:0;margin:.5rem 0 0}\nfooter.site a{color:var(--muted)}\n@media (max-width:640px){.hero{padding:2.5rem 0 2rem}nav ul{gap:.25rem .75rem}}</style>\n</head>\n<body>\n<header class=\"site\"><div class=\"wrap\"><a class=\"brand\" href=\"https://ai.engineer/code/2026\"><span class=\"name\">AI Engineer Code Summit 2026</span></a><nav aria-label=\"Primary\"><ul><li><a href=\"https://ai.engineer/code/2026#welcome\">WELCOME AIE Code Summit 2026</a></li><li><a href=\"https://ai.engineer/code/2026?\">Schedule</a></li><li><a href=\"https://ai.engineer/code/2026?view=companies\">Companies A–Z</a></li><li><a href=\"https://ai.engineer/code/2026?day=11\">Nov 11 27</a></li><li><a href=\"https://ai.engineer/code/2026?day=12\">Nov 12 23</a></li></ul></nav></div></header>\n<main>\n<section class=\"hero\"><div class=\"wrap\"><h1>Apply through our MCP →</h1><p class=\"lede\">Search… / WELCOME AIE Code Summit 2026 WATCH &amp; READ Recordings, essays &amp; transcripts WHY ATTEND Built for practitioners APPLY TO ATTEND SPEAKERS First speakers announced PROGRAM Daily agenda VENUE Hilton Union Square…</p><div class=\"act\"><a class=\"cta\" href=\"https://ai.engineer/data\">Apply through our MCP →</a></div></div></section>\n<div class=\"wrap\">\n<section><h2>AI Engineer Code Summit 2026: AI Engineering Conference, Nov 10-12, San…</h2><p>AIE CODE returns for its second annual code-focused summit. Catch up on the year with the world’s top agentic engineers, sharing the workflows and breakthroughs changing how software gets built.</p><ul><li>800 admitted last year. 1.5 million talk views worldwide.</li><li>A highly selective gathering. Invitations by application only.</li><li>Rewatch both conference days, or browse individual sessions for their illustrated reading editions, recordings, and full timestamped transcripts. Separate…</li></ul></section>\n<section><h2>Where to go next</h2><ul class=\"links\"><li><a href=\"https://ai.engineer/code/2026/talks\">Explore all 50 sessions →</a></li><li><a href=\"https://ai.engineer/code/2026\">Schedule</a></li><li><a href=\"https://www.youtube.com/watch?v=ZZ19zhYnDKY\">Watch on YouTube ↗</a></li><li><a href=\"https://www.youtube.com/watch?v=y9JtCCZP2MQ\">Watch on YouTube ↗</a></li><li><a href=\"https://www.youtube.com/watch?v=vlfCjWuv4es&amp;t=0s\">Watch at 0:00:00 ↗</a></li><li><a href=\"https://www.youtube.com/watch?v=_7P580m4kPY&amp;t=0s\">Watch at 0:00:00 ↗</a></li></ul></section>\n</div>\n</main>\n<footer class=\"site\"><div class=\"wrap\"><p>Rebuilt from ai.engineer for the goal “Apply through our MCP →”. Applies: Post-event page still invites registration; Desktop: missing site ID, primary navigation, search, you-are-here indicator (trunk test fails); Dense link surface increases scan cost.</p><ul class=\"links\"><li><a href=\"https://ai.engineer/code/2026/guide/sponsorship\">BECOME A SPONSOR</a></li></ul></div></footer>\n</body>\n</html>",
+        "source": "template",
+        "bytes": 5385
+      },
+      {
+        "slug": "watch-on-youtube",
+        "goal": "Watch on YouTube ↗",
+        "title": "Watch on YouTube ↗ · AI Engineer Code Summit 2026",
+        "summary": "One primary CTA (“Watch on YouTube ↗”) for “Watch on YouTube ↗”, 5 nav items, 2 sections; applies “Post-event page still invites registration”.",
+        "html": "<!doctype html>\n<html lang=\"en\">\n<head>\n<meta charset=\"utf-8\">\n<meta name=\"viewport\" content=\"width=device-width, initial-scale=1\">\n<title>Watch on YouTube ↗ · AI Engineer Code Summit 2026</title>\n<link rel=\"icon\" href=\"https://ai.engineer/favicon.ico\">\n<style>:root{--ink:#0a0a0a;--surface:#ffffff;--muted:#6b6b6b;--line:#ededed;--accent:#f8df8c;--on-accent:#0a0a0a;--link:#0a0a0a;--sans:ui-sans-serif, system-ui, -apple-system, \"Segoe UI\", Roboto, Helvetica, Arial, sans-serif;--mono:ui-monospace, SFMono-Regular, Menlo, monospace}\n*{box-sizing:border-box}\nhtml{-webkit-text-size-adjust:100%}\nbody{margin:0;background:var(--surface);color:var(--ink);font-family:var(--sans);font-size:16px;line-height:1.55;-webkit-font-smoothing:antialiased}\na{color:var(--link)}\n.wrap{max-width:44rem;margin:0 auto;padding:0 1.25rem}\nheader.site{position:sticky;top:0;z-index:10;background:var(--surface);border-bottom:1px solid var(--line)}\nheader.site .wrap{display:flex;align-items:center;justify-content:space-between;gap:1rem;min-height:3.5rem;flex-wrap:wrap}\n.brand{display:inline-flex;align-items:center;color:var(--ink);text-decoration:none;font-weight:600}\n.brand img{display:block;height:28px;width:auto}\nnav ul{display:flex;flex-wrap:wrap;gap:.25rem 1rem;list-style:none;margin:0;padding:0;font-size:.9375rem}\nnav a{color:var(--ink);text-decoration:none}\nnav a:hover{text-decoration:underline}\n.hero{padding:3.5rem 0 2.5rem;border-bottom:1px solid var(--line)}\nh1{font-size:clamp(1.875rem,4vw,2.5rem);line-height:1.15;margin:0 0 1rem;font-weight:600;text-wrap:balance}\n.lede{font-size:1.125rem;color:var(--muted);margin:0 0 1.75rem;max-width:36em}\n.act{display:flex;flex-wrap:wrap;align-items:center;gap:.75rem 1rem}\n.cta{display:inline-flex;align-items:center;min-height:2.75rem;padding:.625rem 1.25rem;border-radius:.5rem;background:var(--accent);color:var(--on-accent);font-weight:600;text-decoration:none}\n.cta:hover{filter:brightness(1.08)}\n.cta:focus-visible,a:focus-visible{outline:2px solid var(--accent);outline-offset:3px}\n.status{font-size:.9375rem;color:var(--muted)}\nmain section{padding:2rem 0;border-bottom:1px solid var(--line)}\nh2{font-size:1.25rem;line-height:1.3;margin:0 0 .75rem;font-weight:600}\nmain p{margin:0 0 .75rem;max-width:38em}\nmain ul{margin:0;padding-left:1.25rem}\nmain li{margin:.25rem 0}\nul.links{list-style:none;padding:0}\nfooter.site{padding:2rem 0 3rem;color:var(--muted);font-size:.875rem}\nfooter.site ul.links{display:flex;flex-wrap:wrap;gap:.25rem 1rem;list-style:none;padding:0;margin:.5rem 0 0}\nfooter.site a{color:var(--muted)}\n@media (max-width:640px){.hero{padding:2.5rem 0 2rem}nav ul{gap:.25rem .75rem}}</style>\n</head>\n<body>\n<header class=\"site\"><div class=\"wrap\"><a class=\"brand\" href=\"https://ai.engineer/code/2026\"><span class=\"name\">AI Engineer Code Summit 2026</span></a><nav aria-label=\"Primary\"><ul><li><a href=\"https://ai.engineer/code/2026#welcome\">WELCOME AIE Code Summit 2026</a></li><li><a href=\"https://ai.engineer/code/2026?\">Schedule</a></li><li><a href=\"https://ai.engineer/code/2026?view=companies\">Companies A–Z</a></li><li><a href=\"https://ai.engineer/code/2026?day=11\">Nov 11 27</a></li><li><a href=\"https://ai.engineer/code/2026?day=12\">Nov 12 23</a></li></ul></nav></div></header>\n<main>\n<section class=\"hero\"><div class=\"wrap\"><h1>Watch on YouTube ↗</h1><p class=\"lede\">Search… / WELCOME AIE Code Summit 2026 WATCH &amp; READ Recordings, essays &amp; transcripts WHY ATTEND Built for practitioners APPLY TO ATTEND SPEAKERS First speakers announced PROGRAM Daily agenda VENUE Hilton Union Square…</p><div class=\"act\"><a class=\"cta\" href=\"https://www.youtube.com/watch?v=ZZ19zhYnDKY\">Watch on YouTube ↗</a></div></div></section>\n<div class=\"wrap\">\n<section><h2>AI Engineer Code Summit 2026: AI Engineering Conference, Nov 10-12, San…</h2><p>AIE CODE returns for its second annual code-focused summit. Catch up on the year with the world’s top agentic engineers, sharing the workflows and breakthroughs changing how software gets built.</p><ul><li>800 admitted last year. 1.5 million talk views worldwide.</li><li>A highly selective gathering. Invitations by application only.</li><li>Rewatch both conference days, or browse individual sessions for their illustrated reading editions, recordings, and full timestamped transcripts. Separate…</li></ul></section>\n<section><h2>Where to go next</h2><ul class=\"links\"><li><a href=\"https://ai.engineer/code/2026/talks\">Explore all 50 sessions →</a></li><li><a href=\"https://ai.engineer/code/2026\">Schedule</a></li><li><a href=\"https://ai.engineer/data\">Apply through our MCP →</a></li><li><a href=\"https://www.youtube.com/watch?v=y9JtCCZP2MQ\">Watch on YouTube ↗</a></li><li><a href=\"https://www.youtube.com/watch?v=vlfCjWuv4es&amp;t=0s\">Watch at 0:00:00 ↗</a></li><li><a href=\"https://www.youtube.com/watch?v=_7P580m4kPY&amp;t=0s\">Watch at 0:00:00 ↗</a></li></ul></section>\n</div>\n</main>\n<footer class=\"site\"><div class=\"wrap\"><p>Rebuilt from ai.engineer for the goal “Watch on YouTube ↗”. Applies: Post-event page still invites registration; Desktop: missing site ID, primary navigation, search, you-are-here indicator (trunk test fails); Dense link surface increases scan cost.</p><ul class=\"links\"><li><a href=\"https://ai.engineer/code/2026/guide/sponsorship\">BECOME A SPONSOR</a></li></ul></div></footer>\n</body>\n</html>",
+        "source": "template",
+        "bytes": 5370
+      },
+      {
+        "slug": "watch-the-demo",
+        "goal": "Watch a demo or video",
+        "title": "Watch the demo · AI Engineer Code Summit 2026",
+        "summary": "One primary CTA (“Watch on YouTube ↗”) for “Watch a demo or video”, 5 nav items, 2 sections; applies “Post-event page still invites registration”.",
+        "html": "<!doctype html>\n<html lang=\"en\">\n<head>\n<meta charset=\"utf-8\">\n<meta name=\"viewport\" content=\"width=device-width, initial-scale=1\">\n<title>Watch the demo · AI Engineer Code Summit 2026</title>\n<link rel=\"icon\" href=\"https://ai.engineer/favicon.ico\">\n<style>:root{--ink:#0a0a0a;--surface:#ffffff;--muted:#6b6b6b;--line:#ededed;--accent:#f8df8c;--on-accent:#0a0a0a;--link:#0a0a0a;--sans:ui-sans-serif, system-ui, -apple-system, \"Segoe UI\", Roboto, Helvetica, Arial, sans-serif;--mono:ui-monospace, SFMono-Regular, Menlo, monospace}\n*{box-sizing:border-box}\nhtml{-webkit-text-size-adjust:100%}\nbody{margin:0;background:var(--surface);color:var(--ink);font-family:var(--sans);font-size:16px;line-height:1.55;-webkit-font-smoothing:antialiased}\na{color:var(--link)}\n.wrap{max-width:44rem;margin:0 auto;padding:0 1.25rem}\nheader.site{position:sticky;top:0;z-index:10;background:var(--surface);border-bottom:1px solid var(--line)}\nheader.site .wrap{display:flex;align-items:center;justify-content:space-between;gap:1rem;min-height:3.5rem;flex-wrap:wrap}\n.brand{display:inline-flex;align-items:center;color:var(--ink);text-decoration:none;font-weight:600}\n.brand img{display:block;height:28px;width:auto}\nnav ul{display:flex;flex-wrap:wrap;gap:.25rem 1rem;list-style:none;margin:0;padding:0;font-size:.9375rem}\nnav a{color:var(--ink);text-decoration:none}\nnav a:hover{text-decoration:underline}\n.hero{padding:3.5rem 0 2.5rem;border-bottom:1px solid var(--line)}\nh1{font-size:clamp(1.875rem,4vw,2.5rem);line-height:1.15;margin:0 0 1rem;font-weight:600;text-wrap:balance}\n.lede{font-size:1.125rem;color:var(--muted);margin:0 0 1.75rem;max-width:36em}\n.act{display:flex;flex-wrap:wrap;align-items:center;gap:.75rem 1rem}\n.cta{display:inline-flex;align-items:center;min-height:2.75rem;padding:.625rem 1.25rem;border-radius:.5rem;background:var(--accent);color:var(--on-accent);font-weight:600;text-decoration:none}\n.cta:hover{filter:brightness(1.08)}\n.cta:focus-visible,a:focus-visible{outline:2px solid var(--accent);outline-offset:3px}\n.status{font-size:.9375rem;color:var(--muted)}\nmain section{padding:2rem 0;border-bottom:1px solid var(--line)}\nh2{font-size:1.25rem;line-height:1.3;margin:0 0 .75rem;font-weight:600}\nmain p{margin:0 0 .75rem;max-width:38em}\nmain ul{margin:0;padding-left:1.25rem}\nmain li{margin:.25rem 0}\nul.links{list-style:none;padding:0}\nfooter.site{padding:2rem 0 3rem;color:var(--muted);font-size:.875rem}\nfooter.site ul.links{display:flex;flex-wrap:wrap;gap:.25rem 1rem;list-style:none;padding:0;margin:.5rem 0 0}\nfooter.site a{color:var(--muted)}\n@media (max-width:640px){.hero{padding:2.5rem 0 2rem}nav ul{gap:.25rem .75rem}}</style>\n</head>\n<body>\n<header class=\"site\"><div class=\"wrap\"><a class=\"brand\" href=\"https://ai.engineer/code/2026\"><span class=\"name\">AI Engineer Code Summit 2026</span></a><nav aria-label=\"Primary\"><ul><li><a href=\"https://ai.engineer/code/2026#welcome\">WELCOME AIE Code Summit 2026</a></li><li><a href=\"https://ai.engineer/code/2026?\">Schedule</a></li><li><a href=\"https://ai.engineer/code/2026?view=companies\">Companies A–Z</a></li><li><a href=\"https://ai.engineer/code/2026?day=11\">Nov 11 27</a></li><li><a href=\"https://ai.engineer/code/2026?day=12\">Nov 12 23</a></li></ul></nav></div></header>\n<main>\n<section class=\"hero\"><div class=\"wrap\"><h1>Watch the demo</h1><p class=\"lede\">Search… / WELCOME AIE Code Summit 2026 WATCH &amp; READ Recordings, essays &amp; transcripts WHY ATTEND Built for practitioners APPLY TO ATTEND SPEAKERS First speakers announced PROGRAM Daily agenda VENUE Hilton Union Square…</p><div class=\"act\"><a class=\"cta\" href=\"https://www.youtube.com/watch?v=y9JtCCZP2MQ\">Watch on YouTube ↗</a></div></div></section>\n<div class=\"wrap\">\n<section><h2>AI Engineer Code Summit 2026: AI Engineering Conference, Nov 10-12, San…</h2><p>AIE CODE returns for its second annual code-focused summit. Catch up on the year with the world’s top agentic engineers, sharing the workflows and breakthroughs changing how software gets built.</p><ul><li>800 admitted last year. 1.5 million talk views worldwide.</li><li>A highly selective gathering. Invitations by application only.</li><li>Rewatch both conference days, or browse individual sessions for their illustrated reading editions, recordings, and full timestamped transcripts. Separate…</li></ul></section>\n<section><h2>Where to go next</h2><ul class=\"links\"><li><a href=\"https://ai.engineer/code/2026/talks\">Explore all 50 sessions →</a></li><li><a href=\"https://ai.engineer/code/2026\">Schedule</a></li><li><a href=\"https://ai.engineer/data\">Apply through our MCP →</a></li><li><a href=\"https://www.youtube.com/watch?v=ZZ19zhYnDKY\">Watch on YouTube ↗</a></li><li><a href=\"https://www.youtube.com/watch?v=vlfCjWuv4es&amp;t=0s\">Watch at 0:00:00 ↗</a></li><li><a href=\"https://www.youtube.com/watch?v=_7P580m4kPY&amp;t=0s\">Watch at 0:00:00 ↗</a></li></ul></section>\n</div>\n</main>\n<footer class=\"site\"><div class=\"wrap\"><p>Rebuilt from ai.engineer for the goal “Watch a demo or video”. Applies: Post-event page still invites registration; Desktop: missing site ID, primary navigation, search, you-are-here indicator (trunk test fails); Dense link surface increases scan cost.</p><ul class=\"links\"><li><a href=\"https://ai.engineer/code/2026/guide/sponsorship\">BECOME A SPONSOR</a></li></ul></div></footer>\n</body>\n</html>",
+        "source": "template",
+        "bytes": 5359
+      },
+      {
+        "slug": "watch-at-0-11-26",
+        "goal": "Watch at 0:11:26 ↗",
+        "title": "Watch at 0:11:26 ↗ · AI Engineer Code Summit 2026",
+        "summary": "One primary CTA (“Watch at 0:11:26 ↗”) for “Watch at 0:11:26 ↗”, 5 nav items, 2 sections; applies “Post-event page still invites registration”.",
+        "html": "<!doctype html>\n<html lang=\"en\">\n<head>\n<meta charset=\"utf-8\">\n<meta name=\"viewport\" content=\"width=device-width, initial-scale=1\">\n<title>Watch at 0:11:26 ↗ · AI Engineer Code Summit 2026</title>\n<link rel=\"icon\" href=\"https://ai.engineer/favicon.ico\">\n<style>:root{--ink:#0a0a0a;--surface:#ffffff;--muted:#6b6b6b;--line:#ededed;--accent:#f8df8c;--on-accent:#0a0a0a;--link:#0a0a0a;--sans:ui-sans-serif, system-ui, -apple-system, \"Segoe UI\", Roboto, Helvetica, Arial, sans-serif;--mono:ui-monospace, SFMono-Regular, Menlo, monospace}\n*{box-sizing:border-box}\nhtml{-webkit-text-size-adjust:100%}\nbody{margin:0;background:var(--surface);color:var(--ink);font-family:var(--sans);font-size:16px;line-height:1.55;-webkit-font-smoothing:antialiased}\na{color:var(--link)}\n.wrap{max-width:44rem;margin:0 auto;padding:0 1.25rem}\nheader.site{position:sticky;top:0;z-index:10;background:var(--surface);border-bottom:1px solid var(--line)}\nheader.site .wrap{display:flex;align-items:center;justify-content:space-between;gap:1rem;min-height:3.5rem;flex-wrap:wrap}\n.brand{display:inline-flex;align-items:center;color:var(--ink);text-decoration:none;font-weight:600}\n.brand img{display:block;height:28px;width:auto}\nnav ul{display:flex;flex-wrap:wrap;gap:.25rem 1rem;list-style:none;margin:0;padding:0;font-size:.9375rem}\nnav a{color:var(--ink);text-decoration:none}\nnav a:hover{text-decoration:underline}\n.hero{padding:3.5rem 0 2.5rem;border-bottom:1px solid var(--line)}\nh1{font-size:clamp(1.875rem,4vw,2.5rem);line-height:1.15;margin:0 0 1rem;font-weight:600;text-wrap:balance}\n.lede{font-size:1.125rem;color:var(--muted);margin:0 0 1.75rem;max-width:36em}\n.act{display:flex;flex-wrap:wrap;align-items:center;gap:.75rem 1rem}\n.cta{display:inline-flex;align-items:center;min-height:2.75rem;padding:.625rem 1.25rem;border-radius:.5rem;background:var(--accent);color:var(--on-accent);font-weight:600;text-decoration:none}\n.cta:hover{filter:brightness(1.08)}\n.cta:focus-visible,a:focus-visible{outline:2px solid var(--accent);outline-offset:3px}\n.status{font-size:.9375rem;color:var(--muted)}\nmain section{padding:2rem 0;border-bottom:1px solid var(--line)}\nh2{font-size:1.25rem;line-height:1.3;margin:0 0 .75rem;font-weight:600}\nmain p{margin:0 0 .75rem;max-width:38em}\nmain ul{margin:0;padding-left:1.25rem}\nmain li{margin:.25rem 0}\nul.links{list-style:none;padding:0}\nfooter.site{padding:2rem 0 3rem;color:var(--muted);font-size:.875rem}\nfooter.site ul.links{display:flex;flex-wrap:wrap;gap:.25rem 1rem;list-style:none;padding:0;margin:.5rem 0 0}\nfooter.site a{color:var(--muted)}\n@media (max-width:640px){.hero{padding:2.5rem 0 2rem}nav ul{gap:.25rem .75rem}}</style>\n</head>\n<body>\n<header class=\"site\"><div class=\"wrap\"><a class=\"brand\" href=\"https://ai.engineer/code/2026\"><span class=\"name\">AI Engineer Code Summit 2026</span></a><nav aria-label=\"Primary\"><ul><li><a href=\"https://ai.engineer/code/2026#welcome\">WELCOME AIE Code Summit 2026</a></li><li><a href=\"https://ai.engineer/code/2026?\">Schedule</a></li><li><a href=\"https://ai.engineer/code/2026?view=companies\">Companies A–Z</a></li><li><a href=\"https://ai.engineer/code/2026?day=11\">Nov 11 27</a></li><li><a href=\"https://ai.engineer/code/2026?day=12\">Nov 12 23</a></li></ul></nav></div></header>\n<main>\n<section class=\"hero\"><div class=\"wrap\"><h1>Watch at 0:11:26 ↗</h1><p class=\"lede\">Search… / WELCOME AIE Code Summit 2026 WATCH &amp; READ Recordings, essays &amp; transcripts WHY ATTEND Built for practitioners APPLY TO ATTEND SPEAKERS First speakers announced PROGRAM Daily agenda VENUE Hilton Union Square…</p><div class=\"act\"><a class=\"cta\" href=\"https://www.youtube.com/watch?v=ZZ19zhYnDKY&amp;amp;t=686s\">Watch at 0:11:26 ↗</a></div></div></section>\n<div class=\"wrap\">\n<section><h2>AI Engineer Code Summit 2026: AI Engineering Conference, Nov 10-12, San…</h2><p>AIE CODE returns for its second annual code-focused summit. Catch up on the year with the world’s top agentic engineers, sharing the workflows and breakthroughs changing how software gets built.</p><ul><li>800 admitted last year. 1.5 million talk views worldwide.</li><li>A highly selective gathering. Invitations by application only.</li><li>Rewatch both conference days, or browse individual sessions for their illustrated reading editions, recordings, and full timestamped transcripts. Separate…</li></ul></section>\n<section><h2>Where to go next</h2><ul class=\"links\"><li><a href=\"https://ai.engineer/code/2026/talks\">Explore all 50 sessions →</a></li><li><a href=\"https://ai.engineer/code/2026\">Schedule</a></li><li><a href=\"https://ai.engineer/data\">Apply through our MCP →</a></li><li><a href=\"https://www.youtube.com/watch?v=ZZ19zhYnDKY\">Watch on YouTube ↗</a></li><li><a href=\"https://www.youtube.com/watch?v=y9JtCCZP2MQ\">Watch on YouTube ↗</a></li><li><a href=\"https://www.youtube.com/watch?v=vlfCjWuv4es&amp;t=0s\">Watch at 0:00:00 ↗</a></li></ul></section>\n</div>\n</main>\n<footer class=\"site\"><div class=\"wrap\"><p>Rebuilt from ai.engineer for the goal “Watch at 0:11:26 ↗”. Applies: Post-event page still invites registration; Desktop: missing site ID, primary navigation, search, you-are-here indicator (trunk test fails); Dense link surface increases scan cost.</p><ul class=\"links\"><li><a href=\"https://ai.engineer/code/2026/guide/sponsorship\">BECOME A SPONSOR</a></li></ul></div></footer>\n</body>\n</html>",
+        "source": "template",
+        "bytes": 5376
+      },
+      {
+        "slug": "watch-at-0-40-09",
+        "goal": "Watch at 0:40:09 ↗",
+        "title": "Watch at 0:40:09 ↗ · AI Engineer Code Summit 2026",
+        "summary": "One primary CTA (“Watch at 0:40:09 ↗”) for “Watch at 0:40:09 ↗”, 5 nav items, 2 sections; applies “Post-event page still invites registration”.",
+        "html": "<!doctype html>\n<html lang=\"en\">\n<head>\n<meta charset=\"utf-8\">\n<meta name=\"viewport\" content=\"width=device-width, initial-scale=1\">\n<title>Watch at 0:40:09 ↗ · AI Engineer Code Summit 2026</title>\n<link rel=\"icon\" href=\"https://ai.engineer/favicon.ico\">\n<style>:root{--ink:#0a0a0a;--surface:#ffffff;--muted:#6b6b6b;--line:#ededed;--accent:#f8df8c;--on-accent:#0a0a0a;--link:#0a0a0a;--sans:ui-sans-serif, system-ui, -apple-system, \"Segoe UI\", Roboto, Helvetica, Arial, sans-serif;--mono:ui-monospace, SFMono-Regular, Menlo, monospace}\n*{box-sizing:border-box}\nhtml{-webkit-text-size-adjust:100%}\nbody{margin:0;background:var(--surface);color:var(--ink);font-family:var(--sans);font-size:16px;line-height:1.55;-webkit-font-smoothing:antialiased}\na{color:var(--link)}\n.wrap{max-width:44rem;margin:0 auto;padding:0 1.25rem}\nheader.site{position:sticky;top:0;z-index:10;background:var(--surface);border-bottom:1px solid var(--line)}\nheader.site .wrap{display:flex;align-items:center;justify-content:space-between;gap:1rem;min-height:3.5rem;flex-wrap:wrap}\n.brand{display:inline-flex;align-items:center;color:var(--ink);text-decoration:none;font-weight:600}\n.brand img{display:block;height:28px;width:auto}\nnav ul{display:flex;flex-wrap:wrap;gap:.25rem 1rem;list-style:none;margin:0;padding:0;font-size:.9375rem}\nnav a{color:var(--ink);text-decoration:none}\nnav a:hover{text-decoration:underline}\n.hero{padding:3.5rem 0 2.5rem;border-bottom:1px solid var(--line)}\nh1{font-size:clamp(1.875rem,4vw,2.5rem);line-height:1.15;margin:0 0 1rem;font-weight:600;text-wrap:balance}\n.lede{font-size:1.125rem;color:var(--muted);margin:0 0 1.75rem;max-width:36em}\n.act{display:flex;flex-wrap:wrap;align-items:center;gap:.75rem 1rem}\n.cta{display:inline-flex;align-items:center;min-height:2.75rem;padding:.625rem 1.25rem;border-radius:.5rem;background:var(--accent);color:var(--on-accent);font-weight:600;text-decoration:none}\n.cta:hover{filter:brightness(1.08)}\n.cta:focus-visible,a:focus-visible{outline:2px solid var(--accent);outline-offset:3px}\n.status{font-size:.9375rem;color:var(--muted)}\nmain section{padding:2rem 0;border-bottom:1px solid var(--line)}\nh2{font-size:1.25rem;line-height:1.3;margin:0 0 .75rem;font-weight:600}\nmain p{margin:0 0 .75rem;max-width:38em}\nmain ul{margin:0;padding-left:1.25rem}\nmain li{margin:.25rem 0}\nul.links{list-style:none;padding:0}\nfooter.site{padding:2rem 0 3rem;color:var(--muted);font-size:.875rem}\nfooter.site ul.links{display:flex;flex-wrap:wrap;gap:.25rem 1rem;list-style:none;padding:0;margin:.5rem 0 0}\nfooter.site a{color:var(--muted)}\n@media (max-width:640px){.hero{padding:2.5rem 0 2rem}nav ul{gap:.25rem .75rem}}</style>\n</head>\n<body>\n<header class=\"site\"><div class=\"wrap\"><a class=\"brand\" href=\"https://ai.engineer/code/2026\"><span class=\"name\">AI Engineer Code Summit 2026</span></a><nav aria-label=\"Primary\"><ul><li><a href=\"https://ai.engineer/code/2026#welcome\">WELCOME AIE Code Summit 2026</a></li><li><a href=\"https://ai.engineer/code/2026?\">Schedule</a></li><li><a href=\"https://ai.engineer/code/2026?view=companies\">Companies A–Z</a></li><li><a href=\"https://ai.engineer/code/2026?day=11\">Nov 11 27</a></li><li><a href=\"https://ai.engineer/code/2026?day=12\">Nov 12 23</a></li></ul></nav></div></header>\n<main>\n<section class=\"hero\"><div class=\"wrap\"><h1>Watch at 0:40:09 ↗</h1><p class=\"lede\">Search… / WELCOME AIE Code Summit 2026 WATCH &amp; READ Recordings, essays &amp; transcripts WHY ATTEND Built for practitioners APPLY TO ATTEND SPEAKERS First speakers announced PROGRAM Daily agenda VENUE Hilton Union Square…</p><div class=\"act\"><a class=\"cta\" href=\"https://www.youtube.com/watch?v=ZZ19zhYnDKY&amp;amp;t=2409s\">Watch at 0:40:09 ↗</a></div></div></section>\n<div class=\"wrap\">\n<section><h2>AI Engineer Code Summit 2026: AI Engineering Conference, Nov 10-12, San…</h2><p>AIE CODE returns for its second annual code-focused summit. Catch up on the year with the world’s top agentic engineers, sharing the workflows and breakthroughs changing how software gets built.</p><ul><li>800 admitted last year. 1.5 million talk views worldwide.</li><li>A highly selective gathering. Invitations by application only.</li><li>Rewatch both conference days, or browse individual sessions for their illustrated reading editions, recordings, and full timestamped transcripts. Separate…</li></ul></section>\n<section><h2>Where to go next</h2><ul class=\"links\"><li><a href=\"https://ai.engineer/code/2026/talks\">Explore all 50 sessions →</a></li><li><a href=\"https://ai.engineer/code/2026\">Schedule</a></li><li><a href=\"https://ai.engineer/data\">Apply through our MCP →</a></li><li><a href=\"https://www.youtube.com/watch?v=ZZ19zhYnDKY\">Watch on YouTube ↗</a></li><li><a href=\"https://www.youtube.com/watch?v=y9JtCCZP2MQ\">Watch on YouTube ↗</a></li><li><a href=\"https://www.youtube.com/watch?v=vlfCjWuv4es&amp;t=0s\">Watch at 0:00:00 ↗</a></li></ul></section>\n</div>\n</main>\n<footer class=\"site\"><div class=\"wrap\"><p>Rebuilt from ai.engineer for the goal “Watch at 0:40:09 ↗”. Applies: Post-event page still invites registration; Desktop: missing site ID, primary navigation, search, you-are-here indicator (trunk test fails); Dense link surface increases scan cost.</p><ul class=\"links\"><li><a href=\"https://ai.engineer/code/2026/guide/sponsorship\">BECOME A SPONSOR</a></li></ul></div></footer>\n</body>\n</html>",
+        "source": "template",
+        "bytes": 5377
+      }
+    ],
+    "llm": "gemini-fixture"
+  },
   "errors": []
 }

@@ -322,7 +322,7 @@ export async function generateRebuild(exp: Experiment, llm: LlmClient): Promise<
       summary: pageSummary(goal, content, exp),
       html,
       source: merged ? "gemini" : "template",
-      bytes: html.length,
+      bytes: new TextEncoder().encode(html).length,
     };
   });
 

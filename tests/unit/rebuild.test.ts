@@ -249,7 +249,7 @@ describe("generateRebuild", () => {
     expect(JSON.stringify(a.pages)).toBe(JSON.stringify(b.pages));
     expect(JSON.stringify(a.goals)).toBe(JSON.stringify(b.goals));
     for (const p of a.pages) {
-      expect(p.bytes).toBe(p.html.length);
+      expect(p.bytes).toBe(Buffer.byteLength(p.html, "utf8"));
       expect(p.html).not.toMatch(/<script/i);
     }
     const first = a.pages[0].html;
