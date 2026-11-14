@@ -16,10 +16,10 @@ import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { createServer, type Server } from "node:http";
 import { syncBuiltinESMExports } from "node:module";
 import path from "node:path";
-import { chromium, type Browser, type BrowserContext } from "playwright";
+import type { Browser, BrowserContext } from "playwright";
 import type { BrowserRunner, DomPatch, Experiment, OpenPageResult, TrajectoryArgs, Viewport } from "../src/lib/contracts";
 import { summarizeRun } from "../src/lib/browser/types";
-import { executeTrajectory, watchPageErrors } from "../src/lib/browser/playwright";
+import { executeTrajectory, launchChromium, watchPageErrors } from "../src/lib/browser/playwright";
 import { measurePage } from "../src/lib/browser/metrics";
 import { compilePatches } from "../src/lib/variants";
 import { assertPublicUrl } from "../src/lib/fetch/guards";
@@ -291,7 +291,7 @@ class HermeticRunner implements BrowserRunner {
   }
 
   private async context(viewport: Viewport, patches?: DomPatch[]): Promise<BrowserContext> {
-    this.browser ??= await chromium.launch({ headless: true });
+    this.browser ??= await launchChromium();
     const ctx = await this.browser.newContext({ viewport: { width: viewport.width, height: viewport.height } });
     await ctx.route("**/*", (route) =>
       new URL(route.request().url()).origin === this.origin ? route.continue() : route.abort(),
@@ -371,7 +371,7 @@ async function screenshotDashboard(experimentId: string, outPng: string): Promis
   let browser: Browser | null = null;
   try {
     await waitForHttp(`${base}/api/experiments/${experimentId}`, 90000);
-    browser = await chromium.launch({ headless: true });
+    browser = await launchChromium();
     const page = await browser.newPage({ viewport: { width: 1440, height: 900 }, deviceScaleFactor: 1 });
     await assertPublicUrl(`${base}/experiments/${experimentId}`);
     await page.goto(`${base}/experiments/${experimentId}`, { waitUntil: "load", timeout: 60000 });

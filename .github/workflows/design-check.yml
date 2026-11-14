@@ -47,6 +47,8 @@ jobs:
       - run: npm ci
       - name: Install Chromium
         run: npx playwright install --with-deps chromium
+      - name: Allow the Chromium sandbox (Ubuntu 24.04 restricts user namespaces)
+        run: sudo sysctl -w kernel.apparmor_restrict_unprivileged_userns=0
       - name: Use Playwright's Chromium for the detector
         run: echo "IMPECCABLE_BROWSER=$(node -p "require('playwright').chromium.executablePath()")" >> "$GITHUB_ENV"
       - run: npm run build

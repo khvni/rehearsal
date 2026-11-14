@@ -18,6 +18,7 @@ import { compilePatches } from "../variants";
 import { isSameOrigin } from "./extract";
 import { measurePage } from "./metrics";
 import { DEFAULT_EVIDENCE_DIR } from "./playwright";
+import { chromiumSandboxEnabled } from "./sandbox";
 import { errorText, evaluateAssertion, shouldShoot, summarizeRun } from "./types";
 
 const NAV_TIMEOUT_MS = 60_000;
@@ -144,6 +145,7 @@ export class StagehandRunner implements BrowserRunner {
         : await localBrowser.launch({
             headless: true,
             viewport: vp,
+            chromiumSandbox: chromiumSandboxEnabled(),
             ...(this.opts.executablePath ? { executablePath: this.opts.executablePath } : {}),
           });
     let sh: Stagehand | undefined;

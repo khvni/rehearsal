@@ -36,6 +36,16 @@ write_files:
 
       [Install]
       WantedBy=multi-user.target
+  # Ubuntu 24.04 blocks unprivileged user namespaces through AppArmor, which Chromium's sandbox needs.
+  # Allow them for Playwright's Chromium binaries only, instead of turning the restriction off system-wide.
+  - path: /etc/apparmor.d/rehearsal-chromium
+    content: |
+      abi <abi/4.0>,
+      include <tunables/global>
+
+      profile rehearsal-chromium /opt/rehearsal/.cache/ms-playwright/**/{chrome,chrome-headless-shell,headless_shell} flags=(unconfined) {
+        userns,
+      }
   - path: /etc/caddy/Caddyfile
     content: |
       ${site} {
@@ -50,6 +60,7 @@ runcmd:
   - cd /opt/rehearsal/app && sudo -u rehearsal -H npm ci
   - cd /opt/rehearsal/app && npx playwright install-deps chromium
   - cd /opt/rehearsal/app && sudo -u rehearsal -H npx playwright install chromium
+  - apparmor_parser -r /etc/apparmor.d/rehearsal-chromium
   - cd /opt/rehearsal/app && sudo -u rehearsal -H npm run build
   - systemctl daemon-reload
   - systemctl enable rehearsal

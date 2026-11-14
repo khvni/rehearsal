@@ -104,6 +104,7 @@ a variable that is missing here or in `.env.example`, or if `.env.example` lists
 | `STAGEHAND_MODEL` / `STAGEHAND_MODEL_API_KEY` | `browser/stagehand.ts` | `google/$GEMINI_MODEL_FAST` with `GEMINI_API_KEY` |
 | `STAGEHAND_CHROME_PATH` | `browser/runner.ts` | Stagehand's default Chrome lookup (`stagehand-local` only) |
 | `REHEARSAL_BROWSER` | `browser/runner.ts` | `auto` |
+| `REHEARSAL_CHROMIUM_NO_SANDBOX` | `browser/sandbox.ts` | Local Chromium (Playwright, `stagehand-local`) runs with its sandbox on. `1` turns it off for hosts without unprivileged user namespaces; never set it in a deployment |
 | `SENTRY_DSN` / `SENTRY_TRACES_SAMPLE_RATE` | `telemetry/index.ts` | Sentry off (JSONL event log still written) / `0.2` |
 | `SENTRY_WEBHOOK_SECRET` | `app/api/hooks/sentry/route.ts` | `POST /api/hooks/sentry` returns 503 (webhook not configured) |
 | `GITHUB_TOKEN` | `app/api/hooks/sentry/route.ts` | Sentry alerts are verified but not filed as GitHub issues (logged notice) |

@@ -11,7 +11,8 @@ secret values, so use a private/remote backend for anything shared).
 
 ## DigitalOcean (primary — droplet)
 
-One Ubuntu droplet; cloud-init installs Node 22 + Playwright Chromium, clones
+One Ubuntu droplet; cloud-init installs Node 22 + Playwright Chromium (plus an AppArmor
+profile so its sandbox can create user namespaces), clones
 `github_repo@git_ref`, runs `npm ci && npm run build`, serves `next start` on
 `127.0.0.1:3000` under systemd, and fronts it with Caddy (port 80, or auto-HTTPS when
 `domain` is set). A firewall allows only 22/80/443 in.

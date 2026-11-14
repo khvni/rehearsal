@@ -157,7 +157,7 @@ const NOT_DEPLOYED: Record<string, string> = {
 };
 
 /** Must never reach a deployment (disables the SSRF guard). */
-const NEVER_DEPLOYED = ["REHEARSAL_ALLOW_PRIVATE"];
+const NEVER_DEPLOYED = ["REHEARSAL_ALLOW_PRIVATE", "REHEARSAL_CHROMIUM_NO_SANDBOX"];
 
 function envReads(): Map<string, string> {
   const files = [

@@ -36,7 +36,8 @@ stale key fails the check.
   `JEV_MODEL`, `REHEARSAL_BROWSER`, `SENTRY_TRACES_SAMPLE_RATE`), aliases (`OPENROUTER_API_KEY`,
   `TIGERDATA_URL`), client-side code defaults (`NEXT_PUBLIC_POSTHOG_*`), optional backends not provisioned yet (`BRIGHTDATA_BROWSER_*`,
   `BROWSERBASE_*`, `STAGEHAND_MODEL*`, `SNOWFLAKE_*`, `SENTRY_WEBHOOK_SECRET`, `GITHUB_TOKEN`), local-only (`STAGEHAND_CHROME_PATH`).
-- **Never deployed** — `REHEARSAL_ALLOW_PRIVATE` (disables the SSRF guard); fails if any
+- **Never deployed** — `REHEARSAL_ALLOW_PRIVATE` (disables the SSRF guard) and
+  `REHEARSAL_CHROMIUM_NO_SANDBOX` (disables the Chromium sandbox); fails if any
   stack maps it.
 
 ### Stored fixture
