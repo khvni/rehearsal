@@ -102,6 +102,17 @@ export interface ServedSite {
 }
 
 /**
+ * Deterministic port per site. Endpoint ids hash the page URL — an ephemeral
+ * port would reshuffle endpoint tie-order and reseed journey walks per run
+ * (AGENTS.md rule 3), so each manifest binds a stable loopback port.
+ */
+function sitePort(site: FixtureSite): number {
+  let h = 0;
+  for (const c of site.manifest.id) h = (h * 31 + c.charCodeAt(0)) % 1e6;
+  return 43000 + (h % 2000);
+}
+
+/**
  * Mounts the site on 127.0.0.1 with a self-only response shape:
  * mapped paths -> fixture HTML, /robots.txt -> allow-all, else 404.
  */
@@ -120,10 +131,10 @@ export function serveSite(site: FixtureSite): Promise<ServedSite> {
     res.writeHead(404, { "content-type": "text/plain" });
     res.end("not found");
   });
-  return new Promise((resolve) =>
-    server.listen(0, "127.0.0.1", () => {
-      const addr = server.address();
-      const port = typeof addr === "object" && addr ? addr.port : 0;
+  const port = sitePort(site);
+  return new Promise((resolve, reject) => {
+    server.once("error", reject);
+    server.listen(port, "127.0.0.1", () => {
       const origin = `http://127.0.0.1:${port}`;
       resolve({
         server,
@@ -131,6 +142,6 @@ export function serveSite(site: FixtureSite): Promise<ServedSite> {
         targetUrl: `${origin}${site.manifest.mountPath}`,
         close: () => new Promise((r) => server.close(() => r())),
       });
-    }),
-  );
+    });
+  });
 }
