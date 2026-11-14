@@ -27,8 +27,8 @@ export async function POST(req: Request) {
       config?: unknown;
     };
     body.targetUrl ??= body.url;
-    if (!body.targetUrl || !body.goal) {
-      return NextResponse.json({ error: "targetUrl and goal are required" }, { status: 400 });
+    if (!body.targetUrl) {
+      return NextResponse.json({ error: "targetUrl is required" }, { status: 400 });
     }
     const parsed = ExperimentConfig.safeParse(body.config ?? {});
     if (!parsed.success) {

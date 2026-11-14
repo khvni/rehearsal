@@ -257,12 +257,29 @@ export default function ExperimentPage() {
         <h1>{exp.goal}</h1>
         <div className="exp-meta">
           <Badge variant="dot" color={statusColor}>{exp.status}</Badge>
+          {exp.goalSource === "inferred" && (
+            <Badge variant="dot" color="accent" size="compact" title="Inferred from the site's own CTAs, nav and links">inferred</Badge>
+          )}
+          {exp.goalSource === "default" && (
+            <Badge variant="dot" color="gray" size="compact" title="The first-page probe couldn't read the site, so this generic goal is used">default</Badge>
+          )}
           <a className="mono" href={exp.targetUrl} target="_blank" rel="noreferrer">{exp.targetUrl}</a>
           <span className="tabular">{exp.simulations.length.toLocaleString()} journeys</span>
           <span className="sep" aria-hidden>·</span>
           <span className="tabular">{shortDate(exp.createdAt)}</span>
           {exp.rebuild && <Link className="mono" href={`/experiments/${id}/rebuild`}>View rebuild</Link>}
         </div>
+        {exp.personas.length > 0 && (
+          <ul className="exp-personas" aria-label="Visitor personas">
+            {exp.personas.map((p) => (
+              <li key={p.personaId} className="persona" title={`${p.name} — ${p.summary}`}>
+                <span className="persona-name">{p.name}</span>
+                <span className="persona-goal">{p.goal}</span>
+                {p.signals.length > 0 && <span className="persona-signals">via {p.signals.join(", ")}</span>}
+              </li>
+            ))}
+          </ul>
+        )}
       </header>
 
       <div className="pipeline">

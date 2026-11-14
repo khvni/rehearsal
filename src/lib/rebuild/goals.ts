@@ -1,5 +1,5 @@
 import { createHash } from "node:crypto";
-import type { EndpointClass, Experiment, RebuildGoal, SiteState } from "../contracts";
+import type { Endpoint, EndpointClass, RebuildGoal, SiteState, StateGraph } from "../contracts";
 import { CLASS_IMPORTANCE, EXPECTED_CLASSES, detectSiteType } from "../intents/endpoints";
 import { classifyAction, classifyText } from "../intents/patterns";
 import { CTA_VERB_RE, nameFromTitle } from "./brand";
@@ -9,7 +9,7 @@ export const MAX_REBUILD_GOALS = 8;
 const SOURCE_ORDER: RebuildGoal["source"][] = ["experiment-goal", "cta", "nav", "endpoint", "title", "implied"];
 
 /** How a visitor would phrase wanting to reach each endpoint class. */
-const CLASS_GOAL: Record<EndpointClass, { title: string; goal: string } | null> = {
+export const CLASS_GOAL: Record<EndpointClass, { title: string; goal: string } | null> = {
   pricing: { title: "See pricing", goal: "Find out what it costs" },
   signup: { title: "Sign up", goal: "Sign up or register" },
   "demo-video": { title: "Watch the demo", goal: "Watch a demo or video" },
@@ -131,7 +131,7 @@ function navCandidates(states: SiteState[]): Candidate[] {
   return out;
 }
 
-function endpointCandidates(exp: Experiment): Candidate[] {
+function endpointCandidates(exp: { endpoints?: Endpoint[] }): Candidate[] {
   return [...(exp.endpoints ?? [])]
     .sort((a, b) => b.weight - a.weight || a.endpointId.localeCompare(b.endpointId))
     .flatMap((e) => {
@@ -171,7 +171,7 @@ function titleCandidates(states: SiteState[]): Candidate[] {
   return out;
 }
 
-function impliedCandidates(exp: Experiment, covered: Set<EndpointClass>): Candidate[] {
+function impliedCandidates(exp: { graph?: StateGraph }, covered: Set<EndpointClass>): Candidate[] {
   const type = detectSiteType(exp.graph ?? { states: [], edges: [] });
   const importance = CLASS_IMPORTANCE[type];
   const classes = [...new Set([...EXPECTED_CLASSES[type], ...(Object.keys(importance) as EndpointClass[]).filter((c) => importance[c] >= 0.7)])];
@@ -185,22 +185,27 @@ function impliedCandidates(exp: Experiment, covered: Set<EndpointClass>): Candid
  * explicit CTAs, nav items, endpoint classes and page titles, plus implied goals
  * from the detected site type. Slugs are unique + url-safe; weights in [0,1].
  */
-export function inferGoals(exp: Experiment): RebuildGoal[] {
+export function inferGoals(exp: { goal: string; graph?: StateGraph; endpoints?: Endpoint[] }): RebuildGoal[] {
   const states = exp.graph?.states ?? [];
   const endpoints = [...(exp.endpoints ?? [])].sort((a, b) => b.weight - a.weight || a.endpointId.localeCompare(b.endpointId));
-  const expClass = classifyText(exp.goal) ?? undefined;
+  const expGoal = exp.goal.trim();
+  const expClass = expGoal ? (classifyText(expGoal) ?? undefined) : undefined;
   const expTarget = expClass ? endpoints.find((e) => e.class === expClass) : undefined;
 
   const candidates: Candidate[] = [
-    {
-      title: sentence(exp.goal),
-      goal: exp.goal.trim(),
-      source: "experiment-goal",
-      endpointClass: expClass,
-      targetUrl: httpUrl(expTarget?.url),
-      sourceLabel: expTarget ? clean(expTarget.label) || undefined : undefined,
-      weight: 1,
-    },
+    ...(expGoal
+      ? [
+          {
+            title: sentence(expGoal),
+            goal: expGoal,
+            source: "experiment-goal" as const,
+            endpointClass: expClass,
+            targetUrl: httpUrl(expTarget?.url),
+            sourceLabel: expTarget ? clean(expTarget.label) || undefined : undefined,
+            weight: 1,
+          },
+        ]
+      : []),
     ...ctaCandidates(states),
     ...navCandidates(states),
     ...endpointCandidates(exp),

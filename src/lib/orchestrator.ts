@@ -14,6 +14,7 @@ import {
   type RunFailure,
   type SimWeights,
   type Variant,
+  type VisitorPersona,
 } from "./contracts";
 import { selectFetcher } from "./fetch";
 import { assertPublicUrl, robotsAllows } from "./fetch/guards";
@@ -35,6 +36,7 @@ import {
   endpointJourneys,
   intentForGoal,
   endpointGoalAssertions,
+  inferGoalAndPersonas,
   visitorQuestions,
 } from "./intents";
 import { metricFindings } from "./analysis/metric-findings";
@@ -59,6 +61,9 @@ export const PIPELINE_STAGES = [
   "spec",
   "rebuild",
 ] as const;
+
+/** Hard cap on the first-page probe so a hanging fetch can't stall experiment creation. */
+const PROBE_TIMEOUT_MS = 15_000;
 
 interface OrchestratorDeps {
   fetcher?: PageFetcher;
@@ -96,18 +101,75 @@ export class Orchestrator {
     this.runner = deps.runner ?? selectRunner();
   }
 
-  async createExperiment(targetUrl: string, goal: string, config?: Partial<ExperimentConfig>): Promise<Experiment> {
+  /**
+   * Create an experiment. `goal` is optional: when omitted, a cheap first-page
+   * probe (one HTML fetch through the keyless fetcher) derives the goal and a
+   * small set of visitor personas from the site's own CTAs, nav and endpoints.
+   * The probe never blocks creation — on failure the goal falls back to a
+   * generic "Learn what {host} offers" and discovery still runs.
+   */
+  async createExperiment(targetUrl: string, goal?: string, config?: Partial<ExperimentConfig>): Promise<Experiment> {
     const url = await assertPublicUrl(targetUrl);
+    const explicit = goal?.trim() || undefined;
+    const probed = explicit ? undefined : await this.probe(url.toString());
     const experiment = Experiment.parse({
       id: `exp_${randomUUID().slice(0, 8)}`,
       targetUrl: url.toString(),
-      goal,
+      goal: explicit ?? probed!.goal,
+      goalSource: explicit ? "user" : probed!.source,
+      personas: probed?.personas ?? [],
       status: "created",
       createdAt: new Date().toISOString(),
       configuration: ExperimentConfig.parse(config ?? {}),
     });
     await this.store.save(experiment);
+    if (probed) {
+      await this.emit(
+        experiment.id,
+        "create",
+        "info",
+        probed.source === "inferred"
+          ? `Inferred the goal from the site's own CTAs: "${experiment.goal}" · personas: ${experiment.personas.map((p) => p.name).join(", ")}`
+          : `First-page probe failed — goal defaulted to "${experiment.goal}"`,
+      );
+    }
     return experiment;
+  }
+
+  /**
+   * One bounded fetch of the target URL, then deterministic goal + persona
+   * inference on the extracted page. Never throws: returns `source: "default"`
+   * with a hostname-derived goal when the page can't be fetched or parsed.
+   */
+  private async probe(url: string): Promise<{ goal: string; personas: VisitorPersona[]; source: "inferred" | "default" }> {
+    const fallback = `Learn what ${new URL(url).hostname} offers`;
+    try {
+      const html = await Promise.race([
+        this.fetcher.fetchHtml(url),
+        new Promise<never>((_, reject) =>
+          setTimeout(() => reject(new Error(`probe fetch timed out after ${PROBE_TIMEOUT_MS}ms`)), PROBE_TIMEOUT_MS),
+        ),
+      ]);
+      const page = extractPage(html, url);
+      const state = makeState({
+        url,
+        viewport: VIEWPORTS.desktop,
+        title: page.title,
+        visibleText: page.visibleText,
+        actions: page.actions,
+      });
+      state.brand = brandSignalsFromHtml(html, url);
+      const inferred = inferGoalAndPersonas(state);
+      logEvent({
+        stage: "create",
+        kind: "probe",
+        data: { url, fetcher: this.fetcher.name, goal: inferred.goal, personas: inferred.personas.map((p) => p.intent) },
+      });
+      return { ...inferred, source: "inferred" };
+    } catch (e) {
+      logEvent({ stage: "create", kind: "probe-fail", data: { url, error: errorText(e, 160) } });
+      return { goal: fallback, personas: [], source: "default" };
+    }
   }
 
   async get(id: string): Promise<Experiment | null> {
