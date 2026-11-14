@@ -504,8 +504,19 @@ function resolvePalette(colors: string[], cssVars: Record<string, string>, theme
   const all = swatches([...colors, ...Object.keys(cssVars).sort().map((k) => cssVars[k]), ...(themeColor ? [themeColor] : [])]);
   const byLum = [...all].sort((a, b) => a.lum - b.lum || a.rank - b.rank);
 
-  const surface = varColor(cssVars, /^--(color-)?(background|bg|surface|paper|base)$/i) ?? byLum[byLum.length - 1];
-  const ink = varColor(cssVars, /^--(color-)?(foreground|fg|text|ink|body-color)$/i) ?? byLum[0];
+  // Surface is the page's own background. An explicit --background var wins, then a
+  // theme-color that reads as a surface (near-neutral extreme luminance), then the most
+  // frequent extreme-neutral swatch — on a dark site that is the dark body color, not white.
+  const extremeNeutral = all.filter((s) => s.sat < 0.15 && (s.lum < 0.25 || s.lum > 0.8));
+  const themeSwatch = themeColor ? swatches([themeColor])[0] : undefined;
+  const surface =
+    varColor(cssVars, /^--(color-)?(background|bg|surface|paper|base)$/i) ??
+    (themeSwatch && themeSwatch.sat < 0.15 && (themeSwatch.lum < 0.25 || themeSwatch.lum > 0.8) ? themeSwatch : undefined) ??
+    extremeNeutral.sort((a, b) => a.rank - b.rank)[0] ??
+    byLum[byLum.length - 1];
+  const ink =
+    varColor(cssVars, /^--(color-)?(foreground|fg|text|ink|body-color)$/i) ??
+    (surface && surface.lum < 0.5 ? byLum[byLum.length - 1] : byLum[0]);
   const contrastOk = !!ink && !!surface && contrastRatio(ink.rgb, surface.rgb) >= 4.5;
   const inkHex = contrastOk ? ink!.hex : FALLBACK_PALETTE.ink;
   const surfaceHex = contrastOk ? surface!.hex : FALLBACK_PALETTE.surface;
