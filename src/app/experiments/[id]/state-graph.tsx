@@ -156,7 +156,7 @@ export function StateGraph({
     viewport,
     graph.states.map((st) => st.stateId).join(","),
     graph.edges.length,
-    simulations.map((t) => t.trajectoryId).join(","),
+    simulations.map((t) => `${t.trajectoryId}=${t.steps.map((s) => s.stateId).join(">")}`).join(","),
   ].join("|");
   const [kept, setKept] = useState({ sig, base: fresh });
   if (kept.sig !== sig) setKept({ sig, base: fresh });
