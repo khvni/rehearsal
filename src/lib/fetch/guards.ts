@@ -10,7 +10,7 @@ const BLOCKED_HOSTNAMES = new Set([
 function isPrivateIp(ip: string): boolean {
   if (ipaddr.isIPv6(ip)) {
     const lower = ip.toLowerCase();
-    if (lower === "::1" || lower.startsWith("fe80") || lower.startsWith("fc") || lower.startsWith("fd")) return true;
+    if (lower === "::1" || lower === "::" || lower.startsWith("fe80") || lower.startsWith("fc") || lower.startsWith("fd")) return true;
     if (lower.startsWith("::ffff:")) return isPrivateIp(lower.slice(7));
     return false;
   }
@@ -22,6 +22,8 @@ function isPrivateIp(ip: string): boolean {
   if (a === 172 && b >= 16 && b <= 31) return true;
   if (a === 192 && b === 168) return true;
   if (a === 100 && b >= 64 && b <= 127) return true; // CGNAT
+  if (a === 198 && (b === 18 || b === 19)) return true; // benchmarking
+  if (a >= 224) return true; // multicast + reserved + broadcast
   return false;
 }
 
