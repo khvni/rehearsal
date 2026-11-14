@@ -28,6 +28,8 @@ export interface CallContext {
 export interface JevClient {
   readonly name: string;
   decide(state: Record<string, unknown>, questions: DecisionQuestion[], ctx?: CallContext): Promise<DecisionResult[]>;
+  /** Start a new per-run call budget (called when an experiment's discover stage begins). */
+  resetBudget?(ctx?: CallContext): void;
   /** Per-run call/token totals since construction or the last budget reset. */
   usageReport?(): TokenUsage;
 }

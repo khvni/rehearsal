@@ -48,6 +48,10 @@ export class HttpJevClient implements JevClient {
     if (!this.apiKey) throw new Error("HttpJevClient requires JEV_API_KEY or OPENROUTER_API_KEY");
   }
 
+  resetBudget(): void {
+    this.usage = { calls: 0, inputTokens: 0, outputTokens: 0 };
+  }
+
   usageReport(): TokenUsage {
     const { calls, inputTokens, outputTokens } = this.usage;
     return { calls, inputTokens, outputTokens, totalTokens: inputTokens + outputTokens, estimated: true };
@@ -118,6 +122,10 @@ export class HttpJevClient implements JevClient {
 export class FixtureJevClient implements JevClient {
   readonly name = "jev-fixture";
   private calls = 0;
+
+  resetBudget(): void {
+    this.calls = 0;
+  }
 
   usageReport(): TokenUsage {
     return { calls: this.calls, inputTokens: 0, outputTokens: 0, totalTokens: 0, estimated: true };
@@ -190,6 +198,11 @@ export class FallbackJevClient implements JevClient {
       logEvent({ stage: "simulate", kind: "jev-fallback", data: { from: this.live.name, error: String(err).slice(0, 160) } });
       return this.fixture.decide(state, questions);
     }
+  }
+
+  resetBudget(): void {
+    this.live.resetBudget?.();
+    this.fixture.resetBudget();
   }
 
   usageReport(): TokenUsage {
