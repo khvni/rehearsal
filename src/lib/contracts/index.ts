@@ -1,36 +1,16 @@
 import { z } from "zod";
 import { PageMetrics } from "./metrics";
 
-// ── Krug rubric ─────────────────────────────────────────────────────────────
-
-export const KrugDimension = z.enum([
-  "clarity",
-  "navigation",
-  "hierarchy",
-  "cognitive-effort",
-  "copy-economy",
-  "consistency",
-  "feedback",
-  "recovery",
-  "responsive",
-  "goal-completion",
-]);
-export type KrugDimension = z.infer<typeof KrugDimension>;
-
-export const KRUG_DIMENSIONS = KrugDimension.options;
-
-export const KrugPrinciple = z.enum([
-  "dont-make-me-think",
-  "scanning-not-reading",
-  "conventions",
-  "mindless-choices",
-  "omit-words",
-  "navigation",
-  "homepage",
-  "farmers-and-cowmen",
-  "testing-beats-arguing",
-]);
-export type KrugPrinciple = z.infer<typeof KrugPrinciple>;
+export * from "./base";
+import {
+  EndpointClass,
+  EXPERIMENT_LIMITS,
+  ExperimentConfig,
+  IntentCategory,
+  KrugDimension,
+  KrugPrinciple,
+  Severity,
+} from "./base";
 
 // ── Browser ─────────────────────────────────────────────────────────────────
 
@@ -208,8 +188,6 @@ export const EvidenceType = z.enum([
 ]);
 export type EvidenceType = z.infer<typeof EvidenceType>;
 
-export const Severity = z.enum(["critical", "high", "medium", "low"]);
-
 export const Finding = z.object({
   findingId: z.string(),
   title: z.string(),
@@ -298,26 +276,6 @@ export const SpecReport = z.object({
 export type SpecReport = z.infer<typeof SpecReport>;
 
 // ── Intents + endpoints (RFX-style: Information / Quotation / Proposal) ────
-
-export const IntentCategory = z.enum(["information", "quotation", "proposal"]);
-export type IntentCategory = z.infer<typeof IntentCategory>;
-
-export const EndpointClass = z.enum([
-  "pricing",
-  "signup",
-  "demo-video",
-  "contact-form",
-  "docs-answers",
-  "next-steps",
-  "schedule-event",
-  "download",
-  "other",
-]);
-export type EndpointClass = z.infer<typeof EndpointClass>;
-
-/** A destination a visitor wants to reach (pricing page, signup, video, form, answers…). */
-export const SiteType = z.enum(["event", "saas", "commerce", "content"]);
-export type SiteType = z.infer<typeof SiteType>;
 
 export const Endpoint = z.object({
   endpointId: z.string(),
@@ -412,23 +370,7 @@ export const ExperimentStatus = z.enum([
   "failed",
 ]);
 
-// Upper bounds on client-supplied budgets: the create route is public, so each one caps crawl, vendor and CPU cost.
-export const EXPERIMENT_LIMITS = { maxStates: 50, maxDepth: 5, trajectories: 5000, verifyCount: 16 } as const;
-
-export const ExperimentConfig = z.object({
-  seed: z.number().int().default(1337),
-  maxStates: z.number().int().positive().max(EXPERIMENT_LIMITS.maxStates).default(30),
-  maxDepth: z.number().int().positive().max(EXPERIMENT_LIMITS.maxDepth).default(3),
-  trajectories: z.number().int().positive().max(EXPERIMENT_LIMITS.trajectories).default(1000),
-  verifyCount: z.number().int().positive().max(EXPERIMENT_LIMITS.verifyCount).default(8),
-  viewports: z
-    .array(z.enum(["desktop", "mobile"]))
-    .max(2)
-    .refine((v) => new Set(v).size === v.length, { message: "viewports must be distinct" })
-    .default(["desktop", "mobile"]),
-});
-export type ExperimentConfig = z.infer<typeof ExperimentConfig>;
-
+// EXPERIMENT_LIMITS + ExperimentConfig live in base.ts (re-exported above).
 /** Experiment ids are generated as `exp_` + 8 hex chars; anything else never reaches storage. */
 export const ExperimentId = z.string().regex(/^exp_[0-9a-f]{8}$/);
 export type ExperimentId = z.infer<typeof ExperimentId>;
@@ -548,6 +490,7 @@ export const SiteRunSummary = z.object({
 });
 export type SiteRunSummary = z.infer<typeof SiteRunSummary>;
 
+export * from "./bench";
 export * from "./browser";
 export * from "./metrics";
 export * from "./ports";

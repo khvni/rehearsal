@@ -41,6 +41,18 @@ eval cases.** `npm run check:skill-sync` fails the build otherwise.
 - `metrics.eval.ts` — page metrics (`src/lib/browser/metrics.ts` `measurePage`) on the AIE fixture in hermetic local Chromium (loopback server, all other requests aborted, `networkidle` so layout settles): repeat measurements are identical; homepage fold ratio ≥ `metricsMinHomepageFoldRatio` with scroll time = screens × 1.5s; exactly `metricsExpectedH1Count` h1 and it is the largest text; ≥ `metricsMinNavItems` primary-nav items, ≥ `metricsMinCtas` CTAs, `primaryCtaAmbiguity` ≤ `metricsMaxPrimaryCtaAmbiguity`, ≥ `metricsMinFontSizeBuckets` font sizes; the HTML-only fallback matches the DOM facts and nulls layout fields; `metricFindings` emits every rule in `metricsRequiredRules`, no CTA-ambiguity finding, each with a Krug key + screenshot evidence
 - `sandbox.eval.ts` — `CodeSandbox` (`src/lib/sandbox`): node worker executes agent-style assertions on the AIE fixture with console + `report()` output, deterministic repeat runs, non-throwing failure path; `selectSandbox` honours `REHEARSAL_SANDBOX` and falls back to `node-vm-worker` when no `Sandbox` binding exists; `agentVerifyEnabled` is opt-in and `selectRunner` backends declare `supportsAgent`
 - `findings-dedup.eval.ts` — cross-state finding dedup (`src/lib/analysis/dedupe.ts` `collapseFindings`, called by `analyze`): on four AIE fixture states + two browser runs failing the same assertion, raw `ruleFindings` repeats per state, collapsed output has one finding per (Krug principle + title) whose affected states/actions/evidence paths are the union of the group, severity = max, first findingId kept, title suffixed `(N of M pages)` (pages counted by URL, so desktop + mobile states of one URL are one page) / `(N of M runs)`; verified failures with different assertions stay distinct; orchestrator `spec` on a multi-page fixture site (clock pinned after the event) emits each finding and spec change once
+- `bench.eval.ts` — benchmark harness (see "Bench harness" below): manifest contract validation, an end-to-end fixture-site run, two-run determinism (identical reports with timing stripped), and scoring unit tests (ruleKey normalization, expected/tolerated/unexpected precedence, precision/recall edges)
+- `rebuild.eval.ts` — rebuild-quality eval scaffold: validates the SpecReport + spec markdown the harness emits (changes by impact, rebuild phases), with `describe.todo`/`it.todo` placeholders naming the future rebuild-fidelity evals
+
+## Bench harness (`npm run bench`, tests/evals/bench/)
+
+`scripts/bench.ts` runs every `tests/evals/fixtures/*.manifest.json` site through the full pipeline hermetically and writes `data/bench/{report.json,report.md}` (gitignored — never commit reports). Contracts live in `src/lib/contracts/bench.ts` (`FixtureSiteManifest`, `BenchSiteReport`, `BenchReport`); the harness itself is `tests/evals/bench/{sites,runner,pipeline,score,report}.ts`.
+
+- **Fixture sites**: a manifest declares `pages` (URL path → fixture HTML file under tests/evals/fixtures/), `mountPath`, `goal`, and what the pipeline should produce — `expectedEndpointClasses`, `expectedFindings` (must be produced), `toleratedFindings` (count toward precision, not recall), `unexpectedFindings` (false positives), `expectedSpecItems`, `budgetsMs`, `expectations` (metric floors). `stubMissing: true` serves a deterministic stub for unmapped subpaths.
+- **Runners**: `FixtureSiteRunner` resolves pages from the manifest map in memory (trajectory verify walks action hrefs, assertions evaluate on the final page's extracted content); `HermeticSiteRunner` (`--browser`) uses local Chromium with every non-origin request aborted — same hermeticity as spec-delta.
+- **Determinism**: seed 1337 default, counter `randomUUID` patched via `syncBuiltinESMExports` (also mocked per-file in evals — Jev tiebreak jitter is actionId-keyed), optional `referenceNow` pins the clock for stale-date heuristics; stage durations use `hrtime` so pinning doesn't zero them. Strip `durationsMs`/`overBudget`/`generatedAt` to compare two runs (`stripTiming`).
+- **Scoring** (`score.ts`): findings group into rule keys (digit-normalized title + krugPrinciple); precision = (expected+tolerated matches)/produced, recall = expected-matched/expected; journey/state coverage from trajectories; endpoint coverage from `journeys`; spec item coverage = matched `expectedSpecItems`/`expected` total (1 when none declared). `expectationFailures` lists every violated floor — `--check` exits non-zero when any site has one.
+- **Flags**: `--site <id>` one site, `--out <dir>` report dir, `--browser` chromium runner, `--seed`, `--check` gate mode.
 
 ## Unit tests (tests/unit/)
 
@@ -78,6 +90,7 @@ eval cases.** `npm run check:skill-sync` fails the build otherwise.
 - `npm run check:facts` — Layer 1 drift checks (above)
 - `npm run check` — everything
 - `npm run spec:delta` — hermetic full-pipeline summary vs. golden (`-- --update-golden`, `-- --screenshot`)
+- `npm run bench` — benchmark harness over fixture sites; prints report.md + writes data/bench/ (`-- --site <id>`, `-- --browser`, `-- --check`)
 
 ## Rules
 
