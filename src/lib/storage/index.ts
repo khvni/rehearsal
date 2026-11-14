@@ -9,7 +9,12 @@ export class JsonFileStore implements ExperimentStore {
 
   constructor(dir = path.join(process.cwd(), "data", "experiments")) {
     this.dir = dir;
-    mkdirSync(dir, { recursive: true });
+    // Edge runtimes (workerd) ship a read-only fs — the store stays usable (empty reads).
+    try {
+      mkdirSync(dir, { recursive: true });
+    } catch {
+      /* json-file store degrades to empty */
+    }
   }
 
   async save(e: Experiment): Promise<void> {
@@ -18,14 +23,22 @@ export class JsonFileStore implements ExperimentStore {
 
   async get(id: string): Promise<Experiment | null> {
     const p = path.join(this.dir, `${id}.json`);
-    if (!existsSync(p)) return null;
-    return Experiment.parse(JSON.parse(readFileSync(p, "utf8")));
+    try {
+      if (!existsSync(p)) return null;
+      return Experiment.parse(JSON.parse(readFileSync(p, "utf8")));
+    } catch {
+      return null;
+    }
   }
 
   async list(): Promise<Experiment[]> {
-    return readdirSync(this.dir)
-      .filter((f) => f.endsWith(".json"))
-      .map((f) => Experiment.parse(JSON.parse(readFileSync(path.join(this.dir, f), "utf8"))));
+    try {
+      return readdirSync(this.dir)
+        .filter((f) => f.endsWith(".json"))
+        .map((f) => Experiment.parse(JSON.parse(readFileSync(path.join(this.dir, f), "utf8"))));
+    } catch {
+      return [];
+    }
   }
 }
 
@@ -33,6 +46,16 @@ export class JsonFileStore implements ExperimentStore {
  * Tiger Data (Postgres/TimescaleDB) persistence.
  * Active when DATABASE_URL or TIGERDATA_URL is set; `pg` is lazily imported.
  */
+const SCHEMA_SQL = `
+  CREATE TABLE IF NOT EXISTS experiments (
+    id TEXT PRIMARY KEY,
+    status TEXT NOT NULL,
+    target_url TEXT NOT NULL,
+    goal TEXT NOT NULL,
+    payload JSONB NOT NULL,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+  );`;
+
 export class TigerDataStore implements ExperimentStore {
   readonly name = "tigerdata";
   private url: string;
@@ -48,15 +71,7 @@ export class TigerDataStore implements ExperimentStore {
     const { Client } = await import("pg");
     this.client = new Client({ connectionString: this.url, ...sslOptions(this.url) });
     await this.client.connect();
-    await this.client.query(`
-      CREATE TABLE IF NOT EXISTS experiments (
-        id TEXT PRIMARY KEY,
-        status TEXT NOT NULL,
-        target_url TEXT NOT NULL,
-        goal TEXT NOT NULL,
-        payload JSONB NOT NULL,
-        created_at TIMESTAMPTZ NOT NULL DEFAULT now()
-      );`);
+    await this.client.query(SCHEMA_SQL);
     return this.client;
   }
 
@@ -80,6 +95,71 @@ export class TigerDataStore implements ExperimentStore {
     const c = await this.conn();
     const { rows } = await c.query(`SELECT payload FROM experiments ORDER BY created_at DESC`);
     return rows.map((r) => Experiment.parse(r.payload));
+  }
+}
+
+/** Minimal D1 surface this store uses — avoids a @cloudflare/workers-types dep. */
+interface D1Prepared {
+  bind(...values: unknown[]): D1Prepared;
+  run(): Promise<unknown>;
+  all<T = Record<string, unknown>>(): Promise<{ results: T[] }>;
+  first<T = Record<string, unknown>>(column?: string): Promise<T | null>;
+}
+interface D1Binding {
+  prepare(sql: string): D1Prepared;
+}
+
+const D1_SCHEMA_SQL = `
+  CREATE TABLE IF NOT EXISTS experiments (
+    id TEXT PRIMARY KEY,
+    status TEXT NOT NULL,
+    target_url TEXT NOT NULL,
+    goal TEXT NOT NULL,
+    payload TEXT NOT NULL,
+    created_at TEXT NOT NULL
+  );`;
+
+/**
+ * Cloudflare D1 persistence — the primary store on Workers (pg sockets can't
+ * reach Tiger Cloud from workerd). The DB binding lives on the request context
+ * env and is resolved per call; the context itself is per-request.
+ */
+export class D1Store implements ExperimentStore {
+  readonly name = "d1";
+
+  private async db(): Promise<D1Binding> {
+    const { getCloudflareContext } = await import("@opennextjs/cloudflare");
+    const { env } = await getCloudflareContext({ async: true });
+    const db = (env as { DB?: D1Binding }).DB;
+    if (!db) throw new Error("D1Store requires a D1 'DB' binding");
+    await db.prepare(D1_SCHEMA_SQL).run();
+    return db;
+  }
+
+  async save(e: Experiment): Promise<void> {
+    const db = await this.db();
+    await db
+      .prepare(
+        `INSERT INTO experiments (id, status, target_url, goal, payload, created_at)
+         VALUES (?,?,?,?,?,?)
+         ON CONFLICT (id) DO UPDATE SET status=excluded.status, payload=excluded.payload`,
+      )
+      .bind(e.id, e.status, e.targetUrl, e.goal, JSON.stringify(e), e.createdAt)
+      .run();
+  }
+
+  async get(id: string): Promise<Experiment | null> {
+    const db = await this.db();
+    const row = await db.prepare(`SELECT payload FROM experiments WHERE id=?`).bind(id).first<{ payload: string }>();
+    return row ? Experiment.parse(JSON.parse(row.payload)) : null;
+  }
+
+  async list(): Promise<Experiment[]> {
+    const db = await this.db();
+    const { results } = await db
+      .prepare(`SELECT payload FROM experiments ORDER BY created_at DESC`)
+      .all<{ payload: string }>();
+    return results.map((r) => Experiment.parse(JSON.parse(r.payload)));
   }
 }
 
@@ -129,6 +209,9 @@ export class SnowflakeCortex {
 }
 
 export function selectStore(): ExperimentStore {
+  if (typeof navigator !== "undefined" && navigator.userAgent === "Cloudflare-Workers") {
+    return new D1Store();
+  }
   if (process.env.TIGERDATA_URL || process.env.DATABASE_URL) {
     try {
       return new TigerDataStore();

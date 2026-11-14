@@ -351,9 +351,14 @@ export class Orchestrator {
     const exp = (await this.mustGet(id))!;
     return withTrace("spec", { experimentId: id, targetUrl: exp.targetUrl }, async () => {
       exp.spec = await generateSpec(exp, this.llm);
-      const dir = path.join(process.cwd(), "data", "experiments", exp.id);
-      mkdirSync(dir, { recursive: true });
-      writeFileSync(path.join(dir, "spec.md"), specToMarkdown(exp.spec));
+      // Evidence/spec files are best-effort; edge runtimes have a read-only fs.
+      try {
+        const dir = path.join(process.cwd(), "data", "experiments", exp.id);
+        mkdirSync(dir, { recursive: true });
+        writeFileSync(path.join(dir, "spec.md"), specToMarkdown(exp.spec));
+      } catch {
+        /* spec.md lives on the experiment payload regardless */
+      }
       await this.update(exp, "complete");
       return exp;
     });
