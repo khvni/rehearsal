@@ -147,6 +147,8 @@ const NOT_DEPLOYED: Record<string, string> = {
   STAGEHAND_MODEL_API_KEY: "optional browser backend, not provisioned yet",
   STAGEHAND_CHROME_PATH: "local-only (stagehand-local)",
   REHEARSAL_BROWSER: "defaults to auto",
+  REHEARSAL_VERIFY_AGENT: "opt-in agent verify, not provisioned yet",
+  REHEARSAL_SANDBOX: "defaults to auto; the cloudflare backend needs a Sandbox binding not provisioned yet",
   SENTRY_TRACES_SAMPLE_RATE: "has a code default",
   SENTRY_WEBHOOK_SECRET: "optional Sentry → GitHub loop, not provisioned yet",
   GITHUB_TOKEN: "optional Sentry → GitHub loop, not provisioned yet",
