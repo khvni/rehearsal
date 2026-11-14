@@ -55,12 +55,19 @@ export const EndpointClass = z.enum([
 ]);
 export type EndpointClass = z.infer<typeof EndpointClass>;
 
+// Upper bounds on client-supplied budgets: the create route is public, so each one caps crawl, vendor and CPU cost.
+export const EXPERIMENT_LIMITS = { maxStates: 50, maxDepth: 5, trajectories: 5000, verifyCount: 16 } as const;
+
 export const ExperimentConfig = z.object({
   seed: z.number().int().default(1337),
-  maxStates: z.number().int().positive().default(30),
-  maxDepth: z.number().int().positive().default(3),
-  trajectories: z.number().int().positive().default(1000),
-  verifyCount: z.number().int().positive().default(8),
-  viewports: z.array(z.enum(["desktop", "mobile"])).default(["desktop", "mobile"]),
+  maxStates: z.number().int().positive().max(EXPERIMENT_LIMITS.maxStates).default(30),
+  maxDepth: z.number().int().positive().max(EXPERIMENT_LIMITS.maxDepth).default(3),
+  trajectories: z.number().int().positive().max(EXPERIMENT_LIMITS.trajectories).default(1000),
+  verifyCount: z.number().int().positive().max(EXPERIMENT_LIMITS.verifyCount).default(8),
+  viewports: z
+    .array(z.enum(["desktop", "mobile"]))
+    .max(2)
+    .refine((v) => new Set(v).size === v.length, { message: "viewports must be distinct" })
+    .default(["desktop", "mobile"]),
 });
 export type ExperimentConfig = z.infer<typeof ExperimentConfig>;

@@ -1,12 +1,6 @@
 import { z } from "zod";
-import {
-  EndpointClass,
-  ExperimentConfig,
-  IntentCategory,
-  KrugPrinciple,
-  Severity,
-  SiteType,
-} from "./base";
+import { EndpointClass, IntentCategory, KrugPrinciple, Severity, SiteType } from "./base";
+import { ExperimentConfig } from "./base";
 
 // ── Benchmark harness (tests/evals/bench/**, scripts/bench.ts) ──────────────
 //

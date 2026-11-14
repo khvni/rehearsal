@@ -4,6 +4,7 @@ import { PageMetrics } from "./metrics";
 export * from "./base";
 import {
   EndpointClass,
+  EXPERIMENT_LIMITS,
   ExperimentConfig,
   IntentCategory,
   KrugDimension,
@@ -369,23 +370,7 @@ export const ExperimentStatus = z.enum([
   "failed",
 ]);
 
-// Upper bounds on client-supplied budgets: the create route is public, so each one caps crawl, vendor and CPU cost.
-export const EXPERIMENT_LIMITS = { maxStates: 50, maxDepth: 5, trajectories: 5000, verifyCount: 16 } as const;
-
-export const ExperimentConfig = z.object({
-  seed: z.number().int().default(1337),
-  maxStates: z.number().int().positive().max(EXPERIMENT_LIMITS.maxStates).default(30),
-  maxDepth: z.number().int().positive().max(EXPERIMENT_LIMITS.maxDepth).default(3),
-  trajectories: z.number().int().positive().max(EXPERIMENT_LIMITS.trajectories).default(1000),
-  verifyCount: z.number().int().positive().max(EXPERIMENT_LIMITS.verifyCount).default(8),
-  viewports: z
-    .array(z.enum(["desktop", "mobile"]))
-    .max(2)
-    .refine((v) => new Set(v).size === v.length, { message: "viewports must be distinct" })
-    .default(["desktop", "mobile"]),
-});
-export type ExperimentConfig = z.infer<typeof ExperimentConfig>;
-
+// EXPERIMENT_LIMITS + ExperimentConfig live in base.ts (re-exported above).
 /** Experiment ids are generated as `exp_` + 8 hex chars; anything else never reaches storage. */
 export const ExperimentId = z.string().regex(/^exp_[0-9a-f]{8}$/);
 export type ExperimentId = z.infer<typeof ExperimentId>;
