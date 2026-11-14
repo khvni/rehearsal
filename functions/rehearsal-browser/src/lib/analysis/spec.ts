@@ -1,4 +1,4 @@
-import { SpecChange, SpecReport, type Experiment, type Finding, type LlmClient } from "../contracts";
+import { SpecChange, SpecReport, USABILITY_PRINCIPLES, type Experiment, type Finding, type LlmClient } from "../contracts";
 import { stripFences } from "./findings";
 import { RUBRIC } from "./rubric";
 
@@ -27,7 +27,7 @@ export async function generateSpec(experiment: Experiment, llm: LlmClient): Prom
     rank: i + 1,
     title: f.title,
     findingId: f.findingId,
-    krugPrinciple: f.krugPrinciple,
+    principle: f.principle,
     change: f.recommendation,
     steps: stepsForFinding(experiment, f),
     rationale: `${f.description} [${f.evidenceType}; ${RUBRIC[f.category].question}]`,
@@ -137,7 +137,7 @@ Verified run failures:\n${JSON.stringify(
       r.assertions.filter((a) => !a.passed).map((a) => a.assertion.value),
     ),
   )}
-Return JSON: {"summary": "<=2 short, plain sentences", "changes": [{"title","change","steps":["ordered concrete edits naming the element and page"],"rationale","effort":"S|M|L","krugPrinciple"?,"findingId"?}], "rebuildPhases": [{"name","goal","items":[]}]}.
+Return JSON: {"summary": "<=2 short, plain sentences", "changes": [{"title","change","steps":["ordered concrete edits naming the element and page"],"rationale","effort":"S|M|L","principle"?,"findingId"?}], "rebuildPhases": [{"name","goal","items":[]}]}. Write summary and change text in plain language a site owner can act on.
 Order changes by impact. One change per finding minimum — carry findingId through. Rebuild plan = 3-4 phases for a cleaner version of the site, each phase listing concrete items.`;
 }
 
@@ -195,7 +195,7 @@ export function specToMarkdown(spec: SpecReport): string {
       for (const s of c.steps) lines.push(`  - ${s}`);
     }
     lines.push(`- Rationale: ${c.rationale}`);
-    if (c.krugPrinciple) lines.push(`- Krug principle: ${c.krugPrinciple}`);
+    if (c.principle) lines.push(`- Principle: ${USABILITY_PRINCIPLES[c.principle]?.title ?? c.principle}`);
     if (c.findingId) lines.push(`- Evidence: finding ${c.findingId}${c.evidencePaths.length ? ` (${c.evidencePaths.join(", ")})` : ""}`);
     lines.push("");
   }

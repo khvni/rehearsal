@@ -547,7 +547,7 @@ export class Orchestrator {
   private async proposeVariant(exp: Experiment, findingId: string): Promise<Variant> {
     const finding = exp.findings.find((f) => f.findingId === findingId);
     const patch =
-      finding && /post-event|stale/i.test(finding.title)
+      finding && /post-event|stale|still invites registration/i.test(finding.title)
         ? {
             op: "insertNotice" as const,
             selector: "body",

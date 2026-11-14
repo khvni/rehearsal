@@ -215,7 +215,7 @@ describe("eval: spec-stage mockup (fixture LLM)", () => {
           evidenceType: "verified-failure", description: "Button off-viewport on mobile",
           affectedStates: [mobile.stateId], affectedActions: [], evidencePaths: [],
           recommendation: "Pin the primary CTA in the mobile header",
-          verificationStatus: "verified", krugPrinciple: "navigation",
+          verificationStatus: "verified", principle: "where-you-are",
         },
       ],
     });

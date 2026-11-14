@@ -10,12 +10,22 @@ import type {
 } from "../contracts";
 import { isVagueLabel } from "../browser/extract";
 import { isRunError } from "../browser/types";
-import { EvidenceType, Finding, KrugDimension, KrugPrinciple, Severity } from "../contracts";
+import { EvidenceType, Finding, RubricDimension, UsabilityPrinciple, Severity, LEGACY_PRINCIPLES } from "../contracts";
 import { logEvent } from "../telemetry";
 import { rubricPromptSection } from "./rubric";
 
 let counter = 0;
 const fid = () => `f_${randomUUID().slice(0, 8)}_${counter++}`;
+
+/** Plain reading of an assertion kind for finding titles/descriptions. */
+const ASSERTION_LABEL: Record<Assertion["kind"], string> = {
+  "url-matches": "the URL",
+  "text-present": "expected text",
+  "text-absent": "text that should be gone",
+  "element-visible": "a visible element",
+  "element-present": "expected markup",
+  "title-matches": "the page title",
+};
 
 /**
  * Deterministic rule-based findings — always run, require no LLM.
@@ -37,17 +47,17 @@ export function ruleFindings(args: {
       if (!passed) {
         findings.push({
           findingId: fid(),
-          title: `Assertion failed in browser: ${assertion.kind} "${assertion.value}"`,
+          title: `Browser check failed: ${ASSERTION_LABEL[assertion.kind]} "${assertion.value}"`,
           category: "goal-completion",
           severity: "high",
           evidenceType: "verified-failure",
-          description: `Browser run ${run.runId} (${run.viewport.name}) failed assertion ${assertion.kind} on value "${assertion.value}".`,
+          description: `In the ${run.viewport.name} browser run, ${ASSERTION_LABEL[assertion.kind]} didn't match "${assertion.value}" — what the check expected isn't what a visitor gets.`,
           affectedStates: [],
           affectedActions: [],
           evidencePaths: run.screenshotPaths,
-          recommendation: "Inspect the failed assertion against the live page and correct the mismatch.",
+          recommendation: "Open the live page and fix the mismatch so the check passes for a real visitor.",
           verificationStatus: "verified",
-          krugPrinciple: "testing-beats-arguing",
+          principle: "test-dont-argue",
         });
       }
     }
@@ -64,84 +74,84 @@ export function ruleFindings(args: {
     if (pastDates.length > 0 && hasApplyCta) {
       findings.push({
         findingId: fid(),
-        title: "Post-event page still invites registration",
+        title: "The page still invites registration for an event that already happened",
         category: "copy-economy",
         severity: "high",
         evidenceType: "reproducible-concern",
-        description: `Page "${state.pageTitle}" shows dates in the past (${pastDates.join(", ")}) alongside active registration/apply language — a stale-content inconsistency.`,
+        description: `"${state.pageTitle}" shows dates in the past (${pastDates.join(", ")}) next to apply/register language — visitors are invited to act on something that's over.`,
         affectedStates: [state.stateId],
         affectedActions: state.actions
           .filter((a) => /\b(apply|register)\b/i.test(a.label))
           .map((a) => a.actionId),
         evidencePaths: state.screenshotPath ? [state.screenshotPath] : [],
         recommendation:
-          "Replace the apply/register CTA with a post-event path (recordings, next-year waitlist) or add a visible 'event has ended' notice.",
+          "Swap the apply/register button for a post-event path (recordings, next year's waitlist) or add a clear 'this event has ended' notice.",
         verificationStatus: "reproduced",
-        krugPrinciple: "omit-words",
+        principle: "cut-needless-words",
       });
     }
 
-    // 3. Vague labels — K1/K4.
+    // 3. Vague labels — "learn more", "click here" (dont-make-users-think / obvious-choices).
     const vague = state.actions.filter((a) => isVagueLabel(a.label));
     if (vague.length > 0) {
       findings.push({
         findingId: fid(),
-        title: `Ambiguous link labels (${vague.length})`,
+        title: `${vague.length} link label${vague.length === 1 ? " doesn't" : "s don't"} say where they go`,
         category: "cognitive-effort",
         severity: "medium",
         evidenceType: "reproducible-concern",
-        description: `Actions like ${vague.map((v) => `"${v.label}"`).join(", ")} force users to guess where they lead.`,
+        description: `Labels like ${vague.map((v) => `"${v.label}"`).join(", ")} make visitors guess — they have to click to find out where the link leads.`,
         affectedStates: [state.stateId],
         affectedActions: vague.map((v) => v.actionId),
         evidencePaths: state.screenshotPath ? [state.screenshotPath] : [],
-        recommendation: "Rename vague labels to describe their destination explicitly.",
+        recommendation: `Rename each label so it names its destination ("View pricing", not "Learn more").`,
         verificationStatus: "reproduced",
-        krugPrinciple: "dont-make-me-think",
+        principle: "dont-make-users-think",
       });
     }
 
-    // 4. Nav overload — >9 distinct top-level links raises scan cost (K2).
+    // 4. Nav overload — too many links for a visitor to sort at a glance.
     const links = state.actions.filter((a) => a.role === "link");
     if (links.length > 24) {
       findings.push({
         findingId: fid(),
-        title: "Dense link surface increases scan cost",
+        title: "Too many links compete for attention",
         category: "hierarchy",
         severity: "medium",
         evidenceType: "reproducible-concern",
-        description: `${links.length} distinct links compete for attention on "${state.pageTitle}".`,
+        description: `"${state.pageTitle}" offers ${links.length} different links — too many choices to sort through at a glance.`,
         affectedStates: [state.stateId],
         affectedActions: [],
         evidencePaths: [],
-        recommendation: "Group secondary links; keep the primary path visually dominant.",
+        recommendation: "Group the secondary links under a few sections so the main action stands out.",
         verificationStatus: "reproduced",
-        krugPrinciple: "scanning-not-reading",
+        principle: "people-scan-they-dont-read",
       });
     }
 
-    // 5. Missing H1-ish identity (trunk test, K6).
+    // 5. Missing H1-ish identity — nothing names the page.
     const isDocument = !/\.(txt|ics|xml|json|pdf)$/i.test(new URL(state.url).pathname);
     if (isDocument && (!state.pageTitle || state.pageTitle === state.url)) {
       findings.push({
         findingId: fid(),
-        title: "Page lacks a readable title",
+        title: "Nothing names this page",
         category: "navigation",
         severity: "medium",
         evidenceType: "reproducible-concern",
-        description: "No <title> text extracted — 'you are here' signal missing.",
+        description: "No title text was found, so a visitor who lands here gets no \"you are here\" signal.",
         affectedStates: [state.stateId],
         affectedActions: [],
         evidencePaths: [],
-        recommendation: "Give the page a descriptive title and matching H1.",
+        recommendation: "Give the page a descriptive title and a matching h1.",
         verificationStatus: "reproduced",
-        krugPrinciple: "navigation",
+        principle: "where-you-are",
       });
     }
 
     void text;
   }
 
-  // 6. Console/page errors during browser runs — data, not a goal failure (K9: observed in testing).
+  // 6. Console/page errors during browser runs — data, not a goal failure.
   findings.push(...consoleErrorFindings(runs, states));
 
   void assertions;
@@ -164,25 +174,25 @@ function consoleErrorFindings(runs: BrowserRun[], states: SiteState[]): Finding[
     const samples = [...new Set(noisy.flatMap((r) => r.errors.filter((e) => !isRunError(e))))].slice(0, 3);
     return {
       findingId: `f_console-errors_${viewport}`,
-      title: `Console errors during browser runs (${total})`,
+      title: `The page threw ${total} script error${total === 1 ? "" : "s"} during ${viewport} runs`,
       category: "consistency",
       severity: "low",
       evidenceType: "reproducible-concern",
-      description: `console-errors: ${total} page/console errors across ${noisy.length} of ${runs.filter((r) => r.viewport.name === viewport).length} ${viewport} runs, e.g. ${samples.map((s) => `"${s.slice(0, 120)}"`).join(", ")}. The goal check is unaffected, but broken scripts are where unconventional, unpredictable behavior starts.`,
+      description: `${total} page/console errors across ${noisy.length} of ${runs.filter((r) => r.viewport.name === viewport).length} ${viewport} runs, e.g. ${samples.map((s) => `"${s.slice(0, 120)}"`).join(", ")}. They don't fail the goal check, but scripts that break quietly are how pages start behaving unpredictably.`,
       affectedStates: start ? [start.stateId] : [],
       affectedActions: [],
       evidencePaths: noisy.flatMap((r) => r.screenshotPaths).slice(0, 3),
       recommendation: "Fix or silence the failing scripts so the page behaves the same for every visitor.",
       verificationStatus: "reproduced",
-      krugPrinciple: "testing-beats-arguing",
+      principle: "test-dont-argue",
     } satisfies Finding;
   });
 }
 
 /**
  * Endpoint reachability findings (deterministic, from seeded endpoint journeys):
- * - endpoint-unreachable: high-weight endpoint with zero goal-reached journeys
- * - endpoint-deep: median journey > 3 steps
+ * - unreachable: high-weight endpoint with zero goal-reached journeys
+ * - deep: median journey > 3 steps
  * - missing-endpoint-class: site type expects a class (pricing/signup/…) that wasn't found
  */
 export function endpointFindings(args: {
@@ -207,32 +217,32 @@ export function endpointFindings(args: {
     if (e.weight >= highWeight && j.goalReached === 0) {
       findings.push({
         findingId: `f_endpoint-unreachable_${e.endpointId}`,
-        title: `Endpoint unreachable: ${e.class} "${e.label.slice(0, 60)}"`,
+        title: `Visitors can't reach "${e.label.slice(0, 60)}" (${e.class.replace("-", " ")})`,
         category: "navigation",
         severity: e.weight >= 0.85 ? "high" : "medium",
         evidenceType: "reproducible-concern",
-        description: `endpoint-unreachable: "${e.label}" (${e.class}, weight ${e.weight}) at ${e.url} was reached in 0 of ${j.trajectories} seeded journeys from the start page. Krug's trunk test fails here — a visitor can't find their way to it.`,
+        description: `"${e.label}" (${e.class}, importance ${e.weight}) at ${e.url} was reached in 0 of ${j.trajectories} sampled journeys from the start page — a visitor who wants it can't find the way.`,
         affectedStates: affected(e),
         affectedActions: e.actionId ? [e.actionId] : [],
         evidencePaths: [],
         recommendation: `Link "${e.label}" from persistent navigation or the start page with a label that names the ${e.class.replace("-", " ")} destination.`,
         verificationStatus: "reproduced",
-        krugPrinciple: "navigation",
+        principle: "where-you-are",
       });
     } else if (j.medianSteps !== undefined && j.medianSteps > deepSteps) {
       findings.push({
         findingId: `f_endpoint-deep_${e.endpointId}`,
-        title: `Endpoint buried: ${e.class} "${e.label.slice(0, 60)}"`,
+        title: `"${e.label.slice(0, 60)}" takes too many clicks to reach`,
         category: "navigation",
         severity: e.weight >= highWeight ? "medium" : "low",
         evidenceType: "reproducible-concern",
-        description: `endpoint-deep: "${e.label}" (${e.class}, weight ${e.weight}) takes a median of ${j.medianSteps} steps across ${j.goalReached}/${j.trajectories} reaching journeys (shortest: ${j.samplePath.join(" → ") || "n/a"}). Each extra choice must be mindless; past ${deepSteps} the path stops being obvious.`,
+        description: `"${e.label}" (${e.class}, importance ${e.weight}) sits a median of ${j.medianSteps} steps from the start (${j.goalReached}/${j.trajectories} journeys reach it; shortest path: ${j.samplePath.join(" → ") || "n/a"}). Past ${deepSteps} steps the path stops being obvious.`,
         affectedStates: affected(e),
         affectedActions: e.actionId ? [e.actionId] : [],
         evidencePaths: [],
         recommendation: `Surface "${e.label}" within ${deepSteps} clicks of the start page, or make each intermediate link unambiguous about leading there.`,
         verificationStatus: "reproduced",
-        krugPrinciple: "mindless-choices",
+        principle: "obvious-choices",
       });
     }
   }
@@ -242,17 +252,17 @@ export function endpointFindings(args: {
     if (found.has(cls)) continue;
     findings.push({
       findingId: `f_missing-endpoint-class_${cls}`,
-      title: `No ${cls} endpoint found`,
+      title: `No ${cls.replace("-", " ")} page or link found`,
       category: "goal-completion",
       severity: cls === "pricing" || cls === "signup" ? "high" : "medium",
       evidenceType: "reproducible-concern",
-      description: `missing-endpoint-class: a ${siteType} site is expected to expose a ${cls} endpoint, but none of the ${statesDiscovered} discovered states or their links/CTAs classify as ${cls}.`,
+      description: `A ${siteType} site should offer a ${cls.replace("-", " ")} destination, but nothing in the ${statesDiscovered} pages found leads to one.`,
       affectedStates: [],
       affectedActions: [],
       evidencePaths: [],
       recommendation: `Add a clearly labeled ${cls.replace("-", " ")} destination and link it from the primary navigation.`,
       verificationStatus: "reproduced",
-      krugPrinciple: "navigation",
+      principle: "where-you-are",
     });
   }
   return findings;
@@ -309,11 +319,12 @@ export async function llmFindings(args: {
       errors: r.errors.slice(0, 10),
     })),
   };
-  const prompt = `You are a UX auditor applying Steve Krug's "Don't Make Me Think, Revisited".
-Rubric dimensions:\n${rubricPromptSection()}\n
+  const prompt = `You are a UX auditor. Grade the evidence against these usability dimensions:
+${rubricPromptSection()}
+
 GOAL: ${goal}
 EVIDENCE:\n${JSON.stringify(evidence)}\n
-Return FINDINGS_JSON: {"findings": [{"title","category"(rubric key),"severity","evidenceType","description","recommendation","krugPrinciple"}]} — only issues supported by the evidence; label unverified ones "hypothesis".`;
+Return FINDINGS_JSON: {"findings": [{"title","category"(rubric key),"severity","evidenceType","description","recommendation","principle"}]} — only issues supported by the evidence; label unverified ones "hypothesis". Write titles and descriptions in plain language a site owner can act on.`;
   try {
     const raw = await llm.complete(prompt, { deep: true, json: true });
     const parsed = JSON.parse(stripFences(raw)) as {
@@ -324,7 +335,7 @@ Return FINDINGS_JSON: {"findings": [{"title","category"(rubric key),"severity","
       .map((f) => ({
         findingId: fid(),
         title: String(f.title),
-        category: pick(KrugDimension, f.category, "clarity"),
+        category: pick(RubricDimension, f.category, "clarity"),
         severity: pick(Severity, f.severity, "medium"),
         evidenceType: pick(EvidenceType, f.evidenceType, "hypothesis"),
         description: String(f.description),
@@ -333,7 +344,11 @@ Return FINDINGS_JSON: {"findings": [{"title","category"(rubric key),"severity","
         evidencePaths: [],
         recommendation: typeof f.recommendation === "string" ? f.recommendation : "",
         verificationStatus: f.evidenceType === "verified-failure" ? "verified" : "unverified",
-        krugPrinciple: pick(KrugPrinciple, f.krugPrinciple, "dont-make-me-think"),
+        principle: pick(
+          UsabilityPrinciple,
+          typeof f.principle === "string" ? (LEGACY_PRINCIPLES[f.principle] ?? f.principle) : f.principle,
+          "dont-make-users-think",
+        ),
       }))
       .flatMap((f) => {
         const r = Finding.safeParse(f);
