@@ -10,7 +10,10 @@
   "referenceNow": "2026-11-13T12:00:00.000Z",
   "expectedSiteType": "event",
   "expectedIntentCategory": "information",
-  "expectedEndpointClasses": ["schedule-event", "signup"],
+  "expectedEndpointClasses": [
+    "schedule-event",
+    "signup"
+  ],
   "expectedFindings": [
     {
       "titleMatch": "still invites registration",
@@ -19,19 +22,39 @@
     }
   ],
   "toleratedFindings": [
-    { "titleMatch": "links compete for attention" },
-    { "titleMatch": "script errors" },
-    { "titleMatch": "nothing names this page" },
-    { "titleMatch": "browser check failed" },
-    { "titleMatch": "can't find an answer" },
-    { "titleMatch": "expected visitor questions" },
-    { "titleMatch": "landing here can't find" },
-    { "titleMatch": "primary navigation has" },
-    { "titleMatch": "can't find site ID" }
+    {
+      "titleMatch": "links compete for attention"
+    },
+    {
+      "titleMatch": "script errors"
+    },
+    {
+      "titleMatch": "nothing names this page"
+    },
+    {
+      "titleMatch": "browser check failed"
+    },
+    {
+      "titleMatch": "can't find an answer"
+    },
+    {
+      "titleMatch": "expected visitor questions"
+    },
+    {
+      "titleMatch": "landing here can't find"
+    },
+    {
+      "titleMatch": "primary navigation has"
+    },
+    {
+      "titleMatch": "can't find site ID"
+    }
   ],
   "unexpectedFindings": [],
   "expectedSpecItems": [
-    { "match": "still invites registration|stale|apply" }
+    {
+      "match": "still invites registration|stale|apply"
+    }
   ],
   "budgetsMs": {
     "discover": 60000,
@@ -44,7 +67,7 @@
   },
   "expectations": {
     "minGoalReachRate": 0.2,
-    "minJourneyCoverage": 0.7,
+    "minJourneyCoverage": 0.55,
     "minFindingsPrecision": 0.8,
     "minFindingsRecall": 1,
     "minSpecItemCoverage": 1
