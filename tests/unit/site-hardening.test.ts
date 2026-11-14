@@ -56,6 +56,16 @@ describe("extractPage on real-world link shapes", () => {
     expect(page.headings).toEqual(["Don't"]);
     expect(page.actions[0]).toMatchObject({ label: "Go", href: "https://example.com/q?a=1&b=2" });
   });
+
+  it("keeps SVG and script text out of labels and the page title", () => {
+    const page = extractPage(
+      `<body><a href="/docs"><svg><title>Arrow icon</title></svg>Docs<script>x()</script></a>` +
+        `<button><svg><title>Close icon</title></svg></button><title>Real</title>`,
+      PAGE,
+    );
+    expect(page.title).toBe("Real");
+    expect(page.actions.map((a) => a.label)).toEqual(["Docs", "button"]);
+  });
 });
 
 describe("robots.txt rules", () => {

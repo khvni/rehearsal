@@ -46,7 +46,8 @@ const NON_HTML_EXT_RE = /\.(pdf|zip|gz|tgz|dmg|exe|msi|pkg|deb|rpm|apk|iso|csv|x
 interface OpenElement {
   name: string;
   attribs: Record<string, string>;
-  label: { text: string; full: boolean } | undefined;
+  /** `skipDepth` at open: text nested in a deeper script/style/svg block is not part of the label. */
+  label: { text: string; full: boolean; skipDepth: number } | undefined;
 }
 
 /**
@@ -119,6 +120,7 @@ export function extractPage(rawHtml: string, pageUrl: string): ExtractedPage {
       const collapsed = text.replace(/\s+/g, " ");
       for (let i = labels.length - 1; i >= 0; i--) {
         const label = labels[i];
+        if (skipDepth > label.skipDepth) continue;
         label.text += collapsed.slice(0, MAX_LABEL_CHARS - label.text.length);
         if (label.text.length >= MAX_LABEL_CHARS) {
           label.full = true;
@@ -151,11 +153,11 @@ export function extractPage(rawHtml: string, pageUrl: string): ExtractedPage {
     if (selfClosing && (foreignDepth > 0 || FOREIGN_TAGS.has(name))) return;
     if (stack.length >= MAX_OPEN_ELEMENTS) return;
     const collects =
-      (name === "title" && title === undefined) ||
+      (name === "title" && title === undefined && foreignDepth === 0) ||
       (HEADING_TAGS.has(name) && headings.length < MAX_HEADINGS) ||
       name === "a" ||
       name === "button";
-    const el: OpenElement = { name, attribs, label: collects ? { text: "", full: false } : undefined };
+    const el: OpenElement = { name, attribs, label: collects ? { text: "", full: false, skipDepth } : undefined };
     stack.push(el);
     if (el.label) labels.push(el.label);
     if (SKIPPED_TEXT_TAGS.has(name)) skipDepth++;
