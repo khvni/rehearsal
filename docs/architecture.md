@@ -77,6 +77,21 @@ Playwright stays the hermetic fallback. Stagehand cannot attach to a Bright Data
 (its `localBrowser.connect` needs its extension loaded from a shared filesystem), so the two
 vendors are combined by routing, not by sharing a browser.
 
+**Agent-driven verify** (`browser/agent.ts`) — `REHEARSAL_VERIFY_AGENT` swaps `runTrajectory`
+for `runAgentTask`: an observe/act/extract loop (Stagehand v4 primitives) where each step
+observes candidate elements in natural language and acts on the best one, instead of pinning
+to scripted locators. `BrowserRunner.supportsAgent` gates it; without a model (or on the
+Playwright/Bright Data backends) verify falls back to `runTrajectory` — see docs/sandbox.md
+for why this pattern (Vercel's agent-browser snapshot→refs→act model via Stagehand's API).
+
+**Code sandbox** (`src/lib/sandbox`) — `CodeSandbox.run` executes agent-generated test code
+against a fixture/rebuilt page or a live URL and returns assertions, console output and
+errors. `REHEARSAL_SANDBOX=auto` picks the Cloudflare adapter (a `Sandbox` Durable Object
+namespace with `getByName().run(script)` — the SDK 1.x DO pattern) when the binding exists,
+else an isolated `node:worker_threads`+`vm` worker. Playwright cannot run on
+workerd, so the node adapter is the CI/dev path and the container adapter carries the Workers
+deploy — details and the binding setup in docs/sandbox.md.
+
 **Fetch** (`src/lib/fetch`) — Bright Data Web Unlocker (`POST https://api.brightdata.com/request`
 with `{ zone, url, format: "raw" }`) → Browserbase Fetch (`browserbase.fetch`) → plain `fetch`.
 Every path runs `assertPublicUrl` + per-host politeness first. Plain fetches re-check every
@@ -105,6 +120,8 @@ a variable that is missing here or in `.env.example`, or if `.env.example` lists
 | `STAGEHAND_CHROME_PATH` | `browser/runner.ts` | Stagehand's default Chrome lookup (`stagehand-local` only) |
 | `REHEARSAL_BROWSER` | `browser/runner.ts` | `auto` |
 | `REHEARSAL_CHROMIUM_NO_SANDBOX` | `browser/sandbox.ts` | Local Chromium (Playwright, `stagehand-local`) runs with its sandbox on. `1` turns it off for hosts without unprivileged user namespaces; never set it in a deployment |
+| `REHEARSAL_VERIFY_AGENT` | `browser/runner.ts`, `orchestrator.ts` | verify uses `runTrajectory` (scripted locators) |
+| `REHEARSAL_SANDBOX` | `sandbox/index.ts` | `auto` — Cloudflare adapter when bound, node worker otherwise |
 | `SENTRY_DSN` / `SENTRY_TRACES_SAMPLE_RATE` | `telemetry/index.ts` | Sentry off (JSONL event log still written) / `0.2` |
 | `SENTRY_WEBHOOK_SECRET` | `app/api/hooks/sentry/route.ts` | `POST /api/hooks/sentry` returns 503 (webhook not configured) |
 | `GITHUB_TOKEN` | `app/api/hooks/sentry/route.ts` | Sentry alerts are verified but not filed as GitHub issues (logged notice) |

@@ -16,7 +16,7 @@ import {
 } from "./contracts";
 import { selectFetcher } from "./fetch";
 import { assertPublicUrl, robotsAllows } from "./fetch/guards";
-import { extractPage, selectRunner } from "./browser/runner";
+import { agentVerifyEnabled, extractPage, selectRunner } from "./browser/runner";
 import { GraphBuilder, makeState, adjacency } from "./graph";
 import { selectJev, scoreActions } from "./decisions/jev";
 import { simulateTrajectories, selectTrajectories } from "./simulation";
@@ -330,13 +330,19 @@ export class Orchestrator {
         for (const vpName of vps) {
           const runId = `run_${traj.trajectoryId}_${vpName}`;
           await this.emit(id, "verify", "browser", `${runId}: replaying ${actions.length} steps on ${vpName}`);
-          const run = await this.runner.runTrajectory({
+          const args = {
             url: e.targetUrl,
             viewport: VIEWPORTS[vpName],
             actions,
             assertions: e.assertions,
             runId,
-          });
+          };
+          // Agent runs only where the backend has a model (opt-in); compare stays scripted so baseline/variant replay identically.
+          const useAgent =
+            agentVerifyEnabled() && this.runner.supportsAgent === true && typeof this.runner.runAgentTask === "function";
+          const run = useAgent
+            ? await this.runner.runAgentTask!({ ...args, goal: e.goal })
+            : await this.runner.runTrajectory(args);
           for (const s of run.steps.filter((s) => !s.ok)) {
             await this.emit(id, "verify", "assert", `"${s.label}" failed${s.error ? ` — ${s.error}` : ""}`);
           }

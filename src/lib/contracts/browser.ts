@@ -21,6 +21,26 @@ export interface TrajectoryArgs {
   maxSteps?: number;
 }
 
+/** A candidate element an observe() pass proposes for the next act(). */
+export interface AgentCandidate {
+  selector: string;
+  description: string;
+  method?: string;
+}
+
+/** The observe/act/extract surface an agent loop drives — Stagehand-backed, or a fixture in tests. */
+export interface AgentDriver {
+  observe(instruction?: string): Promise<AgentCandidate[]>;
+  act(instruction: string): Promise<{ ok: boolean; detail?: string }>;
+  extract(instruction: string, schema?: unknown): Promise<unknown>;
+  probe(): AssertionProbe;
+}
+
+/** TrajectoryArgs plus the visitor goal, for agent-driven verify runs. */
+export interface AgentRunArgs extends TrajectoryArgs {
+  goal: string;
+}
+
 export interface OpenPageResult {
   html: string;
   /** Absent on runtimes without a writable evidence dir (e.g. workerd). */
@@ -36,8 +56,16 @@ export interface OpenPageResult {
  */
 export interface BrowserRunner {
   readonly name: string;
+  /** True when `runAgentTask` is usable (backend has a model). Absent/false => verify uses runTrajectory. */
+  readonly supportsAgent?: boolean;
   openPage(url: string, viewport: Viewport, opts?: { patches?: DomPatch[]; shotName?: string }): Promise<OpenPageResult>;
   runTrajectory(args: TrajectoryArgs): Promise<BrowserRun>;
+  /**
+   * Agent-driven trajectory: observe/act/extract loop instead of scripted locators.
+   * Present only on backends with a configured model (e.g. Stagehand); the verify
+   * stage falls back to `runTrajectory` when absent (AGENTS.md rule 4).
+   */
+  runAgentTask?(args: AgentRunArgs): Promise<BrowserRun>;
   close(): Promise<void>;
 }
 

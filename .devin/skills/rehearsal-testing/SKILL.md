@@ -13,7 +13,7 @@ eval cases.** `npm run check:skill-sync` fails the build otherwise.
 
 - `discover` — fetch + browser runner (Bright Data → Stagehand → local Playwright) open page, extract elements, build deduplicated state graph
 - `simulate` — Jev scores actions per state; seeded sampler produces ≥500 trajectories
-- `verify` — risk-ranked trajectories executed in real desktop/mobile browsers; assertions checked
+- `verify` — risk-ranked trajectories executed in real desktop/mobile browsers; assertions checked. `REHEARSAL_VERIFY_AGENT` swaps scripted locators for an observe/act/extract agent loop (`browser/agent.ts`, runners with `supportsAgent`)
 - `analyze` — rule-based + Gemini findings, each classified by evidence type + Krug principle
 - `compare` — DOM-patch variant applied in isolated context; baseline vs variant deltas
 - `spec` — SpecReport generated; spec.md written under data/experiments/<id>/
@@ -39,6 +39,7 @@ eval cases.** `npm run check:skill-sync` fails the build otherwise.
   - orchestrator wiring — fixture adapters: `analyze` stores `questions` on the experiment, adds the `unanswered-question` findings, and the experiment round-trips through the `Experiment` contract
 
 - `metrics.eval.ts` — page metrics (`src/lib/browser/metrics.ts` `measurePage`) on the AIE fixture in hermetic local Chromium (loopback server, all other requests aborted, `networkidle` so layout settles): repeat measurements are identical; homepage fold ratio ≥ `metricsMinHomepageFoldRatio` with scroll time = screens × 1.5s; exactly `metricsExpectedH1Count` h1 and it is the largest text; ≥ `metricsMinNavItems` primary-nav items, ≥ `metricsMinCtas` CTAs, `primaryCtaAmbiguity` ≤ `metricsMaxPrimaryCtaAmbiguity`, ≥ `metricsMinFontSizeBuckets` font sizes; the HTML-only fallback matches the DOM facts and nulls layout fields; `metricFindings` emits every rule in `metricsRequiredRules`, no CTA-ambiguity finding, each with a Krug key + screenshot evidence
+- `sandbox.eval.ts` — `CodeSandbox` (`src/lib/sandbox`): node worker executes agent-style assertions on the AIE fixture with console + `report()` output, deterministic repeat runs, non-throwing failure path; `selectSandbox` honours `REHEARSAL_SANDBOX` and falls back to `node-vm-worker` when no `Sandbox` binding exists; `agentVerifyEnabled` is opt-in and `selectRunner` backends declare `supportsAgent`
 - `findings-dedup.eval.ts` — cross-state finding dedup (`src/lib/analysis/dedupe.ts` `collapseFindings`, called by `analyze`): on four AIE fixture states + two browser runs failing the same assertion, raw `ruleFindings` repeats per state, collapsed output has one finding per (Krug principle + title) whose affected states/actions/evidence paths are the union of the group, severity = max, first findingId kept, title suffixed `(N of M pages)` (pages counted by URL, so desktop + mobile states of one URL are one page) / `(N of M runs)`; verified failures with different assertions stay distinct; orchestrator `spec` on a multi-page fixture site (clock pinned after the event) emits each finding and spec change once
 
 ## Unit tests (tests/unit/)
