@@ -178,6 +178,37 @@ describe("jev fixture client", () => {
     expect(ambiguity).toBeGreaterThanOrEqual(0);
     expect(ambiguity).toBeLessThanOrEqual(1);
   });
+
+  it("dedupes identical scoring payloads and counts real calls", async () => {
+    const mk = (viewport: (typeof VIEWPORTS)[keyof typeof VIEWPORTS], url: string) =>
+      makeState({
+        url,
+        viewport,
+        title: "AIE",
+        visibleText: "conference schedule tickets",
+        actions: [
+          { type: "click" as const, label: "View schedule", role: "link", href: "#s", enabled: true, safeToExecute: true },
+          { type: "click" as const, label: "Sponsor us", role: "link", href: "#sp", enabled: true, safeToExecute: true },
+        ],
+      });
+    const desktop = mk(VIEWPORTS.desktop, AIE_URL);
+    const mobile = mk(VIEWPORTS.mobile, AIE_URL); // same Jev payload, different actionIds
+    const other = mk(VIEWPORTS.desktop, `${AIE_URL}/speakers`);
+
+    const jev = new FixtureJevClient();
+    const decide = vi.spyOn(jev, "decide");
+    const cache = new Map();
+    const goal = "find the conference schedule";
+    const a = await scoreActions(jev, desktop, goal, "goal-directed", { cache });
+    const b = await scoreActions(jev, mobile, goal, "goal-directed", { cache });
+    const c = await scoreActions(jev, other, goal, "goal-directed", { cache });
+
+    expect(decide).toHaveBeenCalledTimes(2); // one call per distinct payload
+    expect(b.scored.map((s) => s.weight)).toEqual(a.scored.map((s) => s.weight)); // remapped onto mobile actionIds
+    expect(b.scored.every((s) => mobile.actions.some((x) => x.actionId === s.action.actionId))).toBe(true);
+    expect(jev.usageReport?.().calls).toBe(2);
+    void c;
+  });
 });
 
 describe("variants", () => {

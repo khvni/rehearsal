@@ -504,6 +504,26 @@ export const RebuildResult = z.object({
 });
 export type RebuildResult = z.infer<typeof RebuildResult>;
 
+// ── Usage accounting (per-run model calls + tokens) ──────────────────────────
+
+/** Call/token totals for one model provider. `estimated` marks byte-derived
+ * estimates (chars/4) when the provider reports no usage metadata. */
+export const TokenUsage = z.object({
+  calls: z.number().int().nonnegative(),
+  inputTokens: z.number().int().nonnegative().default(0),
+  outputTokens: z.number().int().nonnegative().default(0),
+  totalTokens: z.number().int().nonnegative().default(0),
+  estimated: z.boolean().optional(),
+});
+export type TokenUsage = z.infer<typeof TokenUsage>;
+
+/** Per-run model usage, stamped onto the experiment record at each save. */
+export const UsageReport = z.object({
+  llm: TokenUsage.optional(),
+  jev: TokenUsage.optional(),
+});
+export type UsageReport = z.infer<typeof UsageReport>;
+
 // ── Experiment ──────────────────────────────────────────────────────────────
 
 export const ExperimentStatus = z.enum([
@@ -570,6 +590,7 @@ export const Experiment = z.object({
   journeys: z.array(EndpointJourney).optional(),
   questions: z.array(VisitorQuestion).optional(),
   rebuild: RebuildResult.optional(),
+  usage: UsageReport.optional(),
   errors: z.array(z.string()).default([]),
   /** Structured, coded form of each failure (page loads, stage errors); `errors` keeps the readable lines. */
   failures: z.array(RunFailure).default([]),
