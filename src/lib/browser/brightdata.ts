@@ -5,7 +5,7 @@ import type { BrowserRun, BrowserRunner, DomPatch, EnvVars, OpenPageResult, Traj
 import { assertPublicUrl } from "../fetch/guards";
 import { compilePatches } from "../variants";
 import { measurePage } from "./metrics";
-import { DEFAULT_EVIDENCE_DIR, executeTrajectory, watchPageErrors } from "./playwright";
+import { DEFAULT_EVIDENCE_DIR, assertPublicPage, executeTrajectory, watchPageErrors } from "./playwright";
 import { errorText, summarizeRun } from "./types";
 
 const BRIGHTDATA_HOST = "brd.superproxy.io:9222";
@@ -97,6 +97,8 @@ export class BrightDataBrowserRunner implements BrowserRunner {
     return this.withSession(viewport, opts?.patches, async (page) => {
       const screenshotPath = path.join(this.evidenceDir, `${opts?.shotName ?? Date.now()}.png`);
       await page.goto(url, { waitUntil: "domcontentloaded", timeout: BRIGHTDATA_NAV_TIMEOUT_MS });
+      // Redirect hops aren't re-checked by goto — reject a page that landed non-public.
+      await assertPublicPage(page);
       await page.waitForTimeout(1200);
       const shotOk = await page.screenshot({ path: screenshotPath, fullPage: false }).then(() => true).catch(() => false);
       const metrics = await measurePage(page);
