@@ -18,7 +18,7 @@ import { compilePatches } from "../variants";
 import { isSameOrigin } from "./extract";
 import { measurePage } from "./metrics";
 import { DEFAULT_EVIDENCE_DIR } from "./playwright";
-import { evaluateAssertion, shouldShoot, summarizeRun } from "./types";
+import { errorText, evaluateAssertion, shouldShoot, summarizeRun } from "./types";
 
 const NAV_TIMEOUT_MS = 60_000;
 /** Stagehand only exposes console events, so forward uncaught errors/rejections to console.error. */
@@ -201,7 +201,7 @@ export class StagehandRunner implements BrowserRunner {
           const p = ev.params as { type?: string; args?: { value?: unknown }[] };
           if (p.type === "error") {
             const text = (p.args ?? []).map((x) => String(x.value ?? "")).join(" ");
-            errors.push(`console: ${text.slice(0, 200)}`);
+            errors.push(`console: ${errorText(text)}`);
           }
         });
         await page.goto(args.url, { waitUntil: "domcontentloaded", timeout: NAV_TIMEOUT_MS });
@@ -216,7 +216,7 @@ export class StagehandRunner implements BrowserRunner {
             await this.step(sh, page, a);
             steps.push({ actionId: a.actionId, label: a.label, ok: true });
           } catch (e) {
-            steps.push({ actionId: a.actionId, label: a.label, ok: false, error: String(e).slice(0, 160) });
+            steps.push({ actionId: a.actionId, label: a.label, ok: false, error: errorText(e, 160) });
           }
           if (shouldShoot(i, total)) {
             const shot = await this.shoot(page, `${args.runId}_${i + 1}`).catch(() => null);
@@ -229,7 +229,7 @@ export class StagehandRunner implements BrowserRunner {
         }
       });
     } catch (e) {
-      errors.push(`run: ${String(e).slice(0, 200)}`);
+      errors.push(`run: ${errorText(e)}`);
     }
     return summarizeRun({ runId: args.runId, viewport: args.viewport, started, steps, assertions, errors, screenshots });
   }

@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { brightDataBrowserEndpoint } from "../../src/lib/browser/brightdata";
+import { brightDataBrowserEndpoint, cdpConnectOptions } from "../../src/lib/browser/brightdata";
+import { errorText, redactSecrets } from "../../src/lib/browser/types";
 import { runnerName, selectRunner } from "../../src/lib/browser/runner";
 import { stagehandModelFromEnv } from "../../src/lib/browser/stagehand";
 
@@ -44,5 +45,32 @@ describe("vendor config helpers", () => {
       modelName: "openai/gpt-5",
       apiKey: "k",
     });
+  });
+});
+
+describe("credential redaction", () => {
+  it("moves CDP URL credentials into a Basic auth header", () => {
+    const { wsEndpoint, headers } = cdpConnectOptions("wss://brd-customer-c-zone-z:p%40ss@brd.superproxy.io:9222");
+    expect(wsEndpoint).toBe("wss://brd.superproxy.io:9222/");
+    expect(headers.Authorization).toBe(`Basic ${Buffer.from("brd-customer-c-zone-z:p%40ss").toString("base64")}`);
+    expect(cdpConnectOptions("wss://brd.superproxy.io:9222")).toEqual({ wsEndpoint: "wss://brd.superproxy.io:9222", headers: {} });
+  });
+
+  it("strips URL userinfo from runner errors", () => {
+    const e = new Error("browserType.connectOverCDP: WebSocket error: wss://u:hunter2@brd.superproxy.io:9222/ 403 Forbidden");
+    const out = errorText(e, 200, {});
+    expect(out).not.toContain("hunter2");
+    expect(out).toContain("wss://[REDACTED]@brd.superproxy.io:9222/");
+  });
+
+  it("removes known secret env values even outside URLs, raw or percent-encoded", () => {
+    const env = { BRIGHTDATA_BROWSER_PASSWORD: "p@ss-word", BROWSERBASE_API_KEY: "bb_live_123", BRIGHTDATA_BROWSER_WS: "wss://u:zonepw9@host" };
+    const out = redactSecrets("auth p@ss-word / p%40ss-word failed; key=bb_live_123; zonepw9", env);
+    for (const leaked of ["p@ss-word", "p%40ss-word", "bb_live_123", "zonepw9"]) expect(out).not.toContain(leaked);
+  });
+
+  it("redacts before truncating so no partial secret survives the cut", () => {
+    const e = `run: ${"x".repeat(180)} wss://user:secretpassword@brd.superproxy.io:9222`;
+    expect(errorText(e, 200, {})).not.toMatch(/secret/);
   });
 });
