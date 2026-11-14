@@ -1,6 +1,6 @@
 import { mkdirSync } from "node:fs";
 import path from "node:path";
-import { chromium, type Browser, type BrowserContext, type Page } from "playwright";
+import type { Browser, BrowserContext, Page } from "playwright";
 import type {
   Assertion,
   AssertionProbe,
@@ -123,10 +123,18 @@ export class PlaywrightRunner implements BrowserRunner {
   private browser: Browser | null = null;
 
   constructor(private evidenceDir = DEFAULT_EVIDENCE_DIR) {
-    mkdirSync(evidenceDir, { recursive: true });
+    // Edge runtimes (workerd) ship a read-only fs — evidence dir is best-effort.
+    try {
+      mkdirSync(evidenceDir, { recursive: true });
+    } catch {
+      /* evidence writes degrade to no-ops */
+    }
   }
 
   private async getBrowser(): Promise<Browser> {
+    // Lazy import: playwright can't load on edge runtimes (e.g. Cloudflare Workers);
+    // keeping it out of the module graph lets the rest of the app boot there.
+    const { chromium } = await import("playwright");
     this.browser ??= await chromium.launch({ headless: true });
     return this.browser;
   }

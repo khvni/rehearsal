@@ -1,6 +1,6 @@
 import { mkdirSync } from "node:fs";
 import path from "node:path";
-import { chromium, type Browser, type Page } from "playwright";
+import type { Browser, Page } from "playwright";
 import type { BrowserRun, BrowserRunner, DomPatch, EnvVars, OpenPageResult, TrajectoryArgs, Viewport } from "../contracts";
 import { assertPublicUrl } from "../fetch/guards";
 import { compilePatches } from "../variants";
@@ -40,7 +40,12 @@ export class BrightDataBrowserRunner implements BrowserRunner {
     private endpoint: string,
     private evidenceDir = DEFAULT_EVIDENCE_DIR,
   ) {
-    mkdirSync(evidenceDir, { recursive: true });
+    // Edge runtimes (workerd) ship a read-only fs — evidence dir is best-effort.
+    try {
+      mkdirSync(evidenceDir, { recursive: true });
+    } catch {
+      /* evidence writes degrade to no-ops */
+    }
   }
 
   private async withSession<T>(
@@ -48,6 +53,8 @@ export class BrightDataBrowserRunner implements BrowserRunner {
     patches: DomPatch[] | undefined,
     fn: (page: Page) => Promise<T>,
   ): Promise<T> {
+    // Lazy import so playwright stays out of the module graph on edge runtimes.
+    const { chromium } = await import("playwright");
     const browser: Browser = await chromium.connectOverCDP(this.endpoint);
     try {
       const ctx = browser.contexts()[0] ?? (await browser.newContext());

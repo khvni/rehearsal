@@ -42,7 +42,8 @@ write_files:
 runcmd:
   - curl -fsSL https://nodejs.org/dist/v22.21.0/node-v22.21.0-linux-x64.tar.xz | tar -xJ --strip-components=1 -C /usr/local
   - mkdir -p /opt/rehearsal && chown rehearsal:rehearsal /opt/rehearsal
-  - sudo -u rehearsal git clone --depth 1 --branch ${git_ref} https://github.com/${github_repo}.git /opt/rehearsal/app
+  - sudo -u rehearsal git clone --depth 1 https://github.com/${github_repo}.git /opt/rehearsal/app
+  - cd /opt/rehearsal/app && sudo -u rehearsal git fetch --depth 1 origin ${git_ref} && sudo -u rehearsal git checkout FETCH_HEAD
   - cd /opt/rehearsal/app && sudo -u rehearsal -H npm ci
   - cd /opt/rehearsal/app && npx playwright install-deps chromium
   - cd /opt/rehearsal/app && sudo -u rehearsal -H npx playwright install chromium

@@ -97,7 +97,12 @@ export class StagehandRunner implements BrowserRunner {
     }
     this.name = `stagehand-${opts.env}`;
     this.evidenceDir = opts.evidenceDir ?? DEFAULT_EVIDENCE_DIR;
-    mkdirSync(this.evidenceDir, { recursive: true });
+    // Edge runtimes (workerd) ship a read-only fs — evidence dir is best-effort.
+    try {
+      mkdirSync(this.evidenceDir, { recursive: true });
+    } catch {
+      /* evidence writes degrade to no-ops */
+    }
   }
 
   /** True when act() has a model: explicit config, or Browserbase's Model Gateway. */

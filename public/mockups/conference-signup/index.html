@@ -1,0 +1,386 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Apply to attend · AI Engineer Code Summit 2026 · San Francisco, Nov 10–12</title>
+<meta name="description" content="AI Engineer Code Summit 2026, Nov 10–12 at Hilton Union Square, San Francisco. Applying is free; you pay $1,499 only if approved.">
+<style>
+:root {
+  color-scheme: light;
+  --bg: #fff;
+  --text: #111;
+  --body: #565656;
+  --muted: #6b6b6b;
+  --rule: #ededed;
+  --hover: rgba(0, 0, 0, 0.04);
+  --content: 640px;
+  --ease: cubic-bezier(0.25, 1, 0.5, 1);
+  font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+}
+* { box-sizing: border-box; }
+html { background: var(--bg); text-size-adjust: 100%; scroll-behavior: smooth; scroll-padding-top: 72px; }
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--text);
+  font-size: 16px;
+  line-height: 1.55;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+a { color: inherit; text-decoration: none; }
+p { margin: 0; }
+h1, h2, h3 { margin: 0; font-weight: 500; text-wrap: balance; }
+.wrap { width: 100%; max-width: calc(var(--content) + 48px); margin: 0 auto; padding: 0 24px; }
+.num { font-variant-numeric: tabular-nums; }
+.link { text-decoration: underline; text-decoration-color: #c8c8c8; text-underline-offset: 3px; transition: text-decoration-color 140ms ease; }
+.link:hover { text-decoration-color: currentColor; }
+:focus-visible { outline: 2px solid var(--text); outline-offset: 3px; border-radius: 4px; }
+
+/* Header */
+.top {
+  position: sticky; top: 0; z-index: 10;
+  background: rgba(255, 255, 255, 0.92);
+  backdrop-filter: saturate(180%) blur(8px);
+  -webkit-backdrop-filter: saturate(180%) blur(8px);
+  border-bottom: 1px solid transparent;
+  transition: border-color 200ms ease;
+}
+.top.scrolled { border-bottom-color: var(--rule); }
+.top .wrap { display: flex; align-items: center; gap: 20px; height: 56px; font-size: 14px; }
+.site { display: flex; align-items: baseline; gap: 6px; white-space: nowrap; }
+.site .org { color: var(--muted); }
+.site .org:hover { color: var(--text); }
+.site .sep { color: #c8c8c8; }
+.site .name { font-weight: 500; }
+.nav { display: flex; gap: 2px; margin-left: auto; }
+.nav a {
+  white-space: nowrap;
+  padding: 6px 8px; border-radius: 6px; color: var(--muted);
+  transition: color 140ms ease, background-color 140ms ease;
+}
+.nav a[aria-current="true"] { color: var(--text); }
+.top-cta {
+  transition: opacity 200ms var(--ease), transform 200ms var(--ease), visibility 200ms;
+}
+.top-cta.hidden { opacity: 0; transform: translateY(-4px); visibility: hidden; }
+
+/* Buttons */
+.btn {
+  display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+  height: 44px; padding: 0 20px; border-radius: 8px;
+  background: var(--text); color: #fff;
+  font-size: 15px; font-weight: 500; white-space: nowrap;
+  transition: transform 140ms var(--ease), background-color 140ms ease;
+}
+.btn:active { transform: scale(0.97); }
+.btn svg { width: 14px; height: 14px; transition: transform 200ms var(--ease); }
+.btn-sm { height: 32px; padding: 0 12px; font-size: 14px; border-radius: 6px; }
+@media (hover: hover) and (pointer: fine) {
+  .nav a:hover { color: var(--text); background: var(--hover); }
+  .btn:hover { background: #2a2a2a; }
+  .btn:hover svg { transform: translateX(2px); }
+}
+
+/* Hero */
+.hero { padding: 72px 0 56px; }
+.hero h1 { font-size: clamp(34px, 6.4vw, 46px); line-height: 1.08; letter-spacing: -0.025em; }
+.hero .when { margin-top: 14px; font-size: 18px; color: var(--text); }
+.hero .lede { margin-top: 20px; max-width: 34em; color: var(--body); font-size: 17px; }
+.cta-row { display: flex; align-items: center; flex-wrap: wrap; gap: 14px 20px; margin-top: 32px; }
+.cta-note { color: var(--muted); font-size: 14px; line-height: 1.45; }
+.cta-note strong { color: var(--text); font-weight: 500; }
+
+.facts { margin: 48px 0 0; padding: 0; border-top: 1px solid var(--rule); }
+.facts div { display: grid; grid-template-columns: 112px 1fr; gap: 16px; padding: 14px 0; border-bottom: 1px solid var(--rule); }
+.facts dt { color: var(--muted); font-size: 14px; padding-top: 1px; }
+.facts dd { margin: 0; }
+.facts dd span { display: block; color: var(--muted); font-size: 14px; }
+
+/* Sections */
+section.block { padding: 56px 0; border-top: 1px solid var(--rule); }
+.hero + .block { border-top: 0; padding-top: 16px; }
+section.block h2 { font-size: 22px; letter-spacing: -0.01em; }
+.section-head { display: flex; align-items: baseline; justify-content: space-between; gap: 16px; }
+.section-head a { font-size: 14px; color: var(--muted); white-space: nowrap; }
+.section-head a:hover { color: var(--text); }
+.sub { margin-top: 8px; color: var(--body); }
+
+.steps { list-style: none; margin: 28px 0 0; padding: 0; display: grid; gap: 20px; counter-reset: step; }
+.steps li { display: grid; grid-template-columns: 28px 1fr; gap: 12px; counter-increment: step; }
+.steps li::before {
+  content: counter(step);
+  display: grid; place-items: center;
+  width: 24px; height: 24px; margin-top: 1px; border-radius: 50%;
+  border: 1px solid var(--rule); color: var(--muted);
+  font-size: 13px; font-variant-numeric: tabular-nums;
+}
+.steps h3 { font-size: 16px; }
+.steps p { color: var(--body); font-size: 15px; margin-top: 2px; }
+
+.people { list-style: none; margin: 24px 0 0; padding: 0; display: grid; grid-template-columns: 1fr 1fr; gap: 0 32px; }
+.people li { padding: 12px 0; border-bottom: 1px solid var(--rule); }
+.people .who { font-weight: 500; }
+.people .what { display: block; color: var(--muted); font-size: 14px; line-height: 1.4; margin-top: 2px; }
+
+.days { list-style: none; margin: 24px 0 0; padding: 0; border-top: 1px solid var(--rule); }
+.days li { display: grid; grid-template-columns: 112px 1fr; gap: 16px; padding: 16px 0; border-bottom: 1px solid var(--rule); }
+.days .d { font-weight: 500; }
+.days .d span { display: block; color: var(--muted); font-weight: 400; font-size: 14px; }
+.days p { color: var(--body); font-size: 15px; }
+.days p strong { color: var(--text); font-weight: 500; }
+
+.prices { margin: 24px 0 0; padding: 0; border-top: 1px solid var(--rule); }
+.prices div { display: flex; justify-content: space-between; align-items: baseline; gap: 16px; padding: 14px 0; border-bottom: 1px solid var(--rule); }
+.prices dt span { display: block; color: var(--muted); font-size: 14px; }
+.prices dd { margin: 0; font-size: 18px; font-weight: 500; font-variant-numeric: tabular-nums; }
+.prices .free dd { color: var(--text); }
+.fine { margin-top: 14px; color: var(--muted); font-size: 14px; }
+
+.faq { margin-top: 20px; border-top: 1px solid var(--rule); }
+.faq details { border-bottom: 1px solid var(--rule); }
+.faq summary {
+  list-style: none; cursor: pointer;
+  display: flex; justify-content: space-between; align-items: center; gap: 16px;
+  padding: 14px 0; font-weight: 500;
+}
+.faq summary::-webkit-details-marker { display: none; }
+.faq summary svg { width: 14px; height: 14px; flex: none; color: var(--muted); transition: transform 200ms var(--ease); }
+.faq details[open] summary svg { transform: rotate(45deg); }
+.faq details p { padding: 0 32px 16px 0; color: var(--body); font-size: 15px; }
+
+.closer { padding: 64px 0 72px; border-top: 1px solid var(--rule); }
+.closer h2 { font-size: 26px; letter-spacing: -0.015em; }
+.closer .sub { margin-top: 10px; }
+
+footer { border-top: 1px solid var(--rule); padding: 28px 0 48px; color: var(--muted); font-size: 14px; }
+footer .cols { display: grid; grid-template-columns: repeat(3, 1fr); gap: 24px; }
+footer h3 { font-size: 14px; color: var(--text); margin-bottom: 8px; }
+footer ul { list-style: none; margin: 0; padding: 0; display: grid; gap: 4px; }
+footer a:hover { color: var(--text); }
+footer .legal { margin-top: 28px; }
+
+/* Entrance */
+@media (prefers-reduced-motion: no-preference) {
+  .rise { animation: rise 520ms var(--ease) both; }
+  .rise:nth-child(2) { animation-delay: 50ms; }
+  .rise:nth-child(3) { animation-delay: 100ms; }
+  .rise:nth-child(4) { animation-delay: 150ms; }
+  .rise:nth-child(5) { animation-delay: 200ms; }
+  @keyframes rise { from { opacity: 0; transform: translateY(6px); } }
+}
+@media (prefers-reduced-motion: reduce) {
+  html { scroll-behavior: auto; }
+  .top-cta, .btn, .btn svg, .faq summary svg { transition: opacity 140ms ease; }
+}
+
+@media (max-width: 640px) {
+  .nav { display: none; }
+  .top-cta { margin-left: auto; }
+  .hero { padding: 48px 0 40px; }
+  .facts div, .days li { grid-template-columns: 88px 1fr; gap: 12px; }
+  .people { grid-template-columns: 1fr; }
+  .cta-row .btn { width: 100%; }
+  footer .cols { grid-template-columns: 1fr 1fr; }
+}
+</style>
+</head>
+<body>
+
+<header class="top" id="top">
+  <div class="wrap">
+    <div class="site">
+      <a class="org" href="https://ai.engineer">AI Engineer</a>
+      <span class="sep" aria-hidden="true">/</span>
+      <a class="name" href="#main">Code Summit 2026</a>
+    </div>
+    <nav class="nav" aria-label="Sections">
+      <a href="#speakers">Speakers</a>
+      <a href="#schedule">Schedule</a>
+      <a href="#tickets">Tickets</a>
+      <a href="#faq">FAQ</a>
+    </nav>
+    <a class="btn btn-sm top-cta" id="top-cta" href="https://ai.engineer/code/2026/apply">Apply</a>
+  </div>
+</header>
+
+<main id="main">
+  <div class="wrap">
+
+    <section class="hero" aria-labelledby="title">
+      <h1 id="title" class="rise">AI Engineer Code Summit 2026</h1>
+      <p class="when rise num">Nov 10–12 · Hilton Union Square, San Francisco</p>
+      <p class="lede rise">Three days with the engineers building and shipping coding agents: a day of hands-on workshops, then two days of talks on one main stage.</p>
+      <div class="cta-row rise">
+        <a class="btn" id="hero-cta" href="https://ai.engineer/code/2026/apply">
+          Apply to attend
+          <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 8h10M9 4l4 4-4 4"/></svg>
+        </a>
+        <p class="cta-note"><strong>Applications are open.</strong><br>Free to apply. You pay only if approved.</p>
+      </div>
+
+      <dl class="facts rise">
+        <div><dt>When</dt><dd class="num">Tue Nov 10 – Thu Nov 12, 2026<span>Workshops Nov 10 · Talks and expo Nov 11–12 · Pacific time</span></dd></div>
+        <div><dt>Where</dt><dd>Hilton San Francisco Union Square<span>333 O'Farrell St, San Francisco, CA 94102</span></dd></div>
+        <div><dt>Cost</dt><dd class="num">$1,499 + fees, if approved<span>Applying is free · Workshop add-on $299</span></dd></div>
+        <div><dt>Admission</dt><dd class="num">By application<span>800 people admitted last year</span></dd></div>
+      </dl>
+    </section>
+
+    <section class="block" id="apply" aria-labelledby="apply-title">
+      <h2 id="apply-title">How to apply</h2>
+      <p class="sub">About two minutes. Nothing is sent until you sign it.</p>
+      <ol class="steps">
+        <li><div><h3>Share one public profile</h3><p>LinkedIn, GitHub, X, a personal site, or just your name and email.</p></div></li>
+        <li><div><h3>Check the draft</h3><p>We fill in the application from public sources. You correct anything that's wrong.</p></div></li>
+        <li><div><h3>Sign with your email</h3><p>We review it. If you're approved, you buy your ticket then.</p></div></li>
+      </ol>
+      <div class="cta-row">
+        <a class="btn" href="https://ai.engineer/code/2026/apply">Start your application</a>
+        <a class="cta-note link" href="https://ai.engineer/code/2026/apply/manual">Use the plain form instead</a>
+      </div>
+    </section>
+
+    <section class="block" id="speakers" aria-labelledby="speakers-title">
+      <div class="section-head">
+        <h2 id="speakers-title">Speakers</h2>
+        <a href="https://ai.engineer/code/2026/schedule">All sessions</a>
+      </div>
+      <ul class="people">
+        <li><span class="who">Steve Yegge</span><span class="what">Software Factories: Escape from Trash Mountain</span></li>
+        <li><span class="who">Simon Willison</span><span class="what">2026 in LLMs</span></li>
+        <li><span class="who">Armin Ronacher</span><span class="what">The Software Atelier</span></li>
+        <li><span class="who">Lydia Hallie</span><span class="what">Rethinking Claude Code Best Practices</span></li>
+        <li><span class="who">Quinn Slack</span><span class="what">A Company Built Around the Agent</span></li>
+        <li><span class="who">Walden Yan</span><span class="what">A New Age of Software Engineering</span></li>
+        <li><span class="who">Lauren Tan</span><span class="what">All Code Is Slop (Except Mine)</span></li>
+        <li><span class="who">Kent C. Dodds</span><span class="what">Workshop: Closing the Agentic Loop</span></li>
+      </ul>
+    </section>
+
+    <section class="block" id="schedule" aria-labelledby="schedule-title">
+      <div class="section-head">
+        <h2 id="schedule-title">Schedule</h2>
+        <a href="https://ai.engineer/code/2026/schedule">Full schedule</a>
+      </div>
+      <ol class="days">
+        <li><div class="d num">Tue Nov 10<span>Workshops</span></div><p><strong>18 hands-on workshops</strong> across four rooms, with short talks in a fifth. Opening reception 5:30–8:30pm.</p></li>
+        <li><div class="d num">Wed Nov 11<span>Talks</span></div><p><strong>Main stage</strong> 9am–6pm, expo sessions alongside, expo hall open 10:40am–4pm.</p></li>
+        <li><div class="d num">Thu Nov 12<span>Talks</span></div><p><strong>Main stage</strong> 9am–6pm, expo sessions alongside, expo hall open 10:40am–4pm.</p></li>
+      </ol>
+    </section>
+
+    <section class="block" id="tickets" aria-labelledby="tickets-title">
+      <h2 id="tickets-title">Tickets</h2>
+      <p class="sub">You only buy a ticket after your application is approved.</p>
+      <dl class="prices">
+        <div class="free"><dt>Application</dt><dd>Free</dd></div>
+        <div><dt>Summit pass<span>Final and at-door price</span></dt><dd>$1,499</dd></div>
+        <div><dt>Workshop add-on</dt><dd>$299</dd></div>
+      </dl>
+      <p class="fine">Prices are before fees.</p>
+    </section>
+
+    <section class="block" id="faq" aria-labelledby="faq-title">
+      <h2 id="faq-title">FAQ</h2>
+      <div class="faq">
+        <details>
+          <summary>Who gets in?<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><path d="M8 3v10M3 8h10"/></svg></summary>
+          <p>Attendance is by application. 800 people were admitted last year.</p>
+        </details>
+        <details>
+          <summary>Do I pay to apply?<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><path d="M8 3v10M3 8h10"/></svg></summary>
+          <p>No. Applying is free. If you're approved, the summit pass is $1,499 plus fees, and workshops are a $299 add-on.</p>
+        </details>
+        <details>
+          <summary>What do I need to apply?<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><path d="M8 3v10M3 8h10"/></svg></summary>
+          <p>One public profile. The form drafts your answers from public sources, and you edit them before signing with your email. If you'd rather type everything yourself, use the <a class="link" href="https://ai.engineer/code/2026/apply/manual">plain form</a>.</p>
+        </details>
+        <details>
+          <summary>Where is it?<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><path d="M8 3v10M3 8h10"/></svg></summary>
+          <p>Hilton San Francisco Union Square, 333 O'Farrell St, San Francisco, CA 94102. <a class="link" href="https://www.google.com/maps/search/?api=1&amp;query=Hilton+San+Francisco+Union+Square">Open in Maps</a></p>
+        </details>
+        <details>
+          <summary>Can I watch online?<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><path d="M8 3v10M3 8h10"/></svg></summary>
+          <p>Talks are posted on <a class="link" href="https://youtube.com/@aidotengineer">YouTube</a>.</p>
+        </details>
+      </div>
+    </section>
+
+    <section class="closer" aria-labelledby="closer-title">
+      <h2 id="closer-title">Apply for Code Summit 2026</h2>
+      <p class="sub num">Nov 10–12, San Francisco. Free to apply, about two minutes.</p>
+      <div class="cta-row">
+        <a class="btn" href="https://ai.engineer/code/2026/apply">
+          Apply to attend
+          <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 8h10M9 4l4 4-4 4"/></svg>
+        </a>
+      </div>
+    </section>
+
+  </div>
+</main>
+
+<footer>
+  <div class="wrap">
+    <div class="cols">
+      <div>
+        <h3>Code Summit 2026</h3>
+        <ul>
+          <li><a href="https://ai.engineer/code/2026/schedule">Schedule</a></li>
+          <li><a href="https://ai.engineer/code/2026/talks">Talks</a></li>
+          <li><a href="https://ai.engineer/newsletter">Newsletter</a></li>
+        </ul>
+      </div>
+      <div>
+        <h3>Sponsors</h3>
+        <ul>
+          <li><a href="https://ai.engineer/code/2026/guide/sponsorship">Sponsorship guide</a></li>
+        </ul>
+      </div>
+      <div>
+        <h3>For agents</h3>
+        <ul>
+          <li><a href="https://ai.engineer/code/2026/llms.txt">llms.txt</a></li>
+          <li><a href="https://ai.engineer/code/2026/sessions.json">Sessions JSON</a></li>
+          <li><a href="https://ai.engineer/mcp">MCP server</a></li>
+        </ul>
+      </div>
+    </div>
+    <p class="legal">AI Engineer · <a href="https://x.com/aiDotEngineer">X</a> · <a href="https://www.linkedin.com/company/aidotengineer/">LinkedIn</a> · <a href="https://youtube.com/@aidotengineer">YouTube</a></p>
+  </div>
+</footer>
+
+<script>
+(() => {
+  const top = document.getElementById("top");
+  const topCta = document.getElementById("top-cta");
+  const heroCta = document.getElementById("hero-cta");
+  const links = [...document.querySelectorAll(".nav a")];
+  const sections = links.map((a) => document.querySelector(a.getAttribute("href")));
+
+  const onScroll = () => top.classList.toggle("scrolled", window.scrollY > 4);
+  onScroll();
+  addEventListener("scroll", onScroll, { passive: true });
+
+  if (!("IntersectionObserver" in window)) return;
+
+  new IntersectionObserver(([e]) => {
+    topCta.classList.toggle("hidden", e.isIntersecting);
+  }, { rootMargin: "-56px 0px 0px 0px" }).observe(heroCta);
+
+  const visible = new Map();
+  const io = new IntersectionObserver((entries) => {
+    for (const e of entries) visible.set(e.target, e.isIntersecting);
+    const current = sections.find((s) => visible.get(s));
+    links.forEach((a, i) => {
+      if (sections[i] === current) a.setAttribute("aria-current", "true");
+      else a.removeAttribute("aria-current");
+    });
+  }, { rootMargin: "-40% 0px -55% 0px" });
+  sections.forEach((s) => io.observe(s));
+})();
+</script>
+</body>
+</html>
