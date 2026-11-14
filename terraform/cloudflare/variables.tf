@@ -58,13 +58,19 @@ variable "jev_api_key" {
   default   = ""
 }
 
-variable "brightdata_api_key" {
+variable "browserbase_api_key" {
   type      = string
   sensitive = true
   default   = ""
 }
 
-variable "brightdata_zone" {
+variable "browserbase_project_id" {
+  type      = string
+  sensitive = true
+  default   = ""
+}
+
+variable "browserbase_function_id" {
   type    = string
   default = ""
 }

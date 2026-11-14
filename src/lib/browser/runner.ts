@@ -1,86 +1,59 @@
-import type {
-  AgentRunArgs,
-  BrowserRun,
-  BrowserRunner,
-  DomPatch,
-  EnvVars,
-  OpenPageResult,
-  RunnerPreference,
-  TrajectoryArgs,
-  Viewport,
-} from "../contracts";
-import { BrightDataBrowserRunner, brightDataBrowserEndpoint } from "./brightdata";
+import type { BrowserRunner, EnvVars, RunnerPreference } from "../contracts";
 import { extractPage } from "./extract";
+import { BrowserbaseFunctionRunner, UnavailableRunner } from "./function-runner";
 import { PlaywrightRunner, checkAssertion } from "./playwright";
 import { chromiumSandboxEnabled } from "./sandbox";
 import { StagehandRunner, stagehandModelFromEnv } from "./stagehand";
 
-/**
- * Routes state capture and trajectories to different backends, e.g. Bright Data for
- * per-state capture (one fresh session per page) and Stagehand for multi-step runs.
- */
-export class CompositeRunner implements BrowserRunner {
-  readonly name: string;
-
-  constructor(
-    private capture: BrowserRunner,
-    private trajectories: BrowserRunner,
-  ) {
-    this.name = capture === trajectories ? capture.name : `${capture.name}+${trajectories.name}`;
-  }
-
-  openPage(url: string, viewport: Viewport, opts?: { patches?: DomPatch[]; shotName?: string }): Promise<OpenPageResult> {
-    return this.capture.openPage(url, viewport, opts);
-  }
-
-  runTrajectory(args: TrajectoryArgs): Promise<BrowserRun> {
-    return this.trajectories.runTrajectory(args);
-  }
-
-  get supportsAgent(): boolean {
-    return this.trajectories.supportsAgent === true && typeof this.trajectories.runAgentTask === "function";
-  }
-
-  runAgentTask(args: AgentRunArgs): Promise<BrowserRun> {
-    if (!this.trajectories.runAgentTask) return this.trajectories.runTrajectory(args);
-    return this.trajectories.runAgentTask(args);
-  }
-
-  async close(): Promise<void> {
-    await Promise.all([this.capture.close(), this.trajectories.close()]);
-  }
+/** workerd (Cloudflare Workers) can neither launch Chromium nor run Stagehand in-process. */
+export function onWorkersRuntime(): boolean {
+  return typeof navigator !== "undefined" && navigator.userAgent === "Cloudflare-Workers";
 }
 
 /**
  * Pick a browser backend from env. Priority (auto):
- *   1. Bright Data Browser API (BRIGHTDATA_BROWSER_WS or _USER/_PASSWORD) for state capture;
- *      trajectories go to Stagehand on Browserbase when BROWSERBASE_API_KEY is set, else Bright Data.
- *   2. Stagehand on Browserbase (BROWSERBASE_API_KEY) for capture and trajectories.
- *   3. Local Playwright Chromium — zero keys, used by dev/evals/e2e.
+ *   1. Browserbase Function (BROWSERBASE_API_KEY + BROWSERBASE_FUNCTION_ID): Stagehand runs next to
+ *      its Browserbase session; the only backend that works on workerd.
+ *   2. On workerd without it: UnavailableRunner, so every page fails with BROWSER_UNAVAILABLE.
+ *   3. Stagehand on Browserbase in-process (BROWSERBASE_API_KEY), for Node hosts.
+ *   4. Local Playwright Chromium — zero keys, used by dev/evals/e2e.
  * REHEARSAL_BROWSER forces one backend; it falls back to local Playwright if its keys are missing.
  */
-export function selectRunner(env: EnvVars = process.env): BrowserRunner {
+export function selectRunner(env: EnvVars = process.env, workers = onWorkersRuntime()): BrowserRunner {
   const pref = (env.REHEARSAL_BROWSER ?? "auto") as RunnerPreference;
-  const bdEndpoint = brightDataBrowserEndpoint(env);
   const bbKey = env.BROWSERBASE_API_KEY;
+  const fnId = env.BROWSERBASE_FUNCTION_ID;
   const model = stagehandModelFromEnv(env);
   const sandbox = chromiumSandboxEnabled(env);
   const playwright = () => new PlaywrightRunner(undefined, sandbox);
-  const brightdata = () => new BrightDataBrowserRunner(bdEndpoint!);
+  const fn = () => new BrowserbaseFunctionRunner({ apiKey: bbKey!, functionId: fnId!, extensionId: env.BROWSERBASE_EXTENSION_ID || undefined });
   const browserbase = () =>
-    new StagehandRunner({ env: "browserbase", browserbaseApiKey: bbKey, browserbaseProjectId: env.BROWSERBASE_PROJECT_ID, model });
+    new StagehandRunner({
+      env: "browserbase",
+      browserbaseApiKey: bbKey,
+      browserbaseProjectId: env.BROWSERBASE_PROJECT_ID,
+      browserbaseExtensionId: env.BROWSERBASE_EXTENSION_ID || undefined,
+      model,
+    });
 
   switch (pref) {
     case "playwright":
       return playwright();
-    case "brightdata":
-      return bdEndpoint ? brightdata() : playwright();
+    case "browserbase-function":
+      return bbKey && fnId ? fn() : playwright();
     case "stagehand":
       return bbKey ? browserbase() : playwright();
     case "stagehand-local":
       return new StagehandRunner({ env: "local", executablePath: env.STAGEHAND_CHROME_PATH || undefined, chromiumSandbox: sandbox, model });
     default:
-      if (bdEndpoint) return bbKey ? new CompositeRunner(brightdata(), browserbase()) : brightdata();
+      if (bbKey && fnId) return fn();
+      if (workers) {
+        return new UnavailableRunner(
+          bbKey
+            ? "No remote browser configured: BROWSERBASE_FUNCTION_ID is not set on this Worker (Stagehand cannot run inside workerd)"
+            : "No remote browser configured: set BROWSERBASE_API_KEY and BROWSERBASE_FUNCTION_ID on this Worker",
+        );
+      }
       if (bbKey) return browserbase();
       return playwright();
   }
@@ -97,4 +70,4 @@ export function runnerName(env: EnvVars = process.env): string {
   return selectRunner(env).name;
 }
 
-export { BrightDataBrowserRunner, PlaywrightRunner, StagehandRunner, checkAssertion, extractPage };
+export { BrowserbaseFunctionRunner, PlaywrightRunner, StagehandRunner, UnavailableRunner, checkAssertion, extractPage };

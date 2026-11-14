@@ -11,12 +11,14 @@ import {
   type JevClient,
   type LlmClient,
   type PageFetcher,
+  type RunFailure,
   type SimWeights,
   type Variant,
 } from "./contracts";
 import { selectFetcher } from "./fetch";
 import { assertPublicUrl, robotsAllows } from "./fetch/guards";
 import { agentVerifyEnabled, extractPage, selectRunner } from "./browser/runner";
+import { RehearsalError, dominantCode, formatFailure, toFailure } from "./errors";
 import { GraphBuilder, makeState, adjacency } from "./graph";
 import { selectJev, scoreActions } from "./decisions/jev";
 import { simulateTrajectories, selectTrajectories } from "./simulation";
@@ -177,11 +179,12 @@ export class Orchestrator {
     return withTrace("discover", { experimentId: id, targetUrl: experiment.targetUrl }, async () => {
       const config = experiment.configuration;
       const builder = new GraphBuilder(config.maxStates, config.maxDepth);
+      const pageFailures: RunFailure[] = [];
       logEvent({ experimentId: id, stage: "discover", kind: "browser-runner", data: { runner: this.runner.name } });
       await this.emit(id, "discover", "info", `Mapping ${experiment.targetUrl} with ${this.runner.name}`);
       if (!(await robotsAllows(new URL(experiment.targetUrl)))) {
         await this.emit(id, "discover", "error", "Blocked by robots.txt", experiment.targetUrl);
-        throw new Error(`Target path disallowed by robots.txt: ${experiment.targetUrl}`);
+        throw new RehearsalError("ROBOTS_DISALLOWED", `Target path disallowed by robots.txt: ${experiment.targetUrl}`, experiment.targetUrl);
       }
 
       for (const vpName of config.viewports) {
@@ -238,8 +241,10 @@ export class Orchestrator {
               }
             }
           } catch (e) {
-            logEvent({ experimentId: id, stage: "discover", kind: "page-fail", data: { url, error: errorText(e, 160) } });
-            await this.emit(id, "discover", "error", `Couldn't load ${pagePath(url)}: ${errorText(e, 160)}`, url);
+            const failure = toFailure(e, "discover", url);
+            pageFailures.push(failure);
+            logEvent({ experimentId: id, stage: "discover", kind: "page-fail", data: { url, code: failure.code, error: errorText(e, 160) } });
+            await this.emit(id, "discover", "error", `Couldn't load ${pagePath(url)}: [${failure.code}] ${errorText(e, 160)}`, url);
             await captureError(e, { url, depth, viewport: vpName }, {
               tags: traceTags("discover", { experimentId: id, targetUrl: experiment.targetUrl }),
               level: "warning",
@@ -248,6 +253,19 @@ export class Orchestrator {
         }
       }
       experiment.graph = builder.build();
+      experiment.failures = [...experiment.failures.filter((f) => f.stage !== "discover"), ...pageFailures];
+      if (experiment.graph.states.length === 0) {
+        // Keep the per-page failures before markFailed reloads the stored experiment.
+        await this.update(experiment, "discovering");
+        const code = dominantCode(pageFailures);
+        const sample = pageFailures.find((f) => f.code === code);
+        const cause = sample ? ` Most common cause: ${formatFailure(sample)}` : "";
+        throw new RehearsalError(
+          "DISCOVERY_EMPTY",
+          `Discovery captured no states: ${pageFailures.length} of ${pageFailures.length} page loads failed with ${this.runner.name}.${cause}`,
+          experiment.targetUrl,
+        );
+      }
       await this.emit(
         id, "discover", "info",
         `Map complete: ${experiment.graph.states.length} states · ${experiment.graph.edges.length} links`,
@@ -270,7 +288,7 @@ export class Orchestrator {
       const config = exp.configuration;
       const graph = exp.graph!;
       const start = graph.states[0];
-      if (!start) throw new Error("Discovery captured no states (every page load failed)");
+      if (!start) throw new RehearsalError("DISCOVERY_EMPTY", "Discovery captured no states; rerun discover before simulate");
 
       // Assertions: from LLM objective compile (fixture fallback = keyword text check).
       exp.assertions = await this.compileAssertions(exp.goal);
@@ -618,9 +636,11 @@ Return ASSERTION_LIST as a JSON array of {kind, value, selector?}.`,
   async markFailed(id: string, err: unknown): Promise<void> {
     const exp = await this.store.get(id).catch(() => null);
     if (!exp) return;
-    const message = String(err instanceof Error ? err.message : err).slice(0, 500);
+    const failure = toFailure(err, "run");
+    const message = formatFailure(failure).slice(0, 500);
     await this.emit(id, "run", "error", `Run failed: ${message}`);
     if (exp.errors[exp.errors.length - 1] !== message) exp.errors.push(message);
+    exp.failures.push(failure);
     await this.update(exp, "failed");
   }
 

@@ -12,6 +12,8 @@
     "test": "vitest run tests/unit",
     "eval": "vitest run tests/evals --reporter=dot",
     "test:e2e": "playwright test",
+    "functions:dev": "cd functions/rehearsal-browser && browse functions dev index.ts",
+    "functions:publish": "cd functions/rehearsal-browser && browse functions publish index.ts",
     "check:skill-sync": "tsx scripts/check-skill-sync.ts",
     "check:facts": "tsx scripts/verify-facts.ts",
     "design:check": "sh .devin/skills/impeccable/scripts/impeccable detect src/app",
@@ -48,6 +50,7 @@
     "zod": "^4.1.13"
   },
   "devDependencies": {
+    "@browserbasehq/sdk-functions": "^1.0.3",
     "@opennextjs/cloudflare": "^1.20.17",
     "@playwright/test": "^1.56.1",
     "@tailwindcss/postcss": "^4.3.5",

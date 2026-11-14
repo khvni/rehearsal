@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { RunFailure } from "./errors";
 import { PageMetrics } from "./metrics";
 
 export * from "./base";
@@ -539,6 +540,8 @@ export const Experiment = z.object({
   questions: z.array(VisitorQuestion).optional(),
   rebuild: RebuildResult.optional(),
   errors: z.array(z.string()).default([]),
+  /** Structured, coded form of each failure (page loads, stage errors); `errors` keeps the readable lines. */
+  failures: z.array(RunFailure).default([]),
 });
 export type Experiment = z.infer<typeof Experiment>;
 
@@ -613,6 +616,7 @@ export type SiteRunSummary = z.infer<typeof SiteRunSummary>;
 
 export * from "./bench";
 export * from "./browser";
+export * from "./errors";
 export * from "./metrics";
 export * from "./ports";
 export * from "./sandbox";

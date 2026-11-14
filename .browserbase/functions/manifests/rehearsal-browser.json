@@ -1,0 +1,34 @@
+{
+  "name": "rehearsal-browser",
+  "config": {
+    "sessionConfig": {
+      "extensionId": "29075ec7-2db9-4013-adef-4f3b6c718abe"
+    },
+    "parametersSchema": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "type": "object",
+      "properties": {
+        "op": {
+          "type": "string",
+          "enum": [
+            "openPage",
+            "runTrajectory",
+            "runAgentTask"
+          ]
+        },
+        "args": {
+          "type": "object",
+          "propertyNames": {
+            "type": "string"
+          },
+          "additionalProperties": {}
+        }
+      },
+      "required": [
+        "op",
+        "args"
+      ],
+      "additionalProperties": false
+    }
+  }
+}

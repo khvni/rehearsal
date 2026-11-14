@@ -1,11 +1,12 @@
 locals {
   secrets = {
-    REHEARSAL_ACCESS_TOKEN = var.rehearsal_access_token
-    GEMINI_API_KEY         = var.gemini_api_key
-    JEV_API_KEY            = var.jev_api_key
-    BRIGHTDATA_API_KEY     = var.brightdata_api_key
-    BRIGHTDATA_ZONE        = var.brightdata_zone
-    SENTRY_DSN             = var.sentry_dsn
+    REHEARSAL_ACCESS_TOKEN  = var.rehearsal_access_token
+    GEMINI_API_KEY          = var.gemini_api_key
+    JEV_API_KEY             = var.jev_api_key
+    BROWSERBASE_API_KEY     = var.browserbase_api_key
+    BROWSERBASE_PROJECT_ID  = var.browserbase_project_id
+    BROWSERBASE_FUNCTION_ID = var.browserbase_function_id
+    SENTRY_DSN              = var.sentry_dsn
   }
 }
 

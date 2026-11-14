@@ -9,7 +9,7 @@ const UTILITY_CONTROL_LABEL = /^\s*(search|open menu|close|menu|toggle)\b/i;
 
 
 /**
- * Plain-JS expression evaluated in the page (Playwright, Bright Data CDP, Stagehand).
+ * Plain-JS expression evaluated in the page (Playwright, Browserbase Function, Stagehand).
  * Kept as a string so bundler/transpiler helpers never leak into the browser context.
  */
 export const MEASURE_SCRIPT = `(() => {

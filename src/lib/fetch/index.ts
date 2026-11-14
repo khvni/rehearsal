@@ -19,40 +19,6 @@ export class PlainFetcher implements PageFetcher {
   }
 }
 
-/**
- * Bright Data scraping fetch (Web Unlocker-style zone request).
- * Active only when BRIGHTDATA_API_KEY + BRIGHTDATA_ZONE are set.
- */
-export class BrightDataFetcher implements PageFetcher {
-  readonly name = "brightdata";
-  private apiKey: string;
-  private zone: string;
-
-  constructor() {
-    this.apiKey = process.env.BRIGHTDATA_API_KEY ?? "";
-    this.zone = process.env.BRIGHTDATA_ZONE ?? "";
-    if (!this.apiKey || !this.zone) {
-      throw new Error("BrightDataFetcher requires BRIGHTDATA_API_KEY and BRIGHTDATA_ZONE");
-    }
-  }
-
-  async fetchHtml(url: string): Promise<string> {
-    const u = await assertPublicUrl(url);
-    await politeDelay(u);
-    const res = await fetch("https://api.brightdata.com/request", {
-      method: "POST",
-      headers: {
-        authorization: `Bearer ${this.apiKey}`,
-        "content-type": "application/json",
-      },
-      body: JSON.stringify({ zone: this.zone, url: u.toString(), format: "raw" }),
-      signal: AbortSignal.timeout(60000),
-    });
-    if (!res.ok) throw new Error(`Bright Data request failed: ${res.status}`);
-    return res.text();
-  }
-}
-
 /** Browserbase Fetch API (via Stagehand's browserbase.fetch): browserless HTTP fetch with optional proxies. */
 export class BrowserbaseFetcher implements PageFetcher {
   readonly name = "browserbase-fetch";
@@ -73,15 +39,9 @@ export class BrowserbaseFetcher implements PageFetcher {
   }
 }
 
-/** Priority: Bright Data Web Unlocker → Browserbase Fetch → plain fetch. */
+/** Priority: Browserbase Fetch (Node hosts only: Stagehand cannot load on workerd) → plain fetch. */
 export function selectFetcher(): PageFetcher {
-  if (process.env.BRIGHTDATA_API_KEY && process.env.BRIGHTDATA_ZONE) {
-    try {
-      return new BrightDataFetcher();
-    } catch {
-      // fall through
-    }
-  }
-  if (process.env.BROWSERBASE_API_KEY) return new BrowserbaseFetcher();
+  const onWorkers = typeof navigator !== "undefined" && navigator.userAgent === "Cloudflare-Workers";
+  if (process.env.BROWSERBASE_API_KEY && !onWorkers) return new BrowserbaseFetcher();
   return new PlainFetcher();
 }
