@@ -60,7 +60,20 @@ interface OrchestratorDeps {
   runner?: BrowserRunner;
 }
 
+/** Thrown when a stage is requested while another run of the same experiment is in progress. */
+export class StageInProgressError extends Error {
+  constructor(
+    readonly experimentId: string,
+    readonly runningStage: string,
+  ) {
+    super(`Experiment ${experimentId} already has a ${runningStage} run in progress`);
+    this.name = "StageInProgressError";
+  }
+}
+
 export class Orchestrator {
+  /** Experiment id -> stage currently running. One run per experiment at a time. */
+  private running = new Map<string, string>();
   private fetcher: PageFetcher;
   private jev: JevClient;
   private llm: LlmClient;
@@ -97,8 +110,37 @@ export class Orchestrator {
     return this.store.list();
   }
 
-  /** Stage 1 — discover states, build graph. */
+  /**
+   * Public stage entry points. Each holds the experiment's run lock for the whole call, including
+   * the earlier stages it starts on demand, so a concurrent request fails fast instead of
+   * duplicating browser/LLM work and overwriting the stored experiment.
+   */
   async discover(id: string): Promise<Experiment> {
+    return this.exclusive(id, "discover", () => this.runDiscover(id));
+  }
+
+  async simulate(id: string): Promise<Experiment> {
+    return this.exclusive(id, "simulate", () => this.runSimulate(id));
+  }
+
+  async verify(id: string): Promise<Experiment> {
+    return this.exclusive(id, "verify", () => this.runVerify(id));
+  }
+
+  async analyze(id: string): Promise<Experiment> {
+    return this.exclusive(id, "analyze", () => this.runAnalyze(id));
+  }
+
+  async compare(id: string): Promise<Experiment> {
+    return this.exclusive(id, "compare", () => this.runCompare(id));
+  }
+
+  async spec(id: string): Promise<Experiment> {
+    return this.exclusive(id, "spec", () => this.runSpec(id));
+  }
+
+  /** Stage 1 — discover states, build graph. */
+  private async runDiscover(id: string): Promise<Experiment> {
     const experiment = await this.mustGet(id);
     this.llm.resetBudget?.();
     await this.update(experiment, "discovering");
@@ -177,10 +219,10 @@ export class Orchestrator {
   }
 
   /** Stage 2 — score actions with Jev, run seeded simulation, verify top paths. */
-  async simulate(id: string): Promise<Experiment> {
+  private async runSimulate(id: string): Promise<Experiment> {
     const experiment = await this.mustGet(id);
     if (!experiment.graph || experiment.graph.states.length === 0) {
-      await this.discover(id);
+      await this.runDiscover(id);
     }
     const exp = (await this.mustGet(id))!;
     await this.update(exp, "simulating");
@@ -220,9 +262,9 @@ export class Orchestrator {
   }
 
   /** Stage 3 — execute selected trajectories in a real browser. */
-  async verify(id: string): Promise<Experiment> {
+  private async runVerify(id: string): Promise<Experiment> {
     const exp = await this.mustGet(id);
-    if (exp.simulations.length === 0) await this.simulate(id);
+    if (exp.simulations.length === 0) await this.runSimulate(id);
     const e = (await this.mustGet(id))!;
     await this.update(e, "verifying");
     return withTrace("verify", { experimentId: id, targetUrl: e.targetUrl }, async () => {
@@ -265,9 +307,9 @@ export class Orchestrator {
   }
 
   /** Stage 4 — rule + LLM findings. */
-  async analyze(id: string): Promise<Experiment> {
+  private async runAnalyze(id: string): Promise<Experiment> {
     const e = await this.mustGet(id);
-    if (e.browserTests.length === 0) await this.verify(id);
+    if (e.browserTests.length === 0) await this.runVerify(id);
     const exp = (await this.mustGet(id))!;
     await this.update(exp, "analyzing");
     return withTrace("analyze", { experimentId: id, targetUrl: exp.targetUrl }, async () => {
@@ -290,9 +332,9 @@ export class Orchestrator {
   }
 
   /** Stage 5 — propose + apply variant, re-verify, compare. */
-  async compare(id: string): Promise<Experiment> {
+  private async runCompare(id: string): Promise<Experiment> {
     const e = await this.mustGet(id);
-    if (e.findings.length === 0) await this.analyze(id);
+    if (e.findings.length === 0) await this.runAnalyze(id);
     const exp = (await this.mustGet(id))!;
     await this.update(exp, "comparing");
     return withTrace("compare", { experimentId: id, targetUrl: exp.targetUrl }, async () => {
@@ -345,9 +387,9 @@ export class Orchestrator {
   }
 
   /** Stage 6 — the deliverable: spec.md of all changes + rebuild plan. */
-  async spec(id: string): Promise<Experiment> {
+  private async runSpec(id: string): Promise<Experiment> {
     const e = await this.mustGet(id);
-    if (e.comparisons.length === 0) await this.compare(id);
+    if (e.comparisons.length === 0) await this.runCompare(id);
     const exp = (await this.mustGet(id))!;
     return withTrace("spec", { experimentId: id, targetUrl: exp.targetUrl }, async () => {
       exp.spec = await generateSpec(exp, this.llm);
@@ -366,12 +408,14 @@ export class Orchestrator {
 
   /** Full closed loop. */
   async runAll(id: string): Promise<Experiment> {
-    await this.discover(id);
-    await this.simulate(id);
-    await this.verify(id);
-    await this.analyze(id);
-    await this.compare(id);
-    return this.spec(id);
+    return this.exclusive(id, "run", async () => {
+      await this.runDiscover(id);
+      await this.runSimulate(id);
+      await this.runVerify(id);
+      await this.runAnalyze(id);
+      await this.runCompare(id);
+      return this.runSpec(id);
+    });
   }
 
   private async proposeVariant(exp: Experiment, findingId: string): Promise<Variant> {
@@ -450,6 +494,18 @@ Return ASSERTION_LIST as a JSON array of {kind, value, selector?}.`,
     }
     const keywords = goal.split(/[^a-zA-Z0-9]+/).filter((w) => w.length > 4).slice(0, 2);
     return keywords.map((value) => ({ kind: "text-present" as const, value }));
+  }
+
+  /** Claim the run lock synchronously (before any await) so two concurrent calls can't both pass. */
+  private async exclusive<T>(id: string, stage: string, fn: () => Promise<T>): Promise<T> {
+    const active = this.running.get(id);
+    if (active) throw new StageInProgressError(id, active);
+    this.running.set(id, stage);
+    try {
+      return await fn();
+    } finally {
+      this.running.delete(id);
+    }
   }
 
   private async mustGet(id: string): Promise<Experiment> {
