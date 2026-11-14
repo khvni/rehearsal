@@ -676,6 +676,18 @@
 
   --green: #111111;
   --sky: #2f6fb0;
+  /* Decision-graph blues: sequential ramp (ColorBrewer-style), legible for
+     common color-vision deficiencies — blue against neutral greys separates
+     by lightness even when hue is ambiguous. */
+  --flow-50: #eff5fb;
+  --flow-100: #e0ecf7;
+  --flow-200: #c2d8ef;
+  --flow-300: #96bfe3;
+  --flow-400: #64a3d4;
+  --flow-500: #3e86c2;
+  --flow-600: #2f6fb0;
+  --flow-700: #265c8e;
+  --flow-800: #1f4a72;
   --hl: var(--green);
   --accent: var(--raised);
   --background: var(--bg);
@@ -803,7 +815,9 @@ a:hover { text-decoration-color: currentColor; }
 .panel-meta { font-size: var(--fs-14); color: var(--muted); font-variant-numeric: tabular-nums; }
 .panel-body { display: flex; flex-direction: column; min-width: 0; }
 .panel-actions { margin-left: auto; display: flex; gap: var(--s-2); }
-.reveal { animation: reveal var(--dur-3) var(--ease-out) both; }
+/* fill-mode backwards, not both: `forwards` would retain translate:0px and make
+   .reveal a containing block, breaking position:fixed children (expanded graph). */
+.reveal { animation: reveal var(--dur-3) var(--ease-out) backwards; }
 @keyframes reveal { from { opacity: 0; translate: 0 4px; } }
 .list { display: grid; grid-auto-rows: max-content; max-height: 560px; overflow: auto; margin-right: calc(var(--s-2) * -1); padding-right: var(--s-2); scrollbar-width: thin; }
 
@@ -878,7 +892,7 @@ a:hover { text-decoration-color: currentColor; }
 .exp-row:focus-visible { outline: 2px solid var(--hl); outline-offset: -2px; border-radius: var(--radius-sm); }
 .exp-row .row-arrow { position: absolute; right: 0; top: var(--s-4); color: var(--muted); opacity: 0; translate: -4px 0; transition: opacity var(--dur-1) ease, translate var(--dur-1) var(--ease-out); }
 .exp-row:hover .row-arrow, .exp-row:focus-visible .row-arrow { opacity: 1; translate: 0 0; }
-.stagger > * { animation: reveal var(--dur-2) var(--ease-out) both; }
+.stagger > * { animation: reveal var(--dur-2) var(--ease-out) backwards; }
 .stagger > :nth-child(2) { animation-delay: 30ms; }
 .stagger > :nth-child(3) { animation-delay: 60ms; }
 .stagger > :nth-child(4) { animation-delay: 90ms; }
@@ -911,8 +925,15 @@ table.delta + table.delta { margin-top: var(--s-4); }
 .segmented button:hover:not(:disabled) { background: transparent; color: var(--text); }
 .segmented button[aria-pressed="true"] { background: var(--raised); color: var(--text); box-shadow: 0 0 0 1px var(--border-strong); }
 .segmented .count { color: var(--muted); }
-.graph-wrap { height: 520px; background: var(--panel-2); border-radius: var(--radius-sm); overflow: hidden; animation: reveal var(--dur-3) var(--ease-out) both; }
+.graph-wrap { position: relative; height: 520px; background: var(--panel-2); border-radius: var(--radius-sm); overflow: hidden; animation: reveal var(--dur-3) var(--ease-out) backwards; }
 .graph-wrap.mobile { width: 100%; max-width: 520px; margin: 0 auto; }
+.graph-wrap.expanded { position: fixed; inset: 0; z-index: 60; height: auto; max-width: none; margin: 0; border-radius: 0; }
+.graph-expand { position: absolute; top: var(--s-3); right: var(--s-3); z-index: 11; display: grid; place-items: center; width: 30px; height: 30px; padding: 0; border: 1px solid var(--border); border-radius: var(--radius-sm); background: var(--panel); color: var(--text-2); cursor: pointer; transition: background-color var(--dur-1) ease, color var(--dur-1) ease, border-color var(--dur-1) ease, scale var(--dur-1) ease; }
+.graph-expand:hover { background: var(--raised); color: var(--text); border-color: var(--border-strong); }
+.graph-expand:active { scale: 0.96; }
+.graph-expand:focus-visible { outline: 2px solid var(--flow-600); outline-offset: 1px; }
+.graph-keys { position: absolute; right: var(--s-3); bottom: var(--s-3); z-index: 11; margin: 0; font-size: var(--fs-12); line-height: 1.4; color: var(--muted); background: var(--panel); border: 1px solid var(--border); border-radius: 99px; padding: 2px 10px; pointer-events: none; }
+.edge-dot { fill: var(--flow-600); }
 .graph-wrap .react-flow {
   --xy-background-color: var(--panel-2);
   --xy-node-border-radius-default: 8px;
@@ -923,8 +944,8 @@ table.delta + table.delta { margin-top: var(--s-4); }
 }
 .graph-wrap .react-flow__node { transition: opacity var(--dur-1) ease, border-color var(--dur-1) ease; animation: node-in var(--dur-2) var(--ease-out) both; }
 @keyframes node-in { from { opacity: 0; } }
-.graph-wrap .react-flow__node:hover { border-color: var(--hl) !important; }
-.graph-wrap .react-flow__node.selected, .graph-wrap .react-flow__node:focus-visible { outline: 2px solid var(--hl); outline-offset: 1px; }
+.graph-wrap .react-flow__node:hover { border-color: var(--flow-600) !important; }
+.graph-wrap .react-flow__node.selected, .graph-wrap .react-flow__node:focus-visible { outline: 2px solid var(--flow-600); outline-offset: 1px; }
 .graph-wrap .react-flow__edge path { transition: stroke-opacity var(--dur-1) ease, stroke var(--dur-1) ease; }
 .graph-wrap .react-flow__controls { border: 1px solid var(--border); border-radius: var(--radius-sm); overflow: hidden; box-shadow: none; }
 .graph-foot { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: var(--s-2) var(--s-4); margin-top: var(--s-3); font-size: var(--fs-12); color: var(--muted); }
@@ -934,13 +955,13 @@ table.delta + table.delta { margin-top: var(--s-4); }
 .legend-swatch { width: 18px; height: 10px; border-radius: 2px; border: 1px solid var(--border-strong); }
 .legend-edge { display: inline-flex; align-items: center; gap: var(--s-2); }
 .legend-line { display: inline-block; width: 20px; border-top: 1px solid var(--muted); }
-.legend-line.thick { border-top-width: 3px; border-top-color: var(--text-2); }
+.legend-line.thick { border-top-width: 3px; border-top-color: var(--flow-600); }
 .node { display: grid; gap: 2px; min-width: 0; }
 .node-path { font: 600 var(--fs-12)/1.35 var(--font-mono); color: var(--text); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .node-title { font-size: var(--fs-12); color: color-mix(in oklab, var(--text) 40%, var(--text-2)); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .node-foot { display: flex; align-items: baseline; justify-content: space-between; gap: var(--s-2); margin-top: 2px; }
 .node-visits { font-size: var(--fs-12); color: var(--text); font-weight: 500; font-variant-numeric: tabular-nums; }
-.node-start { font-size: var(--fs-12); color: var(--text); font-weight: 500; }
+.node-start { font-size: var(--fs-12); color: var(--flow-800); font-weight: 500; background: var(--flow-100); border-radius: 99px; padding: 0 7px; }
 
 /* spec.md prose */
 .spec-panel { margin-top: var(--s-4); }
@@ -967,12 +988,14 @@ table.delta + table.delta { margin-top: var(--s-4); }
   .panel { padding: var(--s-4); }
   .panel-head h2 { font-size: var(--fs-14); }
   .graph-wrap, .graph-wrap.mobile { height: 420px; }
+  .graph-wrap.expanded { height: auto; }
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .reveal, .stagger > *, .graph-wrap { animation: reveal-fade var(--dur-1) ease both; animation-delay: 0ms; }
+  .reveal, .stagger > *, .graph-wrap { animation: reveal-fade var(--dur-1) ease backwards; animation-delay: 0ms; }
   .step.active::after, .pill.running::before, .skeleton, .skel-canvas { animation: none; }
   .graph-wrap .react-flow__node { animation: none; }
+  .edge-dot { display: none; }
   .exp-row .row-arrow { transition: opacity var(--dur-1) ease; }
   .step::after { transition: none; }
 }
