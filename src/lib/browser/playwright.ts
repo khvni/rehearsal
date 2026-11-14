@@ -16,7 +16,7 @@ import { assertPublicUrl, politeDelay, robotsAllows } from "../fetch/guards";
 import { compilePatches } from "../variants";
 import { isSameOrigin } from "./extract";
 import { measurePage } from "./metrics";
-import { evaluateAssertion, shouldShoot, summarizeRun } from "./types";
+import { errorText, evaluateAssertion, shouldShoot, summarizeRun } from "./types";
 
 export const DEFAULT_EVIDENCE_DIR = path.join(process.cwd(), "data", "evidence");
 const USER_AGENT = "Rehearsal/0.1 (+https://github.com/khvni/rehearsal)";
@@ -85,7 +85,7 @@ export async function executeTrajectory(
       }
       steps.push({ actionId: a.actionId, label: a.label, ok: true });
     } catch (e) {
-      steps.push({ actionId: a.actionId, label: a.label, ok: false, error: String(e).slice(0, 160) });
+      steps.push({ actionId: a.actionId, label: a.label, ok: false, error: errorText(e, 160) });
     }
     if (shouldShoot(i, total)) {
       const shot = path.join(evidenceDir, `${args.runId}_${i + 1}.png`);
@@ -115,9 +115,9 @@ export async function settleInterstitial(page: Page, timeoutMs = 15000): Promise
 }
 
 export function watchPageErrors(page: Page, errors: string[]): void {
-  page.on("pageerror", (e) => errors.push(`pageerror: ${String(e).slice(0, 200)}`));
+  page.on("pageerror", (e) => errors.push(`pageerror: ${errorText(e)}`));
   page.on("console", (m) => {
-    if (m.type() === "error") errors.push(`console: ${m.text().slice(0, 200)}`);
+    if (m.type() === "error") errors.push(`console: ${errorText(m.text())}`);
   });
 }
 
@@ -196,7 +196,7 @@ export class PlaywrightRunner implements BrowserRunner {
       watchPageErrors(page, errors);
       result = await executeTrajectory(page, args, this.evidenceDir, { navTimeoutMs: 30000, preferClick: false });
     } catch (e) {
-      errors.push(`run: ${String(e).slice(0, 200)}`);
+      errors.push(`run: ${errorText(e)}`);
     } finally {
       await ctx?.close();
     }
