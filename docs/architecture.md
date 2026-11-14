@@ -86,8 +86,9 @@ for why this pattern (Vercel's agent-browser snapshot→refs→act model via Sta
 
 **Code sandbox** (`src/lib/sandbox`) — `CodeSandbox.run` executes agent-generated test code
 against a fixture/rebuilt page or a live URL and returns assertions, console output and
-errors. `REHEARSAL_SANDBOX=auto` picks the Cloudflare Sandbox SDK adapter when the `Sandbox`
-binding exists, else an isolated `node:worker_threads`+`vm` worker. Playwright cannot run on
+errors. `REHEARSAL_SANDBOX=auto` picks the Cloudflare adapter (a `Sandbox` Durable Object
+namespace with `getByName().run(script)` — the SDK 1.x DO pattern) when the binding exists,
+else an isolated `node:worker_threads`+`vm` worker. Playwright cannot run on
 workerd, so the node adapter is the CI/dev path and the container adapter carries the Workers
 deploy — details and the binding setup in docs/sandbox.md.
 

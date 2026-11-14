@@ -16,12 +16,15 @@ pieces look the way they do.
   providers (Browserbase, Browserless) and `--cdp` attach. It is a *driving tool* for an
   agent harness, not an embeddable library — but its loop (snapshot → refs → act →
   re-snapshot) is the model `agent.ts` follows with Stagehand's observe/act/extract.
-- **Cloudflare Sandbox SDK** (`@cloudflare/sandbox` 1.x) — `getSandbox(env.Sandbox, id)`
-  returns a Durable Object stub that routes to an isolated Ubuntu container; `exec`,
-  `runCode`, `createCodeContext`, file I/O, background processes. This is the only way to
-  execute generated code from a Worker (workerd forbids `eval`/`new Function` and has no
-  `node:worker_threads`). It needs a `containers` + Durable Object binding and Containers
-  access on the account — see "Enabling the Cloudflare adapter" below.
+- **Cloudflare Sandbox SDK** (`@cloudflare/sandbox` 1.x) — a sandbox is a Durable Object
+  plus the `Container` it starts on `this.ctx.container`; `Files`/`S3Mount`/
+  `DirectoryBackup` add what the raw Container API lacks (file streaming, S3 mounts,
+  backup/restore). The 1.x SDK ships no `getSandbox` helper — the app authors the
+  `Sandbox` Durable Object itself (`getByName(id).run(script)` → `{exitCode, stdout}`).
+  This is the only way to execute generated code from a Worker (workerd forbids
+  `eval`/`new Function` and has no `node:worker_threads`). It needs a `containers` +
+  Durable Object binding and Containers access on the account — see "Enabling the
+  Cloudflare adapter" below.
 
 ## `CodeSandbox` (src/lib/sandbox)
 
@@ -47,10 +50,11 @@ The code's scope is deliberately small: `assert(name, cond)`, `console`, `page`
   a hard timeout can `terminate()` a stuck loop. All heavy imports are lazy, keeping the
   module graph clean on workerd.
 - **cloudflare** (`sandbox/cloudflare.ts`, `cloudflare-sandbox`) — the Workers path.
-  Resolves `env.Sandbox` via `getCloudflareContext({async:true})`, writes a self-contained
-  harness into the container, runs `node harness.mjs`, parses the last JSON line.
-  Missing binding/SDK/exec failure → `SandboxUnavailableError` → `selectSandbox` falls
-  back to node (AGENTS.md rule 4: never crash on missing config).
+  Resolves `env.Sandbox` via `getCloudflareContext({async:true})`, gets a stub with
+  `getByName(name).run(script)`, ships a self-contained harness (`node harness.cjs` on a
+  base64 payload) into the container, and parses the last JSON line of stdout.
+  Missing binding/stub/exec failure → `SandboxUnavailableError` → falls back to the
+  injected node adapter (AGENTS.md rule 4: never crash on missing config).
 
 ### Enabling the Cloudflare adapter
 
@@ -58,11 +62,15 @@ The binding is intentionally not provisioned in `terraform/` yet (`REHEARSAL_SAN
 `NOT_DEPLOYED` in scripts/verify-facts.ts). To turn it on:
 
 1. Enable Containers access on the Cloudflare account.
-2. In `wrangler.jsonc`: add a `containers` entry pointing at the SDK image/Dockerfile and
-   a Durable Object `Sandbox` binding (`new_classes: ["Sandbox"]`), and
-   `export { Sandbox } from "@cloudflare/sandbox"` from the worker entry — per
-   developers.cloudflare.com/sandbox-sdk.
-3. Set `REHEARSAL_SANDBOX=cloudflare` (or leave `auto`) on the Worker.
+2. Author the `Sandbox` Durable Object (the SDK's `examples/minimal` shape): a
+   `DurableObject` whose `run(script)` starts `this.ctx.container` with the sandbox image,
+   `Files(container).writeFile("/workspace/task.sh", script)`, then
+   `container.exec(["sh","task.sh"], {cwd:"/workspace"})` → `{exitCode, stdout}`.
+   Export it from the worker entry — with OpenNext that means a custom `main` that
+   re-exports the built handler plus the DO.
+3. In `wrangler.jsonc`: a `containers` entry naming the image, `durable_objects` binding
+   `Sandbox` → class `Sandbox`, and `new_classes: ["Sandbox"]` under migrations.
+4. Set `REHEARSAL_SANDBOX=cloudflare` (or leave `auto`) on the Worker.
 
 ## `runAgentTask` (src/lib/browser/agent.ts)
 
