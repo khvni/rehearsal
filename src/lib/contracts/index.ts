@@ -437,13 +437,32 @@ export function isExperimentId(id: unknown): id is ExperimentId {
   return ExperimentId.safeParse(id).success;
 }
 
+// Stored experiments may predate EXPERIMENT_LIMITS: accept them, but clamp so a re-run stays bounded.
+const StoredExperimentConfig = z
+  .object({
+    ...ExperimentConfig.shape,
+    maxStates: z.number().int().positive().default(30),
+    maxDepth: z.number().int().positive().default(3),
+    trajectories: z.number().int().positive().default(1000),
+    verifyCount: z.number().int().positive().default(8),
+    viewports: z.array(z.enum(["desktop", "mobile"])).default(["desktop", "mobile"]),
+  })
+  .transform((c): ExperimentConfig => ({
+    ...c,
+    maxStates: Math.min(c.maxStates, EXPERIMENT_LIMITS.maxStates),
+    maxDepth: Math.min(c.maxDepth, EXPERIMENT_LIMITS.maxDepth),
+    trajectories: Math.min(c.trajectories, EXPERIMENT_LIMITS.trajectories),
+    verifyCount: Math.min(c.verifyCount, EXPERIMENT_LIMITS.verifyCount),
+    viewports: [...new Set(c.viewports)],
+  }));
+
 export const Experiment = z.object({
   id: z.string(),
   targetUrl: z.string().url(),
   goal: z.string(),
   status: ExperimentStatus,
   createdAt: z.string(),
-  configuration: ExperimentConfig,
+  configuration: StoredExperimentConfig,
   assertions: z.array(Assertion).default([]),
   graph: StateGraph.optional(),
   simulations: z.array(Trajectory).default([]),

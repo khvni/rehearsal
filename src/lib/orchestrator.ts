@@ -100,7 +100,7 @@ export class Orchestrator {
       goal,
       status: "created",
       createdAt: new Date().toISOString(),
-      configuration: config ?? {},
+      configuration: ExperimentConfig.parse(config ?? {}),
     });
     await this.store.save(experiment);
     return experiment;
