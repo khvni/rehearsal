@@ -19,6 +19,12 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
   const page = experiment.mockup.pages.find((p) => p.slug === slug);
   if (!page) return NextResponse.json({ error: `no mockup page ${slug}` }, { status: 404 });
   return new Response(page.html, {
-    headers: { "content-type": "text/html; charset=utf-8", "cache-control": "no-store" },
+    headers: {
+      "content-type": "text/html; charset=utf-8",
+      "cache-control": "no-store",
+      // Mockups are pure markup: generated HTML could still carry an injected
+      // handler or remote src, so nothing may execute or load — ever.
+      "content-security-policy": "default-src 'none'; style-src 'unsafe-inline'; form-action 'none'; base-uri 'none'",
+    },
   });
 }

@@ -55,6 +55,21 @@ export async function POST(req: Request) {
 export async function GET() {
   const list = await orchestrator().list();
   return NextResponse.json(
-    list.map((e) => ({ id: e.id, targetUrl: e.targetUrl, goal: e.goal, status: e.status, createdAt: e.createdAt })),
+    list.map((e) => ({
+      id: e.id,
+      targetUrl: e.targetUrl,
+      goal: e.goal,
+      status: e.status,
+      createdAt: e.createdAt,
+      // Slim mockup summary for the /mockups index — no page HTML in the list payload.
+      ...(e.mockup
+        ? {
+            mockup: {
+              llm: e.mockup.llm,
+              pages: e.mockup.pages.map((p) => ({ slug: p.slug, title: p.title, source: p.source })),
+            },
+          }
+        : {}),
+    })),
   );
 }

@@ -73,6 +73,10 @@ export async function generateSpec(experiment: Experiment, llm: LlmClient): Prom
   };
 }
 
+// Steps are a checklist: generous bounds, and anything past them is still counted aloud.
+const MAX_ACTION_STEPS = 12;
+const MAX_URL_STEPS = 8;
+
 function severityRank(s: string): number {
   return { critical: 4, high: 3, medium: 2, low: 1 }[s] ?? 0;
 }
@@ -108,14 +112,19 @@ function stepsForFinding(experiment: Experiment, f: Finding): string[] {
       if (a?.label) break;
     }
   }
-  steps.push(...[...labels].slice(0, 4));
+  const actionSteps = [...labels];
+  steps.push(...actionSteps.slice(0, MAX_ACTION_STEPS));
 
   const urls = new Set<string>();
   for (const sid of f.affectedStates) {
     const url = stateById.get(sid)?.url;
     if (url) urls.add(`Apply on ${shortUrl(url)}`);
   }
-  steps.push(...[...urls].slice(0, 3));
+  const urlSteps = [...urls];
+  steps.push(...urlSteps.slice(0, MAX_URL_STEPS));
+
+  const dropped = Math.max(0, actionSteps.length - MAX_ACTION_STEPS) + Math.max(0, urlSteps.length - MAX_URL_STEPS);
+  if (dropped > 0) steps.push(`…and ${dropped} more affected location${dropped === 1 ? "" : "s"}`);
   return steps;
 }
 

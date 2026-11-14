@@ -208,6 +208,7 @@ export function rewriteLinks(
   return html.replace(/(\shref\s*=\s*)("[^"]*"|'[^']*'|[^\s>]+)/gi, (whole, prefix: string, raw: string) => {
     const q = raw.startsWith('"') || raw.startsWith("'") ? raw[0] : "";
     const inner = q ? raw.slice(1, -1) : raw;
-    return `${prefix}${q}${resolve(inner)}${q}`;
+    // HTML-escaped query strings (&amp;) must parse as the real URL, then re-escape on emit.
+    return `${prefix}${q}${resolve(inner.replace(/&amp;/gi, "&")).replace(/&/g, "&amp;")}${q}`;
   });
 }

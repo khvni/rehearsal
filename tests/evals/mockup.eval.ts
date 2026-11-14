@@ -16,7 +16,7 @@ import { GraphBuilder, makeState } from "@/lib/graph";
 import { FixtureJevClient } from "@/lib/decisions/jev";
 import { FixtureLlmClient } from "@/lib/analysis/gemini";
 import { generateSpec, specToMarkdown } from "@/lib/analysis/spec";
-import { generateMockup } from "@/lib/mockup";
+import { generateMockup, rewriteLinks } from "@/lib/mockup";
 import { Orchestrator } from "@/lib/orchestrator";
 import { brandSignalsFromHtml } from "@/lib/rebuild";
 
@@ -160,6 +160,9 @@ describe("eval: spec-stage mockup (fixture LLM)", () => {
     const hostile = `<!doctype html><html><body>
       <script>alert(1)</script>
       <img src="https://evil.example/x.png" onerror="alert(2)">
+      <svg onload="alert(4)"><rect/></svg>
+      <video autoplay src="https://evil.example/tracker.mp4"></video>
+      <form action="https://evil.example/collect"><input name="x"></form>
       <a href="mockup:code-2026-talks">Sessions</a>
       <a href="${TALKS_URL}">Talks (crawled url)</a>
       <a href="javascript:alert(3)">bad</a>
@@ -176,8 +179,9 @@ describe("eval: spec-stage mockup (fixture LLM)", () => {
     expect(index.source).toBe("gemini");
     expect(index.title).toBe("Mock");
     const base = "/experiments/exp_mockup/preview";
-    expect(index.html).not.toMatch(/<(script|img)\b/i);
-    expect(index.html).not.toMatch(/onerror|javascript:/i);
+    expect(index.html).not.toMatch(/<(script|img|video|svg|form|input)\b/i);
+    expect(index.html).not.toMatch(/onerror|onload|javascript:/i);
+    expect(index.html).not.toContain("evil.example/tracker");
     expect(index.html).toContain(`href="${base}/code-2026-talks"`);
     expect(index.html).toContain('href="#"');
     expect(index.html).toContain("https://elsewhere.example/x");
@@ -185,6 +189,57 @@ describe("eval: spec-stage mockup (fixture LLM)", () => {
     const talks = result.pages.find((p) => p.slug === "code-2026-talks")!;
     expect(talks.source).toBe("template");
     expect(talks.html).toContain("mock-flag");
+  });
+
+  it("a finding captured on the mobile twin still applies to the page's mockup", async () => {
+    const b = new GraphBuilder(30, 3);
+    const page = extractPage(aieHtml, AIE_URL);
+    const desktop = makeState({ url: AIE_URL, viewport: VIEWPORTS.desktop, title: page.title, visibleText: page.visibleText, actions: page.actions });
+    const mobile = makeState({ url: AIE_URL, viewport: VIEWPORTS.mobile, title: page.title, visibleText: page.visibleText, actions: page.actions });
+    desktop.brand = brandSignalsFromHtml(aieHtml, AIE_URL);
+    mobile.brand = desktop.brand;
+    b.add(desktop);
+    b.add(mobile);
+    const graph = b.build();
+    const exp = Experiment.parse({
+      id: "exp_mockup_mobile",
+      targetUrl: AIE_URL,
+      goal: GOAL,
+      status: "created",
+      createdAt: "2026-11-01T00:00:00.000Z",
+      configuration: { viewports: ["desktop", "mobile"] },
+      graph,
+      findings: [
+        {
+          findingId: "f_mobile", title: "Mobile CTA unreachable", category: "navigation", severity: "high",
+          evidenceType: "verified-failure", description: "Button off-viewport on mobile",
+          affectedStates: [mobile.stateId], affectedActions: [], evidencePaths: [],
+          recommendation: "Pin the primary CTA in the mobile header",
+          verificationStatus: "verified", krugPrinciple: "navigation",
+        },
+      ],
+    });
+    exp.spec = await generateSpec(exp, new FixtureLlmClient());
+    const result = await generateMockup(exp, new FixtureLlmClient());
+    const index = result.pages.find((p) => p.slug === "code-2026")!;
+    expect(index.summary).toContain("Mobile CTA unreachable");
+    expect(index.html).toContain("Mobile CTA unreachable");
+  });
+
+  it("HTML-escaped query hrefs resolve to preview paths", () => {
+    const crawled = "https://ai.engineer/code/2026/talks?day=1&track=main";
+    const urlToSlug = new Map([[crawled, "talks"]]);
+    const out = rewriteLinks(
+      `<a href="https://ai.engineer/code/2026/talks?day=1&amp;track=main">t</a>`,
+      {
+        previewBase: "/experiments/e1/preview",
+        sourceUrl: "https://ai.engineer/code/2026",
+        urlToSlug,
+        slugs: new Set(["talks"]),
+        targetOrigin: "https://ai.engineer",
+      },
+    );
+    expect(out).toContain('href="/experiments/e1/preview/talks"');
   });
 });
 

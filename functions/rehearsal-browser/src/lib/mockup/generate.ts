@@ -7,6 +7,7 @@ import type {
   MockupResult,
   RebuildPageContent,
   SiteState,
+  SpecChange,
 } from "../contracts";
 import { CTA_VERB_RE, rollupBrand } from "../rebuild/brand";
 import { sanitizeRebuildHtml } from "../rebuild/sanitize";
@@ -97,13 +98,21 @@ function proseLines(text: string, staleFix: boolean, refYear = 0): string[] {
   return lines.filter((l) => ![...l.matchAll(/\b(19|20)\d{2}\b/g)].some((m) => Number(m[0]) < newest));
 }
 
-/** Spec change titles whose findings touched this state. */
-function appliedChanges(exp: Experiment, stateId: string): string[] {
-  const findingIds = new Set(exp.findings.filter((f) => f.affectedStates.includes(stateId)).map((f) => f.findingId));
-  return (exp.spec?.changes ?? [])
-    .filter((c) => c.findingId && findingIds.has(c.findingId))
-    .map((c) => c.title)
-    .slice(0, 4);
+/**
+ * Spec changes whose findings touched any captured state for this URL —
+ * dedupe keeps one viewport per URL, so matching by stateId alone would
+ * lose findings recorded on the other viewport.
+ */
+function changesForUrl(exp: Experiment, url: string | undefined): SpecChange[] {
+  const key = normUrl(url);
+  if (!key) return [];
+  const siblingIds = new Set(
+    (exp.graph?.states ?? []).filter((s) => normUrl(s.url) === key).map((s) => s.stateId),
+  );
+  const findingIds = new Set(
+    exp.findings.filter((f) => f.affectedStates.some((id) => siblingIds.has(id))).map((f) => f.findingId),
+  );
+  return (exp.spec?.changes ?? []).filter((c) => c.findingId && findingIds.has(c.findingId));
 }
 
 /** Crawled nav/actions rewritten to preview paths where the destination was crawled. */
@@ -136,6 +145,7 @@ export function mockupContent(
   state: SiteState,
   urlToSlug: Map<string, string>,
   previewBase: string,
+  applied: string[],
 ): RebuildPageContent {
   const staleFix = staleFlagged(exp);
   const refYear = Number(/^((?:19|20)\d{2})-/.exec(exp.createdAt)?.[1] ?? 0);
@@ -170,7 +180,6 @@ export function mockupContent(
     });
   }
 
-  const applied = appliedChanges(exp, state.stateId);
   const host = brandHost(exp);
 
   return {
@@ -236,15 +245,20 @@ type LlmMockupPage = z.infer<typeof LlmMockupPage>;
 function buildPrompt(
   exp: Experiment,
   brand: BrandProfile,
-  plan: { state: SiteState; slug: string; applied: string[] }[],
+  plan: { state: SiteState; slug: string; changes: SpecChange[] }[],
 ): string {
-  const facts = plan.map(({ state, slug, applied }) => ({
+  const facts = plan.map(({ state, slug, changes }) => ({
     slug,
     url: state.url,
     title: state.pageTitle,
     text: state.visibleText.slice(0, 1500),
     nav: (state.brand?.navItems ?? []).slice(0, 8).map((n) => n.label),
-    specChanges: applied,
+    // Full edit detail — the change and its concrete steps, not just a title.
+    specChanges: changes.map((c) => ({
+      title: c.title,
+      change: clip(c.change, 220),
+      steps: c.steps.slice(0, 6).map((s) => clip(s, 140)),
+    })),
   }));
   return [
     "MOCKUP_PAGES_JSON",
@@ -282,7 +296,11 @@ export async function generateMockup(exp: Experiment, llm: LlmClient): Promise<M
   const previewBase = `/experiments/${exp.id}/preview`;
 
   const taken = new Set<string>();
-  const plan = states.map((state) => ({ state, slug: slugFor(state.url, taken), applied: appliedChanges(exp, state.stateId) }));
+  const plan = states.map((state) => ({
+    state,
+    slug: slugFor(state.url, taken),
+    changes: changesForUrl(exp, state.url),
+  }));
   const slugs = new Set(plan.map((p) => p.slug));
   const urlToSlug = new Map<string, string>();
   for (const p of plan) {
@@ -302,11 +320,18 @@ export async function generateMockup(exp: Experiment, llm: LlmClient): Promise<M
     }
   }
 
-  const pages: MockupPage[] = plan.map(({ state, slug, applied }) => {
+  const pages: MockupPage[] = plan.map(({ state, slug, changes }) => {
+    const applied = changes.map((c) => c.title).slice(0, 4);
     const draft = llmPages.get(slug);
-    let html = draft?.html ?? renderMockupPage({ brand, state, content: mockupContent(exp, state, urlToSlug, previewBase), indexHref, applied });
+    let html = draft?.html ?? renderMockupPage({ brand, state, content: mockupContent(exp, state, urlToSlug, previewBase, applied), indexHref, applied });
     // Belt: no script, no off-origin resource may survive into the stored page.
     html = sanitizeRebuildHtml(html, { imageOrigins: [] });
+    // Media/graphics/forms can still carry a remote src the href-rewriter
+    // never sees — the CSP on the route is the guarantee; dropping them keeps
+    // the stored artifact honest.
+    html = html
+      .replace(/<(video|audio|picture|svg|math|form|canvas|select|textarea)\b[\s\S]*?<\/\1\s*>/gi, "")
+      .replace(/<\/?(video|audio|source|track|picture|svg|math|form|canvas|input|select|textarea)\b[^>]*>/gi, "");
     html = rewriteLinks(html, { previewBase, sourceUrl: state.url, urlToSlug, slugs, targetOrigin: originOf(exp.targetUrl) });
     const title = draft?.title ?? `${firstSegment(state.pageTitle) || brand.name} · mockup`;
     const summary =
