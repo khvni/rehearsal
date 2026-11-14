@@ -1,0 +1,16 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "rehearsal-demo",
+  "main": ".open-next/worker.js",
+  "compatibility_date": "2025-11-01",
+  "compatibility_flags": ["nodejs_compat"],
+  "assets": { "binding": "ASSETS", "directory": ".open-next/assets" },
+  "d1_databases": [
+    { "binding": "DB", "database_name": "rehearsal-demo-db", "database_id": "890cad9a-61e1-48a5-a450-d6e157cd3e3f" }
+  ],
+  "routes": [
+    { "pattern": "rehearsal.alikhani.co", "zone_name": "alikhani.co", "custom_domain": true }
+  ],
+  "observability": { "enabled": true },
+  "vars": { "BRIGHTDATA_ZONE": "rehearsal_browser" }
+}

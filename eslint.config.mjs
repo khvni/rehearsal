@@ -6,7 +6,7 @@ import rehearsal from "./eslint-rules/index.mjs";
 export default defineConfig([
   ...nextVitals,
   ...nextTs,
-  globalIgnores([".next/**", "out/**", "node_modules/**", "data/**", "playwright-report/**", "test-results/**"]),
+  globalIgnores([".next/**", ".open-next/**", ".wrangler/**", "out/**", "node_modules/**", "data/**", "playwright-report/**", "test-results/**"]),
   {
     plugins: { rehearsal },
     rules: {
@@ -20,7 +20,14 @@ export default defineConfig([
   },
   {
     files: ["src/**/*.{ts,tsx}"],
-    ignores: ["src/lib/contracts/**"],
+    // Fluid Functionalism registry code (shadcn CLI) keeps its upstream component types.
+    ignores: [
+      "src/lib/contracts/**",
+      "src/components/ui/**",
+      "src/components/fluid-hover-highlight.tsx",
+      "src/hooks/use-fluid-hover.ts",
+      "src/lib/{fluid-provider,font-weight,icon-context,key-cap,omit,shape-context,size-context,springs,type-scale,utils}.{ts,tsx}",
+    ],
     rules: { "rehearsal/contracts-first": "error" },
   },
   {

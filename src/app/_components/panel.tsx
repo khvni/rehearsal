@@ -1,5 +1,7 @@
 import type { ReactNode } from "react";
 import type { PanelState } from "@/lib/contracts";
+import { Banner, BannerAction, BannerActions, BannerDescription, BannerTitle } from "@/components/ui/banner";
+import { ThinkingIndicator } from "@/components/ui/thinking-indicator";
 
 export function Panel({
   title,
@@ -33,9 +35,7 @@ export function Panel({
       {state.kind === "ready" && <div className={`panel-body ${enter === "fade" ? "reveal" : ""}`}>{children}</div>}
       {state.kind === "loading" && (
         <div className="state" role="status">
-          <div className="skeleton" />
-          <div className="skeleton short" />
-          <p className="state-text">{state.label}</p>
+          <ThinkingIndicator words={[state.label]} />
         </div>
       )}
       {state.kind === "empty" && (
@@ -45,14 +45,16 @@ export function Panel({
         </div>
       )}
       {state.kind === "error" && (
-        <div className="state error reveal" role="alert">
-          <p className="state-title">This step failed</p>
-          <p className="state-text">{state.message}</p>
-          {state.onRetry && (
-            <button type="button" onClick={state.onRetry}>
-              Try again
-            </button>
-          )}
+        <div className="state reveal">
+          <Banner status="error" className="panel-error">
+            <BannerTitle>This step failed</BannerTitle>
+            <BannerDescription>{state.message}</BannerDescription>
+            {state.onRetry && (
+              <BannerActions>
+                <BannerAction onClick={state.onRetry}>Try again</BannerAction>
+              </BannerActions>
+            )}
+          </Banner>
         </div>
       )}
     </section>

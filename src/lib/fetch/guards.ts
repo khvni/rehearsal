@@ -136,19 +136,25 @@ export function robotsAllowsPath(rules: RobotsRule[], pathAndQuery: string): boo
   return best ? best.allow : true;
 }
 
-/** Fetch robots.txt following at most 3 redirects, re-validating every hop with `assertPublicUrl`. */
-async function fetchRobots(start: string): Promise<string | undefined> {
+const MAX_REDIRECTS = 3;
+
+/** `fetch` that follows at most 3 redirects itself, re-validating every hop with `assertPublicUrl`. */
+export async function fetchPublic(start: string, init: RequestInit = {}): Promise<Response> {
   let target = await assertPublicUrl(start);
-  for (let hop = 0; hop < 4; hop++) {
-    const res = await fetch(target, { signal: AbortSignal.timeout(10000), redirect: "manual" });
+  for (let hop = 0; ; hop++) {
+    await politeDelay(target);
+    const res = await fetch(target, { ...init, redirect: "manual" });
     const location = res.headers.get("location");
-    if (res.status >= 300 && res.status < 400 && location) {
-      target = await assertPublicUrl(new URL(location, target).toString());
-      continue;
-    }
-    return res.ok ? await res.text() : undefined;
+    if (res.status < 300 || res.status >= 400 || !location) return res;
+    await res.body?.cancel();
+    if (hop >= MAX_REDIRECTS) throw new Error(`Too many redirects for ${start}`);
+    target = await assertPublicUrl(new URL(location, target).toString());
   }
-  return undefined;
+}
+
+async function fetchRobots(start: string): Promise<string | undefined> {
+  const res = await fetchPublic(start, { signal: AbortSignal.timeout(10000) });
+  return res.ok ? await res.text() : undefined;
 }
 
 /** True when the target host's robots.txt permits fetching `url` (cached per origin). */

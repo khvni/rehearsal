@@ -32,11 +32,11 @@ function heat(visits: number, max: number): number {
 const HEAT_STEPS = [0, 0.25, 0.5, 0.75, 1];
 
 function heatFill(t: number): string {
-  return `color-mix(in oklab, var(--accent) ${Math.round(t * 32)}%, var(--panel))`;
+  return `color-mix(in oklab, var(--hl) ${Math.round(t * 32)}%, var(--panel))`;
 }
 
 function heatBorder(t: number): string {
-  return `color-mix(in oklab, var(--accent) ${Math.round(25 + t * 60)}%, var(--border))`;
+  return `color-mix(in oklab, var(--hl) ${Math.round(25 + t * 60)}%, var(--border))`;
 }
 
 function shortPath(url: string): string {
@@ -91,7 +91,7 @@ export function StateGraph({
 }) {
   const [hovered, setHovered] = useState<string | null>(null);
 
-  const base = useMemo(() => {
+  const fresh = useMemo(() => {
     const visits = visitCounts(simulations);
     const transitions = transitionCounts(simulations);
     const states = graph.states.filter((s) => s.viewport.name === viewport);
@@ -150,7 +150,19 @@ export function StateGraph({
     return { nodes, edges };
   }, [graph, simulations, viewport]);
 
-  const { nodes, edges } = useMemo(() => {
+  // Polling hands us new graph objects every few seconds. Keep node objects
+  // stable until the content changes, so React Flow keeps its measurements.
+  const sig = [
+    viewport,
+    graph.states.map((st) => st.stateId).join(","),
+    graph.edges.length,
+    simulations.map((t) => `${t.trajectoryId}=${t.steps.map((s) => s.stateId).join(">")}`).join(","),
+  ].join("|");
+  const [kept, setKept] = useState({ sig, base: fresh });
+  if (kept.sig !== sig) setKept({ sig, base: fresh });
+  const base = kept.sig === sig ? kept.base : fresh;
+
+  const { edges, dimCss } = useMemo(() => {
     const neighbors = new Set<string>();
     if (hovered) {
       neighbors.add(hovered);
@@ -159,7 +171,6 @@ export function StateGraph({
         if (e.target === hovered) neighbors.add(e.source);
       }
     }
-    const nodes: Node[] = base.nodes.map((n) => ({ ...n, className: hovered && !neighbors.has(n.id) ? "dim" : undefined }));
     const edges: Edge[] = base.edges.map((e) => {
       const incident = hovered !== null && (e.source === hovered || e.target === hovered);
       const opacity = hovered ? (incident ? 0.95 : 0.04) : e.flow > 0 ? 0.25 + e.w * 0.55 : 0.12;
@@ -169,21 +180,26 @@ export function StateGraph({
         target: e.target,
         zIndex: incident ? 1 : 0,
         style: {
-          stroke: incident ? "var(--accent)" : e.flow > 0 ? "var(--text-2)" : "var(--muted)",
+          stroke: incident ? "var(--hl)" : e.flow > 0 ? "var(--text-2)" : "var(--muted)",
           strokeWidth: e.flow > 0 ? 1 + e.w * 2.5 : 1,
           strokeOpacity: opacity,
           strokeDasharray: e.flow > 0 ? undefined : "3 4",
         },
       };
     });
-    return { nodes, edges };
+    // Dim through CSS so hovering never hands React Flow new node objects;
+    // replacing nodes mid-poll drops their measurements and blanks the graph.
+    const keep = [...neighbors].map((id) => `[data-id=${JSON.stringify(id)}]`).join(", ");
+    const dimCss = hovered ? `.graph-wrap .react-flow__node:not(${keep}) { opacity: 0.3; }` : "";
+    return { edges, dimCss };
   }, [base, hovered]);
 
   return (
     <div className={`graph-wrap ${viewport}`}>
+      {dimCss && <style>{dimCss}</style>}
       <ReactFlow
-        key={viewport}
-        nodes={nodes}
+        key={`${viewport}:${base.nodes.length}:${simulations.length}`}
+        nodes={base.nodes}
         edges={edges}
         fitView
         fitViewOptions={{ padding: 0.12 }}
@@ -195,9 +211,9 @@ export function StateGraph({
         onNodeClick={(_, n) => setHovered((h) => (h === n.id ? null : n.id))}
         onPaneClick={() => setHovered(null)}
         proOptions={{ hideAttribution: true }}
-        colorMode="dark"
+        colorMode="system"
       >
-        <Background variant={BackgroundVariant.Dots} color="#24272c" gap={24} size={1} />
+        <Background variant={BackgroundVariant.Dots} color="var(--border)" gap={24} size={1} />
         <Controls showInteractive={false} />
       </ReactFlow>
     </div>

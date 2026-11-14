@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { Orchestrator } from "@/lib/orchestrator";
+import { Orchestrator, StageInProgressError } from "@/lib/orchestrator";
 import { specToMarkdown } from "@/lib/analysis/spec";
 
 export const runtime = "nodejs";
@@ -35,6 +35,9 @@ export async function POST(_req: Request, { params }: { params: Promise<{ id: st
         return NextResponse.json({ error: `unknown stage ${stage}` }, { status: 400 });
     }
   } catch (e) {
+    if (e instanceof StageInProgressError) {
+      return NextResponse.json({ error: e.message, runningStage: e.runningStage }, { status: 409 });
+    }
     if (e instanceof Error && e.message.startsWith("Unknown experiment")) {
       return NextResponse.json({ error: e.message }, { status: 404 });
     }

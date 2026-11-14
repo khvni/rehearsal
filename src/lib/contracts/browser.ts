@@ -23,7 +23,8 @@ export interface TrajectoryArgs {
 
 export interface OpenPageResult {
   html: string;
-  screenshotPath: string;
+  /** Absent on runtimes without a writable evidence dir (e.g. workerd). */
+  screenshotPath?: string;
   /** Layout metrics from the `measurePage` hook, taken in the same session as the screenshot. */
   metrics?: PageMetrics;
 }

@@ -97,7 +97,12 @@ export class StagehandRunner implements BrowserRunner {
     }
     this.name = `stagehand-${opts.env}`;
     this.evidenceDir = opts.evidenceDir ?? DEFAULT_EVIDENCE_DIR;
-    mkdirSync(this.evidenceDir, { recursive: true });
+    // Edge runtimes (workerd) ship a read-only fs — evidence dir is best-effort.
+    try {
+      mkdirSync(this.evidenceDir, { recursive: true });
+    } catch {
+      /* evidence writes degrade to no-ops */
+    }
   }
 
   /** True when act() has a model: explicit config, or Browserbase's Model Gateway. */
@@ -137,10 +142,15 @@ export class StagehandRunner implements BrowserRunner {
     }
   }
 
-  private async shoot(page: Page, name: string): Promise<string> {
-    const file = path.join(this.evidenceDir, `${name}.png`);
-    writeFileSync(file, await page.screenshot());
-    return file;
+  /** Best-effort screenshot: returns the evidence path, or null on read-only runtimes. */
+  private async shoot(page: Page, name: string): Promise<string | null> {
+    try {
+      const file = path.join(this.evidenceDir, `${name}.png`);
+      writeFileSync(file, await page.screenshot());
+      return file;
+    } catch {
+      return null;
+    }
   }
 
   async openPage(
@@ -155,7 +165,7 @@ export class StagehandRunner implements BrowserRunner {
       const screenshotPath = await this.shoot(page, String(opts?.shotName ?? Date.now()));
       const metrics = await measurePage(page);
       const html = await page.evaluate<string>("document.documentElement.outerHTML");
-      return { html, screenshotPath, metrics };
+      return { html, screenshotPath: screenshotPath ?? undefined, metrics };
     });
   }
 
@@ -196,7 +206,8 @@ export class StagehandRunner implements BrowserRunner {
         });
         await page.goto(args.url, { waitUntil: "domcontentloaded", timeout: NAV_TIMEOUT_MS });
         await page.waitForTimeout(800);
-        screenshots.push(await this.shoot(page, `${args.runId}_0`));
+        const shot0 = await this.shoot(page, `${args.runId}_0`);
+        if (shot0) screenshots.push(shot0);
 
         const total = Math.min(args.actions.length, args.maxSteps ?? 12);
         for (let i = 0; i < total; i++) {
