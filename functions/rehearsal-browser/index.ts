@@ -25,7 +25,6 @@ defineFn(
       env: "browserbase",
       browserbaseApiKey: env.BROWSERBASE_API_KEY,
       browserbaseSessionId: context.session.id,
-      browserbaseExtensionId: EXTENSION_ID,
       evidenceDir: EVIDENCE_DIR,
       model: stagehandModelFromEnv(env),
       jev: selectJev(env), // context.secrets carry JEV_API_KEY/OPENROUTER_API_KEY, not process.env
