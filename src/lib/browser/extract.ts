@@ -279,6 +279,51 @@ export function normalizeUrl(url: string): string {
   }
 }
 
+/** Params that never change the page served — dropped for site-level dedupe. */
+const TRACKING_PARAMS = /^utm_|^(fbclid|gclid|gclsrc|dclid|mc_cid|mc_eid|igshid|msclkid|_ga|ref_src)$/i;
+
+/**
+ * Site-level dedupe key: hash dropped, host lowercased (URL does that), tracking
+ * params dropped, trailing slashes folded. Real query params stay — `?page=2`
+ * is a different page.
+ */
+export function normalizeSiteUrl(raw: string): string {
+  try {
+    const u = new URL(raw);
+    u.hash = "";
+    for (const key of [...u.searchParams.keys()]) {
+      if (TRACKING_PARAMS.test(key)) u.searchParams.delete(key);
+    }
+    const path = u.pathname.replace(/\/+$/, "") || "/";
+    return `${u.protocol}//${u.host}${path === "/" && !u.search ? "" : path}${u.search}`;
+  } catch {
+    return raw.trim();
+  }
+}
+
+/**
+ * Per-page content signature for rescan's "did the site actually change" check:
+ * normalized URL + title + visible text + sorted action labels — inputs a plain
+ * fetch can reproduce (no screenshot, metrics, or viewport). Inputs are NFKC-
+ * folded, whitespace-collapsed and ASCII-folds — discover may decode a page in a
+ * browser (windows-1252 fallback) while rescan fetches as UTF-8, and non-ASCII
+ * bytes must not hash differently across the two paths.
+ */
+export function contentSignatureFor(
+  url: string,
+  page: { title: string; visibleText: string; actions: { label: string; role?: string }[] },
+): string {
+  const fold = (s: string) => s.normalize("NFKC").replace(/[^\x00-\x7F]+/g, " ").replace(/\s+/g, " ").trim();
+  const actionSig = page.actions
+    .map((a) => `${a.role ?? "link"}:${a.label.toLowerCase()}`)
+    .sort()
+    .join("|");
+  return createHash("sha1")
+    .update(`${normalizeSiteUrl(url)}|${fold(page.title)}|${fold(page.visibleText)}|${actionSig}`)
+    .digest("hex")
+    .slice(0, 16);
+}
+
 export function isVagueLabel(label: string): boolean {
   return VAGUE_LABELS.has(label.toLowerCase().trim());
 }

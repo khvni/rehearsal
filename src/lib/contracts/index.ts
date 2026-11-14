@@ -644,6 +644,8 @@ export type MockupResult = z.infer<typeof MockupResult>;
 
 export const ExperimentStatus = z.enum([
   "created",
+  /** Run accepted; waiting for a pipeline slot or just kicked off as a background job. */
+  "queued",
   "discovering",
   "simulating",
   "verifying",
@@ -698,6 +700,12 @@ export const Experiment = z.object({
   personas: z.array(VisitorPersona).default([]),
   status: ExperimentStatus,
   createdAt: z.string(),
+  /** Dedupe key of `targetUrl`: lowercase host, no hash, no tracking params (utm_ and click ids), no trailing slash. */
+  siteKey: z.string().default(""),
+  /** Client-supplied dedupe key (Idempotency-Key header or `idempotencyKey` body field); a repeat returns this record. */
+  idempotencyKey: z.string().optional(),
+  /** Per-page content signatures captured by discover — rescan re-probes these URLs and compares. */
+  siteSignatures: z.array(z.object({ url: z.string(), signature: z.string() })).default([]),
   configuration: StoredExperimentConfig,
   assertions: z.array(Assertion).default([]),
   graph: StateGraph.optional(),
@@ -721,6 +729,22 @@ export const Experiment = z.object({
   failures: z.array(RunFailure).default([]),
 });
 export type Experiment = z.infer<typeof Experiment>;
+
+/** Result of POST /api/experiments/:id/rescan — what the content check found and whether a re-run kicked. */
+export const RescanReport = z.object({
+  /** At least one probed page's signature differs from the stored one, or a page no longer loads. */
+  changed: z.boolean(),
+  /** Pages compared (fresh probe vs stored signature). */
+  checked: z.number().int().nonnegative(),
+  /** Probed URLs whose signature changed or that no longer load. */
+  mismatches: z.array(z.string()),
+  /** A different goal was supplied — goal-derived artifacts regenerate on the kept graph. */
+  goalChanged: z.boolean(),
+  /** A background run was kicked (changed || goalChanged). */
+  restarted: z.boolean(),
+  note: z.string().optional(),
+});
+export type RescanReport = z.infer<typeof RescanReport>;
 
 /** Headless live-site run digest written by scripts/run-site.ts to docs/runs/<host>/summary.json. */
 export const SitePreflight = z.object({

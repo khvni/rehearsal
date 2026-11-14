@@ -12,6 +12,7 @@ import {
   type JevScoreCache,
   type LlmClient,
   type PageFetcher,
+  type RescanReport,
   type RunFailure,
   type SimWeights,
   type Variant,
@@ -20,7 +21,7 @@ import {
 import { selectFetcher } from "./fetch";
 import { assertPublicUrl, robotsAllows } from "./fetch/guards";
 import { agentVerifyEnabled, extractPage, selectRunner } from "./browser/runner";
-import { RehearsalError, dominantCode, formatFailure, toFailure } from "./errors";
+import { RehearsalError, classifyError, dominantCode, formatFailure, toFailure } from "./errors";
 import { GraphBuilder, makeState } from "./graph";
 import { selectJev, scoreActions } from "./decisions/jev";
 import { simulateTrajectories, selectTrajectories } from "./simulation";
@@ -43,12 +44,14 @@ import {
 } from "./intents";
 import { metricFindings } from "./analysis/metric-findings";
 import { metricsFromHtml } from "./browser/metrics";
-import { isSameOrigin } from "./browser/extract";
+import { contentSignatureFor, isSameOrigin, normalizeSiteUrl } from "./browser/extract";
 import { errorText } from "./browser/types";
 import { generateSpec, specToMarkdown } from "./analysis/spec";
 import { generateMockup } from "./mockup";
 import { brandSignalsFromHtml, generateRebuild, mergeSignals } from "./rebuild";
 import { selectStore } from "./storage";
+import { enqueueRun } from "./access";
+import { runInBackground } from "./jobs";
 import { captureError, logEvent, traceTags, withTrace } from "./telemetry";
 import { writeFileSync, mkdirSync } from "node:fs";
 import path from "node:path";
@@ -82,7 +85,7 @@ export class StageInProgressError extends Error {
     readonly experimentId: string,
     readonly runningStage: string,
   ) {
-    super(`Experiment ${experimentId} already has a ${runningStage} run in progress`);
+    super(`Experiment ${experimentId} already has a ${runningStage === "run" ? "full" : runningStage} run in progress`);
     this.name = "StageInProgressError";
   }
 }
@@ -111,7 +114,12 @@ export class Orchestrator {
    * The probe never blocks creation — on failure the goal falls back to a
    * generic "Learn what {host} offers" and discovery still runs.
    */
-  async createExperiment(targetUrl: string, goal?: string, config?: Partial<ExperimentConfig>): Promise<Experiment> {
+  async createExperiment(
+    targetUrl: string,
+    goal?: string,
+    config?: Partial<ExperimentConfig>,
+    opts?: { idempotencyKey?: string },
+  ): Promise<Experiment> {
     const url = await assertPublicUrl(targetUrl);
     const explicit = goal?.trim() || undefined;
     const probed = explicit ? undefined : await this.probe(url.toString());
@@ -123,6 +131,8 @@ export class Orchestrator {
       personas: probed?.personas ?? [],
       status: "created",
       createdAt: new Date().toISOString(),
+      siteKey: normalizeSiteUrl(url.toString()),
+      idempotencyKey: opts?.idempotencyKey,
       configuration: ExperimentConfig.parse(config ?? {}),
     });
     await this.store.save(experiment);
@@ -192,6 +202,168 @@ export class Orchestrator {
 
   async list(): Promise<Experiment[]> {
     return this.store.list();
+  }
+
+  /** Stored dedupe key — new records carry `siteKey`; older ones normalize `targetUrl` on the fly. */
+  private siteKeyOf(e: Experiment): string {
+    return e.siteKey || normalizeSiteUrl(e.targetUrl);
+  }
+
+  async getByIdempotencyKey(key: string): Promise<Experiment | null> {
+    return (await this.store.list()).find((e) => e.idempotencyKey === key) ?? null;
+  }
+
+  /** The existing experiment for `targetUrl`'s normalized site key, or null. */
+  async findBySite(targetUrl: string): Promise<Experiment | null> {
+    const url = await assertPublicUrl(targetUrl);
+    const key = normalizeSiteUrl(url.toString());
+    return (await this.store.list()).find((e) => this.siteKeyOf(e) === key) ?? null;
+  }
+
+  /** Serializes dedupe+create so two concurrent POSTs can't both pass the dedupe scan. */
+  private createQueue: Promise<void> = Promise.resolve();
+
+  /**
+   * Dedupe + create, atomic under `createQueue`. A matching `idempotencyKey` or a
+   * matching normalized site returns the existing record instead of a new one.
+   */
+  async startExperiment(
+    targetUrl: string,
+    goal?: string,
+    config?: Partial<ExperimentConfig>,
+    opts?: { idempotencyKey?: string },
+  ): Promise<{ experiment: Experiment; created: boolean; via: "idempotency" | "site" | "new" }> {
+    const run = this.createQueue.then(async () => {
+      if (opts?.idempotencyKey) {
+        const hit = await this.getByIdempotencyKey(opts.idempotencyKey);
+        if (hit) return { experiment: hit, created: false, via: "idempotency" as const };
+      }
+      const siteHit = await this.findBySite(targetUrl);
+      if (siteHit) return { experiment: siteHit, created: false, via: "site" as const };
+      const experiment = await this.createExperiment(targetUrl, goal, config, opts);
+      return { experiment, created: true, via: "new" as const };
+    });
+    this.createQueue = run.then(
+      () => undefined,
+      () => undefined,
+    );
+    return run;
+  }
+
+  /**
+   * Fire-and-forget the full pipeline: mark queued, then kick `runPipeline` as a
+   * background job that outlives the request (ctx.waitUntil on Workers). The job
+   * waits for a pipeline slot and for any in-flight run, and marks the
+   * experiment failed on an unhandled stage error — nothing spins forever.
+   */
+  async scheduleRun(id: string, opts?: { skipDiscover?: boolean }): Promise<Experiment> {
+    const exp = await this.mustGet(id);
+    await this.update(exp, "queued");
+    await this.emit(id, "run", "info", "Run queued — the pipeline continues in the background");
+    const work = async (): Promise<void> => {
+      try {
+        await this.exclusiveWhenFree(id, "run", () => this.runPipeline(id, opts));
+      } catch (e) {
+        await this.markFailed(id, e).catch(() => undefined);
+      }
+    };
+    await runInBackground(() => enqueueRun(work));
+    return exp;
+  }
+
+  /**
+   * Re-check the site against the signatures discover stored, via the plain
+   * fetcher (no browser budget): fetch each known URL, extract, and compare
+   * `contentSignatureFor`. A changed page or a page that no longer loads counts
+   * as a change; a probe failure on the seed alone does not. When content
+   * changed the derived artifacts reset and the caller kicks a full re-run; a
+   * new `goal` regenerates them on the kept graph (discover skipped).
+   */
+  async rescan(id: string, opts?: { goal?: string }): Promise<{ experiment: Experiment; report: RescanReport }> {
+    return this.exclusive(id, "rescan", async () => {
+      const exp = await this.mustGet(id);
+      const goal = opts?.goal?.trim() || undefined;
+      const goalChanged = Boolean(goal && goal !== exp.goal);
+      const stored = new Map((exp.siteSignatures ?? []).map((s) => [normalizeSiteUrl(s.url), s]));
+      const probes = [exp.targetUrl, ...[...stored.values()].map((s) => s.url).slice(0, 16)].filter(
+        (u, i, a) => a.indexOf(u) === i,
+      );
+      const mismatches: string[] = [];
+      let checked = 0;
+      let note: string | undefined;
+      for (const url of probes) {
+        const ctrl = new AbortController();
+        const timer = setTimeout(() => ctrl.abort(new Error("rescan probe timed out")), PROBE_TIMEOUT_MS);
+        try {
+          const html = await Promise.race([
+            this.fetcher.fetchHtml(url, { signal: ctrl.signal }),
+            new Promise<never>((_, reject) =>
+              ctrl.signal.addEventListener("abort", () => reject(ctrl.signal.reason), { once: true }),
+            ),
+          ]);
+          const page = extractPage(html, url);
+          const signature = contentSignatureFor(url, page);
+          const old = stored.get(normalizeSiteUrl(url));
+          checked++;
+          if (!old || old.signature !== signature) mismatches.push(url);
+        } catch {
+          if (normalizeSiteUrl(url) === normalizeSiteUrl(exp.targetUrl)) {
+            note = `couldn't reach ${pagePath(url)} — nothing refreshed`;
+          } else {
+            mismatches.push(url); // a page that no longer loads is a change
+          }
+        } finally {
+          clearTimeout(timer);
+        }
+      }
+      const changed = stored.size === 0 || mismatches.length > 0;
+      if (!changed && !goalChanged) {
+        await this.emit(id, "rescan", "info", `Rescan: ${checked} page(s) unchanged — no re-run${note ? ` (${note})` : ""}`);
+        return {
+          experiment: exp,
+          report: { changed: false, checked, mismatches, goalChanged: false, restarted: false, ...(note ? { note } : {}) },
+        };
+      }
+      if (goalChanged) {
+        exp.goal = goal!;
+        exp.goalSource = "user";
+        exp.personas = [];
+      }
+      if (changed) {
+        exp.graph = undefined;
+        exp.siteSignatures = [];
+      }
+      // Goal-derived artifacts regenerate either way; `siteSignatures` stays only
+      // when content matched so rescan keeps a baseline to compare against.
+      exp.intents = undefined;
+      exp.endpoints = undefined;
+      exp.journeys = undefined;
+      exp.questions = undefined;
+      exp.assertions = [];
+      exp.simulations = [];
+      exp.swarm = undefined;
+      exp.browserTests = [];
+      exp.findings = [];
+      exp.variants = [];
+      exp.comparisons = [];
+      exp.spec = undefined;
+      exp.mockup = undefined;
+      exp.rebuild = undefined;
+      exp.usage = undefined;
+      await this.update(exp, "queued");
+      await this.emit(
+        id,
+        "rescan",
+        "info",
+        changed
+          ? `Rescan: ${mismatches.length}/${checked} probed page(s) changed — re-running the pipeline`
+          : `Goal updated to "${exp.goal}" — regenerating results (site unchanged)`,
+      );
+      return {
+        experiment: exp,
+        report: { changed, checked, mismatches, goalChanged, restarted: true, ...(note ? { note } : {}) },
+      };
+    });
   }
 
   /** The experiment's live activity feed (bounded, chronological). */
@@ -264,9 +436,31 @@ export class Orchestrator {
         throw new RehearsalError("ROBOTS_DISALLOWED", `Target path disallowed by robots.txt: ${experiment.targetUrl}`, experiment.targetUrl);
       }
 
+      // Once the browser runner is out of provider quota the crawl continues on
+      // the plain fetcher — pages lose screenshots/metrics but still map.
+      let providerQuotaHit = false;
       try {
         for (const vpName of config.viewports) {
           const viewport = VIEWPORTS[vpName];
+          const openPage = async (url: string, depth: number) => {
+            if (providerQuotaHit) return { html: await this.fetcher.fetchHtml(url) };
+            try {
+              return await this.runner.openPage(url, viewport, {
+                shotName: `${id}_${vpName}_d${depth}`,
+                scope: id,
+              });
+            } catch (e) {
+              if (classifyError(e) !== "PROVIDER_QUOTA") throw e;
+              providerQuotaHit = true;
+              await this.emit(
+                id,
+                "discover",
+                "info",
+                `${this.runner.name} is out of provider quota — continuing with ${this.fetcher.name} (no screenshots)`,
+              );
+              return { html: await this.fetcher.fetchHtml(url) };
+            }
+          };
           const frontier: { url: string; depth: number; from?: { stateId: string; actionId: string } }[] = [
             { url: experiment.targetUrl, depth: 0 },
           ];
@@ -282,10 +476,7 @@ export class Orchestrator {
             attempted.add(url);
             await this.emit(id, "discover", "fetch", `Fetching ${url}`, url);
             try {
-              const { html, screenshotPath, metrics, brand } = await this.runner.openPage(url, viewport, {
-                shotName: `${id}_${vpName}_d${depth}`,
-                scope: id,
-              });
+              const { html, screenshotPath, metrics, brand } = await openPage(url, depth);
               const extracted = extractPage(html, url);
               const state = makeState({
                 url,
@@ -336,15 +527,37 @@ export class Orchestrator {
       }
       experiment.graph = builder.build();
       experiment.failures = [...experiment.failures.filter((f) => f.stage !== "discover"), ...pageFailures];
+      const signatures = new Map<string, { url: string; signature: string }>();
+      for (const s of experiment.graph.states) {
+        const key = normalizeSiteUrl(s.url);
+        if (!signatures.has(key)) {
+          signatures.set(key, {
+            url: s.url,
+            signature: contentSignatureFor(s.url, {
+              title: s.pageTitle,
+              visibleText: s.visibleText,
+              actions: s.actions,
+            }),
+          });
+        }
+      }
+      experiment.siteSignatures = [...signatures.values()];
       if (experiment.graph.states.length === 0) {
         // Keep the per-page failures before markFailed reloads the stored experiment.
         await this.update(experiment, "discovering");
         const code = dominantCode(pageFailures);
         const sample = pageFailures.find((f) => f.code === code);
         const cause = sample ? ` Most common cause: ${formatFailure(sample)}` : "";
+        if (code === "PROVIDER_QUOTA") {
+          throw new RehearsalError(
+            "PROVIDER_QUOTA",
+            `Discovery stopped: ${this.runner.name} is out of provider quota${providerQuotaHit ? ` and ${this.fetcher.name} could not cover` : ""}.${cause}`,
+            experiment.targetUrl,
+          );
+        }
         throw new RehearsalError(
           "DISCOVERY_EMPTY",
-          `Discovery captured no states: ${pageFailures.length} of ${pageFailures.length} page loads failed with ${this.runner.name}.${cause}`,
+          `Discovery captured no states: ${pageFailures.length} of ${pageFailures.length} page loads failed with ${providerQuotaHit ? this.fetcher.name : this.runner.name}.${cause}`,
           experiment.targetUrl,
         );
       }
@@ -689,17 +902,20 @@ export class Orchestrator {
     });
   }
 
+  /** The stage chain `runAll` and the background job share — callers hold the lock. */
+  private async runPipeline(id: string, opts?: { skipDiscover?: boolean }): Promise<Experiment> {
+    if (!opts?.skipDiscover) await this.runDiscover(id);
+    await this.runSimulate(id);
+    await this.runVerify(id);
+    await this.runAnalyze(id);
+    await this.runCompare(id);
+    await this.runSpec(id);
+    return this.runRebuild(id);
+  }
+
   /** Full closed loop. */
   async runAll(id: string): Promise<Experiment> {
-    return this.exclusive(id, "run", async () => {
-      await this.runDiscover(id);
-      await this.runSimulate(id);
-      await this.runVerify(id);
-      await this.runAnalyze(id);
-      await this.runCompare(id);
-      await this.runSpec(id);
-      return this.runRebuild(id);
-    });
+    return this.exclusive(id, "run", () => this.runPipeline(id));
   }
 
   private async proposeVariant(exp: Experiment, findingId: string): Promise<Variant> {
@@ -789,6 +1005,18 @@ Return ASSERTION_LIST as a JSON array of {kind, value, selector?}.`,
       return await fn();
     } finally {
       this.running.delete(id);
+    }
+  }
+
+  /** `exclusive` for background jobs: waits for the in-flight run to finish instead of throwing 409-style. */
+  private async exclusiveWhenFree<T>(id: string, stage: string, fn: () => Promise<T>): Promise<T> {
+    for (;;) {
+      try {
+        return await this.exclusive(id, stage, fn);
+      } catch (e) {
+        if (!(e instanceof StageInProgressError)) throw e;
+        await new Promise((r) => setTimeout(r, 2_000));
+      }
     }
   }
 

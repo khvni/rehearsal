@@ -96,6 +96,18 @@ describe("BrowserbaseFunctionRunner", () => {
     expect(calls[2].url).toBe("https://api.browserbase.com/v1/functions/invocations/inv_1");
   });
 
+  it("maps 402/429 API responses to PROVIDER_QUOTA so stages fail cleanly", async () => {
+    const calls: string[] = [];
+    const fetchImpl = (async (url: string) => {
+      calls.push(url);
+      return new Response("Payment Required", { status: 402 });
+    }) as typeof fetch;
+    const runner = new BrowserbaseFunctionRunner({ apiKey: "bb", functionId: "fn_1", fetchImpl, sleep: async () => {}, pollMs: 10, timeoutMs: 50 });
+    const err = await runner.openPage("https://a.test/", VP).catch((e) => e);
+    expect(classifyError(err)).toBe("PROVIDER_QUOTA");
+    expect((err as { code?: string }).code).toBe("PROVIDER_QUOTA");
+  });
+
   it("surfaces the Function's own error so it keeps its code", async () => {
     const { runner } = fakeApi([{ status: "COMPLETED", results: { ok: false, error: "page.goto: Timeout 60000ms exceeded." } }]);
     const err = await runner.openPage("https://a.test/", VP).catch((e) => e);

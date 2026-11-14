@@ -26,6 +26,7 @@ export async function POST(req: Request) {
       url?: string;
       goal?: string;
       config?: unknown;
+      idempotencyKey?: string;
     };
     body.targetUrl ??= body.url;
     if (!body.targetUrl) {
@@ -38,6 +39,16 @@ export async function POST(req: Request) {
         { status: 400 },
       );
     }
+    const rawKey = req.headers.get("idempotency-key") ?? body.idempotencyKey;
+    const idempotencyKey = typeof rawKey === "string" && rawKey.trim() ? rawKey.trim().slice(0, 200) : undefined;
+    const orch = orchestrator();
+    // Dedupe hits never consume the daily-create budget.
+    if (idempotencyKey) {
+      const hit = await orch.getByIdempotencyKey(idempotencyKey);
+      if (hit) return NextResponse.json({ ...hit, dedupe: "idempotency" });
+    }
+    const siteHit = await orch.findBySite(body.targetUrl);
+    if (siteHit) return NextResponse.json({ ...siteHit, dedupe: "site" });
     if (!(await underDailyLimit(`exp-create:${clientIp(req)}`, CREATE_PER_IP_PER_DAY))) {
       return NextResponse.json({ error: "daily experiment limit reached" }, { status: 429 });
     }
@@ -48,7 +59,12 @@ export async function POST(req: Request) {
       maxAgents: Math.min(parsed.data.maxAgents, MAX_AGENTS),
       maxConcurrentAgents: Math.min(parsed.data.maxConcurrentAgents, 20),
     };
-    const experiment = await orchestrator().createExperiment(body.targetUrl, body.goal, config);
+    const result = await orch.startExperiment(body.targetUrl, body.goal, config, { idempotencyKey });
+    if (!result.created) {
+      return NextResponse.json({ ...result.experiment, dedupe: result.via });
+    }
+    // Return as soon as the record exists — the pipeline runs as a background job.
+    const experiment = await orch.scheduleRun(result.experiment.id);
     return NextResponse.json(experiment);
   } catch (e) {
     return NextResponse.json({ error: String(e).slice(0, 300) }, { status: 400 });
