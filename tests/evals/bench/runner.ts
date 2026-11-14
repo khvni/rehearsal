@@ -53,7 +53,8 @@ export class FixtureSiteRunner implements BrowserRunner {
 
   constructor(private site: FixtureSite) {}
 
-  async openPage(url: string, _viewport: Viewport): Promise<OpenPageResult> {
+  async openPage(url: string, viewport: Viewport): Promise<OpenPageResult> {
+    void viewport;
     await assertPublicUrl(url);
     const html = pageFor(this.site, new URL(url).pathname);
     if (html === null) throw new Error(`no fixture page for ${url}`);
