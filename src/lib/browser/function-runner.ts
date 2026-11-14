@@ -106,11 +106,7 @@ export class BrowserbaseFunctionRunner implements BrowserRunner {
     // Each API call gets its own deadline so slow responses cannot overrun the operation budget.
     let inv = await this.api(`/v1/functions/${this.opts.functionId}/invoke`, {
       method: "POST",
-      body: JSON.stringify({ params, sessionCreateParams: {
-          timeout: Math.max(60, Math.ceil(timeoutMs / 1000)),
-          ...(this.opts.extensionId ? { extensionId: this.opts.extensionId } : {}),
-        },
-      }),
+      body: JSON.stringify({ params }),
       signal: AbortSignal.timeout(Math.max(remaining(), 5_000)),
     });
     while (!TERMINAL.has(inv.status)) {
