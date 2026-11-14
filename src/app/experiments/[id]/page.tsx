@@ -3,9 +3,8 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
-import type { Experiment, Finding, KrugPrinciple, PanelState, Viewport } from "@/lib/contracts";
-import { KrugChip, SEVERITY_ORDER, SeverityChip } from "../../_components/chips";
-import { KRUG_PRINCIPLES } from "../../_components/krug";
+import { USABILITY_PRINCIPLES, type Experiment, type Finding, type PanelState, type UsabilityPrinciple, type Viewport } from "@/lib/contracts";
+import { PrincipleChip, SEVERITY_ORDER, SeverityChip } from "../../_components/chips";
 import { Markdown } from "../../_components/markdown";
 import { CheckIcon, CrossIcon, ArrowIcon, DownloadIcon } from "../../_components/icons";
 import { Panel } from "../../_components/panel";
@@ -132,8 +131,8 @@ export default function ExperimentPage() {
     [exp?.findings],
   );
   const findingGroups = useMemo(() => {
-    const groups = new Map<KrugPrinciple, Finding[]>();
-    for (const f of findings) groups.set(f.krugPrinciple, [...(groups.get(f.krugPrinciple) ?? []), f]);
+    const groups = new Map<UsabilityPrinciple, Finding[]>();
+    for (const f of findings) groups.set(f.principle, [...(groups.get(f.principle) ?? []), f]);
     return [...groups];
   }, [findings]);
 
@@ -415,7 +414,7 @@ export default function ExperimentPage() {
               <AccordionItem key={principle} value={principle} index={gi} className="finding-group">
                 <AccordionTrigger>
                   <span className="group-trigger">
-                    {KRUG_PRINCIPLES[principle].name}
+                    {USABILITY_PRINCIPLES[principle].title}
                     <span className="group-count tabular">{group.length}</span>
                   </span>
                 </AccordionTrigger>
@@ -425,7 +424,7 @@ export default function ExperimentPage() {
                   <article key={f.findingId} className="finding">
                     <div className="chips">
                       <SeverityChip severity={f.severity} />
-                      <KrugChip principle={principle} />
+                      <PrincipleChip principle={principle} />
                       <Badge variant="dot" color={f.evidenceType === "verified-failure" ? "red" : f.evidenceType === "hypothesis" ? "gray" : "blue"}>{EVIDENCE_LABEL[f.evidenceType] ?? f.evidenceType}</Badge>
                       <span className="card-meta">{f.category} · {f.verificationStatus}</span>
                     </div>

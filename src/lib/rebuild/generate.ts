@@ -19,7 +19,7 @@ import { renderGoalPage } from "./templates";
 const MAX_NAV = 6;
 const STATUS_RE =
   /\b(applications?|registration|tickets?|sales?|enrollment|signups?|early[- ]bird|waitlist)\s+(are|is)\s+(now\s+)?(open|closed|live|sold out|available)\b[^.\n]{0,60}/i;
-const STALE_RE = /\b(stale|outdated|out[- ]of[- ]date|old date|past (event|date)|expired|last year)\b/i;
+const STALE_RE = /\b(stale|outdated|out[- ]of[- ]date|old date|past (event|date)|dates? in the past|still invites registration|already happened|expired|last year)\b/i;
 
 function normUrl(url: string | undefined): string | undefined {
   if (!url) return undefined;

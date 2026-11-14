@@ -255,7 +255,7 @@ function syntheticFinding(id: string, severity: Finding["severity"], title: stri
     evidencePaths: [],
     recommendation: `Address: ${title}.`,
     verificationStatus: "unverified",
-    krugPrinciple: "dont-make-me-think",
+    principle: "dont-make-users-think",
   };
 }
 
@@ -373,7 +373,7 @@ describe("eval: graph dedup on fixture states", () => {
 // ── (e) vague-label finding lists the actual labels ─────────────────────────
 
 describe("eval: vague-label finding lists the labels found on the page", () => {
-  const vagueFinding = (findings: Finding[]) => findings.find((f) => /ambiguous link labels/i.test(f.title));
+  const vagueFinding = (findings: Finding[]) => findings.find((f) => /say where they go/i.test(f.title));
 
   it("names exactly the vague labels present on the vague-labels fixture", () => {
     const state = pageState(vaguePage, VAGUE_URL);
@@ -383,13 +383,13 @@ describe("eval: vague-label finding lists the labels found on the page", () => {
 
     const f = vagueFinding(ruleFindings({ states: [state], runs: [], assertions: [], referenceNowIso: REFERENCE_NOW }));
     expect(f).toBeDefined();
-    expect(f!.title).toContain(`(${expected.length})`);
+    expect(f!.title).toMatch(new RegExp(`^${expected.length} link label`));
     for (const a of expected) expect(f!.description).toContain(`"${a.label}"`);
     expect(f!.affectedActions.sort()).toEqual(expected.map((a) => a.actionId).sort());
     for (const a of state.actions.filter((x) => !isVagueLabel(x.label))) {
       expect(f!.description).not.toContain(`"${a.label}"`);
     }
-    expect(f!.krugPrinciple).toBe("dont-make-me-think");
+    expect(f!.principle).toBe("dont-make-users-think");
     expect(f!.evidenceType).toBe("reproducible-concern");
   });
 
@@ -404,7 +404,7 @@ describe("eval: vague-label finding lists the labels found on the page", () => {
 // ── (f) stale-date finding cites the detected past dates ────────────────────
 
 describe("eval: stale-date finding evidence includes detected past dates", () => {
-  const staleFinding = (findings: Finding[]) => findings.find((f) => /post-event|stale/i.test(f.title));
+  const staleFinding = (findings: Finding[]) => findings.find((f) => /still invites registration/i.test(f.title));
   const run = (nowIso: string) => {
     const state = pageState(aiePage, AIE_URL);
     return {

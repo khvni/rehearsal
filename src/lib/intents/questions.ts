@@ -32,11 +32,11 @@ interface QuestionTemplate {
   endpointLabel?: RegExp;
   /** Custom detector for answers that aren't a keyword (e.g. "is there a descriptive sentence?"). */
   detect?: Detector;
-  /** Only the start page can answer it (Krug's homepage questions). */
+  /** Only the start page can answer it (the homepage questions). */
   startOnly?: boolean;
 }
 
-/** Krug's homepage questions (docs/krug-principles.md K7). */
+/** The homepage questions (docs/krug-principles.md K7). */
 export const HOMEPAGE_QUESTION_IDS = ["hp-what", "hp-do", "hp-why", "hp-start"] as const;
 
 const WHAT_IS_THIS: Record<SiteType, string> = {

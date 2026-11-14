@@ -151,7 +151,7 @@ function finding(title: string, over: Partial<Finding> = {}): Finding {
     affectedStates: [],
     recommendation: "fix it",
     verificationStatus: "unverified",
-    krugPrinciple: "dont-make-me-think",
+    principle: "dont-make-users-think",
     ...over,
   });
 }
@@ -188,8 +188,8 @@ function score(manifest: FixtureSiteManifest, findings: Finding[]): BenchSiteRep
 
 describe("bench scoring: ruleKey", () => {
   it("normalizes digit runs to #, collapses whitespace, lowercases, appends the principle", () => {
-    expect(ruleKey("  Found 12 links in  3 menus ", "omit-words")).toBe(
-      "found # links in # menus|omit-words",
+    expect(ruleKey("  Found 12 links in  3 menus ", "cut-needless-words")).toBe(
+      "found # links in # menus|cut-needless-words",
     );
   });
 
@@ -197,11 +197,11 @@ describe("bench scoring: ruleKey", () => {
     const produced = producedFindings([
       finding("7 ambiguous link labels"),
       finding("42 ambiguous link labels"),
-      finding("42 ambiguous link labels", { krugPrinciple: "omit-words" }),
+      finding("42 ambiguous link labels", { principle: "cut-needless-words" }),
     ]);
     expect(produced.map((p) => [p.ruleKey, p.count])).toEqual([
-      ["# ambiguous link labels|dont-make-me-think", 2],
-      ["# ambiguous link labels|omit-words", 1],
+      ["# ambiguous link labels|cut-needless-words", 1],
+      ["# ambiguous link labels|dont-make-users-think", 2],
     ]);
   });
 });
@@ -236,10 +236,10 @@ describe("bench scoring: matchFinding buckets", () => {
     expect(r.findings.produced[0].matchedAs).toBe("expected");
   });
 
-  it("krugPrinciple narrows a match", () => {
-    const expected: ExpectedFinding[] = [{ titleMatch: "stale", krugPrinciple: "omit-words" }];
-    const hit = score(manifestWith({ expected }), [finding("stale", { krugPrinciple: "omit-words" })]);
-    const miss = score(manifestWith({ expected }), [finding("stale", { krugPrinciple: "navigation" })]);
+  it("principle narrows a match", () => {
+    const expected: ExpectedFinding[] = [{ titleMatch: "stale", principle: "cut-needless-words" }];
+    const hit = score(manifestWith({ expected }), [finding("stale", { principle: "cut-needless-words" })]);
+    const miss = score(manifestWith({ expected }), [finding("stale", { principle: "where-you-are" })]);
     expect(hit.findings.produced[0].matchedAs).toBe("expected");
     expect(miss.findings.produced[0].matchedAs).toBeUndefined();
     expect(miss.findings.missing).toEqual(expected);

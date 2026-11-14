@@ -1,6 +1,6 @@
 import { Fragment, type ReactNode } from "react";
-import { KrugChip } from "./chips";
-import { isKrugPrinciple } from "./krug";
+import { PrincipleChip } from "./chips";
+import { findPrinciple } from "./principles";
 
 type Block =
   | { type: "h1" | "h2" | "h3"; text: string }
@@ -43,10 +43,11 @@ function labelled(text: string): ReactNode {
   if (!m) return inline(text);
   const [, label, value] = m;
   const key = value.trim();
-  if (label === "Krug principle" && isKrugPrinciple(key)) {
+  const principle = label === "Principle" ? findPrinciple(key) : undefined;
+  if (principle) {
     return (
       <>
-        <span className="md-label">{label}</span> <KrugChip principle={key} />
+        <span className="md-label">{label}</span> <PrincipleChip principle={principle} />
       </>
     );
   }

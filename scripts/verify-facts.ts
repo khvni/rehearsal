@@ -4,7 +4,7 @@
  *
  *   contracts  stored experiments / run summaries parse with the zod contracts (no unknown keys)
  *   env        process.env reads ↔ .env.example ↔ README/docs ↔ terraform variables
- *   catalog    Krug principle ids in code ↔ docs/krug-principles.md ↔ contract enum;
+ *   catalog    usability principle ids in code ↔ docs/krug-principles.md ↔ contract enum;
  *              every stable finding rule id is referenced by a test
  *   api        src/app/api/** routes + methods ↔ docs/api.md
  *
@@ -17,7 +17,7 @@ import { createRequire, syncBuiltinESMExports } from "node:module";
 import os from "node:os";
 import path from "node:path";
 import type { z } from "zod";
-import { Experiment, KrugDimension, KrugPrinciple, SiteRunSummary, SpecReport } from "../src/lib/contracts";
+import { Experiment, RubricDimension, UsabilityPrinciple, SiteRunSummary, SpecReport } from "../src/lib/contracts";
 
 const root = process.cwd();
 const rel = (p: string) => path.relative(root, p).split(path.sep).join("/");
@@ -246,18 +246,18 @@ function checkCatalog(): CheckResult {
   const docPrinciples = new Map<string, string>(); // slug -> K id
   for (const m of doc.matchAll(/^###\s+(K\d+)\s+`([a-z-]+)`/gm)) docPrinciples.set(m[2], m[1]);
   const docIds = new Set(docPrinciples.values());
-  const enumSlugs = new Set<string>(KrugPrinciple.options);
+  const enumSlugs = new Set<string>(UsabilityPrinciple.options);
 
   for (const slug of enumSlugs) {
-    if (!docPrinciples.has(slug)) issues.push({ path: "src/lib/contracts/index.ts#KrugPrinciple", message: `"${slug}" has no "### Kn \`${slug}\`" heading in docs/krug-principles.md` });
+    if (!docPrinciples.has(slug)) issues.push({ path: "src/lib/contracts/index.ts#UsabilityPrinciple", message: `"${slug}" has no "### Kn \`${slug}\`" heading in docs/krug-principles.md` });
   }
   for (const slug of docPrinciples.keys()) {
-    if (!enumSlugs.has(slug)) issues.push({ path: "docs/krug-principles.md", message: `"${slug}" is not in the KrugPrinciple contract enum` });
+    if (!enumSlugs.has(slug)) issues.push({ path: "docs/krug-principles.md", message: `"${slug}" is not in the UsabilityPrinciple contract enum` });
   }
-  for (const dim of KrugDimension.options) {
+  for (const dim of RubricDimension.options) {
     const row = doc.match(new RegExp(`^\\|\\s*\`${dim}\`\\s*\\|([^|]*)\\|`, "m"));
     if (!row) {
-      issues.push({ path: "docs/krug-principles.md", message: `KrugDimension "${dim}" missing from the eval dimensions table` });
+      issues.push({ path: "docs/krug-principles.md", message: `RubricDimension "${dim}" missing from the eval dimensions table` });
       continue;
     }
     for (const k of row[1].match(/K\d+/g) ?? []) {
@@ -270,9 +270,9 @@ function checkCatalog(): CheckResult {
   let principleRefs = 0;
   for (const file of sources) {
     const text = read(file);
-    for (const m of text.matchAll(/krugPrinciple\b[^"\n]*?"([a-z][a-z-]*)"/g)) {
+    for (const m of text.matchAll(/\bprinciple:\s*"([a-z][a-z-]*)"/g)) {
       principleRefs++;
-      if (!docPrinciples.has(m[1])) issues.push({ path: `${file}:${lineOf(text, m.index!)}`, message: `Krug principle "${m[1]}" not in docs/krug-principles.md` });
+      if (!docPrinciples.has(m[1])) issues.push({ path: `${file}:${lineOf(text, m.index!)}`, message: `usability principle "${m[1]}" not in docs/krug-principles.md` });
     }
     for (const m of text.matchAll(/\bK(\d+)\b/g)) {
       principleRefs++;

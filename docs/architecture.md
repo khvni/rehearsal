@@ -19,7 +19,7 @@
    │      │      │      │      │      │      │       └─ SnowflakeCortex (KB search)
    │      │      │      │      │      │      └─ DomPatch → addInitScript
    │      │      │      │      │      ├─ GeminiClient (hydrogen/argon) | FixtureLlmClient
-   │      │      │      │      │      ├─ rubric.ts (Krug dimensions)
+   │      │      │      │      │      ├─ rubric.ts (rubric dimensions)
    │      │      │      │      │      └─ spec.ts → spec.md
    │      │      │      │      └─ mulberry32 seeded sampler, profiles, risk rank
    │      │      │      └─ JevClient (OpenRouter decisions) | FixtureJevClient

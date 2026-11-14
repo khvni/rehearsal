@@ -18,58 +18,58 @@
   ],
   "expectedFindings": [
     {
-      "titleMatch": "ambiguous link labels",
-      "krugPrinciple": "dont-make-me-think",
+      "titleMatch": "say where they go",
+      "principle": "dont-make-users-think",
       "severity": "medium"
     },
     {
-      "titleMatch": "dense link surface increases scan cost",
-      "krugPrinciple": "scanning-not-reading",
+      "titleMatch": "links compete for attention",
+      "principle": "people-scan-they-dont-read",
       "severity": "medium"
     },
     {
-      "titleMatch": "endpoint buried: signup",
-      "krugPrinciple": "mindless-choices",
+      "titleMatch": "takes too many clicks",
+      "principle": "obvious-choices",
       "severity": "medium"
     },
     {
-      "titleMatch": "endpoint unreachable: contact-form",
-      "krugPrinciple": "navigation",
+      "titleMatch": "can't reach.*contact form",
+      "principle": "where-you-are",
       "severity": "medium"
     }
   ],
   "toleratedFindings": [
     {
-      "titleMatch": "endpoint buried: (pricing|contact-form)",
-      "krugPrinciple": "mindless-choices"
+      "titleMatch": "takes too many clicks",
+      "principle": "obvious-choices"
     },
     {
-      "titleMatch": "assertion failed in browser"
+      "titleMatch": "browser check failed"
     },
     {
-      "titleMatch": "has no answer path"
+      "titleMatch": "can't find an answer"
     },
     {
       "titleMatch": "expected visitor questions"
     },
     {
-      "titleMatch": "trunk test"
+      "titleMatch": "landing here can't find"
     }
   ],
   "unexpectedFindings": [
     {
-      "titleMatch": "no signup endpoint found"
+      "titleMatch": "no signup page or link"
     },
     {
-      "titleMatch": "endpoint unreachable: signup"
+      "titleMatch": "can't reach.*signup"
     }
   ],
   "expectedSpecItems": [
     {
-      "match": "ambiguous link labels|vague label"
+      "match": "say where they go|names its destination"
     },
     {
-      "match": "dense link surface|scan cost"
+      "match": "links compete for attention|main action stands out"
     }
   ],
   "budgetsMs": {

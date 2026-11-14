@@ -13,25 +13,25 @@
   "expectedEndpointClasses": ["schedule-event", "signup"],
   "expectedFindings": [
     {
-      "titleMatch": "post-event page still invites registration",
-      "krugPrinciple": "omit-words",
+      "titleMatch": "still invites registration",
+      "principle": "cut-needless-words",
       "severity": "high"
     }
   ],
   "toleratedFindings": [
-    { "titleMatch": "dense link surface" },
-    { "titleMatch": "console errors" },
-    { "titleMatch": "page lacks a readable title" },
-    { "titleMatch": "assertion failed in browser" },
-    { "titleMatch": "has no answer path" },
+    { "titleMatch": "links compete for attention" },
+    { "titleMatch": "script errors" },
+    { "titleMatch": "nothing names this page" },
+    { "titleMatch": "browser check failed" },
+    { "titleMatch": "can't find an answer" },
     { "titleMatch": "expected visitor questions" },
-    { "titleMatch": "trunk test" },
+    { "titleMatch": "landing here can't find" },
     { "titleMatch": "primary navigation has" },
-    { "titleMatch": "missing site ID" }
+    { "titleMatch": "can't find site ID" }
   ],
   "unexpectedFindings": [],
   "expectedSpecItems": [
-    { "match": "post-event|registration|stale|apply" }
+    { "match": "still invites registration|stale|apply" }
   ],
   "budgetsMs": {
     "discover": 60000,

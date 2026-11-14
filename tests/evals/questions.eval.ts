@@ -75,8 +75,8 @@ describe("eval: unanswered visitor questions on the AIE fixture", async () => {
     const findings = questionFindings(questions, graph);
     const unanswered = questions.filter((q) => !q.answered);
     expect(findings).toHaveLength(unanswered.length + 1);
-    expect(findings.filter((f) => f.krugPrinciple === "homepage")).toHaveLength(0);
-    expect(findings.at(-1)?.title).toBe(`${unanswered.length} of ${questions.length} expected visitor questions have no answer path`);
+    expect(findings.filter((f) => f.principle === "homepage-explains-itself")).toHaveLength(0);
+    expect(findings.at(-1)?.title).toBe(`${unanswered.length} of ${questions.length} expected visitor questions go unanswered`);
     expect(findings.every((f) => f.evidencePaths.includes("data/shots/aie.png"))).toBe(true);
   });
 

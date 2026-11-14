@@ -3,7 +3,7 @@ import { createServer, type Server } from "node:http";
 import { readFileSync } from "node:fs";
 import path from "node:path";
 import type { Browser } from "playwright";
-import { KrugPrinciple, VIEWPORTS, type PageMetrics, type Viewport } from "@/lib/contracts";
+import { UsabilityPrinciple, VIEWPORTS, type PageMetrics, type Viewport } from "@/lib/contracts";
 import { measurePage, metricsFromHtml } from "@/lib/browser/metrics";
 import { launchChromium } from "@/lib/browser/playwright";
 import { metricFindings } from "@/lib/analysis/metric-findings";
@@ -85,7 +85,7 @@ describe("eval: page metrics on the AIE fixture", () => {
     expect([h.foldRatio, h.aboveFoldCtaCount, h.primaryCtaAmbiguity, h.textDensity, h.largestTextIsH1]).toEqual([null, null, null, null, null]);
   });
 
-  it("emits the expected Krug-cited metric findings with screenshot evidence", () => {
+  it("emits the expected principle-cited metric findings with screenshot evidence", () => {
     const states = (["desktop", "mobile"] as const).map((vp) => {
       const s = makeState({
         url: "https://ai.engineer/code/2026",
@@ -103,7 +103,7 @@ describe("eval: page metrics on the AIE fixture", () => {
     for (const rule of T.metricsRequiredRules as unknown as string[]) expect(rules).toContain(rule);
     expect(rules.has("cta-ambiguity")).toBe(false);
     for (const f of findings) {
-      expect(KrugPrinciple.options).toContain(f.krugPrinciple);
+      expect(UsabilityPrinciple.options).toContain(f.principle);
       expect(f.evidencePaths.length).toBeGreaterThan(0);
       expect(f.affectedStates.length).toBeGreaterThan(0);
     }

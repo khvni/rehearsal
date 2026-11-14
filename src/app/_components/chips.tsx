@@ -1,9 +1,8 @@
 "use client";
 
-import type { Finding, KrugPrinciple } from "@/lib/contracts";
+import { USABILITY_PRINCIPLES, type Finding, type UsabilityPrinciple } from "@/lib/contracts";
 import { Badge } from "@/components/ui/badge";
 import { Tooltip } from "@/components/ui/tooltip";
-import { KRUG_PRINCIPLES } from "./krug";
 
 export const SEVERITY_ORDER: Finding["severity"][] = ["critical", "high", "medium", "low"];
 
@@ -17,12 +16,12 @@ export function SeverityChip({ severity }: { severity: Finding["severity"] }) {
   );
 }
 
-export function KrugChip({ principle }: { principle: KrugPrinciple }) {
-  const p = KRUG_PRINCIPLES[principle];
+export function PrincipleChip({ principle }: { principle: UsabilityPrinciple }) {
+  const p = USABILITY_PRINCIPLES[principle];
   return (
     <Tooltip content={p.summary} side="top" contentClassName="max-w-[280px]">
-      <span className="chip krug tip" tabIndex={0} aria-label={`${p.code} ${p.name}: ${p.summary}`}>
-        {p.code}
+      <span className="chip principle tip" tabIndex={0} aria-label={`${p.title}: ${p.summary}`}>
+        {p.title}
       </span>
     </Tooltip>
   );

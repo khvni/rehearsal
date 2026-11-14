@@ -22,7 +22,7 @@ prices, talk titles, speakers, sponsors) comes from the live page as fetched on
 | Rebuild plan: rebuild nav to ~7 items max | Primary nav has 7 items; the current section is underlined as you scroll. |
 | Truth pass: copy must match reality | h1 states the page purpose ("AI Engineer Code Summit 2026 — San Francisco, Nov 10–12"); the facts panel gives date, venue, cost ("Free to apply; $1,499 + fees if approved") and format above the fold, answering the cost question without scrolling. |
 
-Trunk test (Krug): page name in the header and h1, breadcrumbs as "you are here",
+Trunk test: page name in the header and h1, breadcrumbs as "you are here",
 sticky section nav with the current section marked, and a search field (`/` to
 focus) that filters the main-stage talks.
 

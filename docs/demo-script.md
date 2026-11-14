@@ -12,10 +12,10 @@ we were wrong when users get stuck. Rehearsal tries the site first."
    impatient and exploratory visitors. The riskiest paths light up.
 4. `verify`: Playwright replays them on desktop and mobile, with assertions and screenshots.
 5. `analyze`: the verified finding. **The page still says "application-only" and shows an
-   Apply button for an event that ended Nov 12** (stale copy, `omit-words`).
+   Apply button for an event that ended Nov 12** (stale copy — "cut needless words").
 6. `compare`: a fix ("event concluded, watch recordings") runs in an isolated browser
    against the same assertions. The differences are shown.
-7. `spec`: open `spec.md`. Each change cites a finding, evidence, a Krug principle and
+7. `spec`: open `spec.md`. Each change cites a finding, evidence, a usability principle and
    an effort size. A phased rebuild plan follows.
 
 **Close (10s):** "AI made building cheap. Rehearsal makes checking cheap too. Don't

@@ -39,7 +39,7 @@ describe("question bank", () => {
     );
   });
 
-  it("generateQuestions puts Krug's 4 homepage questions first and parses as VisitorQuestion", () => {
+  it("generateQuestions puts the 4 homepage questions first and parses as VisitorQuestion", () => {
     const g = graphOf(state("https://acme.com/", "Acme", "Acme helps teams ship faster."));
     const qs = generateQuestions(g, [], "saas");
     expect(qs.slice(0, 4).map((q) => q.questionId).sort()).toEqual([...HOMEPAGE_QUESTION_IDS].sort());
@@ -149,17 +149,17 @@ describe("question findings", () => {
     const unanswered = qs.filter((q) => !q.answered);
     expect(findings).toHaveLength(unanswered.length + 1);
     const summary = findings.at(-1)!;
-    expect(summary.title).toBe(`${unanswered.length} of ${qs.length} expected visitor questions have no answer path`);
-    expect(summary.krugPrinciple).toBe("homepage");
+    expect(summary.title).toBe(`${unanswered.length} of ${qs.length} expected visitor questions go unanswered`);
+    expect(summary.principle).toBe("homepage-explains-itself");
     expect(findings.every((f) => f.evidencePaths.includes("/shots/home.png"))).toBe(true);
   });
 
-  it("homepage questions cite `homepage`, the rest `navigation`; severity follows importance", () => {
+  it("homepage questions cite `homepage-explains-itself`, the rest `where-you-are`; severity follows importance", () => {
     for (const q of qs.filter((x) => !x.answered)) {
       const f = findings.find((x) => x.findingId === `f_unanswered-question_${q.questionId}`)!;
-      expect(f.krugPrinciple).toBe(isHomepageQuestion(q) ? "homepage" : "navigation");
+      expect(f.principle).toBe(isHomepageQuestion(q) ? "homepage-explains-itself" : "where-you-are");
       expect(f.severity).toBe(q.importance >= 0.85 ? "high" : q.importance >= 0.6 ? "medium" : "low");
-      expect(f.description).toContain("unanswered-question");
+      expect(f.description).toContain(q.question);
     }
   });
 

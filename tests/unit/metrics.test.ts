@@ -118,12 +118,12 @@ describe("metricFindings rules", () => {
     const { state } = await measure(`${base}/`);
     const findings = metricFindings([state]);
     const byRule = (rule: string) => findings.find((f) => f.findingId.startsWith(`f_metric_${rule}_`));
-    expect(byRule("long-scroll")?.krugPrinciple).toBe("scanning-not-reading");
-    expect(byRule("cta-ambiguity")?.krugPrinciple).toBe("mindless-choices");
+    expect(byRule("long-scroll")?.principle).toBe("people-scan-they-dont-read");
+    expect(byRule("cta-ambiguity")?.principle).toBe("obvious-choices");
     expect(byRule("nav-overload")?.title).toMatch(/9 items/);
     expect(byRule("heading-outline")?.title).toMatch(/2 h1 elements; skips h2→h4/);
     expect(byRule("hierarchy-mismatch")).toBeDefined();
-    expect(byRule("trunk-test")?.title).toMatch(/missing search \(trunk test fails\)$/);
+    expect(byRule("trunk-test")?.title).toMatch(/a visitor landing here can't find search$/);
     expect(byRule("no-cta-above-fold")).toBeUndefined();
     for (const f of findings) {
       expect(f.affectedStates).toEqual([state.stateId]);
@@ -153,6 +153,6 @@ describe("metricFindings rules", () => {
     const [trunk] = metricFindings([mk("https://acme.example/", clean), deep]);
     expect(trunk.severity).toBe("high");
     expect(trunk.affectedStates).toEqual([deep.stateId]);
-    expect(trunk.title).toBe("Desktop: missing site ID, page name, you-are-here indicator (trunk test fails)");
+    expect(trunk.title).toBe("Desktop: a visitor landing here can't find site ID, page name, you-are-here indicator");
   });
 });

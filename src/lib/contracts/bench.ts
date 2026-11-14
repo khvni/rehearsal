@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { EndpointClass, IntentCategory, KrugPrinciple, Severity, SiteType } from "./base";
+import { EndpointClass, IntentCategory, UsabilityPrinciple, Severity, SiteType } from "./base";
 import { ExperimentConfig } from "./base";
 
 // ── Benchmark harness (tests/evals/bench/**, scripts/bench.ts) ──────────────
@@ -13,7 +13,7 @@ import { ExperimentConfig } from "./base";
 export const ExpectedFinding = z.object({
   /** Case-insensitive regex matched against the finding title after digit normalization. */
   titleMatch: z.string().min(1),
-  krugPrinciple: KrugPrinciple.optional(),
+  principle: UsabilityPrinciple.optional(),
   severity: Severity.optional(),
 });
 export type ExpectedFinding = z.infer<typeof ExpectedFinding>;
@@ -94,11 +94,11 @@ export type FixtureSiteManifest = z.infer<typeof FixtureSiteManifest>;
 // ── Report shapes ───────────────────────────────────────────────────────────
 
 export const FindingScore = z.object({
-  /** Digit-normalized title + krugPrinciple, e.g. "ambiguous link labels (#)|dont-make-me-think". */
+  /** Digit-normalized title + principle, e.g. "ambiguous link labels (#)|dont-make-users-think". */
   ruleKey: z.string(),
   title: z.string(),
   severity: Severity,
-  krugPrinciple: KrugPrinciple,
+  principle: UsabilityPrinciple,
   count: z.number().int().positive(),
   /** Which manifest bucket the rule matched; absent = unmatched. */
   matchedAs: z.enum(["expected", "tolerated", "unexpected"]).optional(),

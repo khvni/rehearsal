@@ -24,7 +24,7 @@ Judgment checks should not do a script's job.
 | Rule | What it enforces |
 | --- | --- |
 | `rehearsal/contracts-first` | No exported `type`/`interface`/`enum`/zod schema or type re-export in `src/**` outside `src/lib/contracts/**` (AGENTS.md #1). React `*Props` types in `.tsx` files are allowed. Fix: move the type to `src/lib/contracts` (`index.ts` or a sibling re-exported from it), or drop `export` if it is module-private. |
-| `rehearsal/finding-cites-krug` | In `src/lib/analysis/**` and `src/lib/intents/**`, an object literal with `category` and `title` is a Finding and must set `krugPrinciple` (AGENTS.md #5). |
+| `rehearsal/finding-cites-principle` | In `src/lib/analysis/**` and `src/lib/intents/**`, an object literal with `category` and `title` is a Finding and must set `principle` (AGENTS.md #5). |
 | `@typescript-eslint/no-explicit-any` | No `any`; use `unknown` and narrow, or a contract type. |
 | `no-console` | No `console.*` outside `scripts/**`; use `logEvent` (telemetry). Lint runs with `--max-warnings 0`, so warnings fail CI. |
 

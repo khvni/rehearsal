@@ -1,19 +1,21 @@
 # Krug Principles — the eval rubric
 
 Distilled from Steve Krug, *Don't Make Me Think, Revisited* (3rd ed.). This file is the agent's
-design canon: the analysis prompt embeds it verbatim, every `Finding.krugPrinciple` cites one of
-these keys, and the eval suite asserts rubric coverage.
+design canon: the analysis prompt embeds it verbatim, every `Finding.principle` cites one of
+these keys, and the eval suite asserts rubric coverage. The slugs and their plain-language titles
+live in `USABILITY_PRINCIPLES`; user-facing surfaces (UI, API output, spec) show the titles only,
+never "Krug" or the K-codes.
 
 ## The nine principles
 
-### K1 `dont-make-me-think` — Don't make me think
+### K1 `dont-make-users-think` — Don't make users think
 A page is self-evident when a person of average ability can tell what it is and how to use it
 without expending effort thinking about it. Every element that forces a question — *"Where am I?
 Where should I begin? Where did they put ___? What are the most important things? Why did they
 call it that?"* — adds cognitive overhead and erodes confidence. Name things by what they do.
 If a label needs a second of thought, it's wrong.
 
-### K2 `scanning-not-reading` — Design for scanning, not reading
+### K2 `people-scan-they-dont-read` — People scan, they don't read
 Users glance, pick the first reasonable option, and muddle through (*satisficing*). Consequences:
 - Build a clear visual hierarchy: prominence matches importance.
 - Use conventions; don't invent where a convention exists.
@@ -22,21 +24,21 @@ Users glance, pick the first reasonable option, and muddle through (*satisficing
 - Eliminate visual noise: disorganization, clutter, things that shout.
 - Format text for scanning: headlines, short paragraphs, bulleted lists, highlighted key terms.
 
-### K3 `conventions` — Conventions are your friends
+### K3 `familiar-conventions` — Follow familiar conventions
 Conventions let users apply knowledge from one site to the next. Innovate only when you're sure
 the new idea delivers more value than the convention it displaces — and the burden of proof is
 high. Where convention is missing, be consistent within the site.
 
-### K4 `mindless-choices` — Mindless, unambiguous choices
+### K4 `obvious-choices` — Make every choice obvious
 It's not the *number* of clicks that matters but the *mental effort* and *confidence* each one
 requires. Three mindless clicks beat one hard-won click. Every decision point should present an
 unambiguous best answer.
 
-### K5 `omit-words` — Omit needless words
+### K5 `cut-needless-words` — Cut needless words
 Get rid of half the words on each page, then half of what's left. Cut welcome blather, happy talk,
 and instructions nobody reads. Prominent text should say one thing.
 
-### K6 `navigation` — Street signs, breadcrumbs, and "you are here"
+### K6 `where-you-are` — Always show where you are
 Persistent navigation answers: What site is this? What page am I on? What are the major sections?
 What are my options at this level? Where am I in the scheme of things? How can I search?
 
@@ -44,16 +46,16 @@ What are my options at this level? Where am I in the scheme of things? How can I
 primary sections, the local navigation options, and "you are here" indicators. Fail the trunk
 test on a deep page → finding.
 
-### K7 `homepage` — The homepage is constrained waterfront property
+### K7 `homepage-explains-itself` — The homepage explains itself
 It must answer in one glance: What is this? What do they have here? What can I do here? Why should
 I be here and not somewhere else? Everything above the fold fights for inclusion — the tagline
 and welcome blurb carry the whole burden.
 
-### K8 `farmers-and-cowmen` — Pull vs. browse
+### K8 `search-and-browse` — Serve both searchers and browsers
 Some users search, some browse. Navigation must serve both: a visible, conventional search affordance
 and well-organized browsable hierarchy. Neither should ever be missing.
 
-### K9 `testing-beats-arguing` — Usability testing beats religious debate
+### K9 `test-dont-argue` — Test, don't argue
 Debates about "what users like" are wasted effort; test instead, early and cheap. Focus groups are
 not usability tests. This is Rehearsal's reason for existing: *test the interface, don't argue about it.*
 

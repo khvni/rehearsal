@@ -100,9 +100,9 @@ const round = (n: number) => Math.round(n * 1000) / 1000;
 export function summarize(exp: Experiment, specMarkdown: string): SpecDeltaSummary {
   const findings = new Map<string, FindingSummary>();
   for (const f of exp.findings) {
-    const key = `${ruleKey(f.title)}|${f.krugPrinciple}`;
+    const key = `${ruleKey(f.title)}|${f.principle}`;
     const cur = findings.get(key);
-    if (!cur) findings.set(key, { ruleOrTitle: ruleKey(f.title), severity: f.severity, principle: f.krugPrinciple, count: 1 });
+    if (!cur) findings.set(key, { ruleOrTitle: ruleKey(f.title), severity: f.severity, principle: f.principle, count: 1 });
     else {
       cur.count++;
       if (SEVERITY_RANK[f.severity] > SEVERITY_RANK[cur.severity]) cur.severity = f.severity;

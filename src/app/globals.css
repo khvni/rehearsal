@@ -835,12 +835,12 @@ a:hover { text-decoration-color: currentColor; }
 .chip.sev-low { color: var(--low); }
 .chip.pass { color: var(--ok); border-color: color-mix(in oklab, var(--ok) 40%, transparent); }
 .chip.fail { color: var(--fail); border-color: color-mix(in oklab, var(--fail) 45%, transparent); }
-.chip.krug { color: var(--text-2); background: var(--raised); border-color: var(--border-strong); transition: border-color var(--dur-1) ease, color var(--dur-1) ease; }
-.tip:hover .chip.krug, .tip:focus-visible .chip.krug { border-color: var(--border-strong); color: var(--text); }
+.chip.principle { color: var(--text-2); background: var(--raised); border-color: var(--border-strong); transition: border-color var(--dur-1) ease, color var(--dur-1) ease; }
+.tip:hover .chip.principle, .tip:focus-visible .chip.principle { border-color: var(--border-strong); color: var(--text); }
 .chip.variant-verified, .chip.variant-applied { color: var(--ok); border-color: color-mix(in oklab, var(--ok) 40%, transparent); }
 .chip.variant-rejected { color: var(--fail); border-color: color-mix(in oklab, var(--fail) 45%, transparent); }
 .chip.variant-verified, .chip.variant-applied, .chip.variant-rejected, .chip.variant-proposed { text-transform: capitalize; }
-.krug-code { color: var(--muted); font-variant-numeric: tabular-nums; }
+.principle-code { color: var(--muted); font-variant-numeric: tabular-nums; }
 
 .sev-counts { display: inline-flex; flex-wrap: wrap; gap: var(--s-1) var(--s-3); }
 .sev-count.sev-critical { color: var(--critical); }
