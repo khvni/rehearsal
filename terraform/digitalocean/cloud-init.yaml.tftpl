@@ -5,6 +5,7 @@ packages:
   - curl
   - xz-utils
   - caddy
+  - iptables
 
 users:
   - default
@@ -14,9 +15,6 @@ users:
     homedir: /opt/rehearsal
 
 write_files:
-  - path: /etc/rehearsal/env
-    permissions: "0600"
-    content: ${jsonencode("${env_file}\n")}
   - path: /etc/systemd/system/rehearsal.service
     content: |
       [Unit]
@@ -27,7 +25,12 @@ write_files:
       [Service]
       User=rehearsal
       WorkingDirectory=/opt/rehearsal/app
+      Environment=NODE_ENV=production
+      # Written by Terraform over SSH after boot (terraform_data.app_env); never in user_data.
+      # Required: the app never starts without it, so it is never up without REHEARSAL_ACCESS_TOKEN.
       EnvironmentFile=/etc/rehearsal/env
+      # Defense in depth for SSRF: the app user can never reach link-local/metadata (169.254.0.0/16).
+      ExecStartPre=+/bin/sh -c 'iptables -C OUTPUT -d 169.254.0.0/16 -m owner --uid-owner rehearsal -j REJECT 2>/dev/null || iptables -I OUTPUT -d 169.254.0.0/16 -m owner --uid-owner rehearsal -j REJECT'
       ExecStart=/usr/local/bin/npm start -- -H 127.0.0.1 -p 3000
       Restart=always
 
@@ -49,5 +52,5 @@ runcmd:
   - cd /opt/rehearsal/app && sudo -u rehearsal -H npx playwright install chromium
   - cd /opt/rehearsal/app && sudo -u rehearsal -H npm run build
   - systemctl daemon-reload
-  - systemctl enable --now rehearsal
+  - systemctl enable rehearsal
   - systemctl restart caddy
