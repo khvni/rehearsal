@@ -1,4 +1,4 @@
-import { mkdirSync } from "node:fs";
+import { mkdirSync, writeFileSync } from "node:fs";
 import path from "node:path";
 import type { Browser, BrowserContext, Page } from "playwright";
 import type {
@@ -19,6 +19,16 @@ import { measurePage } from "./metrics";
 import { evaluateAssertion, shouldShoot, summarizeRun } from "./types";
 
 export const DEFAULT_EVIDENCE_DIR = path.join(process.cwd(), "data", "evidence");
+/** Evidence is best-effort: edge runtimes (workerd) have a read-only fs. */
+export function saveShot(file: string, png: Uint8Array): string | undefined {
+  try {
+    writeFileSync(file, png);
+    return file;
+  } catch {
+    return undefined;
+  }
+}
+
 const USER_AGENT = "Rehearsal/0.1 (+https://github.com/khvni/rehearsal)";
 
 /** Reject when a page call outlives `ms` — some sites peg the renderer so content()/title() never resolve. */
@@ -60,9 +70,8 @@ export async function executeTrajectory(
   await page.goto(args.url, { waitUntil: "domcontentloaded", timeout: opts.navTimeoutMs });
   await page.waitForTimeout(800);
   await settleInterstitial(page);
-  const shot0 = path.join(evidenceDir, `${args.runId}_0.png`);
-  await page.screenshot({ path: shot0, timeout: PAGE_CALL_MS });
-  screenshots.push(shot0);
+  const shot0 = saveShot(path.join(evidenceDir, `${args.runId}_0.png`), await page.screenshot({ timeout: PAGE_CALL_MS }));
+  if (shot0) screenshots.push(shot0);
 
   const total = Math.min(args.actions.length, args.maxSteps ?? 12);
   for (let i = 0; i < total; i++) {
@@ -86,9 +95,9 @@ export async function executeTrajectory(
       steps.push({ actionId: a.actionId, label: a.label, ok: false, error: String(e).slice(0, 160) });
     }
     if (shouldShoot(i, total)) {
-      const shot = path.join(evidenceDir, `${args.runId}_${i + 1}.png`);
-      await page.screenshot({ path: shot, timeout: PAGE_CALL_MS }).catch(() => undefined);
-      screenshots.push(shot);
+      const png = await page.screenshot({ timeout: PAGE_CALL_MS }).catch(() => undefined);
+      const shot = png && saveShot(path.join(evidenceDir, `${args.runId}_${i + 1}.png`), png);
+      if (shot) screenshots.push(shot);
     }
   }
 
@@ -160,7 +169,7 @@ export class PlaywrightRunner implements BrowserRunner {
     const ctx = await this.newContext(viewport, opts?.patches);
     try {
       const page = await ctx.newPage();
-      const screenshotPath = path.join(this.evidenceDir, `${opts?.shotName ?? Date.now()}.png`);
+      const shotFile = path.join(this.evidenceDir, `${opts?.shotName ?? Date.now()}.png`);
       const res = await page.goto(url, { waitUntil: "domcontentloaded", timeout: 30000 });
       const contentType = res?.headers()["content-type"] ?? "";
       if (contentType && !/html|xml/i.test(contentType)) throw new Error(`Non-HTML response (${contentType}) for ${url}`);
@@ -169,7 +178,7 @@ export class PlaywrightRunner implements BrowserRunner {
       await page.waitForTimeout(1200);
       await settleInterstitial(page);
       const html = await withTimeout(page.content(), PAGE_CALL_MS, "page.content");
-      await page.screenshot({ path: screenshotPath, fullPage: false, timeout: PAGE_CALL_MS });
+      const screenshotPath = saveShot(shotFile, await page.screenshot({ fullPage: false, timeout: PAGE_CALL_MS }));
       const metrics = await withTimeout(measurePage(page), PAGE_CALL_MS, "measurePage");
       return { html, screenshotPath, metrics };
     } finally {

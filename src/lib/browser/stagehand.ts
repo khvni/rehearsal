@@ -1,4 +1,4 @@
-import { mkdirSync, writeFileSync } from "node:fs";
+import { mkdirSync } from "node:fs";
 import path from "node:path";
 import type { Locator, ModelConfig, Page, Stagehand, StagehandBrowser } from "@browserbasehq/stagehand";
 import type {
@@ -17,7 +17,7 @@ import { assertPublicUrl } from "../fetch/guards";
 import { compilePatches } from "../variants";
 import { isSameOrigin } from "./extract";
 import { measurePage } from "./metrics";
-import { DEFAULT_EVIDENCE_DIR } from "./playwright";
+import { DEFAULT_EVIDENCE_DIR, saveShot } from "./playwright";
 import { evaluateAssertion, shouldShoot, summarizeRun } from "./types";
 
 const NAV_TIMEOUT_MS = 60_000;
@@ -142,10 +142,8 @@ export class StagehandRunner implements BrowserRunner {
     }
   }
 
-  private async shoot(page: Page, name: string): Promise<string> {
-    const file = path.join(this.evidenceDir, `${name}.png`);
-    writeFileSync(file, await page.screenshot());
-    return file;
+  private async shoot(page: Page, name: string): Promise<string | undefined> {
+    return saveShot(path.join(this.evidenceDir, `${name}.png`), await page.screenshot());
   }
 
   async openPage(
@@ -201,7 +199,8 @@ export class StagehandRunner implements BrowserRunner {
         });
         await page.goto(args.url, { waitUntil: "domcontentloaded", timeout: NAV_TIMEOUT_MS });
         await page.waitForTimeout(800);
-        screenshots.push(await this.shoot(page, `${args.runId}_0`));
+        const shot0 = await this.shoot(page, `${args.runId}_0`);
+        if (shot0) screenshots.push(shot0);
 
         const total = Math.min(args.actions.length, args.maxSteps ?? 12);
         for (let i = 0; i < total; i++) {

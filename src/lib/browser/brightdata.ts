@@ -5,7 +5,7 @@ import type { BrowserRun, BrowserRunner, DomPatch, EnvVars, OpenPageResult, Traj
 import { assertPublicUrl } from "../fetch/guards";
 import { compilePatches } from "../variants";
 import { measurePage } from "./metrics";
-import { DEFAULT_EVIDENCE_DIR, executeTrajectory, watchPageErrors } from "./playwright";
+import { DEFAULT_EVIDENCE_DIR, executeTrajectory, saveShot, watchPageErrors } from "./playwright";
 import { summarizeRun } from "./types";
 
 const BRIGHTDATA_HOST = "brd.superproxy.io:9222";
@@ -75,10 +75,10 @@ export class BrightDataBrowserRunner implements BrowserRunner {
   ): Promise<OpenPageResult> {
     await assertPublicUrl(url);
     return this.withSession(viewport, opts?.patches, async (page) => {
-      const screenshotPath = path.join(this.evidenceDir, `${opts?.shotName ?? Date.now()}.png`);
+      const shotFile = path.join(this.evidenceDir, `${opts?.shotName ?? Date.now()}.png`);
       await page.goto(url, { waitUntil: "domcontentloaded", timeout: BRIGHTDATA_NAV_TIMEOUT_MS });
       await page.waitForTimeout(1200);
-      await page.screenshot({ path: screenshotPath, fullPage: false });
+      const screenshotPath = saveShot(shotFile, await page.screenshot({ fullPage: false }));
       const metrics = await measurePage(page);
       return { html: await page.content(), screenshotPath, metrics };
     });

@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { isSameOrigin } from "@/lib/browser/extract";
+import { saveShot } from "@/lib/browser/playwright";
 import { FallbackJevClient } from "@/lib/decisions/jev";
 import { JsonFileStore } from "@/lib/storage";
 import type { JevClient } from "@/lib/contracts";
@@ -36,5 +37,11 @@ describe("JsonFileStore.get", () => {
     const store = new JsonFileStore();
     expect(await store.get("../../package")).toBeNull();
     expect(await store.get("exp_missing")).toBeNull();
+  });
+});
+
+describe("saveShot", () => {
+  it("returns undefined instead of throwing when the evidence dir is not writable", () => {
+    expect(saveShot("/nonexistent-dir/rehearsal/x.png", new Uint8Array([1]))).toBeUndefined();
   });
 });

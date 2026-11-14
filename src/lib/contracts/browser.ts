@@ -23,7 +23,8 @@ export interface TrajectoryArgs {
 
 export interface OpenPageResult {
   html: string;
-  screenshotPath: string;
+  /** Absent when the evidence dir is read-only (edge runtimes). */
+  screenshotPath?: string;
   /** Layout metrics from the `measurePage` hook, taken in the same session as the screenshot. */
   metrics?: PageMetrics;
 }
