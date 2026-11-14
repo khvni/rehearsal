@@ -1,7 +1,8 @@
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import { extractPage } from "../../src/lib/browser/extract";
 import { withTimeout } from "../../src/lib/browser/playwright";
-import { parseRobots, robotsAllowsPath } from "../../src/lib/fetch/guards";
+import { PlainFetcher } from "../../src/lib/fetch";
+import { fetchPublic, parseRobots, robotsAllowsPath } from "../../src/lib/fetch/guards";
 
 const PAGE = "https://example.com/pricing";
 
@@ -56,6 +57,32 @@ Allow: /api/public/
     expect(robotsAllowsPath(rules, "/pricing?session=1")).toBe(false);
     expect(robotsAllowsPath(rules, "/data.json")).toBe(false);
     expect(robotsAllowsPath(rules, "/data.json.html")).toBe(true);
+  });
+});
+
+describe("redirect re-validation", () => {
+  afterEach(() => vi.restoreAllMocks());
+
+  const redirectTo = (location: string) => new Response(null, { status: 302, headers: { location } });
+
+  it("PlainFetcher refuses a redirect to a private address without fetching it", async () => {
+    const fetchMock = vi.spyOn(globalThis, "fetch").mockResolvedValue(redirectTo("http://127.0.0.1/"));
+    await expect(new PlainFetcher().fetchHtml("http://93.184.216.34/robots.txt")).rejects.toThrow(/private IP/);
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    expect(fetchMock.mock.calls[0][1]?.redirect).toBe("manual");
+  });
+
+  it("follows public redirects and caps the hop count", async () => {
+    const fetchMock = vi
+      .spyOn(globalThis, "fetch")
+      .mockResolvedValueOnce(redirectTo("http://93.184.216.35/next"))
+      .mockResolvedValueOnce(new Response("ok"));
+    const res = await fetchPublic("http://93.184.216.34/");
+    expect(await res.text()).toBe("ok");
+    expect(String(fetchMock.mock.calls[1][0])).toBe("http://93.184.216.35/next");
+
+    fetchMock.mockImplementation(async () => redirectTo("http://93.184.216.34/loop"));
+    await expect(fetchPublic("http://93.184.216.34/")).rejects.toThrow(/Too many redirects/);
   });
 });
 

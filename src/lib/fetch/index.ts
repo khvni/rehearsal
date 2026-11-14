@@ -1,5 +1,5 @@
 import type { PageFetcher } from "../contracts";
-import { assertPublicUrl, politeDelay } from "./guards";
+import { assertPublicUrl, fetchPublic, politeDelay } from "./guards";
 
 const UA =
   "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0 Safari/537.36 RehearsalBot/0.1";
@@ -9,11 +9,9 @@ export class PlainFetcher implements PageFetcher {
   readonly name = "plain-fetch";
 
   async fetchHtml(url: string): Promise<string> {
-    const u = await assertPublicUrl(url);
-    await politeDelay(u);
-    const res = await fetch(u, {
+    await politeDelay(await assertPublicUrl(url));
+    const res = await fetchPublic(url, {
       headers: { "user-agent": UA, accept: "text/html,application/xhtml+xml" },
-      redirect: "follow",
       signal: AbortSignal.timeout(30000),
     });
     if (!res.ok) throw new Error(`Fetch failed ${res.status} for ${url}`);
