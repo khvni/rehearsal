@@ -7,6 +7,7 @@ import {
   isExperimentId,
   type ExperimentStore,
 } from "../contracts";
+import { logEvent } from "../telemetry";
 
 /** Experiment ids are `exp_<hex>`; anything else (e.g. `../x` from the URL) never touches the filesystem. */
 const SAFE_ID = /^[A-Za-z0-9_-]+$/;
@@ -45,15 +46,16 @@ export class JsonFileStore implements ExperimentStore {
   async save(e: Experiment): Promise<void> {
     const p = this.fileFor(e.id);
     if (!p) throw new Error("invalid experiment id");
+    const doc = JSON.stringify(Experiment.parse(e), null, 2);
     const onWorkers = typeof navigator !== "undefined" && navigator.userAgent === "Cloudflare-Workers";
     if (!onWorkers) {
       // Node/local: real write errors (disk full, permissions) must surface — a silent
       // drop would let create() report success for an experiment reads can't find.
-      writeFileSync(p, JSON.stringify(e, null, 2));
+      writeFileSync(p, doc);
       return;
     }
     try {
-      writeFileSync(p, JSON.stringify(e, null, 2));
+      writeFileSync(p, doc);
     } catch {
       /* workerd fs is read-only — writes no-op (D1Store is the real store there) */
     }
@@ -72,13 +74,19 @@ export class JsonFileStore implements ExperimentStore {
   }
 
   async list(): Promise<Experiment[]> {
+    let files: string[];
     try {
-      return readdirSync(this.dir)
-        .filter((f) => f.endsWith(".json"))
-        .map((f) => Experiment.parse(JSON.parse(readFileSync(path.join(this.dir, f), "utf8"))));
+      files = readdirSync(this.dir).filter((f) => f.endsWith(".json"));
     } catch {
       return [];
     }
+    return files.flatMap((f) => {
+      try {
+        return parseListed(JSON.parse(readFileSync(path.join(this.dir, f), "utf8")), f);
+      } catch {
+        return parseListed(undefined, f);
+      }
+    });
   }
 
   private activityFile(id: string): string | null {
@@ -163,7 +171,8 @@ export class TigerDataStore implements ExperimentStore {
     return this.client;
   }
 
-  async save(e: Experiment): Promise<void> {
+  async save(experiment: Experiment): Promise<void> {
+    const e = Experiment.parse(experiment);
     const c = await this.conn();
     await c.query(
       `INSERT INTO experiments (id, status, target_url, goal, payload)
@@ -182,7 +191,7 @@ export class TigerDataStore implements ExperimentStore {
   async list(): Promise<Experiment[]> {
     const c = await this.conn();
     const { rows } = await c.query(`SELECT payload FROM experiments ORDER BY created_at DESC`);
-    return rows.map((r) => Experiment.parse(r.payload));
+    return rows.flatMap((r) => parseListed(r.payload, String(r.payload?.id ?? "unknown")));
   }
 
   async appendActivity(id: string, event: ActivityEvent): Promise<void> {
@@ -262,7 +271,8 @@ export class D1Store implements ExperimentStore {
     return db;
   }
 
-  async save(e: Experiment): Promise<void> {
+  async save(experiment: Experiment): Promise<void> {
+    const e = Experiment.parse(experiment);
     const db = await this.db();
     if (!db) return this.fallback.save(e);
     await db
@@ -288,7 +298,13 @@ export class D1Store implements ExperimentStore {
     const { results } = await db
       .prepare(`SELECT payload FROM experiments ORDER BY created_at DESC`)
       .all<{ payload: string }>();
-    return results.map((r) => Experiment.parse(JSON.parse(r.payload)));
+    return results.flatMap((r, i) => {
+      try {
+        return parseListed(JSON.parse(r.payload), `d1:${i}`);
+      } catch {
+        return parseListed(undefined, `d1:${i}`);
+      }
+    });
   }
 
   async appendActivity(id: string, event: ActivityEvent): Promise<void> {
@@ -367,6 +383,14 @@ export class SnowflakeCortex {
       text: [r.title, r.description].filter(Boolean).join(" — "),
     }));
   }
+}
+
+/** Listing skips records that no longer match the contract so one bad document can't break the list. */
+function parseListed(doc: unknown, ref: string): Experiment[] {
+  const r = Experiment.safeParse(doc);
+  if (r.success) return [r.data];
+  logEvent({ stage: "storage", kind: "invalid-experiment-skipped", data: { ref, error: r.error.message.slice(0, 160) } });
+  return [];
 }
 
 export function selectStore(): ExperimentStore {
