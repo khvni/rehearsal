@@ -1,36 +1,16 @@
 import { z } from "zod";
 import { PageMetrics } from "./metrics";
 
-// ── Krug rubric ─────────────────────────────────────────────────────────────
-
-export const KrugDimension = z.enum([
-  "clarity",
-  "navigation",
-  "hierarchy",
-  "cognitive-effort",
-  "copy-economy",
-  "consistency",
-  "feedback",
-  "recovery",
-  "responsive",
-  "goal-completion",
-]);
-export type KrugDimension = z.infer<typeof KrugDimension>;
-
-export const KRUG_DIMENSIONS = KrugDimension.options;
-
-export const KrugPrinciple = z.enum([
-  "dont-make-me-think",
-  "scanning-not-reading",
-  "conventions",
-  "mindless-choices",
-  "omit-words",
-  "navigation",
-  "homepage",
-  "farmers-and-cowmen",
-  "testing-beats-arguing",
-]);
-export type KrugPrinciple = z.infer<typeof KrugPrinciple>;
+export * from "./base";
+import {
+  EndpointClass,
+  ExperimentConfig,
+  IntentCategory,
+  KrugDimension,
+  KrugPrinciple,
+  Severity,
+  SiteType,
+} from "./base";
 
 // ── Browser ─────────────────────────────────────────────────────────────────
 
@@ -208,8 +188,6 @@ export const EvidenceType = z.enum([
 ]);
 export type EvidenceType = z.infer<typeof EvidenceType>;
 
-export const Severity = z.enum(["critical", "high", "medium", "low"]);
-
 export const Finding = z.object({
   findingId: z.string(),
   title: z.string(),
@@ -299,26 +277,6 @@ export type SpecReport = z.infer<typeof SpecReport>;
 
 // ── Intents + endpoints (RFX-style: Information / Quotation / Proposal) ────
 
-export const IntentCategory = z.enum(["information", "quotation", "proposal"]);
-export type IntentCategory = z.infer<typeof IntentCategory>;
-
-export const EndpointClass = z.enum([
-  "pricing",
-  "signup",
-  "demo-video",
-  "contact-form",
-  "docs-answers",
-  "next-steps",
-  "schedule-event",
-  "download",
-  "other",
-]);
-export type EndpointClass = z.infer<typeof EndpointClass>;
-
-/** A destination a visitor wants to reach (pricing page, signup, video, form, answers…). */
-export const SiteType = z.enum(["event", "saas", "commerce", "content"]);
-export type SiteType = z.infer<typeof SiteType>;
-
 export const Endpoint = z.object({
   endpointId: z.string(),
   class: EndpointClass,
@@ -384,15 +342,7 @@ export const ExperimentStatus = z.enum([
   "failed",
 ]);
 
-export const ExperimentConfig = z.object({
-  seed: z.number().int().default(1337),
-  maxStates: z.number().int().positive().default(30),
-  maxDepth: z.number().int().positive().default(3),
-  trajectories: z.number().int().positive().default(1000),
-  verifyCount: z.number().int().positive().default(8),
-  viewports: z.array(z.enum(["desktop", "mobile"])).default(["desktop", "mobile"]),
-});
-export type ExperimentConfig = z.infer<typeof ExperimentConfig>;
+
 
 export const Experiment = z.object({
   id: z.string(),
@@ -486,6 +436,7 @@ export const SiteRunSummary = z.object({
 });
 export type SiteRunSummary = z.infer<typeof SiteRunSummary>;
 
+export * from "./bench";
 export * from "./browser";
 export * from "./metrics";
 export * from "./ports";

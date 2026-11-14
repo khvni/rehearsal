@@ -1,0 +1,52 @@
+{
+  "id": "aie-code-2026",
+  "name": "AIE /code/2026 (event site)",
+  "goal": "find the conference schedule",
+  "mountPath": "/code/2026",
+  "pages": {
+    "/code/2026": "aie-code-2026.html"
+  },
+  "stubMissing": true,
+  "referenceNow": "2026-11-13T12:00:00.000Z",
+  "expectedSiteType": "event",
+  "expectedIntentCategory": "information",
+  "expectedEndpointClasses": ["schedule-event", "signup"],
+  "expectedFindings": [
+    {
+      "titleMatch": "post-event page still invites registration",
+      "krugPrinciple": "omit-words",
+      "severity": "high"
+    }
+  ],
+  "toleratedFindings": [
+    { "titleMatch": "dense link surface" },
+    { "titleMatch": "console errors" },
+    { "titleMatch": "page lacks a readable title" },
+    { "titleMatch": "assertion failed in browser" },
+    { "titleMatch": "has no answer path" },
+    { "titleMatch": "expected visitor questions" },
+    { "titleMatch": "trunk test" },
+    { "titleMatch": "primary navigation has" },
+    { "titleMatch": "missing site ID" }
+  ],
+  "unexpectedFindings": [],
+  "expectedSpecItems": [
+    { "match": "post-event|registration|stale|apply" }
+  ],
+  "budgetsMs": {
+    "discover": 60000,
+    "simulate": 30000,
+    "verify": 60000,
+    "analyze": 30000,
+    "compare": 60000,
+    "spec": 30000,
+    "total": 240000
+  },
+  "expectations": {
+    "minGoalReachRate": 0,
+    "minJourneyCoverage": 0.05,
+    "minFindingsPrecision": 0.8,
+    "minFindingsRecall": 1,
+    "minSpecItemCoverage": 1
+  }
+}
