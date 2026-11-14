@@ -244,13 +244,13 @@ export default function ExperimentPage() {
             <li key={s}>
               <button
                 type="button"
-                className={`step ${stageDone[s] ? "done" : ""} ${stageActive(s) ? "active" : ""} ${stageErrors[s] ? "error" : ""}`}
+                className={`step ${stageDone[s] && !stageErrors[s] ? "done" : ""} ${stageActive(s) ? "active" : ""} ${stageErrors[s] ? "error" : ""}`}
                 disabled={pending !== null}
                 onClick={() => void runStage(s)}
                 aria-current={stageActive(s) ? "step" : undefined}
                 aria-label={`${STAGE_LABEL[s]}: ${stageActive(s) ? "running" : stageErrors[s] ? "failed" : stageDone[s] ? "done" : "not run"}. Run this step.`}
               >
-                <span className="step-mark" aria-hidden>{stageDone[s] ? <CheckIcon size={12} /> : stageErrors[s] ? <CrossIcon size={12} /> : i + 1}</span>
+                <span className="step-mark" aria-hidden>{stageErrors[s] ? <CrossIcon size={12} /> : stageDone[s] ? <CheckIcon size={12} /> : i + 1}</span>
                 <span className="step-name">{STAGE_LABEL[s]}</span>
               </button>
             </li>
