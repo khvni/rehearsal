@@ -15,6 +15,7 @@ import type {
 } from "../contracts";
 import { assertPublicUrl } from "../fetch/guards";
 import { compilePatches } from "../variants";
+import { isSameOrigin } from "./extract";
 import { measurePage } from "./metrics";
 import { DEFAULT_EVIDENCE_DIR } from "./playwright";
 import { evaluateAssertion, shouldShoot, summarizeRun } from "./types";
@@ -165,7 +166,7 @@ export class StagehandRunner implements BrowserRunner {
 
   private async step(sh: Stagehand, page: Page, a: TrajectoryAction): Promise<void> {
     const origin = new URL(await page.url()).origin;
-    if (a.href && a.href.startsWith(origin)) {
+    if (a.href && isSameOrigin(a.href, origin)) {
       await page.goto(a.href, { waitUntil: "domcontentloaded", timeout: NAV_TIMEOUT_MS });
       return;
     }

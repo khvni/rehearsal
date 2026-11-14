@@ -6,6 +6,7 @@ import type {
   JevClient,
   SiteState,
 } from "../contracts";
+import { logEvent } from "../telemetry";
 
 /**
  * Jev / System One client.
@@ -124,10 +125,29 @@ function argmax(dist: Record<string, number>): string | undefined {
   return best;
 }
 
+/** Live Jev with a per-call fixture fallback: a 401/timeout must not fail the simulate stage. */
+export class FallbackJevClient implements JevClient {
+  readonly name: string;
+  private fixture = new FixtureJevClient();
+
+  constructor(private live: JevClient) {
+    this.name = `${live.name}+fallback`;
+  }
+
+  async decide(state: Record<string, unknown>, questions: DecisionQuestion[]): Promise<DecisionResult[]> {
+    try {
+      return await this.live.decide(state, questions);
+    } catch (err) {
+      logEvent({ stage: "simulate", kind: "jev-fallback", data: { from: this.live.name, error: String(err).slice(0, 160) } });
+      return this.fixture.decide(state, questions);
+    }
+  }
+}
+
 export function selectJev(): JevClient {
   if (process.env.JEV_API_KEY || process.env.OPENROUTER_API_KEY) {
     try {
-      return new HttpJevClient();
+      return new FallbackJevClient(new HttpJevClient());
     } catch {
       /* fall through */
     }

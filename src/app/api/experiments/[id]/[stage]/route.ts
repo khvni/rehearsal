@@ -38,6 +38,10 @@ export async function POST(_req: Request, { params }: { params: Promise<{ id: st
     if (e instanceof StageInProgressError) {
       return NextResponse.json({ error: e.message, runningStage: e.runningStage }, { status: 409 });
     }
+    if (e instanceof Error && e.message.startsWith("Unknown experiment")) {
+      return NextResponse.json({ error: e.message }, { status: 404 });
+    }
+    await orch.markFailed(id, e).catch(() => undefined);
     return NextResponse.json({ error: String(e).slice(0, 400) }, { status: 500 });
   }
 }

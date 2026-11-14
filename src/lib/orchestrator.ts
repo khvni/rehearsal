@@ -14,7 +14,7 @@ import {
   type Variant,
 } from "./contracts";
 import { selectFetcher } from "./fetch";
-import { assertPublicUrl, robotsDisallowed } from "./fetch/guards";
+import { assertPublicUrl, robotsAllows } from "./fetch/guards";
 import { extractPage, selectRunner } from "./browser/runner";
 import { GraphBuilder, makeState, adjacency } from "./graph";
 import { selectJev, scoreActions } from "./decisions/jev";
@@ -36,6 +36,7 @@ import {
 } from "./intents";
 import { metricFindings } from "./analysis/metric-findings";
 import { metricsFromHtml } from "./browser/metrics";
+import { isSameOrigin } from "./browser/extract";
 import { generateSpec, specToMarkdown } from "./analysis/spec";
 import { selectStore } from "./storage";
 import { captureError, logEvent, traceTags, withTrace } from "./telemetry";
@@ -148,12 +149,8 @@ export class Orchestrator {
       const config = experiment.configuration;
       const builder = new GraphBuilder(config.maxStates, config.maxDepth);
       logEvent({ experimentId: id, stage: "discover", kind: "browser-runner", data: { runner: this.runner.name } });
-      const disallowed = await robotsDisallowed(
-        new URL(experiment.targetUrl),
-        this.fetcher.fetchHtml.bind(this.fetcher),
-      );
-      if (disallowed.some((p) => new URL(experiment.targetUrl).pathname.startsWith(p))) {
-        throw new Error(`Target path disallowed by robots.txt: ${disallowed.join(", ")}`);
+      if (!(await robotsAllows(new URL(experiment.targetUrl)))) {
+        throw new Error(`Target path disallowed by robots.txt: ${experiment.targetUrl}`);
       }
 
       for (const vpName of config.viewports) {
@@ -196,7 +193,7 @@ export class Orchestrator {
               const relevant = (label: string, href: string) =>
                 goalWords.some((w) => `${label} ${href}`.toLowerCase().includes(w)) ? 1 : 0;
               const links = canonical.actions
-                .filter((a) => a.type === "click" && a.href && a.href.startsWith(origin))
+                .filter((a) => a.type === "click" && isSameOrigin(a.href, origin))
                 .sort((a, b) => relevant(b.label, b.href!) - relevant(a.label, a.href!));
               for (const a of links) {
                 frontier.push({ url: a.href!, depth: depth + 1, from: { stateId: canonical.stateId, actionId: a.actionId } });
@@ -288,9 +285,9 @@ export class Orchestrator {
         void adj;
         void stateById;
 
-        for (const vpName of e.configuration.viewports.slice(0, 1).concat(
-          traj === selected[0] && e.configuration.viewports.includes("mobile") ? ["mobile"] : [],
-        )) {
+        const vps = e.configuration.viewports.slice(0, 1);
+        if (traj === selected[0] && e.configuration.viewports.includes("mobile") && !vps.includes("mobile")) vps.push("mobile");
+        for (const vpName of vps) {
           const run = await this.runner.runTrajectory({
             url: e.targetUrl,
             viewport: VIEWPORTS[vpName],
@@ -364,13 +361,27 @@ export class Orchestrator {
       exp.browserTests.push(run);
 
       const baseline = exp.browserTests.find((r) => !r.variantId) ?? exp.browserTests[0];
+      // Backtracks = successful steps that revisit a URL (query kept, hash dropped) already seen, incl. the start page.
+      const backtracksOf = (r: typeof run) => {
+        const pageKey = (u: string) => u.split("#")[0].replace(/\/$/, "");
+        const seen = new Set([pageKey(exp.targetUrl)]);
+        let n = 0;
+        for (const s of r.steps) {
+          const href = s.ok && s.actionId ? actionById.get(s.actionId)?.href : undefined;
+          if (!href) continue;
+          const key = pageKey(href);
+          if (seen.has(key)) n++;
+          seen.add(key);
+        }
+        return n;
+      };
       const comparison: Comparison = {
         baselineRunId: baseline.runId,
         variantRunId: run.runId,
         deltas: {
           goalCompleted: { baseline: baseline.success, variant: run.success },
           interactionCount: { baseline: baseline.steps.length, variant: run.steps.length },
-          backtracks: { baseline: baseline.steps.length, variant: run.steps.length },
+          backtracks: { baseline: backtracksOf(baseline), variant: backtracksOf(run) },
           failedInteractions: {
             baseline: baseline.steps.filter((s) => !s.ok).length,
             variant: run.steps.filter((s) => !s.ok).length,
@@ -512,6 +523,15 @@ Return ASSERTION_LIST as a JSON array of {kind, value, selector?}.`,
     const e = await this.store.get(id);
     if (!e) throw new Error(`Unknown experiment: ${id}`);
     return e;
+  }
+
+  /** Records a stage failure so the dashboard stops showing a stuck "discovering…" state. */
+  async markFailed(id: string, err: unknown): Promise<void> {
+    const exp = await this.store.get(id).catch(() => null);
+    if (!exp) return;
+    const message = String(err instanceof Error ? err.message : err).slice(0, 500);
+    if (exp.errors[exp.errors.length - 1] !== message) exp.errors.push(message);
+    await this.update(exp, "failed");
   }
 
   private async update(exp: Experiment, status: Experiment["status"]): Promise<void> {

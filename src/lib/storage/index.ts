@@ -2,6 +2,9 @@ import { mkdirSync, readFileSync, writeFileSync, existsSync, readdirSync } from 
 import path from "node:path";
 import { Experiment, type ExperimentStore } from "../contracts";
 
+/** Experiment ids are `exp_<hex>`; anything else (e.g. `../x` from the URL) never touches the filesystem. */
+const SAFE_ID = /^[A-Za-z0-9_-]+$/;
+
 /** Default persistence: JSON files under data/experiments/. */
 export class JsonFileStore implements ExperimentStore {
   readonly name = "json-file";
@@ -33,6 +36,7 @@ export class JsonFileStore implements ExperimentStore {
   }
 
   async get(id: string): Promise<Experiment | null> {
+    if (!SAFE_ID.test(id)) return null;
     const p = path.join(this.dir, `${id}.json`);
     try {
       if (!existsSync(p)) return null;

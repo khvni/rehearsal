@@ -14,6 +14,7 @@ import type {
 } from "../contracts";
 import { assertPublicUrl, politeDelay, robotsAllows } from "../fetch/guards";
 import { compilePatches } from "../variants";
+import { isSameOrigin } from "./extract";
 import { measurePage } from "./metrics";
 import { evaluateAssertion, shouldShoot, summarizeRun } from "./types";
 
@@ -67,7 +68,7 @@ export async function executeTrajectory(
   for (let i = 0; i < total; i++) {
     const a = args.actions[i];
     try {
-      const sameOrigin = !!a.href && a.href.startsWith(new URL(page.url()).origin);
+      const sameOrigin = isSameOrigin(a.href, new URL(page.url()).origin);
       const loc = a.role === "button" ? page.getByRole("button", { name: a.label }) : page.getByRole("link", { name: a.label });
       if (sameOrigin && !opts.preferClick) {
         await page.goto(a.href!, { waitUntil: "domcontentloaded", timeout: opts.navTimeoutMs });
