@@ -4,14 +4,14 @@ locals {
   # Only non-empty values are written to the droplet's env file.
   app_env = {
     for k, v in {
-      REHEARSAL_ACCESS_TOKEN = var.rehearsal_access_token
-      GEMINI_API_KEY         = var.gemini_api_key
-      JEV_API_KEY            = var.jev_api_key
-      BROWSERBASE_API_KEY    = var.browserbase_api_key
-      BROWSERBASE_PROJECT_ID = var.browserbase_project_id
+      REHEARSAL_ACCESS_TOKEN  = var.rehearsal_access_token
+      GEMINI_API_KEY          = var.gemini_api_key
+      JEV_API_KEY             = var.jev_api_key
+      BROWSERBASE_API_KEY     = var.browserbase_api_key
+      BROWSERBASE_PROJECT_ID  = var.browserbase_project_id
       BROWSERBASE_FUNCTION_ID = var.browserbase_function_id
-      SENTRY_DSN             = var.sentry_dsn
-      DATABASE_URL           = var.database_url
+      SENTRY_DSN              = var.sentry_dsn
+      DATABASE_URL            = var.database_url
     } : k => v if v != ""
   }
   env_file = join("\n", [for k, v in local.app_env : "${k}=${v}"])

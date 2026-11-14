@@ -127,6 +127,8 @@ export interface BrowserbaseFunctionRunnerOptions {
   functionId: string;
   /** Pre-uploaded Stagehand extension id, sent as sessionCreateParams.extensionId. */
   extensionId?: string;
+  /** Directory screenshots are written to (best-effort; read-only runtimes keep remote names). */
+  evidenceDir?: string;
   /** Total wait per invocation, invoke to terminal status. */
   timeoutMs?: number;
   pollMs?: number;

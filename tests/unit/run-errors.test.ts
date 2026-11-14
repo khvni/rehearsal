@@ -102,7 +102,7 @@ describe("BrowserbaseFunctionRunner", () => {
   it("maps FAILED invocations and timeouts to BROWSER_REMOTE_FAILED", async () => {
     const failed = await fakeApi([{ status: "FAILED", error: "session crashed" }]).runner.openPage("https://a.test/", VP).catch((e) => e);
     expect(classifyError(failed)).toBe("BROWSER_REMOTE_FAILED");
-    const stuck = await fakeApi(Array.from({ length: 10 }, () => ({ status: "RUNNING" }))).runner.openPage("https://a.test/", VP).catch((e) => e);
+    const stuck = await fakeApi(Array.from({ length: 2000 }, () => ({ status: "RUNNING" }))).runner.openPage("https://a.test/", VP).catch((e) => e);
     expect(classifyError(stuck)).toBe("BROWSER_REMOTE_FAILED");
     expect(String(stuck)).toMatch(/still RUNNING after 50 ms/);
   });

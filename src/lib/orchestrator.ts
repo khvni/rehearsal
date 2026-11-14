@@ -255,6 +255,8 @@ export class Orchestrator {
       experiment.graph = builder.build();
       experiment.failures = [...experiment.failures.filter((f) => f.stage !== "discover"), ...pageFailures];
       if (experiment.graph.states.length === 0) {
+        // Keep the per-page failures before markFailed reloads the stored experiment.
+        await this.update(experiment, "discovering");
         const code = dominantCode(pageFailures);
         const sample = pageFailures.find((f) => f.code === code);
         const cause = sample ? ` Most common cause: ${formatFailure(sample)}` : "";
