@@ -17,7 +17,7 @@
   "states": 12,
   "edges": 112,
   "trajectories": 40,
-  "goalReached": 37,
+  "goalReached": 39,
   "verified": 2,
   "verifiedPassed": 0,
   "findings": [
