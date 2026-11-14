@@ -61,8 +61,10 @@ export async function executeTrajectory(
   await page.waitForTimeout(800);
   await settleInterstitial(page);
   const shot0 = path.join(evidenceDir, `${args.runId}_0.png`);
-  await page.screenshot({ path: shot0, timeout: PAGE_CALL_MS });
-  screenshots.push(shot0);
+  await page
+    .screenshot({ path: shot0, timeout: PAGE_CALL_MS })
+    .then(() => screenshots.push(shot0))
+    .catch(() => undefined);
 
   const total = Math.min(args.actions.length, args.maxSteps ?? 12);
   for (let i = 0; i < total; i++) {
@@ -87,8 +89,10 @@ export async function executeTrajectory(
     }
     if (shouldShoot(i, total)) {
       const shot = path.join(evidenceDir, `${args.runId}_${i + 1}.png`);
-      await page.screenshot({ path: shot, timeout: PAGE_CALL_MS }).catch(() => undefined);
-      screenshots.push(shot);
+      await page
+        .screenshot({ path: shot, timeout: PAGE_CALL_MS })
+        .then(() => screenshots.push(shot))
+        .catch(() => undefined);
     }
   }
 
@@ -169,9 +173,12 @@ export class PlaywrightRunner implements BrowserRunner {
       await page.waitForTimeout(1200);
       await settleInterstitial(page);
       const html = await withTimeout(page.content(), PAGE_CALL_MS, "page.content");
-      await page.screenshot({ path: screenshotPath, fullPage: false, timeout: PAGE_CALL_MS });
+      const shotOk = await page
+        .screenshot({ path: screenshotPath, fullPage: false, timeout: PAGE_CALL_MS })
+        .then(() => true)
+        .catch(() => false);
       const metrics = await withTimeout(measurePage(page), PAGE_CALL_MS, "measurePage");
-      return { html, screenshotPath, metrics };
+      return { html, screenshotPath: shotOk ? screenshotPath : undefined, metrics };
     } finally {
       await ctx.close();
     }

@@ -78,9 +78,9 @@ export class BrightDataBrowserRunner implements BrowserRunner {
       const screenshotPath = path.join(this.evidenceDir, `${opts?.shotName ?? Date.now()}.png`);
       await page.goto(url, { waitUntil: "domcontentloaded", timeout: BRIGHTDATA_NAV_TIMEOUT_MS });
       await page.waitForTimeout(1200);
-      await page.screenshot({ path: screenshotPath, fullPage: false });
+      const shotOk = await page.screenshot({ path: screenshotPath, fullPage: false }).then(() => true).catch(() => false);
       const metrics = await measurePage(page);
-      return { html: await page.content(), screenshotPath, metrics };
+      return { html: await page.content(), screenshotPath: shotOk ? screenshotPath : undefined, metrics };
     });
   }
 
