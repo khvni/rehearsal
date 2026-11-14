@@ -1,11 +1,57 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Field, FieldError, FieldGroup, FieldLabel } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
+
+interface ExperimentSummary {
+  id: string;
+  targetUrl: string;
+  goal: string;
+  status: string;
+  createdAt: string;
+}
+
+function PastExperiments() {
+  const [experiments, setExperiments] = useState<ExperimentSummary[] | null>(null);
+
+  useEffect(() => {
+    fetch("/api/experiments")
+      .then((r) => (r.ok ? r.json() : []))
+      .then((data) => setExperiments(Array.isArray(data) ? data : []))
+      .catch(() => setExperiments([]));
+  }, []);
+
+  return (
+    <section className="panel past-experiments">
+      <div className="panel-head">
+        <h2>Past experiments</h2>
+        <span className="panel-meta">{experiments === null ? "Loading…" : `${experiments.length}`}</span>
+        <div className="panel-actions">
+          <Link href="/mockups" className="new-link">Mockups →</Link>
+        </div>
+      </div>
+      <div className="panel-body">
+        {experiments !== null && experiments.length === 0 && (
+          <p className="card-meta">No experiments yet — run your first rehearsal above.</p>
+        )}
+        {(experiments ?? []).map((exp) => (
+          <Link key={exp.id} href={`/experiments/${exp.id}`} className="card exp-row">
+            <span className="card-title">
+              <span className="card-heading">{exp.goal}</span>
+            </span>
+            <span className="card-body">{exp.targetUrl}</span>
+            <span className="card-meta">{exp.status} · {new Date(exp.createdAt).toLocaleDateString()}</span>
+          </Link>
+        ))}
+      </div>
+    </section>
+  );
+}
 
 export default function Home() {
   const [url, setUrl] = useState("https://ai.engineer/code/2026");
@@ -58,6 +104,7 @@ export default function Home() {
           {busy ? "Starting…" : "Start rehearsal"}
         </Button>
       </form>
+      <PastExperiments />
     </main>
   );
 }

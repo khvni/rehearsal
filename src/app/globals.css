@@ -850,6 +850,10 @@ a:hover { text-decoration-color: currentColor; }
 .card-rec { margin: 0; max-width: 40em; font-size: var(--fs-14); color: var(--text-2); }
 .card-rec b { color: var(--text); font-weight: 500; }
 .card-meta { color: var(--muted); font-size: var(--fs-12); overflow-wrap: anywhere; }
+.exp-row { text-decoration: none; }
+.exp-row:hover .card-heading { text-decoration: underline; text-decoration-color: var(--border-strong); text-underline-offset: 3px; }
+.past-experiments .new-link { color: var(--muted); font-size: var(--fs-14); text-decoration: none; }
+.past-experiments .new-link:hover { color: var(--text); }
 .stagger > * { animation: reveal var(--dur-2) var(--ease-out) both; }
 .stagger > :nth-child(2) { animation-delay: 30ms; }
 .stagger > :nth-child(3) { animation-delay: 60ms; }
