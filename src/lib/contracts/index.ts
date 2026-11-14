@@ -9,7 +9,6 @@ import {
   KrugDimension,
   KrugPrinciple,
   Severity,
-  SiteType,
 } from "./base";
 
 // ── Browser ─────────────────────────────────────────────────────────────────
