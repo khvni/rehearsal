@@ -1,9 +1,23 @@
-import { mkdirSync, readFileSync, writeFileSync, existsSync, readdirSync } from "node:fs";
+import { appendFileSync, mkdirSync, readFileSync, statSync, writeFileSync, existsSync, readdirSync } from "node:fs";
 import path from "node:path";
-import { Experiment, type ExperimentStore } from "../contracts";
+import {
+  ACTIVITY_EVENT_LIMIT,
+  ActivityEvent,
+  Experiment,
+  isExperimentId,
+  type ExperimentStore,
+} from "../contracts";
 
 /** Experiment ids are `exp_<hex>`; anything else (e.g. `../x` from the URL) never touches the filesystem. */
 const SAFE_ID = /^[A-Za-z0-9_-]+$/;
+
+/** Rewrites a JSONL activity file to its newest ACTIVITY_EVENT_LIMIT lines once it passes this size. */
+const ACTIVITY_FILE_MAX_BYTES = 256 * 1024;
+
+function trimActivityFile(file: string): void {
+  const lines = readFileSync(file, "utf8").split("\n").filter(Boolean).slice(-ACTIVITY_EVENT_LIMIT);
+  writeFileSync(file, lines.join("\n") + "\n");
+}
 
 /** Default persistence: JSON files under data/experiments/. */
 export class JsonFileStore implements ExperimentStore {
@@ -20,16 +34,26 @@ export class JsonFileStore implements ExperimentStore {
     }
   }
 
+  /** Path for a valid experiment id that resolves inside the store dir; null otherwise. */
+  private fileFor(id: string): string | null {
+    if (!isExperimentId(id)) return null;
+    const root = path.resolve(this.dir);
+    const p = path.resolve(root, `${id}.json`);
+    return p.startsWith(root + path.sep) ? p : null;
+  }
+
   async save(e: Experiment): Promise<void> {
+    const p = this.fileFor(e.id);
+    if (!p) throw new Error("invalid experiment id");
     const onWorkers = typeof navigator !== "undefined" && navigator.userAgent === "Cloudflare-Workers";
     if (!onWorkers) {
       // Node/local: real write errors (disk full, permissions) must surface — a silent
       // drop would let create() report success for an experiment reads can't find.
-      writeFileSync(path.join(this.dir, `${e.id}.json`), JSON.stringify(e, null, 2));
+      writeFileSync(p, JSON.stringify(e, null, 2));
       return;
     }
     try {
-      writeFileSync(path.join(this.dir, `${e.id}.json`), JSON.stringify(e, null, 2));
+      writeFileSync(p, JSON.stringify(e, null, 2));
     } catch {
       /* workerd fs is read-only — writes no-op (D1Store is the real store there) */
     }
@@ -37,7 +61,8 @@ export class JsonFileStore implements ExperimentStore {
 
   async get(id: string): Promise<Experiment | null> {
     if (!SAFE_ID.test(id)) return null;
-    const p = path.join(this.dir, `${id}.json`);
+    const p = this.fileFor(id);
+    if (!p) return null;
     try {
       if (!existsSync(p)) return null;
       return Experiment.parse(JSON.parse(readFileSync(p, "utf8")));
@@ -51,6 +76,45 @@ export class JsonFileStore implements ExperimentStore {
       return readdirSync(this.dir)
         .filter((f) => f.endsWith(".json"))
         .map((f) => Experiment.parse(JSON.parse(readFileSync(path.join(this.dir, f), "utf8"))));
+    } catch {
+      return [];
+    }
+  }
+
+  private activityFile(id: string): string | null {
+    if (!isExperimentId(id)) return null;
+    const root = path.resolve(this.dir);
+    const p = path.resolve(root, `${id}.activity.jsonl`);
+    return p.startsWith(root + path.sep) ? p : null;
+  }
+
+  async appendActivity(id: string, event: ActivityEvent): Promise<void> {
+    const file = this.activityFile(id);
+    if (!file) return;
+    try {
+      appendFileSync(file, JSON.stringify(ActivityEvent.parse(event)) + "\n");
+      if (statSync(file).size > ACTIVITY_FILE_MAX_BYTES) trimActivityFile(file);
+    } catch {
+      /* activity writes are best-effort — workerd fs is read-only */
+    }
+  }
+
+  async activity(id: string, limit = ACTIVITY_EVENT_LIMIT): Promise<ActivityEvent[]> {
+    const file = this.activityFile(id);
+    if (!file) return [];
+    try {
+      if (!existsSync(file)) return [];
+      return readFileSync(file, "utf8")
+        .split("\n")
+        .filter(Boolean)
+        .slice(-limit)
+        .flatMap((line) => {
+          try {
+            return [ActivityEvent.parse(JSON.parse(line))];
+          } catch {
+            return [];
+          }
+        });
     } catch {
       return [];
     }
@@ -69,6 +133,15 @@ const SCHEMA_SQL = `
     goal TEXT NOT NULL,
     payload JSONB NOT NULL,
     created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+  );
+  CREATE TABLE IF NOT EXISTS experiment_activity (
+    seq BIGSERIAL PRIMARY KEY,
+    id TEXT NOT NULL,
+    ts TEXT NOT NULL,
+    stage TEXT NOT NULL,
+    kind TEXT NOT NULL,
+    message TEXT NOT NULL,
+    url TEXT
   );`;
 
 export class TigerDataStore implements ExperimentStore {
@@ -111,6 +184,30 @@ export class TigerDataStore implements ExperimentStore {
     const { rows } = await c.query(`SELECT payload FROM experiments ORDER BY created_at DESC`);
     return rows.map((r) => Experiment.parse(r.payload));
   }
+
+  async appendActivity(id: string, event: ActivityEvent): Promise<void> {
+    const c = await this.conn();
+    await c.query(
+      `INSERT INTO experiment_activity (id, ts, stage, kind, message, url) VALUES ($1,$2,$3,$4,$5,$6)`,
+      [id, event.ts, event.stage, event.kind, event.message, event.url ?? null],
+    );
+    await c.query(
+      `DELETE FROM experiment_activity WHERE id=$1
+         AND seq <= (SELECT seq FROM experiment_activity WHERE id=$1 ORDER BY seq DESC LIMIT 1 OFFSET $2)`,
+      [id, ACTIVITY_EVENT_LIMIT],
+    );
+  }
+
+  async activity(id: string, limit = ACTIVITY_EVENT_LIMIT): Promise<ActivityEvent[]> {
+    const c = await this.conn();
+    const { rows } = await c.query(
+      `SELECT ts, stage, kind, message, url FROM experiment_activity WHERE id=$1 ORDER BY seq DESC LIMIT $2`,
+      [id, limit],
+    );
+    return rows
+      .reverse()
+      .map((r) => ActivityEvent.parse({ ...r, url: r.url ?? undefined }));
+  }
 }
 
 /** Minimal D1 surface this store uses — avoids a @cloudflare/workers-types dep. */
@@ -132,6 +229,15 @@ const D1_SCHEMA_SQL = `
     goal TEXT NOT NULL,
     payload TEXT NOT NULL,
     created_at TEXT NOT NULL
+  );
+  CREATE TABLE IF NOT EXISTS experiment_activity (
+    seq INTEGER PRIMARY KEY AUTOINCREMENT,
+    id TEXT NOT NULL,
+    ts TEXT NOT NULL,
+    stage TEXT NOT NULL,
+    kind TEXT NOT NULL,
+    message TEXT NOT NULL,
+    url TEXT
   );`;
 
 /**
@@ -149,7 +255,10 @@ export class D1Store implements ExperimentStore {
     const { env } = await getCloudflareContext({ async: true });
     const db = (env as { DB?: D1Binding }).DB;
     if (!db) return null;
-    await db.prepare(D1_SCHEMA_SQL).run();
+    // D1 prepare() accepts exactly one statement — run each separately.
+    for (const stmt of D1_SCHEMA_SQL.split(";").map((s) => s.trim()).filter(Boolean)) {
+      await db.prepare(stmt).run();
+    }
     return db;
   }
 
@@ -180,6 +289,38 @@ export class D1Store implements ExperimentStore {
       .prepare(`SELECT payload FROM experiments ORDER BY created_at DESC`)
       .all<{ payload: string }>();
     return results.map((r) => Experiment.parse(JSON.parse(r.payload)));
+  }
+
+  async appendActivity(id: string, event: ActivityEvent): Promise<void> {
+    const db = await this.db();
+    if (!db) return this.fallback.appendActivity(id, event);
+    await db
+      .prepare(
+        `INSERT INTO experiment_activity (id, ts, stage, kind, message, url) VALUES (?,?,?,?,?,?)`,
+      )
+      .bind(id, event.ts, event.stage, event.kind, event.message, event.url ?? null)
+      .run();
+    await db
+      .prepare(
+        `DELETE FROM experiment_activity WHERE id=?
+           AND seq <= (SELECT seq FROM experiment_activity WHERE id=? ORDER BY seq DESC LIMIT 1 OFFSET ?)`,
+      )
+      .bind(id, id, ACTIVITY_EVENT_LIMIT)
+      .run();
+  }
+
+  async activity(id: string, limit = ACTIVITY_EVENT_LIMIT): Promise<ActivityEvent[]> {
+    const db = await this.db();
+    if (!db) return this.fallback.activity(id, limit);
+    const { results } = await db
+      .prepare(
+        `SELECT ts, stage, kind, message, url FROM experiment_activity WHERE id=? ORDER BY seq DESC LIMIT ?`,
+      )
+      .bind(id, limit)
+      .all<{ ts: string; stage: string; kind: string; message: string; url: string | null }>();
+    return results
+      .reverse()
+      .map((r) => ActivityEvent.parse({ ...r, url: r.url ?? undefined }));
   }
 }
 

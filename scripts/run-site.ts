@@ -11,12 +11,11 @@
  */
 import { existsSync, mkdirSync, readFileSync, readdirSync, rmSync, writeFileSync } from "node:fs";
 import path from "node:path";
-import { chromium } from "playwright";
 import { Orchestrator } from "../src/lib/orchestrator";
 import { specToMarkdown } from "../src/lib/analysis/spec";
 import { assertPublicUrl, politeDelay, robotsAllows } from "../src/lib/fetch/guards";
 import { SiteRunSummary, type Experiment, type SitePreflight } from "../src/lib/contracts";
-import { settleInterstitial, withTimeout } from "../src/lib/browser/playwright";
+import { launchChromium, settleInterstitial, withTimeout } from "../src/lib/browser/playwright";
 import { selectRunner } from "../src/lib/browser/runner";
 
 const ROOT = process.cwd();
@@ -99,7 +98,7 @@ function visibleTextLength(html: string): number {
 async function preflight(url: string): Promise<SitePreflight> {
   const target = await assertPublicUrl(url);
   await politeDelay(target);
-  const browser = await chromium.launch({ headless: true });
+  const browser = await launchChromium();
   try {
     const ctx = await browser.newContext({ userAgent: PROBE_UA, viewport: { width: 1440, height: 900 } });
     const page = await ctx.newPage();

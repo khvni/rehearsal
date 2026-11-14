@@ -94,7 +94,11 @@ deploy — details and the binding setup in docs/sandbox.md.
 
 **Fetch** (`src/lib/fetch`) — Bright Data Web Unlocker (`POST https://api.brightdata.com/request`
 with `{ zone, url, format: "raw" }`) → Browserbase Fetch (`browserbase.fetch`) → plain `fetch`.
-Every path runs `assertPublicUrl` + per-host politeness first. Bright Data SERP API and Web
+Every path runs `assertPublicUrl` + per-host politeness first. Plain fetches re-check every
+redirect hop. Local Chromium sends every request (redirects and subresources too) through a
+loopback egress proxy (`fetch/egress-proxy.ts`) that resolves each host, refuses private,
+link-local and metadata addresses, and connects to the IP it checked; runners also re-check
+`page.url()` after each navigation. Bright Data SERP API and Web
 Scraper API / datasets target search engines and prebuilt site scrapers, so they are not wired.
 
 ## Environment variables
@@ -115,6 +119,7 @@ a variable that is missing here or in `.env.example`, or if `.env.example` lists
 | `STAGEHAND_MODEL` / `STAGEHAND_MODEL_API_KEY` | `browser/stagehand.ts` | `google/$GEMINI_MODEL_FAST` with `GEMINI_API_KEY` |
 | `STAGEHAND_CHROME_PATH` | `browser/runner.ts` | Stagehand's default Chrome lookup (`stagehand-local` only) |
 | `REHEARSAL_BROWSER` | `browser/runner.ts` | `auto` |
+| `REHEARSAL_CHROMIUM_NO_SANDBOX` | `browser/sandbox.ts` | Local Chromium (Playwright, `stagehand-local`) runs with its sandbox on. `1` turns it off for hosts without unprivileged user namespaces; never set it in a deployment |
 | `REHEARSAL_VERIFY_AGENT` | `browser/runner.ts`, `orchestrator.ts` | verify uses `runTrajectory` (scripted locators) |
 | `REHEARSAL_SANDBOX` | `sandbox/index.ts` | `auto` — Cloudflare adapter when bound, node worker otherwise |
 | `SENTRY_DSN` / `SENTRY_TRACES_SAMPLE_RATE` | `telemetry/index.ts` | Sentry off (JSONL event log still written) / `0.2` |
@@ -123,6 +128,8 @@ a variable that is missing here or in `.env.example`, or if `.env.example` lists
 | `TIGERDATA_URL` (or `DATABASE_URL`) | `storage/index.ts` | `JsonFileStore` under `data/experiments/` |
 | `NEXT_PUBLIC_POSTHOG_KEY` / `NEXT_PUBLIC_POSTHOG_HOST` | `app/layout.tsx` | alikhani.co's project key / `https://us.i.posthog.com` |
 | `SNOWFLAKE_ACCOUNT_URL`, `SNOWFLAKE_TOKEN`, `SNOWFLAKE_CORTEX_SERVICE` | `storage/index.ts` | Cortex Search disabled |
+| `REHEARSAL_ACCESS_TOKEN` | `proxy.ts` | No gate: every page and API route is open. Set it on any public host; browsers prompt for it (Basic auth, any username) and API clients send `Authorization: Bearer <token>` |
+| `REHEARSAL_MAX_CONCURRENT_RUNS` | `access/index.ts` | `2` pipeline stage requests at once per process; extras get 429 |
 | `REHEARSAL_ALLOW_PRIVATE` | `fetch/guards.ts` | SSRF guard enforced. `1` lets tests target localhost; never set it in a deployment |
 
 Terraform provisions the deploy subset (`terraform/README.md`); `scripts/verify-facts.ts`

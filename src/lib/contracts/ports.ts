@@ -1,4 +1,4 @@
-import type { DecisionQuestion, DecisionResult, Experiment } from "./index";
+import type { ActivityEvent, DecisionQuestion, DecisionResult, Experiment } from "./index";
 
 // Pluggable service interfaces wired by the Orchestrator; each has a keyless fallback.
 
@@ -7,6 +7,10 @@ export interface ExperimentStore {
   save(experiment: Experiment): Promise<void>;
   get(id: string): Promise<Experiment | null>;
   list(): Promise<Experiment[]>;
+  /** Append one event to the experiment's activity feed. Bounded to ACTIVITY_EVENT_LIMIT, newest win. */
+  appendActivity(id: string, event: ActivityEvent): Promise<void>;
+  /** The experiment's activity feed, chronological; at most `limit` events (default ACTIVITY_EVENT_LIMIT). */
+  activity(id: string, limit?: number): Promise<ActivityEvent[]>;
 }
 
 /** Jev / System One decisions client (src/lib/decisions/jev.ts). */

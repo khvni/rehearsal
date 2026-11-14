@@ -3,6 +3,7 @@ import {
   Experiment,
   ExperimentConfig,
   VIEWPORTS,
+  type ActivityKind,
   type Assertion,
   type BrowserRunner,
   type Comparison,
@@ -37,11 +38,13 @@ import {
 import { metricFindings } from "./analysis/metric-findings";
 import { metricsFromHtml } from "./browser/metrics";
 import { isSameOrigin } from "./browser/extract";
+import { errorText } from "./browser/types";
 import { generateSpec, specToMarkdown } from "./analysis/spec";
 import { selectStore } from "./storage";
 import { captureError, logEvent, traceTags, withTrace } from "./telemetry";
 import { writeFileSync, mkdirSync } from "node:fs";
 import path from "node:path";
+import type { ActivityEvent } from "./contracts";
 
 /** Canonical pipeline stages — keep in sync with .devin/skills/rehearsal-testing/SKILL.md (CI-enforced). */
 export const PIPELINE_STAGES = [
@@ -97,7 +100,7 @@ export class Orchestrator {
       goal,
       status: "created",
       createdAt: new Date().toISOString(),
-      configuration: config ?? {},
+      configuration: ExperimentConfig.parse(config ?? {}),
     });
     await this.store.save(experiment);
     return experiment;
@@ -109,6 +112,26 @@ export class Orchestrator {
 
   async list(): Promise<Experiment[]> {
     return this.store.list();
+  }
+
+  /** The experiment's live activity feed (bounded, chronological). */
+  async activity(id: string): Promise<ActivityEvent[]> {
+    return this.store.activity(id);
+  }
+
+  /** Append one line to the feed. Best-effort: a store failure must never break a stage. */
+  private async emit(id: string, stage: string, kind: ActivityKind, message: string, url?: string): Promise<void> {
+    try {
+      await this.store.appendActivity(id, {
+        ts: new Date().toISOString(),
+        stage,
+        kind,
+        message,
+        url,
+      });
+    } catch {
+      /* activity is a transparency surface, not pipeline state */
+    }
   }
 
   /**
@@ -149,7 +172,9 @@ export class Orchestrator {
       const config = experiment.configuration;
       const builder = new GraphBuilder(config.maxStates, config.maxDepth);
       logEvent({ experimentId: id, stage: "discover", kind: "browser-runner", data: { runner: this.runner.name } });
+      await this.emit(id, "discover", "info", `Mapping ${experiment.targetUrl} with ${this.runner.name}`);
       if (!(await robotsAllows(new URL(experiment.targetUrl)))) {
+        await this.emit(id, "discover", "error", "Blocked by robots.txt", experiment.targetUrl);
         throw new Error(`Target path disallowed by robots.txt: ${experiment.targetUrl}`);
       }
 
@@ -168,6 +193,7 @@ export class Orchestrator {
           }
           if (attempted.has(url) || depth > config.maxDepth || builder.full) continue;
           attempted.add(url);
+          await this.emit(id, "discover", "fetch", `Fetching ${url}`, url);
           try {
             const { html, screenshotPath, metrics } = await this.runner.openPage(url, viewport, {
               shotName: `${id}_${vpName}_d${depth}`,
@@ -187,6 +213,11 @@ export class Orchestrator {
             visited.set(url, canonical.stateId);
             if (from) builder.link(from.stateId, from.actionId, canonical.stateId);
             if (!isNew) continue;
+            await this.emit(
+              id, "discover", "map",
+              `Mapped ${pagePath(url)} → ${canonical.actions.length} actions`,
+              url,
+            );
             if (depth < config.maxDepth) {
               const origin = new URL(experiment.targetUrl).origin;
               const goalWords = experiment.goal.toLowerCase().split(/[^a-z0-9]+/).filter((w) => w.length > 4);
@@ -200,7 +231,8 @@ export class Orchestrator {
               }
             }
           } catch (e) {
-            logEvent({ experimentId: id, stage: "discover", kind: "page-fail", data: { url, error: String(e).slice(0, 160) } });
+            logEvent({ experimentId: id, stage: "discover", kind: "page-fail", data: { url, error: errorText(e, 160) } });
+            await this.emit(id, "discover", "error", `Couldn't load ${pagePath(url)}: ${errorText(e, 160)}`, url);
             await captureError(e, { url, depth, viewport: vpName }, {
               tags: traceTags("discover", { experimentId: id, targetUrl: experiment.targetUrl }),
               level: "warning",
@@ -209,6 +241,10 @@ export class Orchestrator {
         }
       }
       experiment.graph = builder.build();
+      await this.emit(
+        id, "discover", "info",
+        `Map complete: ${experiment.graph.states.length} states · ${experiment.graph.edges.length} links`,
+      );
       await this.mapIntents(experiment);
       await this.update(experiment, "created");
       return experiment;
@@ -231,6 +267,7 @@ export class Orchestrator {
 
       // Assertions: from LLM objective compile (fixture fallback = keyword text check).
       exp.assertions = await this.compileAssertions(exp.goal);
+      await this.emit(id, "simulate", "info", `Compiled ${exp.assertions.length} assertions for the goal`);
       if (!exp.endpoints) await this.mapIntents(exp);
 
       // Score each state's actions once; cache by stateHash.
@@ -243,6 +280,7 @@ export class Orchestrator {
         );
         weights.ambiguity.set(state.stateId, ambiguity);
       }
+      await this.emit(id, "simulate", "decide", `Scored actions across ${weights.byState.size} states`);
 
       exp.simulations = simulateTrajectories({
         graph,
@@ -253,6 +291,8 @@ export class Orchestrator {
         count: config.trajectories,
         maxDepth: config.maxDepth,
       });
+      const reached = exp.simulations.filter((t) => t.outcome === "goal-reached").length;
+      await this.emit(id, "simulate", "info", `Simulated ${exp.simulations.length} journeys — ${reached} reached the goal`);
       await this.update(exp, "created");
       return exp;
     });
@@ -288,12 +328,14 @@ export class Orchestrator {
         const vps = e.configuration.viewports.slice(0, 1);
         if (traj === selected[0] && e.configuration.viewports.includes("mobile") && !vps.includes("mobile")) vps.push("mobile");
         for (const vpName of vps) {
+          const runId = `run_${traj.trajectoryId}_${vpName}`;
+          await this.emit(id, "verify", "browser", `${runId}: replaying ${actions.length} steps on ${vpName}`);
           const args = {
             url: e.targetUrl,
             viewport: VIEWPORTS[vpName],
             actions,
             assertions: e.assertions,
-            runId: `run_${traj.trajectoryId}_${vpName}`,
+            runId,
           };
           // Agent runs only where the backend has a model (opt-in); compare stays scripted so baseline/variant replay identically.
           const useAgent =
@@ -301,6 +343,13 @@ export class Orchestrator {
           const run = useAgent
             ? await this.runner.runAgentTask!({ ...args, goal: e.goal })
             : await this.runner.runTrajectory(args);
+          for (const s of run.steps.filter((s) => !s.ok)) {
+            await this.emit(id, "verify", "assert", `"${s.label}" failed${s.error ? ` — ${s.error}` : ""}`);
+          }
+          for (const a of run.assertions.filter((a) => !a.passed)) {
+            await this.emit(id, "verify", "assert", `Assertion failed: ${a.assertion.kind} "${a.assertion.value}"`);
+          }
+          await this.emit(id, "verify", "browser", `${runId}: ${run.success ? "goal reached" : "goal not reached"} in ${run.durationMs} ms`);
           e.browserTests.push(run);
         }
       }
@@ -329,6 +378,13 @@ export class Orchestrator {
         ...questionFindings(exp.questions ?? [], graph),
         ...llm,
       ], { states, runs: exp.browserTests.length });
+      const verified = exp.findings.filter((f) => f.evidenceType === "verified-failure").length;
+      const unanswered = (exp.questions ?? []).filter((q) => !q.answered).length;
+      await this.emit(
+        id, "analyze", "finding",
+        `${exp.findings.length} findings (${verified} verified failures)` +
+          (exp.questions ? ` · ${unanswered} of ${exp.questions.length} visitor questions unanswered` : ""),
+      );
       await this.update(exp, "created");
       return exp;
     });
@@ -348,6 +404,7 @@ export class Orchestrator {
       }
       const variant = await this.proposeVariant(exp, finding.findingId);
       exp.variants.push(variant);
+      await this.emit(id, "compare", "browser", `Applied variant ${variant.variantId}: ${variant.patches.length} patch(es)`);
 
       const actionById = new Map((exp.graph?.states ?? []).flatMap((st) => st.actions.map((a) => [a.actionId, a] as const)));
       const baselineActions =
@@ -398,6 +455,10 @@ export class Orchestrator {
       };
       exp.comparisons.push(comparison);
       variant.status = "verified";
+      await this.emit(
+        id, "compare", "info",
+        `Variant replay: goal ${run.success ? "reached" : "not reached"} · ${run.steps.length} steps vs baseline ${baseline.steps.length}`,
+      );
       await this.update(exp, "created");
       return exp;
     });
@@ -410,6 +471,7 @@ export class Orchestrator {
     const exp = (await this.mustGet(id))!;
     return withTrace("spec", { experimentId: id, targetUrl: exp.targetUrl }, async () => {
       exp.spec = await generateSpec(exp, this.llm);
+      await this.emit(id, "spec", "info", `Spec written: ${exp.spec.changes.length} changes across ${exp.spec.rebuildPhases.length} phases`);
       // Evidence/spec files are best-effort; edge runtimes have a read-only fs.
       try {
         const dir = path.join(process.cwd(), "data", "experiments", exp.id);
@@ -536,6 +598,7 @@ Return ASSERTION_LIST as a JSON array of {kind, value, selector?}.`,
     const exp = await this.store.get(id).catch(() => null);
     if (!exp) return;
     const message = String(err instanceof Error ? err.message : err).slice(0, 500);
+    await this.emit(id, "run", "error", `Run failed: ${message}`);
     if (exp.errors[exp.errors.length - 1] !== message) exp.errors.push(message);
     await this.update(exp, "failed");
   }
@@ -547,6 +610,17 @@ Return ASSERTION_LIST as a JSON array of {kind, value, selector?}.`,
 
   async dispose(): Promise<void> {
     await this.runner.close();
+  }
+}
+
+/** Short readable form of a page URL for feed messages ("/code/2026"), raw string on parse failure. */
+function pagePath(url: string): string {
+  try {
+    const u = new URL(url);
+    const path = `${u.pathname === "/" ? "" : u.pathname}${u.search}`;
+    return `${u.host}${path}` || u.host;
+  } catch {
+    return url.slice(0, 80);
   }
 }
 

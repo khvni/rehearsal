@@ -38,6 +38,13 @@ variable "worker_name" {
   default     = "rehearsal"
 }
 
+variable "rehearsal_access_token" {
+  description = "Optional shared secret for the dashboard and API (Basic-auth password or Bearer token). Empty = public demo."
+  type        = string
+  sensitive   = true
+  default     = ""
+}
+
 # App secrets, bound as Worker secret_text. All optional: adapters fall back to fixtures.
 variable "gemini_api_key" {
   type      = string

@@ -18,6 +18,7 @@ import { extractPastDates, ruleFindings } from "@/lib/analysis/findings";
 import { specToMarkdown } from "@/lib/analysis/spec";
 import { summarizeRun } from "@/lib/browser/types";
 import { GeminiClient } from "@/lib/analysis/gemini";
+import { Orchestrator } from "@/lib/orchestrator";
 
 const FIXTURE = path.join(__dirname, "..", "evals", "fixtures", "aie-code-2026.html");
 const aieHtml = readFileSync(FIXTURE, "utf8");
@@ -31,6 +32,37 @@ describe("contracts", () => {
     });
     expect(e.configuration.maxStates).toBe(30);
     expect(ExperimentConfig.parse({}).trajectories).toBe(1000);
+  });
+
+  it("bounds experiment budgets", () => {
+    const max = { maxStates: 50, maxDepth: 5, trajectories: 5000, verifyCount: 16, viewports: ["mobile", "desktop"] };
+    expect(ExperimentConfig.parse(max)).toMatchObject(max);
+    for (const over of [
+      { trajectories: 1e9 },
+      { trajectories: 5001 },
+      { maxStates: 51 },
+      { maxDepth: 6 },
+      { verifyCount: 17 },
+      { viewports: ["desktop", "desktop"] },
+      { viewports: ["desktop", "mobile", "desktop"] },
+    ]) {
+      expect(() => ExperimentConfig.parse(over), JSON.stringify(over)).toThrow();
+    }
+  });
+
+  it("reads stored experiments over the budget limits, clamped", () => {
+    const e = Experiment.parse({
+      id: "exp_t", targetUrl: AIE_URL, goal: "g", status: "created", createdAt: new Date().toISOString(),
+      configuration: { maxStates: 1_000_000, maxDepth: 9, trajectories: 1e9, verifyCount: 99, viewports: ["mobile", "mobile"] },
+    });
+    expect(e.configuration).toMatchObject({
+      maxStates: 50, maxDepth: 5, trajectories: 5000, verifyCount: 16, viewports: ["mobile"],
+    });
+  });
+
+  it("createExperiment rejects over-budget configs", async () => {
+    const orch = new Orchestrator({ store: { save: vi.fn(), get: vi.fn(), list: vi.fn() } as never });
+    await expect(orch.createExperiment("http://93.184.215.14/", "g", { trajectories: 1e9 })).rejects.toThrow();
   });
 
   it("rejects invalid finding evidence type", () => {

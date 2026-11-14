@@ -11,7 +11,8 @@ secret values, so use a private/remote backend for anything shared).
 
 ## DigitalOcean (primary — droplet)
 
-One Ubuntu droplet; cloud-init installs Node 22 + Playwright Chromium, clones
+One Ubuntu droplet; cloud-init installs Node 22 + Playwright Chromium (plus an AppArmor
+profile so its sandbox can create user namespaces), clones
 `github_repo@git_ref`, runs `npm ci && npm run build`, serves `next start` on
 `127.0.0.1:3000` under systemd, and fronts it with Caddy (port 80, or auto-HTTPS when
 `domain` is set). A firewall allows only 22/80/443 in.
@@ -23,22 +24,31 @@ One Ubuntu droplet; cloud-init installs Node 22 + Playwright Chromium, clones
 | `size` | no | `s-2vcpu-4gb` | build + Chromium want >= 4 GB |
 | `domain` | no | `""` | DO-managed zone; creates an A record |
 | `subdomain` | no | `rehearsal` | record name in `domain` (`@` = apex) |
-| `ssh_key_fingerprints` | no | `[]` | DO SSH keys for shell access |
+| `rehearsal_access_token` | yes | — | shared secret for the dashboard + API (>= 16 chars); browsers prompt for it (any username) |
+| `ssh_key_fingerprints` | yes | — | DO SSH keys; Terraform needs one to write `/etc/rehearsal/env` |
+| `ssh_private_key` | no | `""` (ssh-agent) | private key for one of `ssh_key_fingerprints` |
 | `github_repo` / `git_ref` | no | `khvni/rehearsal` / `main` | |
-| `gemini_api_key`, `jev_api_key`, `brightdata_api_key`, `brightdata_zone`, `sentry_dsn`, `database_url` | no | `""` | written to `/etc/rehearsal/env` (0600) |
+| `gemini_api_key`, `jev_api_key`, `brightdata_api_key`, `brightdata_zone`, `sentry_dsn`, `database_url` | no | `""` | written to `/etc/rehearsal/env` (0600) over SSH |
 
 ```bash
 cd terraform/digitalocean
 terraform init
 terraform apply \
   -var="do_token=$DIGITALOCEAN_TOKEN" \
+  -var="rehearsal_access_token=$(openssl rand -hex 24)" \
+  -var='ssh_key_fingerprints=["<fingerprint>"]' \
   -var="domain=example.com" \
   -var="gemini_api_key=$GEMINI_API_KEY"   # optional secrets, same pattern
 ```
 
 Outputs: `droplet_ip`, `app_url`. The first boot build takes ~10 minutes
-(`tail -f /var/log/cloud-init-output.log` on the droplet). Secrets passed here end up in
-droplet user-data, which is readable by anyone with access to the DO account.
+(`tail -f /var/log/cloud-init-output.log` on the droplet). Secrets never go into droplet
+user-data (any process on the droplet can read it from the metadata service):
+`terraform_data.app_env` waits for cloud-init, writes `/etc/rehearsal/env` over SSH and
+restarts the service. The service also gets an iptables rule that blocks the `rehearsal`
+user from 169.254.0.0/16, and local Chromium runs behind the app's egress proxy
+(`src/lib/fetch/egress-proxy.ts`). Rotate any key that was deployed by an older version of
+this stack, since it was in user-data.
 
 ## Cloudflare (alternate — Workers)
 
@@ -55,6 +65,7 @@ from wrangler are ignored by Terraform. Keep `worker_name` equal to `name` in th
 | `domain` | no | `""` | custom hostname, e.g. `rehearsal.example.com` |
 | `workers_dev_subdomain` | no | `""` | only used to build `app_url` when no `domain` |
 | `worker_name` | no | `rehearsal` | |
+| `rehearsal_access_token` | no | `""` | shared secret for the dashboard + API; empty = public demo |
 | `gemini_api_key`, `jev_api_key`, `brightdata_api_key`, `brightdata_zone`, `sentry_dsn` | no | `""` | empty values are not bound |
 
 ```bash

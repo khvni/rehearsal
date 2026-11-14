@@ -28,16 +28,17 @@ Every `.env.example` key is classified in `scripts/verify-facts.ts`; an unclassi
 stale key fails the check.
 
 - **Deployed** (`DEPLOYED_ENV`) — each terraform stack must declare `lower_snake` and map it
-  into the app env: `GEMINI_API_KEY`, `JEV_API_KEY`, `BRIGHTDATA_API_KEY`, `BRIGHTDATA_ZONE`,
+  into the app env: `REHEARSAL_ACCESS_TOKEN`, `GEMINI_API_KEY`, `JEV_API_KEY`, `BRIGHTDATA_API_KEY`, `BRIGHTDATA_ZONE`,
   `SENTRY_DSN`, `DATABASE_URL`.
   - Exemption: `cloudflare` / `DATABASE_URL` — Postgres persistence is provisioned only on the
     primary DigitalOcean stack.
-- **Not deployed** (`NOT_DEPLOYED`) — code defaults (`GEMINI_MODEL_*`, `JEV_BASE_URL`,
+- **Not deployed** (`NOT_DEPLOYED`) — code defaults (`GEMINI_MODEL_*`, `REHEARSAL_GEMINI_MAX_CALLS`, `REHEARSAL_MAX_CONCURRENT_RUNS`, `JEV_BASE_URL`,
   `JEV_MODEL`, `REHEARSAL_BROWSER`, `REHEARSAL_VERIFY_AGENT`, `REHEARSAL_SANDBOX`,
   `SENTRY_TRACES_SAMPLE_RATE`), aliases (`OPENROUTER_API_KEY`,
   `TIGERDATA_URL`), client-side code defaults (`NEXT_PUBLIC_POSTHOG_*`), optional backends not provisioned yet (`BRIGHTDATA_BROWSER_*`,
   `BROWSERBASE_*`, `STAGEHAND_MODEL*`, `SNOWFLAKE_*`, `SENTRY_WEBHOOK_SECRET`, `GITHUB_TOKEN`), local-only (`STAGEHAND_CHROME_PATH`).
-- **Never deployed** — `REHEARSAL_ALLOW_PRIVATE` (disables the SSRF guard); fails if any
+- **Never deployed** — `REHEARSAL_ALLOW_PRIVATE` (disables the SSRF guard) and
+  `REHEARSAL_CHROMIUM_NO_SANDBOX` (disables the Chromium sandbox); fails if any
   stack maps it.
 
 ### Stored fixture

@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { isExperimentId } from "@/lib/contracts";
 import { Orchestrator } from "@/lib/orchestrator";
 
 export const runtime = "nodejs";
@@ -12,6 +13,7 @@ function orchestrator(): Orchestrator {
 
 export async function GET(_req: Request, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
+  if (!isExperimentId(id)) return NextResponse.json({ error: "not found" }, { status: 404 });
   const experiment = await orchestrator().get(id);
   if (!experiment) return NextResponse.json({ error: "not found" }, { status: 404 });
   return NextResponse.json(experiment);

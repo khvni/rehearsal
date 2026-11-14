@@ -12,6 +12,7 @@ export function Panel({
   className,
   enter = "fade",
   emptyAction,
+  loadingPreview,
   children,
 }: {
   title: string;
@@ -22,6 +23,7 @@ export function Panel({
   className?: string;
   enter?: "fade" | "none";
   emptyAction?: ReactNode;
+  loadingPreview?: ReactNode;
   children?: ReactNode;
 }) {
   return (
@@ -36,6 +38,7 @@ export function Panel({
       {state.kind === "loading" && (
         <div className="state" role="status">
           <ThinkingIndicator words={[state.label]} />
+          {loadingPreview && <div className="skel" aria-hidden>{loadingPreview}</div>}
         </div>
       )}
       {state.kind === "empty" && (

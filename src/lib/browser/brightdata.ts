@@ -6,7 +6,7 @@ import { assertPublicUrl } from "../fetch/guards";
 import { compilePatches } from "../variants";
 import { measurePage } from "./metrics";
 import { DEFAULT_EVIDENCE_DIR, executeTrajectory, watchPageErrors } from "./playwright";
-import { summarizeRun } from "./types";
+import { errorText, summarizeRun } from "./types";
 
 const BRIGHTDATA_HOST = "brd.superproxy.io:9222";
 /** Bright Data recommends a 2-minute navigation timeout for sites that need unlocking. */
@@ -22,6 +22,25 @@ export function brightDataBrowserEndpoint(env: EnvVars = process.env): string | 
   const pass = env.BRIGHTDATA_BROWSER_PASSWORD;
   if (user && pass) return `wss://${encodeURIComponent(user)}:${encodeURIComponent(pass)}@${BRIGHTDATA_HOST}`;
   return null;
+}
+
+/**
+ * Move `user:pass@` out of the CDP URL into a Basic Authorization header, so the
+ * credentials never appear in Playwright's connection errors. Same bytes the ws
+ * client would send for URL userinfo (it uses the still-percent-encoded parts).
+ */
+export function cdpConnectOptions(endpoint: string): { wsEndpoint: string; headers: Record<string, string> } {
+  let url: URL;
+  try {
+    url = new URL(endpoint);
+  } catch {
+    return { wsEndpoint: endpoint, headers: {} };
+  }
+  if (!url.username && !url.password) return { wsEndpoint: endpoint, headers: {} };
+  const auth = btoa(`${url.username}:${url.password}`);
+  url.username = "";
+  url.password = "";
+  return { wsEndpoint: url.toString(), headers: { Authorization: `Basic ${auth}` } };
 }
 
 /**
@@ -55,7 +74,8 @@ export class BrightDataBrowserRunner implements BrowserRunner {
   ): Promise<T> {
     // Lazy import so playwright stays out of the module graph on edge runtimes.
     const { chromium } = await import("playwright");
-    const browser: Browser = await chromium.connectOverCDP(this.endpoint);
+    const { wsEndpoint, headers } = cdpConnectOptions(this.endpoint);
+    const browser: Browser = await chromium.connectOverCDP(wsEndpoint, { headers });
     try {
       const ctx = browser.contexts()[0] ?? (await browser.newContext());
       const page = await ctx.newPage();
@@ -98,7 +118,7 @@ export class BrightDataBrowserRunner implements BrowserRunner {
         });
       });
     } catch (e) {
-      errors.push(`run: ${String(e).slice(0, 200)}`);
+      errors.push(`run: ${errorText(e)}`);
     }
     return summarizeRun({ runId: args.runId, viewport: args.viewport, started, errors, ...result });
   }

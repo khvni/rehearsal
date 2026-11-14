@@ -90,6 +90,8 @@ export interface StagehandRunnerOptions {
   browserbaseProjectId?: string;
   /** Local Chrome/Chromium binary for env=local (Stagehand does not bundle a browser). */
   executablePath?: string;
+  /** Chromium sandbox for env=local; defaults to chromiumSandboxEnabled(process.env). */
+  chromiumSandbox?: boolean;
   model?: ModelConfig;
   evidenceDir?: string;
 }
