@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import { brightDataBrowserEndpoint, cdpConnectOptions } from "../../src/lib/browser/brightdata";
 import { errorText, redactSecrets } from "../../src/lib/browser/types";
 import { runnerName, selectRunner } from "../../src/lib/browser/runner";
+import { chromiumSandboxEnabled } from "../../src/lib/browser/sandbox";
 import { stagehandModelFromEnv } from "../../src/lib/browser/stagehand";
 
 describe("selectRunner", () => {
@@ -72,5 +73,13 @@ describe("credential redaction", () => {
   it("redacts before truncating so no partial secret survives the cut", () => {
     const e = `run: ${"x".repeat(180)} wss://user:secretpassword@brd.superproxy.io:9222`;
     expect(errorText(e, 200, {})).not.toMatch(/secret/);
+  });
+});
+
+describe("chromiumSandboxEnabled", () => {
+  it("keeps the Chromium sandbox on unless REHEARSAL_CHROMIUM_NO_SANDBOX=1", () => {
+    expect(chromiumSandboxEnabled({})).toBe(true);
+    expect(chromiumSandboxEnabled({ REHEARSAL_CHROMIUM_NO_SANDBOX: "0" })).toBe(true);
+    expect(chromiumSandboxEnabled({ REHEARSAL_CHROMIUM_NO_SANDBOX: "1" })).toBe(false);
   });
 });

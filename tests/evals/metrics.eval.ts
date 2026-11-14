@@ -2,9 +2,10 @@ import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { createServer, type Server } from "node:http";
 import { readFileSync } from "node:fs";
 import path from "node:path";
-import { chromium, type Browser } from "playwright";
+import type { Browser } from "playwright";
 import { KrugPrinciple, VIEWPORTS, type PageMetrics, type Viewport } from "@/lib/contracts";
 import { measurePage, metricsFromHtml } from "@/lib/browser/metrics";
+import { launchChromium } from "@/lib/browser/playwright";
 import { metricFindings } from "@/lib/analysis/metric-findings";
 import { makeState } from "@/lib/graph";
 
@@ -41,7 +42,7 @@ beforeAll(async () => {
   await new Promise<void>((r) => server.listen(0, "127.0.0.1", r));
   const addr = server.address();
   base = `http://127.0.0.1:${typeof addr === "object" && addr ? addr.port : 0}`;
-  browser = await chromium.launch({ headless: true });
+  browser = await launchChromium();
   measured.desktop = await measureFixture(VIEWPORTS.desktop);
   measured.mobile = await measureFixture(VIEWPORTS.mobile);
 }, 60000);

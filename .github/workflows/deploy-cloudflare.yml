@@ -22,6 +22,8 @@ jobs:
       - run: npm ci
       - name: Install Chromium
         run: npx playwright install --with-deps chromium
+      - name: Allow the Chromium sandbox (Ubuntu 24.04 restricts user namespaces)
+        run: sudo sysctl -w kernel.apparmor_restrict_unprivileged_userns=0
       - run: npm run lint
       - run: npm run typecheck
       - run: npm run test
