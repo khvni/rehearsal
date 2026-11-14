@@ -9,6 +9,7 @@ import {
   type Comparison,
   type ExperimentStore,
   type JevClient,
+  type JevScoreCache,
   type LlmClient,
   type PageFetcher,
   type RunFailure,
@@ -19,7 +20,7 @@ import { selectFetcher } from "./fetch";
 import { assertPublicUrl, robotsAllows } from "./fetch/guards";
 import { agentVerifyEnabled, extractPage, selectRunner } from "./browser/runner";
 import { RehearsalError, dominantCode, formatFailure, toFailure } from "./errors";
-import { GraphBuilder, makeState, adjacency } from "./graph";
+import { GraphBuilder, makeState } from "./graph";
 import { selectJev, scoreActions } from "./decisions/jev";
 import { simulateTrajectories, selectTrajectories } from "./simulation";
 import { selectLlm } from "./analysis/gemini";
@@ -174,7 +175,7 @@ export class Orchestrator {
   /** Stage 1 — discover states, build graph. */
   private async runDiscover(id: string): Promise<Experiment> {
     const experiment = await this.mustGet(id);
-    this.llm.resetBudget?.();
+    this.llm.resetBudget?.({ experimentId: id });
     await this.update(experiment, "discovering");
     return withTrace("discover", { experimentId: id, targetUrl: experiment.targetUrl }, async () => {
       const config = experiment.configuration;
@@ -187,70 +188,74 @@ export class Orchestrator {
         throw new RehearsalError("ROBOTS_DISALLOWED", `Target path disallowed by robots.txt: ${experiment.targetUrl}`, experiment.targetUrl);
       }
 
-      for (const vpName of config.viewports) {
-        const viewport = VIEWPORTS[vpName];
-        const frontier: { url: string; depth: number; from?: { stateId: string; actionId: string } }[] = [
-          { url: experiment.targetUrl, depth: 0 },
-        ];
-        const visited = new Map<string, string>(); // url -> canonical stateId
-        const attempted = new Set<string>();
-        while (frontier.length > 0) {
-          const { url, depth, from } = frontier.shift()!;
-          if (visited.has(url)) {
-            if (from) builder.link(from.stateId, from.actionId, visited.get(url)!);
-            continue;
-          }
-          if (attempted.has(url) || depth > config.maxDepth || builder.full) continue;
-          attempted.add(url);
-          await this.emit(id, "discover", "fetch", `Fetching ${url}`, url);
-          try {
-            const { html, screenshotPath, metrics, brand } = await this.runner.openPage(url, viewport, {
-              shotName: `${id}_${vpName}_d${depth}`,
-            });
-            const extracted = extractPage(html, url);
-            const state = makeState({
-              url,
-              viewport,
-              title: extracted.title,
-              visibleText: extracted.visibleText,
-              actions: extracted.actions,
-              screenshotPath,
-            });
-            state.brand = mergeSignals(brandSignalsFromHtml(html, url), brand);
-            state.metrics = metrics ?? metricsFromHtml(html, url, viewport);
-            const { state: canonical, isNew } = builder.add(state);
-            if (!isNew && !builder.has(canonical.stateId)) continue;
-            visited.set(url, canonical.stateId);
-            if (from) builder.link(from.stateId, from.actionId, canonical.stateId);
-            if (!isNew) continue;
-            await this.emit(
-              id, "discover", "map",
-              `Mapped ${pagePath(url)} → ${canonical.actions.length} actions`,
-              url,
-            );
-            if (depth < config.maxDepth) {
-              const origin = new URL(experiment.targetUrl).origin;
-              const goalWords = experiment.goal.toLowerCase().split(/[^a-z0-9]+/).filter((w) => w.length > 4);
-              const relevant = (label: string, href: string) =>
-                goalWords.some((w) => `${label} ${href}`.toLowerCase().includes(w)) ? 1 : 0;
-              const links = canonical.actions
-                .filter((a) => a.type === "click" && isSameOrigin(a.href, origin))
-                .sort((a, b) => relevant(b.label, b.href!) - relevant(a.label, a.href!));
-              for (const a of links) {
-                frontier.push({ url: a.href!, depth: depth + 1, from: { stateId: canonical.stateId, actionId: a.actionId } });
-              }
+      try {
+        for (const vpName of config.viewports) {
+          const viewport = VIEWPORTS[vpName];
+          const frontier: { url: string; depth: number; from?: { stateId: string; actionId: string } }[] = [
+            { url: experiment.targetUrl, depth: 0 },
+          ];
+          const visited = new Map<string, string>(); // url -> canonical stateId
+          const attempted = new Set<string>();
+          while (frontier.length > 0) {
+            const { url, depth, from } = frontier.shift()!;
+            if (visited.has(url)) {
+              if (from) builder.link(from.stateId, from.actionId, visited.get(url)!);
+              continue;
             }
-          } catch (e) {
-            const failure = toFailure(e, "discover", url);
-            pageFailures.push(failure);
-            logEvent({ experimentId: id, stage: "discover", kind: "page-fail", data: { url, code: failure.code, error: errorText(e, 160) } });
-            await this.emit(id, "discover", "error", `Couldn't load ${pagePath(url)}: [${failure.code}] ${errorText(e, 160)}`, url);
-            await captureError(e, { url, depth, viewport: vpName }, {
-              tags: traceTags("discover", { experimentId: id, targetUrl: experiment.targetUrl }),
-              level: "warning",
-            });
+            if (attempted.has(url) || depth > config.maxDepth || builder.full) continue;
+            attempted.add(url);
+            await this.emit(id, "discover", "fetch", `Fetching ${url}`, url);
+            try {
+              const { html, screenshotPath, metrics, brand } = await this.runner.openPage(url, viewport, {
+                shotName: `${id}_${vpName}_d${depth}`,
+              });
+              const extracted = extractPage(html, url);
+              const state = makeState({
+                url,
+                viewport,
+                title: extracted.title,
+                visibleText: extracted.visibleText,
+                actions: extracted.actions,
+                screenshotPath,
+              });
+              state.brand = mergeSignals(brandSignalsFromHtml(html, url), brand);
+              state.metrics = metrics ?? metricsFromHtml(html, url, viewport);
+              const { state: canonical, isNew } = builder.add(state);
+              if (!isNew && !builder.has(canonical.stateId)) continue;
+              visited.set(url, canonical.stateId);
+              if (from) builder.link(from.stateId, from.actionId, canonical.stateId);
+              if (!isNew) continue;
+              await this.emit(
+                id, "discover", "map",
+                `Mapped ${pagePath(url)} → ${canonical.actions.length} actions`,
+                url,
+              );
+              if (depth < config.maxDepth) {
+                const origin = new URL(experiment.targetUrl).origin;
+                const goalWords = experiment.goal.toLowerCase().split(/[^a-z0-9]+/).filter((w) => w.length > 4);
+                const relevant = (label: string, href: string) =>
+                  goalWords.some((w) => `${label} ${href}`.toLowerCase().includes(w)) ? 1 : 0;
+                const links = canonical.actions
+                  .filter((a) => a.type === "click" && isSameOrigin(a.href, origin))
+                  .sort((a, b) => relevant(b.label, b.href!) - relevant(a.label, a.href!));
+                for (const a of links) {
+                  frontier.push({ url: a.href!, depth: depth + 1, from: { stateId: canonical.stateId, actionId: a.actionId } });
+                }
+              }
+            } catch (e) {
+              const failure = toFailure(e, "discover", url);
+              pageFailures.push(failure);
+              logEvent({ experimentId: id, stage: "discover", kind: "page-fail", data: { url, code: failure.code, error: errorText(e, 160) } });
+              await this.emit(id, "discover", "error", `Couldn't load ${pagePath(url)}: [${failure.code}] ${errorText(e, 160)}`, url);
+              await captureError(e, { url, depth, viewport: vpName }, {
+                tags: traceTags("discover", { experimentId: id, targetUrl: experiment.targetUrl }),
+                level: "warning",
+              });
+            }
           }
         }
+      } finally {
+        await this.runner.releaseCaptures?.();
       }
       experiment.graph = builder.build();
       experiment.failures = [...experiment.failures.filter((f) => f.stage !== "discover"), ...pageFailures];
@@ -295,17 +300,27 @@ export class Orchestrator {
       await this.emit(id, "simulate", "info", `Compiled ${exp.assertions.length} assertions for the goal`);
       if (!exp.endpoints) await this.mapIntents(exp);
 
-      // Score each state's actions once; cache by stateHash.
+      // Score each state's actions once; dedupe identical Jev payloads (e.g. viewport twins of a URL).
       const weights: SimWeights = { byState: new Map(), ambiguity: new Map() };
-      for (const state of graph.states.slice(0, config.maxStates)) {
-        const { scored, ambiguity } = await scoreActions(this.jev, state, exp.goal, "goal-directed");
+      const scoreCache: JevScoreCache = new Map();
+      const scoredStates = graph.states.slice(0, config.maxStates);
+      for (const state of scoredStates) {
+        const { scored, ambiguity } = await scoreActions(this.jev, state, exp.goal, "goal-directed", {
+          cache: scoreCache,
+          experimentId: id,
+        });
         weights.byState.set(
           state.stateId,
           new Map(scored.map((s) => [s.action.actionId, s.weight])),
         );
         weights.ambiguity.set(state.stateId, ambiguity);
       }
-      await this.emit(id, "simulate", "decide", `Scored actions across ${weights.byState.size} states`);
+      await this.emit(
+        id,
+        "simulate",
+        "decide",
+        `Scored actions across ${weights.byState.size} states — ${scoreCache.size} model calls (${weights.byState.size - scoreCache.size} deduped)`,
+      );
 
       exp.simulations = simulateTrajectories({
         graph,
@@ -331,8 +346,7 @@ export class Orchestrator {
     await this.update(e, "verifying");
     return withTrace("verify", { experimentId: id, targetUrl: e.targetUrl }, async () => {
       const graph = e.graph!;
-      const stateById = new Map(graph.states.map((s) => [s.stateId, s]));
-      const adj = adjacency(graph);
+      const actionById = new Map(graph.states.flatMap((st) => st.actions.map((a) => [a.actionId, a] as const)));
       const selected = selectTrajectories(e.simulations, e.configuration.verifyCount);
 
       for (const traj of selected) {
@@ -340,15 +354,10 @@ export class Orchestrator {
           .map((s) => s.actionId)
           .filter(Boolean)
           .map((actionId) => {
-            for (const st of graph.states) {
-              const a = st.actions.find((x) => x.actionId === actionId);
-              if (a) return { actionId: a.actionId, label: a.label, href: a.href, role: a.role };
-            }
-            return null;
+            const a = actionById.get(actionId!);
+            return a ? { actionId: a.actionId, label: a.label, href: a.href, role: a.role } : null;
           })
           .filter(Boolean) as { actionId: string; label: string; href?: string; role?: string }[];
-        void adj;
-        void stateById;
 
         const vps = e.configuration.viewports.slice(0, 1);
         if (traj === selected[0] && e.configuration.viewports.includes("mobile") && !vps.includes("mobile")) vps.push("mobile");
@@ -497,6 +506,13 @@ export class Orchestrator {
     return withTrace("spec", { experimentId: id, targetUrl: exp.targetUrl }, async () => {
       exp.spec = await generateSpec(exp, this.llm);
       await this.emit(id, "spec", "info", `Spec written: ${exp.spec.changes.length} changes across ${exp.spec.rebuildPhases.length} phases`);
+      const usage = this.collectUsage();
+      if (usage) {
+        const fmt = (u: { calls: number; totalTokens: number; estimated?: boolean }) =>
+          `${u.calls} calls · ~${(u.totalTokens / 1000).toFixed(1)}k tokens${u.estimated ? " (est)" : ""}`;
+        const parts = [usage.llm && `llm ${fmt(usage.llm)}`, usage.jev && `jev ${fmt(usage.jev)}`].filter(Boolean);
+        await this.emit(id, "spec", "info", `Model usage this run: ${parts.join(" · ")}`);
+      }
       // Evidence/spec files are best-effort; edge runtimes have a read-only fs.
       try {
         const dir = path.join(process.cwd(), "data", "experiments", exp.id);
@@ -646,7 +662,17 @@ Return ASSERTION_LIST as a JSON array of {kind, value, selector?}.`,
 
   private async update(exp: Experiment, status: Experiment["status"]): Promise<void> {
     exp.status = status;
+    const usage = this.collectUsage();
+    if (usage) exp.usage = usage;
     await this.store.save(Experiment.parse(exp));
+  }
+
+  /** Merge the clients' per-run usage counters — undefined when neither client reports. */
+  private collectUsage(): Experiment["usage"] {
+    const llm = this.llm.usageReport?.();
+    const jev = this.jev.usageReport?.();
+    if (!llm && !jev) return undefined;
+    return { llm, jev };
   }
 
   async dispose(): Promise<void> {

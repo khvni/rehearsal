@@ -11,12 +11,12 @@ eval cases.** `npm run check:skill-sync` fails the build otherwise.
 
 ## Pipeline stages (src/lib/orchestrator.ts, PIPELINE_STAGES)
 
-- `discover` — fetch + browser runner (Browserbase Function → Stagehand → local Playwright) open page, extract elements, build deduplicated state graph
-- `simulate` — Jev scores actions per state; seeded sampler produces ≥500 trajectories
+- `discover` — fetch + browser runner (Browserbase Function → Stagehand → local Playwright) open page, extract elements, build deduplicated state graph; Stagehand pools one browser session per viewport per crawl (`releaseCaptures` frees it when the stage ends)
+- `simulate` — Jev scores actions per state (one `choice` call per distinct scoring payload; a per-run signature cache dedupes identical inputs such as viewport twins of a URL; ambiguity is derived from the weight spread); seeded sampler produces ≥500 trajectories
 - `verify` — risk-ranked trajectories executed in real desktop/mobile browsers; assertions checked. `REHEARSAL_VERIFY_AGENT` swaps scripted locators for an observe/act/extract agent loop (`browser/agent.ts`, runners with `supportsAgent`)
-- `analyze` — rule-based + Gemini findings, each classified by evidence type + usability principle
+- `analyze` — rule-based + Gemini findings, each classified by evidence type + usability principle; LLM evidence deduped to one state per URL
 - `compare` — DOM-patch variant applied in isolated context; baseline vs variant deltas
-- `spec` — SpecReport generated; spec.md written under data/experiments/<id>/
+- `spec` — SpecReport generated; spec.md written under data/experiments/<id>/; per-run model usage (`experiment.usage`, `llm` + `jev` call/token totals) is stamped on every save and each call logged as a `llm-call`/`jev-call` telemetry event
 - `rebuild` — brand extraction from crawled states → goal inference from CTAs/nav/titles/endpoints → per-goal branded page generation (Gemini, deterministic template fallback); stored as experiment.rebuild, served at /experiments/:id/rebuild[/slug]
 
 ## Eval cases (tests/evals/, gated by evals.config.json thresholds)

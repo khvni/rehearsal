@@ -10,6 +10,7 @@ import type {
 } from "../contracts";
 import { isVagueLabel } from "../browser/extract";
 import { isRunError } from "../browser/types";
+import { uniqueStatesByUrl } from "../graph";
 import { EvidenceType, Finding, RubricDimension, UsabilityPrinciple, Severity, LEGACY_PRINCIPLES } from "../contracts";
 import { logEvent } from "../telemetry";
 import { rubricPromptSection } from "./rubric";
@@ -305,7 +306,8 @@ export async function llmFindings(args: {
   const { llm, states, runs, goal } = args;
   const evidence = {
     goal,
-    states: states.slice(0, 15).map((s) => ({
+    // One state per URL: viewport twins of a page carry near-identical evidence text.
+    states: uniqueStatesByUrl(states).slice(0, 15).map((s) => ({
       url: s.url,
       title: s.pageTitle,
       text: s.visibleText.slice(0, 900),

@@ -69,6 +69,12 @@ export interface BrowserRunner {
    * stage falls back to `runTrajectory` when absent (AGENTS.md rule 4).
    */
   runAgentTask?(args: AgentRunArgs): Promise<BrowserRun>;
+  /**
+   * Drop sessions pooled across `openPage` calls (runners may reuse one session
+   * for a whole crawl). Called by the orchestrator when a discover stage ends;
+   * per-call sessions close themselves regardless.
+   */
+  releaseCaptures?(): Promise<void>;
   close(): Promise<void>;
 }
 
