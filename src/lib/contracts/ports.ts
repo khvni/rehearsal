@@ -28,8 +28,8 @@ export interface LlmClient {
 }
 
 export interface PageFetcher {
-  /** Fetch fully-rendered or raw HTML for a public URL. */
-  fetchHtml(url: string): Promise<string>;
+  /** Fetch fully-rendered or raw HTML for a public URL. `signal` aborts the request; fetchers without abort support still honor their own deadline. */
+  fetchHtml(url: string, opts?: { signal?: AbortSignal }): Promise<string>;
   readonly name: string;
 }
 

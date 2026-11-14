@@ -144,12 +144,23 @@ export class Orchestrator {
   private async probe(url: string): Promise<{ goal: string; personas: VisitorPersona[]; source: "inferred" | "default" }> {
     const fallback = `Learn what ${new URL(url).hostname} offers`;
     try {
-      const html = await Promise.race([
-        this.fetcher.fetchHtml(url),
-        new Promise<never>((_, reject) =>
-          setTimeout(() => reject(new Error(`probe fetch timed out after ${PROBE_TIMEOUT_MS}ms`)), PROBE_TIMEOUT_MS),
-        ),
-      ]);
+      if (!(await robotsAllows(new URL(url)))) {
+        logEvent({ stage: "create", kind: "probe-fail", data: { url, error: "disallowed by robots.txt" } });
+        return { goal: fallback, personas: [], source: "default" };
+      }
+      const ctrl = new AbortController();
+      const timer = setTimeout(() => ctrl.abort(new Error(`probe fetch timed out after ${PROBE_TIMEOUT_MS}ms`)), PROBE_TIMEOUT_MS);
+      let html: string;
+      try {
+        html = await Promise.race([
+          this.fetcher.fetchHtml(url, { signal: ctrl.signal }),
+          new Promise<never>((_, reject) =>
+            ctrl.signal.addEventListener("abort", () => reject(ctrl.signal.reason), { once: true }),
+          ),
+        ]);
+      } finally {
+        clearTimeout(timer);
+      }
       const page = extractPage(html, url);
       const state = makeState({
         url,

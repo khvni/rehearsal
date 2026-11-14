@@ -68,12 +68,15 @@ describe("probe: inferGoalAndPersonas", () => {
 describe("probe: createExperiment wiring (fixture adapters)", () => {
   it("probes the first page and stores goalSource + personas when goal is omitted", async () => {
     process.env.REHEARSAL_ALLOW_PRIVATE = "1";
-    const orch = new Orchestrator({ store, fetcher: { name: "fixture-fetch", fetchHtml: async () => aieHtml } });
+    const fetchHtml = vi.fn(async () => aieHtml);
+    const orch = new Orchestrator({ store, fetcher: { name: "fixture-fetch", fetchHtml } });
     const exp = await orch.createExperiment(AIE_URL);
     expect(exp.goalSource).toBe("inferred");
     expect(exp.goal.length).toBeGreaterThan(0);
     expect(exp.personas.length).toBeGreaterThanOrEqual(1);
     expect(() => Experiment.parse(JSON.parse(JSON.stringify(exp)))).not.toThrow();
+    // the probe hands the fetcher a cancellable signal so a timed-out probe kills the request
+    expect(fetchHtml).toHaveBeenCalledWith(AIE_URL, expect.objectContaining({ signal: expect.any(AbortSignal) }));
   });
 
   it("never fetches when the caller supplies a goal", async () => {
