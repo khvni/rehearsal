@@ -2,10 +2,10 @@ import { afterAll, afterEach, beforeAll, describe, expect, it } from "vitest";
 import { createServer, request, type Server } from "node:http";
 import { connect } from "node:net";
 import type { AddressInfo } from "node:net";
-import { chromium, type Browser } from "playwright";
+import type { Browser } from "playwright";
 import { startEgressProxy } from "@/lib/fetch/egress-proxy";
 import { assertPublicUrl, resolvePublicHost } from "@/lib/fetch/guards";
-import { assertPublicPage } from "@/lib/browser/playwright";
+import { assertPublicPage, launchChromium } from "@/lib/browser/playwright";
 
 const SECRET = "GEMINI_API_KEY=[fixture-secret]";
 
@@ -85,7 +85,7 @@ describe("egress proxy", () => {
       // Treat the fixture site's 127.0.0.1 as "public"; everything else uses the real guard.
       const proxy = await startEgressProxy((host) => (host === "127.0.0.1" ? Promise.resolve(host) : resolvePublicHost(host)));
       close = proxy.close;
-      browser = await chromium.launch({ headless: true, proxy: { server: proxy.server } });
+      browser = await launchChromium(undefined, { proxy: { server: proxy.server } });
     });
 
     afterAll(async () => {
