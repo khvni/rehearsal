@@ -43,8 +43,8 @@
     "total": 240000
   },
   "expectations": {
-    "minGoalReachRate": 0,
-    "minJourneyCoverage": 0.05,
+    "minGoalReachRate": 0.2,
+    "minJourneyCoverage": 0.7,
     "minFindingsPrecision": 0.8,
     "minFindingsRecall": 1,
     "minSpecItemCoverage": 1

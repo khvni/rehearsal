@@ -27,7 +27,8 @@ export function installDeterministicIds(): void {
   const nodeCrypto = process.getBuiltinModule("node:crypto") as unknown as {
     randomUUID: () => string;
   };
-  nodeCrypto.randomUUID = () => `00000000-0000-4000-8000-${String(++seq).padStart(12, "0")}`;
+  // Counter first — makeState keeps only slice(0, 8) for stateIds/actionIds.
+  nodeCrypto.randomUUID = () => `${String(++seq).padStart(8, "0")}-0000-4000-8000-000000000000`;
   (process.getBuiltinModule("node:module") as unknown as {
     syncBuiltinESMExports: () => void;
   }).syncBuiltinESMExports();

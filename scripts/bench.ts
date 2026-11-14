@@ -28,7 +28,7 @@ import { syncBuiltinESMExports } from "node:module";
 const nodeCrypto = process.getBuiltinModule("node:crypto");
 let uuidCounter = 0;
 nodeCrypto.randomUUID = () =>
-  `00000000-0000-4000-8000-${String(++uuidCounter).padStart(12, "0")}` as `${string}-${string}-${string}-${string}-${string}`;
+  `${String(++uuidCounter).padStart(8, "0")}-0000-4000-8000-000000000000` as `${string}-${string}-${string}-${string}-${string}`;
 syncBuiltinESMExports();
 
 // Fixture sites run on loopback — assertPublicUrl would otherwise refuse them.
