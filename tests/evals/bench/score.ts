@@ -63,7 +63,7 @@ export function scoreSite(manifest: FixtureSiteManifest, run: BenchRun, runnerNa
     }
   }
   for (const e of manifest.expectedFindings) {
-    if (!produced.some((p) => matchFinding(e, p))) missing.push(e);
+    if (!produced.some((p) => p.matchedAs === "expected" && matchFinding(e, p))) missing.push(e);
   }
   const expectedTotal = manifest.expectedFindings.length;
   // Recall counts *expected rules* covered — duplicate produced matches can't inflate it.
