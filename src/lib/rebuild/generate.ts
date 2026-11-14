@@ -113,8 +113,18 @@ export function seedPageContent(exp: Experiment, goal: RebuildGoal): RebuildPage
   const start = states[0];
   const endpoints = sortedEndpoints(exp);
   const classEndpoints = goal.endpointClass ? endpoints.filter((e) => e.class === goal.endpointClass) : [];
-  const bestEndpoint = classEndpoints[0] ?? endpoints[0];
-  const ctaUrl = goal.targetUrl ?? bestEndpoint?.url ?? exp.targetUrl;
+  // Without a matching class, only pick an endpoint whose label/url shares a
+  // content word with the goal — otherwise the top-weighted endpoint (often
+  // signup) hijacks unrelated pages like "pricing".
+  const goalWords = new Set(`${goal.title} ${goal.goal} ${goal.sourceLabel ?? ""}`.toLowerCase().match(/[a-z0-9]{3,}/g) ?? []);
+  goalWords.delete("the");
+  const matchEndpoint = classEndpoints.length
+    ? classEndpoints[0]
+    : endpoints.find((e) => {
+        const words = `${e.label} ${e.url}`.toLowerCase().match(/[a-z0-9]{3,}/g) ?? [];
+        return words.some((w) => goalWords.has(w));
+      });
+  const ctaUrl = goal.targetUrl ?? matchEndpoint?.url ?? exp.targetUrl;
   const target = stateFor(states, ctaUrl) ?? start;
   const staleFix = staleFlagged(exp);
   const refYear = Number(/^((?:19|20)\d{2})-/.exec(exp.createdAt)?.[1] ?? 0);
@@ -128,7 +138,10 @@ export function seedPageContent(exp: Experiment, goal: RebuildGoal): RebuildPage
   const targetLines = target && target !== start ? proseLines(target.visibleText, staleFix, refYear) : [];
   const lede = clip(targetLines[0] ?? startLines[0] ?? goal.goal, 220);
   const allText = [target?.visibleText ?? "", start?.visibleText ?? ""].join("\n");
-  const status = allText.match(STATUS_RE)?.[0];
+  // When the audit flagged stale content, "registration is open"-style claims are
+  // exactly what the rebuild must not preserve — keep only closed/sold-out statuses.
+  const statusRaw = allText.match(STATUS_RE)?.[0];
+  const status = staleFix && statusRaw && !/(closed|sold\s*out)/i.test(statusRaw) ? undefined : statusRaw;
 
   const sections: RebuildPageContent["sections"] = [];
   const detail = (targetLines.length ? targetLines : startLines).filter((l) => clip(l, 220) !== lede).slice(0, 4);
