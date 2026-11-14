@@ -8,8 +8,11 @@ pieces look the way they do.
 - **Stagehand v4** (`@browserbasehq/stagehand` 4.4, already vendored) — exposes
   `observe(instruction)` → candidate elements `{selector, description, method}`,
   `act(instruction)` → self-healing action, `extract(instruction, schema)` → typed data.
-  Runs on Browserbase remote sessions or local Chrome; the Browserbase transport is
-  HTTP/WebSocket, so it works on workerd where Playwright itself cannot launch.
+  Runs on Browserbase remote sessions or local Chrome. Stagehand v4 cannot run inside
+  workerd: module load reads `import.meta.url`, launch uploads an extension zip from disk,
+  and its CDP WebSocket times out — so on the Worker, browser work runs inside a
+  Browserbase Function (`functions/rehearsal-browser`, published with
+  `npm run functions:publish`), reached through `BrowserbaseFunctionRunner`.
 - **Vercel Labs `agent-browser`** — a Rust CLI daemon that drives Chrome over CDP one
   shell command at a time: `snapshot` returns the page as a compact accessibility tree
   with refs (`@e1`), the agent clicks a ref, snapshots again, repeats. It supports remote
@@ -83,3 +86,29 @@ candidate → screenshot on the same cadence → assertions via `probe()`/`evalu
 
 On Browserbase, `observe`/`act`/`extract` run through Stagehand's remote transport, which
 is also the path that works from the Workers deploy.
+
+## Browserbase Function (`functions/rehearsal-browser`)
+
+The Worker cannot run Stagehand v4 in-process (see above), so on workerd the browser
+runner is `BrowserbaseFunctionRunner`: it `POST /v1/functions/{id}/invoke`s the published
+Function and polls `GET /v1/functions/invocations/{id}` until `COMPLETED`/`FAILED`
+(timeout 180 s, poll 2 s). The Function attaches `StagehandRunner` to the invocation's
+session via `browserbase.connect` and returns `{ok, value | error, sessionId}`.
+
+Publish/ops:
+- `npm run functions:publish` — builds + uploads the bundle (self-contained project in
+  `functions/rehearsal-browser/` with its own lockfile; `src/lib` is vendored in).
+- The Stagehand extension is uploaded once
+  (`browse cloud extensions upload stagehand-extension.zip`) and its id is pinned in
+  `index.ts` (`BROWSERBASE_EXTENSION_ID` overrides).
+- The `BROWSERBASE_API_KEY` project secret is attached to the Function with
+  `browse functions secrets attach`.
+- Worker env: `BROWSERBASE_API_KEY` + `BROWSERBASE_PROJECT_ID` secrets,
+  `BROWSERBASE_FUNCTION_ID` var (`wrangler.jsonc`). Without the id the Worker falls back
+  to `UnavailableRunner`, which reports `BROWSER_UNAVAILABLE` per page.
+
+Run errors are classified (`src/lib/errors.ts`) into `ErrorCode`s
+(`contracts/errors.ts`): BROWSER_UNAVAILABLE, BROWSER_REMOTE_FAILED, NAV_TIMEOUT,
+NAV_FAILED, HTTP_STATUS, NON_HTML, REDIRECT_OFF_ORIGIN, EGRESS_BLOCKED,
+ROBOTS_DISALLOWED, BOT_CHALLENGE, DISCOVERY_EMPTY, UNKNOWN — persisted per page in
+`Experiment.failures` and readable in `Experiment.errors` as `[CODE] message`.

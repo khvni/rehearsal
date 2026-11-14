@@ -2,9 +2,9 @@ name: deploy-cloudflare
 
 on:
   push:
-    branches: [devin/1794611295-playful-dashboard]
+    branches: [main]
   pull_request:
-    branches: [devin/1794611295-playful-dashboard]
+    branches: [main]
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}

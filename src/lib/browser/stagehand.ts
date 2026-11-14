@@ -145,11 +145,20 @@ export class StagehandRunner implements BrowserRunner {
     const vp = { width: viewport.width, height: viewport.height };
     const browser: StagehandBrowser =
       this.opts.env === "browserbase"
-        ? await browserbase.launch({
-            apiKey: this.opts.browserbaseApiKey!,
-            ...(this.opts.browserbaseProjectId ? { projectId: this.opts.browserbaseProjectId } : {}),
-            browserSettings: { viewport: vp },
-          })
+        ? this.opts.browserbaseSessionId
+          ? await browserbase.connect({
+              apiKey: this.opts.browserbaseApiKey!,
+              sessionId: this.opts.browserbaseSessionId,
+              ...(this.opts.browserbaseExtensionId ? { extensionId: this.opts.browserbaseExtensionId } : {}),
+            })
+          : await browserbase.launch({
+              apiKey: this.opts.browserbaseApiKey!,
+              ...(this.opts.browserbaseProjectId ? { projectId: this.opts.browserbaseProjectId } : {}),
+              browserSettings: {
+                viewport: vp,
+                ...(this.opts.browserbaseExtensionId ? { extensionId: this.opts.browserbaseExtensionId } : {}),
+              },
+            })
         : await localBrowser.launch({
             headless: true,
             viewport: vp,

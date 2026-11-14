@@ -122,7 +122,7 @@ function checkContracts(): CheckResult {
 const FRAMEWORK_ENV = new Set(["NODE_ENV", "NEXT_RUNTIME"]);
 
 /** Keys the deploy stacks must provision (variable + env mapping), unless exempted per stack. */
-const DEPLOYED_ENV = ["REHEARSAL_ACCESS_TOKEN", "GEMINI_API_KEY", "JEV_API_KEY", "BRIGHTDATA_API_KEY", "BRIGHTDATA_ZONE", "SENTRY_DSN", "DATABASE_URL"];
+const DEPLOYED_ENV = ["REHEARSAL_ACCESS_TOKEN", "GEMINI_API_KEY", "JEV_API_KEY", "BROWSERBASE_API_KEY", "BROWSERBASE_PROJECT_ID", "BROWSERBASE_FUNCTION_ID", "SENTRY_DSN", "DATABASE_URL"];
 const STACK_EXEMPT: Record<string, Record<string, string>> = {
   cloudflare: { DATABASE_URL: "Postgres persistence is provisioned only on the primary DigitalOcean stack" },
 };
@@ -139,12 +139,8 @@ const NOT_DEPLOYED: Record<string, string> = {
   TIGERDATA_URL: "alias of DATABASE_URL",
   NEXT_PUBLIC_POSTHOG_KEY: "client-side var with a code default (alikhani.co's key)",
   NEXT_PUBLIC_POSTHOG_HOST: "client-side var with a code default",
-  BRIGHTDATA_BROWSER_WS: "optional browser backend, not provisioned yet",
-  BRIGHTDATA_BROWSER_USER: "optional browser backend, not provisioned yet",
-  BRIGHTDATA_BROWSER_PASSWORD: "optional browser backend, not provisioned yet",
-  BROWSERBASE_API_KEY: "optional browser backend, not provisioned yet",
-  BROWSERBASE_PROJECT_ID: "optional browser backend, not provisioned yet",
   STAGEHAND_MODEL: "optional browser backend, not provisioned yet",
+  BROWSERBASE_EXTENSION_ID: "optional pre-uploaded Stagehand extension override",
   STAGEHAND_MODEL_API_KEY: "optional browser backend, not provisioned yet",
   STAGEHAND_CHROME_PATH: "local-only (stagehand-local)",
   REHEARSAL_BROWSER: "defaults to auto",

@@ -1,4 +1,5 @@
 import type { ModelConfig } from "@browserbasehq/stagehand";
+import { z } from "zod";
 import type { Assertion, BrandSignals, BrowserRun, DomPatch, Viewport } from "./index";
 import type { PageMetrics } from "./metrics";
 
@@ -82,7 +83,7 @@ export interface AssertionProbe {
 
 export type EnvVars = Record<string, string | undefined>;
 
-export type RunnerPreference = "auto" | "brightdata" | "stagehand" | "stagehand-local" | "playwright";
+export type RunnerPreference = "auto" | "browserbase-function" | "stagehand" | "stagehand-local" | "playwright";
 
 export type StagehandEnv = "browserbase" | "local";
 
@@ -90,6 +91,10 @@ export interface StagehandRunnerOptions {
   env: StagehandEnv;
   browserbaseApiKey?: string;
   browserbaseProjectId?: string;
+  /** Attach to this existing Browserbase session instead of creating one (inside a Browserbase Function). */
+  browserbaseSessionId?: string;
+  /** Pre-uploaded Stagehand extension; avoids the per-session upload from disk. */
+  browserbaseExtensionId?: string;
   /** Local Chrome/Chromium binary for env=local (Stagehand does not bundle a browser). */
   executablePath?: string;
   /** Chromium sandbox for env=local; defaults to chromiumSandboxEnabled(process.env). */
@@ -108,4 +113,24 @@ export interface PlaywrightStepOptions {
 /** Anything with a string-expression `evaluate` — Playwright pages (local or CDP) and Stagehand pages. */
 export interface EvaluatingPage {
   evaluate(expression: string): Promise<unknown>;
+}
+
+/** One browser operation shipped to the Browserbase Function (functions/rehearsal-browser). */
+export const BrowserFunctionParams = z.object({
+  op: z.enum(["openPage", "runTrajectory", "runAgentTask"]),
+  args: z.record(z.string(), z.unknown()),
+});
+export type BrowserFunctionParams = z.infer<typeof BrowserFunctionParams>;
+
+export interface BrowserbaseFunctionRunnerOptions {
+  apiKey: string;
+  functionId: string;
+  /** Pre-uploaded Stagehand extension id, sent as sessionCreateParams.extensionId. */
+  extensionId?: string;
+  /** Total wait per invocation, invoke to terminal status. */
+  timeoutMs?: number;
+  pollMs?: number;
+  apiBase?: string;
+  fetchImpl?: typeof fetch;
+  sleep?: (ms: number) => Promise<void>;
 }

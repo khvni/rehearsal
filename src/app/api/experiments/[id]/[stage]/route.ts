@@ -34,8 +34,9 @@ export async function POST(_req: Request, { params }: { params: Promise<{ id: st
     if (e instanceof Error && e.message.startsWith("Unknown experiment")) {
       return NextResponse.json({ error: e.message }, { status: 404 });
     }
+    const code = e instanceof Error && "code" in e ? (e as { code?: string }).code : undefined;
     await orch.markFailed(id, e).catch(() => undefined);
-    return NextResponse.json({ error: String(e).slice(0, 400) }, { status: 500 });
+    return NextResponse.json({ error: String(e).slice(0, 400), ...(code ? { code } : {}) }, { status: 500 });
   }
 }
 

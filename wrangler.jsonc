@@ -12,5 +12,5 @@
     { "pattern": "rehearsal.alikhani.co", "zone_name": "alikhani.co", "custom_domain": true }
   ],
   "observability": { "enabled": true },
-  "vars": { "BRIGHTDATA_ZONE": "rehearsal_browser" }
+  "vars": { "BROWSERBASE_FUNCTION_ID": "eb8a2fde-7dd4-4c0a-91e7-aa87117732ff" }
 }
