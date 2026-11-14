@@ -16,11 +16,12 @@ import { producedFindings, ruleKey, scoreSite } from "./bench/score";
 
 // stateIds/actionIds/experiment ids come from randomUUID and FixtureJevClient's tiebreak
 // jitter is keyed by actionId — counter ids (reset per run) keep runs bit-for-bit identical.
+// The counter sits in the first 8 hex chars: ids are minted as `st_${randomUUID().slice(0, 8)}`.
 const uuid = vi.hoisted(() => ({ n: 0 }));
 vi.mock("node:crypto", async (importOriginal) => {
   const actual = await importOriginal<typeof import("node:crypto")>();
   const randomUUID = () =>
-    `00000000-0000-4000-8000-${String(++uuid.n).padStart(12, "0")}` as const;
+    `${String(++uuid.n).padStart(8, "0")}-0000-4000-8000-000000000000` as const;
   return { ...actual, default: { ...actual, randomUUID }, randomUUID };
 });
 
@@ -82,9 +83,10 @@ describe("bench: manifest contract", () => {
 });
 
 describe(`bench: end-to-end (${SITE_ID}, fixture runner)`, () => {
+  let run: BenchRun;
   let report: BenchSiteReportT;
   beforeAll(async () => {
-    ({ report } = await runSite(SITE_ID));
+    ({ run, report } = await runSite(SITE_ID));
   }, RUN_TIMEOUT_MS);
 
   it("report satisfies the BenchSiteReport contract", () => {
@@ -104,6 +106,12 @@ describe(`bench: end-to-end (${SITE_ID}, fixture runner)`, () => {
     expect(report.expectationFailures).toEqual([]);
   });
 
+  it("mints distinct state ids (seeded ids must not collide)", () => {
+    const ids = (run.experiment.graph?.states ?? []).map((s) => s.stateId);
+    expect(ids.length).toBe(report.discover.states);
+    expect(new Set(ids).size).toBe(ids.length);
+  });
+
   it("times all six stages plus total", () => {
     for (const stage of STAGES) {
       expect(report.durationsMs[stage], stage).toBeTypeOf("number");
@@ -119,7 +127,7 @@ describe("bench: determinism", () => {
     async () => {
       const a = await runSite(SITE_ID);
       const b = await runSite(SITE_ID);
-      expect(a.run.experiment.id).toBe("exp_00000000");
+      expect(a.run.experiment.id).toMatch(/^exp_\d{8}$/);
       expect(b.run.experiment.id).toBe(a.run.experiment.id);
       expect(a.report.simulate.trajectories).toBeGreaterThan(0);
       expect(a.report.findings.produced.length).toBeGreaterThan(0);
