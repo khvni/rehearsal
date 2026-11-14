@@ -2,6 +2,8 @@ import { mkdirSync, writeFileSync } from "node:fs";
 import path from "node:path";
 import type { Locator, ModelConfig, Page, Stagehand, StagehandBrowser } from "@browserbasehq/stagehand";
 import type {
+  AgentDriver,
+  AgentRunArgs,
   AssertionProbe,
   BrowserRun,
   BrowserRunner,
@@ -15,6 +17,7 @@ import type {
 } from "../contracts";
 import { assertPublicUrl } from "../fetch/guards";
 import { compilePatches } from "../variants";
+import { agentLoop } from "./agent";
 import { isSameOrigin } from "./extract";
 import { measurePage } from "./metrics";
 import { DEFAULT_EVIDENCE_DIR } from "./playwright";
@@ -110,6 +113,10 @@ export class StagehandRunner implements BrowserRunner {
     return !!this.opts.model || this.opts.env === "browserbase";
   }
 
+  get supportsAgent(): boolean {
+    return this.canAct;
+  }
+
   private async withSession<T>(
     viewport: Viewport,
     patches: DomPatch[] | undefined,
@@ -187,6 +194,22 @@ export class StagehandRunner implements BrowserRunner {
     await page.waitForLoadState("domcontentloaded", NAV_TIMEOUT_MS).catch(() => undefined);
   }
 
+  /** Wire console/page errors into `errors`, navigate to the start URL, and take the `_0` shot. */
+  private async startRun(page: Page, args: TrajectoryArgs, errors: string[], screenshots: string[]): Promise<void> {
+    await page.addInitScript(PAGE_ERROR_BRIDGE);
+    await page.on("console", (ev) => {
+      const p = ev.params as { type?: string; args?: { value?: unknown }[] };
+      if (p.type === "error") {
+        const text = (p.args ?? []).map((x) => String(x.value ?? "")).join(" ");
+        errors.push(`console: ${text.slice(0, 200)}`);
+      }
+    });
+    await page.goto(args.url, { waitUntil: "domcontentloaded", timeout: NAV_TIMEOUT_MS });
+    await page.waitForTimeout(800);
+    const shot0 = await this.shoot(page, `${args.runId}_0`);
+    if (shot0) screenshots.push(shot0);
+  }
+
   async runTrajectory(args: TrajectoryArgs): Promise<BrowserRun> {
     const started = Date.now();
     const errors: string[] = [];
@@ -196,18 +219,7 @@ export class StagehandRunner implements BrowserRunner {
     try {
       await assertPublicUrl(args.url);
       await this.withSession(args.viewport, args.patches, async (sh, page) => {
-        await page.addInitScript(PAGE_ERROR_BRIDGE);
-        await page.on("console", (ev) => {
-          const p = ev.params as { type?: string; args?: { value?: unknown }[] };
-          if (p.type === "error") {
-            const text = (p.args ?? []).map((x) => String(x.value ?? "")).join(" ");
-            errors.push(`console: ${text.slice(0, 200)}`);
-          }
-        });
-        await page.goto(args.url, { waitUntil: "domcontentloaded", timeout: NAV_TIMEOUT_MS });
-        await page.waitForTimeout(800);
-        const shot0 = await this.shoot(page, `${args.runId}_0`);
-        if (shot0) screenshots.push(shot0);
+        await this.startRun(page, args, errors, screenshots);
 
         const total = Math.min(args.actions.length, args.maxSteps ?? 12);
         for (let i = 0; i < total; i++) {
@@ -232,6 +244,47 @@ export class StagehandRunner implements BrowserRunner {
       errors.push(`run: ${String(e).slice(0, 200)}`);
     }
     return summarizeRun({ runId: args.runId, viewport: args.viewport, started, steps, assertions, errors, screenshots });
+  }
+
+  /** Agent-driven verify: observe/act over the live page via `agentLoop`. */
+  async runAgentTask(args: AgentRunArgs): Promise<BrowserRun> {
+    const started = Date.now();
+    const errors: string[] = [];
+    const screenshots: string[] = [];
+    let run: BrowserRun | undefined;
+    try {
+      await assertPublicUrl(args.url);
+      await this.withSession(args.viewport, args.patches, async (sh, page) => {
+        await this.startRun(page, args, errors, screenshots);
+        const driver: AgentDriver = {
+          observe: async (instruction) => {
+            const res = await sh.observe(instruction, { page });
+            return res.data.map(({ selector, description, method }) => ({ selector, description, method }));
+          },
+          act: async (instruction) => {
+            const res = await sh.act(instruction, { page });
+            await page.waitForLoadState("domcontentloaded", NAV_TIMEOUT_MS).catch(() => undefined);
+            await assertPublicUrl(await page.url());
+            return { ok: res.data.success, detail: res.data.message };
+          },
+          extract: async (instruction, schema) =>
+            (schema ? await sh.extract(instruction, schema as Parameters<Stagehand["extract"]>[1], { page }) : await sh.extract(instruction, { page })).data,
+          probe: () => stagehandProbe(page),
+        };
+        run = await agentLoop(driver, args, (name) => this.shoot(page, name));
+      });
+    } catch (e) {
+      errors.push(`run: ${String(e).slice(0, 200)}`);
+    }
+    return summarizeRun({
+      runId: args.runId,
+      viewport: args.viewport,
+      started,
+      steps: run?.steps ?? [],
+      assertions: run?.assertions ?? [],
+      errors: [...errors, ...(run?.errors ?? [])],
+      screenshots: [...screenshots, ...(run?.screenshotPaths ?? [])],
+    });
   }
 
   async close(): Promise<void> {

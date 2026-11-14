@@ -1,4 +1,5 @@
 import type {
+  AgentRunArgs,
   BrowserRun,
   BrowserRunner,
   DomPatch,
@@ -33,6 +34,15 @@ export class CompositeRunner implements BrowserRunner {
 
   runTrajectory(args: TrajectoryArgs): Promise<BrowserRun> {
     return this.trajectories.runTrajectory(args);
+  }
+
+  get supportsAgent(): boolean {
+    return this.trajectories.supportsAgent === true && typeof this.trajectories.runAgentTask === "function";
+  }
+
+  runAgentTask(args: AgentRunArgs): Promise<BrowserRun> {
+    if (!this.trajectories.runAgentTask) return this.trajectories.runTrajectory(args);
+    return this.trajectories.runAgentTask(args);
   }
 
   async close(): Promise<void> {
@@ -71,6 +81,12 @@ export function selectRunner(env: EnvVars = process.env): BrowserRunner {
       if (bbKey) return browserbase();
       return new PlaywrightRunner();
   }
+}
+
+/** REHEARSAL_VERIFY_AGENT opts the verify stage into agent-driven runs (runAgentTask) when the runner supports it. */
+export function agentVerifyEnabled(env: EnvVars = process.env): boolean {
+  const v = env.REHEARSAL_VERIFY_AGENT;
+  return !!v && v !== "0" && v.toLowerCase() !== "false";
 }
 
 /** Telemetry label for the runner `selectRunner()` would pick from the current env. */

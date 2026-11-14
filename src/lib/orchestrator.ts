@@ -15,7 +15,7 @@ import {
 } from "./contracts";
 import { selectFetcher } from "./fetch";
 import { assertPublicUrl, robotsAllows } from "./fetch/guards";
-import { extractPage, selectRunner } from "./browser/runner";
+import { agentVerifyEnabled, extractPage, selectRunner } from "./browser/runner";
 import { GraphBuilder, makeState, adjacency } from "./graph";
 import { selectJev, scoreActions } from "./decisions/jev";
 import { simulateTrajectories, selectTrajectories } from "./simulation";
@@ -288,13 +288,19 @@ export class Orchestrator {
         const vps = e.configuration.viewports.slice(0, 1);
         if (traj === selected[0] && e.configuration.viewports.includes("mobile") && !vps.includes("mobile")) vps.push("mobile");
         for (const vpName of vps) {
-          const run = await this.runner.runTrajectory({
+          const args = {
             url: e.targetUrl,
             viewport: VIEWPORTS[vpName],
             actions,
             assertions: e.assertions,
             runId: `run_${traj.trajectoryId}_${vpName}`,
-          });
+          };
+          // Agent runs only where the backend has a model (opt-in); compare stays scripted so baseline/variant replay identically.
+          const useAgent =
+            agentVerifyEnabled() && this.runner.supportsAgent === true && typeof this.runner.runAgentTask === "function";
+          const run = useAgent
+            ? await this.runner.runAgentTask!({ ...args, goal: e.goal })
+            : await this.runner.runTrajectory(args);
           e.browserTests.push(run);
         }
       }
