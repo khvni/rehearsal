@@ -40,6 +40,7 @@ import { metricsFromHtml } from "./browser/metrics";
 import { isSameOrigin } from "./browser/extract";
 import { errorText } from "./browser/types";
 import { generateSpec, specToMarkdown } from "./analysis/spec";
+import { brandSignalsFromHtml, generateRebuild, mergeSignals } from "./rebuild";
 import { selectStore } from "./storage";
 import { captureError, logEvent, traceTags, withTrace } from "./telemetry";
 import { writeFileSync, mkdirSync } from "node:fs";
@@ -54,6 +55,7 @@ export const PIPELINE_STAGES = [
   "analyze",
   "compare",
   "spec",
+  "rebuild",
 ] as const;
 
 interface OrchestratorDeps {
@@ -163,6 +165,10 @@ export class Orchestrator {
     return this.exclusive(id, "spec", () => this.runSpec(id));
   }
 
+  async rebuild(id: string): Promise<Experiment> {
+    return this.exclusive(id, "rebuild", () => this.runRebuild(id));
+  }
+
   /** Stage 1 — discover states, build graph. */
   private async runDiscover(id: string): Promise<Experiment> {
     const experiment = await this.mustGet(id);
@@ -195,7 +201,7 @@ export class Orchestrator {
           attempted.add(url);
           await this.emit(id, "discover", "fetch", `Fetching ${url}`, url);
           try {
-            const { html, screenshotPath, metrics } = await this.runner.openPage(url, viewport, {
+            const { html, screenshotPath, metrics, brand } = await this.runner.openPage(url, viewport, {
               shotName: `${id}_${vpName}_d${depth}`,
             });
             const extracted = extractPage(html, url);
@@ -207,6 +213,7 @@ export class Orchestrator {
               actions: extracted.actions,
               screenshotPath,
             });
+            state.brand = mergeSignals(brandSignalsFromHtml(html, url), brand);
             state.metrics = metrics ?? metricsFromHtml(html, url, viewport);
             const { state: canonical, isNew } = builder.add(state);
             if (!isNew && !builder.has(canonical.stateId)) continue;
@@ -485,6 +492,19 @@ export class Orchestrator {
     });
   }
 
+  /** Stage 7 — rebuild the site per inferred visitor goal, in the site's own branding. */
+  private async runRebuild(id: string): Promise<Experiment> {
+    const e = await this.mustGet(id);
+    if (!e.spec) await this.runSpec(id);
+    const exp = await this.mustGet(id);
+    await this.update(exp, "rebuilding");
+    return withTrace("rebuild", { experimentId: id, targetUrl: exp.targetUrl }, async () => {
+      exp.rebuild = await generateRebuild(exp, this.llm);
+      await this.update(exp, "complete");
+      return exp;
+    });
+  }
+
   /** Full closed loop. */
   async runAll(id: string): Promise<Experiment> {
     return this.exclusive(id, "run", async () => {
@@ -493,7 +513,8 @@ export class Orchestrator {
       await this.runVerify(id);
       await this.runAnalyze(id);
       await this.runCompare(id);
-      return this.runSpec(id);
+      await this.runSpec(id);
+      return this.runRebuild(id);
     });
   }
 

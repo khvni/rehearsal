@@ -26,6 +26,54 @@ export const VIEWPORTS: Record<Viewport["name"], Viewport> = {
   mobile: { name: "mobile", width: 390, height: 844 },
 };
 
+// ── Rebuild: brand extraction ───────────────────────────────────────────────
+
+/** Design signals lifted from one crawled page: declared values from markup plus
+ * computed styles when a live browser captured them. */
+export const BrandSignals = z.object({
+  /** `:root` custom properties (`--brand: #fff`), merged declared + computed. */
+  cssVars: z.record(z.string(), z.string()).default({}),
+  /** Color values found on the page, most frequent first (declared or computed). */
+  colors: z.array(z.string()).default([]),
+  /** font-family stacks found, most frequent first. */
+  fonts: z.array(z.string()).default([]),
+  faviconUrl: z.string().optional(),
+  logoUrl: z.string().optional(),
+  logoAlt: z.string().optional(),
+  /** meta[name=theme-color]. */
+  themeColor: z.string().optional(),
+  /** og:site_name / application-name / title-derived site name. */
+  siteName: z.string().optional(),
+  /** Primary nav/header links: label + resolved href. */
+  navItems: z.array(z.object({ label: z.string(), href: z.string() })).default([]),
+});
+export type BrandSignals = z.infer<typeof BrandSignals>;
+
+/** The audited site's design language, rolled up across its crawled states. */
+export const BrandProfile = z.object({
+  name: z.string(),
+  colors: z.object({
+    ink: z.string(),
+    surface: z.string(),
+    muted: z.string(),
+    line: z.string(),
+    accent: z.string().optional(),
+    link: z.string().optional(),
+  }),
+  fonts: z.object({ sans: z.string(), mono: z.string().optional() }),
+  cssVars: z.record(z.string(), z.string()).default({}),
+  faviconUrl: z.string().optional(),
+  logoUrl: z.string().optional(),
+  logoAlt: z.string().optional(),
+  navItems: z.array(z.object({ label: z.string(), href: z.string() })).default([]),
+  /** CTA labels as the site phrases them ("Apply to attend"), for on-brand buttons. */
+  ctaLabels: z.array(z.string()).default([]),
+  /** Copy voice, inferred from crawled text. */
+  tone: z.enum(["playful", "professional", "technical", "minimal", "expressive"]),
+  voiceNotes: z.array(z.string()).default([]),
+});
+export type BrandProfile = z.infer<typeof BrandProfile>;
+
 // ── Graph ───────────────────────────────────────────────────────────────────
 
 export const ActionType = z.enum(["click", "fill", "select", "navigate", "scroll", "back"]);
@@ -54,6 +102,8 @@ export const SiteState = z.object({
   screenshotPath: z.string().optional(),
   stateHash: z.string(),
   metrics: PageMetrics.optional(),
+  /** Design signals captured with the page (declared + computed). */
+  brand: BrandSignals.optional(),
   metadata: z
     .object({
       modalOpen: z.boolean().optional(),
@@ -357,6 +407,75 @@ export const ActivityEvent = z.object({
 });
 export type ActivityEvent = z.infer<typeof ActivityEvent>;
 
+// ── Rebuild: goals + generated pages ────────────────────────────────────────
+
+/** One plausible visitor goal inferred from the crawled site's own CTAs/nav/titles/endpoints. */
+export const RebuildGoal = z.object({
+  /** Stable id derived from the slug (deterministic across runs). */
+  goalId: z.string(),
+  slug: z.string().regex(/^[a-z0-9][a-z0-9-]*$/),
+  title: z.string(),
+  goal: z.string(),
+  /** What the inference came from: an explicit CTA, a nav item, a page title, an endpoint class, or site-type defaults. */
+  source: z.enum(["experiment-goal", "cta", "nav", "endpoint", "title", "implied"]),
+  endpointClass: EndpointClass.optional(),
+  /** Best-matching real destination on the audited site. */
+  targetUrl: z.string().optional(),
+  /** The crawled label this goal was inferred from. */
+  sourceLabel: z.string().optional(),
+  weight: z.number().min(0).max(1),
+});
+export type RebuildGoal = z.infer<typeof RebuildGoal>;
+
+/**
+ * Structured content for one rebuilt page — the shape Gemini returns and the
+ * deterministic template falls back to. The renderer escapes every field.
+ */
+export interface RebuildPageContent {
+  hero: {
+    heading: string;
+    lede: string;
+    ctaLabel: string;
+    /** Absolute URL on the audited site the rebuilt CTA leads to. */
+    ctaUrl: string;
+    /** Small status line next to the CTA ("Applications are open"). */
+    statusLine?: string;
+  };
+  sections: {
+    heading: string;
+    body?: string;
+    bullets?: string[];
+    links?: { label: string; url: string }[];
+  }[];
+  nav: { label: string; url: string }[];
+  footer?: { note?: string; links?: { label: string; url: string }[] };
+}
+
+/** One self-contained rebuilt page: inline styles, no external scripts, images only from the audited origin. */
+export const RebuiltPage = z.object({
+  slug: z.string(),
+  goal: z.string(),
+  title: z.string(),
+  /** One line on what changed vs the audited page. */
+  summary: z.string(),
+  html: z.string(),
+  /** Who produced the page content: Gemini or the deterministic template. */
+  source: z.enum(["gemini", "template"]),
+  bytes: z.number().int().nonnegative(),
+});
+export type RebuiltPage = z.infer<typeof RebuiltPage>;
+
+/** The rebuild stage's deliverable, stored on the experiment record. */
+export const RebuildResult = z.object({
+  generatedAt: z.string(),
+  brand: BrandProfile,
+  goals: z.array(RebuildGoal),
+  pages: z.array(RebuiltPage),
+  /** LLM adapter name actually used ("gemini", "gemini-fixture"…). */
+  llm: z.string(),
+});
+export type RebuildResult = z.infer<typeof RebuildResult>;
+
 // ── Experiment ──────────────────────────────────────────────────────────────
 
 export const ExperimentStatus = z.enum([
@@ -366,6 +485,7 @@ export const ExperimentStatus = z.enum([
   "verifying",
   "analyzing",
   "comparing",
+  "rebuilding",
   "complete",
   "failed",
 ]);
@@ -417,6 +537,7 @@ export const Experiment = z.object({
   endpoints: z.array(Endpoint).optional(),
   journeys: z.array(EndpointJourney).optional(),
   questions: z.array(VisitorQuestion).optional(),
+  rebuild: RebuildResult.optional(),
   errors: z.array(z.string()).default([]),
 });
 export type Experiment = z.infer<typeof Experiment>;

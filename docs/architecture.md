@@ -43,6 +43,10 @@ telemetry: Sentry (SENTRY_DSN) + data/events/*.jsonl → /api/hooks/sentry → f
 5. **compare**: variant (DomPatch set) applied via `addInitScript` in a fresh context;
    same assertions re-run; deltas recorded.
 6. **spec**: `generateSpec` merges findings → ordered changes + rebuild phases → `spec.md`.
+7. **rebuild**: `generateRebuild` rolls crawled brand signals into a `BrandProfile`, infers every
+   plausible visitor goal (`inferGoals`), and renders one branded, script-free page per goal
+   (Gemini content, deterministic template fallback) → `experiment.rebuild`, served at
+   `/experiments/:id/rebuild[/:slug]`.
 
 ## Browser and fetch vendors
 

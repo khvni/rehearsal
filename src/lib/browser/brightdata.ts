@@ -5,6 +5,7 @@ import type { BrowserRun, BrowserRunner, DomPatch, EnvVars, OpenPageResult, Traj
 import { assertPublicUrl } from "../fetch/guards";
 import { compilePatches } from "../variants";
 import { measurePage } from "./metrics";
+import { captureBrand } from "../rebuild/brand";
 import { DEFAULT_EVIDENCE_DIR, assertPublicPage, executeTrajectory, watchPageErrors } from "./playwright";
 import { errorText, summarizeRun } from "./types";
 
@@ -102,7 +103,8 @@ export class BrightDataBrowserRunner implements BrowserRunner {
       await page.waitForTimeout(1200);
       const shotOk = await page.screenshot({ path: screenshotPath, fullPage: false }).then(() => true).catch(() => false);
       const metrics = await measurePage(page);
-      return { html: await page.content(), screenshotPath: shotOk ? screenshotPath : undefined, metrics };
+      const brand = await captureBrand(page).catch(() => undefined);
+      return { html: await page.content(), screenshotPath: shotOk ? screenshotPath : undefined, metrics, brand };
     });
   }
 

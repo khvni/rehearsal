@@ -20,8 +20,13 @@ With `REHEARSAL_ACCESS_TOKEN` set, every route except `/api/hooks/*` needs
 | GET | `/api/experiments/:id/:stage` | `:stage` = `spec` only | `spec.md` as `text/markdown`; 404 before the spec stage ran |
 
 `:stage` values accepted by `POST /api/experiments/:id/:stage`: `discover`, `simulate`,
-`verify`, `analyze`, `compare`, `spec` (`PIPELINE_STAGES`), and `run` (all stages in order).
+`verify`, `analyze`, `compare`, `spec`, `rebuild` (`PIPELINE_STAGES`), and `run` (all stages in order).
 A stage runs any missing earlier stages first; one run per experiment at a time (per server process).
+
+`rebuild` output is also served outside `/api` (dashboard routes, not REST): `GET /experiments/:id/rebuild`
+is the dashboard page (brand, inferred goals, pages), and `GET /experiments/:id/rebuild/:slug` returns one
+rebuilt page as the raw self-contained HTML document (`text/html`, `no-store`); 404 `{error}` for an unknown
+experiment, no rebuild yet, or an unknown slug.
 
 `config` is an optional `ExperimentConfig`: `seed` (1337), `maxStates` (30), `maxDepth` (3),
 `trajectories` (1000), `verifyCount` (8), `viewports` (`["desktop","mobile"]`). These budgets

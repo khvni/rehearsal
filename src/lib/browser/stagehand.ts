@@ -19,9 +19,10 @@ import { assertPublicUrl } from "../fetch/guards";
 import { compilePatches } from "../variants";
 import { agentLoop } from "./agent";
 import { isSameOrigin } from "./extract";
-import { measurePage } from "./metrics";
-import { DEFAULT_EVIDENCE_DIR } from "./playwright";
 import { chromiumSandboxEnabled } from "./sandbox";
+import { measurePage } from "./metrics";
+import { captureBrand } from "../rebuild/brand";
+import { DEFAULT_EVIDENCE_DIR } from "./playwright";
 import { errorText, evaluateAssertion, shouldShoot, summarizeRun } from "./types";
 
 const NAV_TIMEOUT_MS = 60_000;
@@ -192,7 +193,8 @@ export class StagehandRunner implements BrowserRunner {
       const screenshotPath = await this.shoot(page, String(opts?.shotName ?? Date.now()));
       const metrics = await measurePage(page);
       const html = await page.evaluate<string>("document.documentElement.outerHTML");
-      return { html, screenshotPath: screenshotPath ?? undefined, metrics };
+      const brand = await captureBrand(page).catch(() => undefined);
+      return { html, screenshotPath: screenshotPath ?? undefined, metrics, brand };
     });
   }
 
