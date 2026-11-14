@@ -1,17 +1,23 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { memo, useEffect, useMemo, useRef, useState } from "react";
 import {
   ReactFlow,
   Background,
   BackgroundVariant,
+  BaseEdge,
   Controls,
+  MarkerType,
+  PanOnScrollMode,
+  getBezierPath,
   type Edge,
+  type EdgeProps,
   type Node,
   type ReactFlowInstance,
 } from "@xyflow/react";
 import "@xyflow/react/dist/style.css";
 import type { StateGraph as Graph, Trajectory, Viewport } from "@/lib/contracts";
+import { CompressIcon, ExpandIcon } from "../../_components/icons";
 
 export function visitCounts(simulations: Trajectory[]): Map<string, number> {
   const counts = new Map<string, number>();
@@ -39,13 +45,17 @@ function heat(visits: number, max: number): number {
 
 const HEAT_STEPS = [0, 0.25, 0.5, 0.75, 1];
 const NODE_HEIGHT = 68;
+/** Flow dots animate only on the busiest taken edges so large graphs stay light. */
+const DOT_CAP = 60;
+/** Virtualize node/edge rendering once the graph outgrows casual browsing. */
+const VIRTUALIZE_AT = 60;
 
 function heatFill(t: number): string {
-  return `color-mix(in oklab, var(--hl) ${Math.round(t * 32)}%, var(--panel))`;
+  return `color-mix(in oklab, var(--flow-500) ${Math.round(t * 30)}%, var(--panel))`;
 }
 
 function heatBorder(t: number): string {
-  return `color-mix(in oklab, var(--hl) ${Math.round(25 + t * 60)}%, var(--border))`;
+  return `color-mix(in oklab, var(--flow-700) ${Math.round(26 + t * 58)}%, var(--border))`;
 }
 
 function shortPath(url: string): string {
@@ -89,6 +99,50 @@ function layout(stateIds: string[], edges: [string, string][], visits: Map<strin
   return pos;
 }
 
+type FlowEdgeData = { dot: boolean; dotDur: number; curvature: number };
+type FlowEdge = Edge<FlowEdgeData, "flow">;
+
+function FlowEdgeComponent(props: EdgeProps<FlowEdge>) {
+  const [path, labelX, labelY] = getBezierPath({
+    sourceX: props.sourceX,
+    sourceY: props.sourceY,
+    sourcePosition: props.sourcePosition,
+    targetX: props.targetX,
+    targetY: props.targetY,
+    targetPosition: props.targetPosition,
+    curvature: props.data?.curvature ?? 0.16,
+  });
+  const pathId = `ep-${props.id.replace(/[^A-Za-z0-9_-]/g, "_")}`;
+  return (
+    <>
+      <BaseEdge
+        id={pathId}
+        path={path}
+        labelX={labelX}
+        labelY={labelY}
+        label={props.label}
+        labelStyle={props.labelStyle}
+        labelShowBg={props.labelShowBg}
+        labelBgStyle={props.labelBgStyle}
+        labelBgPadding={props.labelBgPadding}
+        labelBgBorderRadius={props.labelBgBorderRadius}
+        style={props.style}
+        markerEnd={props.markerEnd}
+        interactionWidth={props.interactionWidth}
+      />
+      {props.data?.dot && (
+        <circle className="edge-dot" r={2.2} aria-hidden>
+          <animateMotion dur={`${props.data.dotDur}s`} repeatCount="indefinite">
+            <mpath href={`#${pathId}`} xlinkHref={`#${pathId}`} />
+          </animateMotion>
+        </circle>
+      )}
+    </>
+  );
+}
+const FlowEdgeRenderer = memo(FlowEdgeComponent);
+const edgeTypes = { flow: FlowEdgeRenderer };
+
 export function StateGraph({
   graph,
   simulations,
@@ -99,6 +153,8 @@ export function StateGraph({
   viewport: Viewport["name"];
 }) {
   const [hovered, setHovered] = useState<string | null>(null);
+  const [hoveredEdge, setHoveredEdge] = useState<string | null>(null);
+  const [expanded, setExpanded] = useState(false);
   const rf = useRef<ReactFlowInstance | null>(null);
   // Layout cells and node objects persist across polls: React Flow keys its
   // measurements by node-object identity, so pooled nodes never re-measure
@@ -196,11 +252,26 @@ export function StateGraph({
     pool.clear();
     for (const [k, v] of nextPool) pool.set(k, v);
 
-    const edgeData = [...pairs].map(([key, [source, target]]) => {
+    const raw = [...pairs].map(([key, [source, target]]) => {
       const flow = transitions.get(key) ?? 0;
       const w = maxFlow > 0 && flow > 0 ? Math.log1p(flow) / Math.log1p(maxFlow) : 0;
       return { id: key, source, target, flow, w };
     });
+    // Both directions travelled: bow each curve to its own side of the line.
+    const keySet = new Set(raw.map((e) => e.id));
+    const dotRank = new Map(
+      raw
+        .filter((e) => e.flow > 0)
+        .sort((a, b) => b.flow - a.flow || a.id.localeCompare(b.id))
+        .slice(0, DOT_CAP)
+        .map((e) => [e.id, e.w] as const),
+    );
+    const edgeData = raw.map((e) => ({
+      ...e,
+      bidirectional: keySet.has(`${e.target}>${e.source}`),
+      dot: dotRank.has(e.id),
+      dotW: dotRank.get(e.id) ?? 0,
+    }));
 
     return { nodes, edgeData };
   }, [graph, simulations, viewport, states, cells, pool]);
@@ -214,6 +285,30 @@ export function StateGraph({
     if (changed) void rf.current?.fitView({ padding: 0.12, duration: 220 });
   }, [structureSig]);
 
+  // Fullscreen: hold the page still, let Esc leave, and reframe once the
+  // wrapper has resized — two frames is enough for the ResizeObserver pass.
+  useEffect(() => {
+    const root = document.documentElement;
+    const prevOverflow = root.style.overflow;
+    const onKey = (event: KeyboardEvent) => {
+      if (event.key === "Escape") setExpanded(false);
+    };
+    if (expanded) {
+      root.style.overflow = "hidden";
+      document.addEventListener("keydown", onKey);
+    }
+    let inner = 0;
+    const outer = requestAnimationFrame(() => {
+      inner = requestAnimationFrame(() => void rf.current?.fitView({ padding: 0.1, duration: 200 }));
+    });
+    return () => {
+      cancelAnimationFrame(outer);
+      cancelAnimationFrame(inner);
+      root.style.overflow = prevOverflow;
+      document.removeEventListener("keydown", onKey);
+    };
+  }, [expanded]);
+
   const { edges, liveCss } = useMemo(() => {
     const neighbors = new Set<string>();
     if (hovered) {
@@ -224,20 +319,42 @@ export function StateGraph({
       }
     }
     const edges: Edge[] = edgeData.map((e) => {
-      const incident = hovered !== null && (e.source === hovered || e.target === hovered);
-      const opacity = hovered ? (incident ? 0.95 : 0.04) : e.flow > 0 ? 0.25 + e.w * 0.55 : 0.12;
+      const incident =
+        e.id === hoveredEdge || (hovered !== null && (e.source === hovered || e.target === hovered));
+      const taken = e.flow > 0;
+      const stroke = incident
+        ? "var(--flow-800)"
+        : taken
+          ? "var(--flow-500)"
+          : "var(--border-strong)";
+      const opacity = hovered ? (incident ? 1 : 0.05) : taken ? 0.32 + e.w * 0.6 : 0.5;
       return {
         id: e.id,
         source: e.source,
         target: e.target,
+        type: "flow" as const,
         zIndex: incident ? 1 : 0,
-        style: {
-          stroke: incident ? "var(--hl)" : e.flow > 0 ? "var(--text-2)" : "var(--muted)",
-          strokeWidth: e.flow > 0 ? 1 + e.w * 2.5 : 1,
-          strokeOpacity: opacity,
-          strokeDasharray: e.flow > 0 ? undefined : "3 4",
+        label: incident && taken ? `${e.flow.toLocaleString()} ${e.flow === 1 ? "journey" : "journeys"}` : undefined,
+        labelStyle: { fontSize: 11, fontWeight: 500, fill: "var(--flow-800)" },
+        labelShowBg: true,
+        labelBgStyle: { fill: "var(--panel)", stroke: "var(--border-strong)", strokeWidth: 0.5 },
+        labelBgPadding: [5, 2] as [number, number],
+        labelBgBorderRadius: 4,
+        ariaLabel: `${e.source} to ${e.target}, ${e.flow} journeys`,
+        interactionWidth: 16,
+        markerEnd: { type: MarkerType.ArrowClosed, width: 13, height: 13, color: stroke },
+        data: {
+          dot: e.dot,
+          dotDur: Math.max(1.4, 3.4 - e.dotW * 2),
+          curvature: e.bidirectional ? 0.34 : 0.16,
         },
-      };
+        style: {
+          stroke,
+          strokeWidth: incident ? 1.4 + e.w * 2.6 : taken ? 1 + e.w * 2.4 : 1,
+          strokeOpacity: opacity,
+          strokeDasharray: taken ? undefined : "3 4",
+        },
+      } satisfies Edge;
     });
     // Heat and visit counts ride on a stylesheet so polling never hands
     // React Flow new node objects; dim on hover works the same way.
@@ -251,7 +368,7 @@ export function StateGraph({
       rules.push(
         `${sel} { background: ${heatFill(t)}; border-color: ${heatBorder(t)}; }`,
         `${sel} .node-visits::before { content: ${JSON.stringify(`${v.toLocaleString()} visits`)}; }`,
-        `${sel} .node-visits { color: ${v === 0 ? "var(--text-2)" : "var(--text)"}; font-weight: ${v === 0 ? 400 : 500}; }`,
+        `${sel} .node-visits { color: ${v === 0 ? "var(--muted)" : "var(--flow-800)"}; font-weight: ${v === 0 ? 400 : 500}; }`,
       );
     }
     if (hovered) {
@@ -259,17 +376,34 @@ export function StateGraph({
       rules.push(`.graph-wrap .react-flow__node:not(${keep}) { opacity: 0.3; }`);
     }
     return { edges, liveCss: rules.join("\n") };
-  }, [edgeData, hovered, simulations, states]);
+  }, [edgeData, hovered, hoveredEdge, simulations, states]);
 
   return (
-    <div className={`graph-wrap ${viewport}`}>
+    <div className={`graph-wrap ${viewport} ${expanded ? "expanded" : ""}`}>
       <style>{liveCss}</style>
+      <button
+        type="button"
+        className="graph-expand"
+        aria-label={expanded ? "Exit fullscreen graph" : "Expand graph to fullscreen"}
+        aria-pressed={expanded}
+        title={expanded ? "Exit fullscreen (Esc)" : "Fullscreen"}
+        onClick={() => setExpanded((v) => !v)}
+      >
+        {expanded ? <CompressIcon size={14} /> : <ExpandIcon size={14} />}
+      </button>
       <ReactFlow
         nodes={nodes}
         edges={edges}
+        edgeTypes={edgeTypes}
         fitView
         fitViewOptions={{ padding: 0.12 }}
         minZoom={0.2}
+        zoomOnScroll={false}
+        zoomOnDoubleClick={false}
+        zoomOnPinch
+        panOnScroll
+        panOnScrollMode={PanOnScrollMode.Free}
+        onlyRenderVisibleElements={states.length > VIRTUALIZE_AT}
         nodesConnectable={false}
         nodesDraggable={false}
         onInit={(instance) => {
@@ -278,6 +412,8 @@ export function StateGraph({
         onNodeMouseEnter={(_, n) => setHovered(n.id)}
         onNodeMouseLeave={() => setHovered(null)}
         onNodeClick={(_, n) => setHovered((h) => (h === n.id ? null : n.id))}
+        onEdgeMouseEnter={(_, e) => setHoveredEdge(e.id)}
+        onEdgeMouseLeave={() => setHoveredEdge(null)}
         onPaneClick={() => setHovered(null)}
         proOptions={{ hideAttribution: true }}
         colorMode="system"
@@ -285,6 +421,9 @@ export function StateGraph({
         <Background variant={BackgroundVariant.Dots} color="var(--border)" gap={24} size={1} />
         <Controls showInteractive={false} />
       </ReactFlow>
+      <p className="graph-keys" aria-hidden>
+        Scroll pans · pinch or ± to zoom{expanded ? " · Esc exits" : ""}
+      </p>
     </div>
   );
 }

@@ -53,3 +53,19 @@ export function DownloadIcon(props: IconProps) {
     </Svg>
   );
 }
+
+export function ExpandIcon(props: IconProps) {
+  return (
+    <Svg {...props}>
+      <path d="M9.75 6.25L13.5 2.5M9.5 2.5h4v4M2.5 9.5v4h4M6.25 9.75L2.5 13.5" />
+    </Svg>
+  );
+}
+
+export function CompressIcon(props: IconProps) {
+  return (
+    <Svg {...props}>
+      <path d="M13.5 2.5L9.75 6.25M12.75 6.25H9.75V3M2.5 13.5L6.25 9.75M3.25 9.75H6.25V13" />
+    </Svg>
+  );
+}
