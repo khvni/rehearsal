@@ -26,16 +26,22 @@
       "titleMatch": "dense link surface increases scan cost",
       "krugPrinciple": "scanning-not-reading",
       "severity": "medium"
+    },
+    {
+      "titleMatch": "endpoint buried: signup",
+      "krugPrinciple": "mindless-choices",
+      "severity": "medium"
+    },
+    {
+      "titleMatch": "endpoint unreachable: contact-form",
+      "krugPrinciple": "navigation",
+      "severity": "medium"
     }
   ],
   "toleratedFindings": [
     {
-      "titleMatch": "endpoint buried: (signup|pricing|contact-form)",
+      "titleMatch": "endpoint buried: (pricing|contact-form)",
       "krugPrinciple": "mindless-choices"
-    },
-    {
-      "titleMatch": "endpoint unreachable: contact-form",
-      "krugPrinciple": "navigation"
     },
     {
       "titleMatch": "assertion failed in browser"
@@ -76,8 +82,8 @@
     "total": 240000
   },
   "expectations": {
-    "minGoalReachRate": 0,
-    "minJourneyCoverage": 0.04,
+    "minGoalReachRate": 0.05,
+    "minJourneyCoverage": 0.8,
     "minFindingsPrecision": 1,
     "minFindingsRecall": 1,
     "minSpecItemCoverage": 1
