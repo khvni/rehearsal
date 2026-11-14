@@ -57,6 +57,7 @@ export async function executeTrajectory(
   const screenshots: string[] = [];
   const assertions: BrowserRun["assertions"] = [];
 
+  await assertPublicUrl(args.url);
   await page.goto(args.url, { waitUntil: "domcontentloaded", timeout: opts.navTimeoutMs });
   await page.waitForTimeout(800);
   await settleInterstitial(page);
@@ -70,17 +71,21 @@ export async function executeTrajectory(
   for (let i = 0; i < total; i++) {
     const a = args.actions[i];
     try {
-      const sameOrigin = isSameOrigin(a.href, new URL(page.url()).origin);
+      const href = a.href && isSameOrigin(a.href, new URL(page.url()).origin) ? a.href : null;
+      const gotoHref = async (target: string) => {
+        await assertPublicUrl(target);
+        await page.goto(target, { waitUntil: "domcontentloaded", timeout: opts.navTimeoutMs });
+      };
       const loc = a.role === "button" ? page.getByRole("button", { name: a.label }) : page.getByRole("link", { name: a.label });
-      if (sameOrigin && !opts.preferClick) {
-        await page.goto(a.href!, { waitUntil: "domcontentloaded", timeout: opts.navTimeoutMs });
+      if (href && !opts.preferClick) {
+        await gotoHref(href);
       } else {
         try {
           await loc.first().click({ timeout: 8000 });
           await page.waitForLoadState("domcontentloaded", { timeout: opts.navTimeoutMs });
         } catch (e) {
-          if (!sameOrigin) throw e;
-          await page.goto(a.href!, { waitUntil: "domcontentloaded", timeout: opts.navTimeoutMs });
+          if (!href) throw e;
+          await gotoHref(href);
         }
       }
       steps.push({ actionId: a.actionId, label: a.label, ok: true });
