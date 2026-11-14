@@ -12,7 +12,7 @@ const uuid = vi.hoisted(() => ({ n: 0 }));
 vi.mock("node:crypto", async (importOriginal) => {
   const actual = await importOriginal<typeof import("node:crypto")>();
   const randomUUID = () =>
-    `00000000-0000-4000-8000-${String(++uuid.n).padStart(12, "0")}` as const;
+    `${String(++uuid.n).padStart(8, "0")}-0000-4000-8000-000000000000` as const;
   return { ...actual, default: { ...actual, randomUUID }, randomUUID };
 });
 
