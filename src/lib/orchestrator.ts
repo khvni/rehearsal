@@ -395,6 +395,7 @@ export class Orchestrator {
           intents: exp.intents,
           config,
           viewport: VIEWPORTS[config.viewports[0]],
+          jev: this.jev,
         });
         exp.simulations = journeysToTrajectories(exp.swarm, graph);
         const reached = exp.swarm.journeys.filter((j) => j.outcome === "goal-reached").length;
@@ -461,16 +462,27 @@ export class Orchestrator {
         id: string;
         actions: { actionId?: string; label: string; href?: string; role?: string }[];
       }
+      // Journey actions carry synthetic act_N ids — resolve to the graph actionId
+      // matching label/role/href on the same state so recorded runs resolve in compare.
+      const actionIdByKey = new Map(
+        graph.states.flatMap((st) =>
+          st.actions.map(
+            (a) => [`${st.stateHash}|${a.role ?? "link"}|${a.label}|${a.href ?? ""}`, a.actionId] as const,
+          ),
+        ),
+      );
       // Emergent journeys replay their recorded actions; sampled trajectories resolve actionIds via the graph.
       const replayables: Replayable[] =
         e.swarm && e.swarm.journeys.length > 0
           ? selectJourneys(e.swarm, e.configuration.verifyCount).map((j) => ({
               id: j.agentId,
-              actions: j.steps.flatMap((s) =>
-                s.action
-                  ? [{ actionId: s.action.actionId, label: s.action.label, href: s.action.href, role: s.action.role }]
-                  : [],
-              ),
+              actions: j.steps.flatMap((s) => {
+                if (!s.action) return [];
+                const actionId = actionIdByKey.get(
+                  `${s.stateHash}|${s.action.role ?? "link"}|${s.action.label}|${s.action.href ?? ""}`,
+                );
+                return [{ actionId, label: s.action.label, href: s.action.href, role: s.action.role }];
+              }),
             }))
           : selectTrajectories(e.simulations, e.configuration.verifyCount).map((traj) => ({
               id: traj.trajectoryId,

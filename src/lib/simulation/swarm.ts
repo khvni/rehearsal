@@ -7,6 +7,7 @@ import type {
   ExperimentConfig,
   IntentCategory,
   IntentProfile,
+  JevClient,
   PersonaKind,
   PersonaSwarm,
   StateGraph,
@@ -101,6 +102,8 @@ export async function runPersonaSwarm(args: {
   intents?: IntentProfile[];
   config: ExperimentConfig;
   viewport: Viewport;
+  /** Optional injected decision client (e.g. a fixture in tests); runners select their own when absent. */
+  jev?: JevClient;
 }): Promise<PersonaSwarm> {
   const { runner, url, goal, assertions, config, viewport } = args;
   const run = runner.runPersonaJourney;
@@ -147,6 +150,7 @@ export async function runPersonaSwarm(args: {
             assertions,
             seed,
             maxSteps: config.maxStepsPerAgent,
+            jev: args.jev,
           });
         } catch {
           journeys[i] = {
@@ -207,6 +211,13 @@ export function selectJourneys(swarm: PersonaSwarm, n: number): AgentJourney[] {
     }
     if (!advanced) break;
   }
+  // The queues cap at TOP_JOURNEYS; fill any remaining slots with unselected journeys.
+  for (const j of swarm.journeys) {
+    if (picked.length >= n) break;
+    if (seen.has(j.agentId)) continue;
+    picked.push(j);
+    seen.add(j.agentId);
+  }
   if (!picked.some((j) => j.outcome === "goal-reached")) {
     const success = swarm.journeys.find((j) => j.outcome === "goal-reached");
     if (success) {
@@ -221,9 +232,20 @@ export function selectJourneys(swarm: PersonaSwarm, n: number): AgentJourney[] {
  * Record emergent journeys as Trajectories so existing consumers (heat,
  * verify fallback, bench coverage) keep working. stateHash resolves to the
  * discovered stateId when the page was crawled; unvisited pages keep the hash.
+ * Journey actions resolve to the graph actionId matching label/role/href on the
+ * same state — synthetic `act_N` ids would never resolve in actionById lookups.
  */
 export function journeysToTrajectories(swarm: PersonaSwarm, graph?: StateGraph): Trajectory[] {
   const hashToId = new Map((graph?.states ?? []).map((s) => [s.stateHash, s.stateId]));
+  const actionIdByKey = new Map(
+    (graph?.states ?? []).flatMap((s) =>
+      s.actions.map((a) => [`${s.stateHash}|${a.role ?? "link"}|${a.label}|${a.href ?? ""}`, a.actionId] as const),
+    ),
+  );
+  const resolveAction = (s: AgentJourney["steps"][number]): string | undefined =>
+    s.action
+      ? actionIdByKey.get(`${s.stateHash}|${s.action.role ?? "link"}|${s.action.label}|${s.action.href ?? ""}`)
+      : undefined;
   return swarm.journeys.map((j) => ({
     trajectoryId: j.agentId,
     seed: j.seed,
@@ -231,7 +253,7 @@ export function journeysToTrajectories(swarm: PersonaSwarm, graph?: StateGraph):
     persona: j.persona,
     steps: j.steps.map((s) => ({
       stateId: hashToId.get(s.stateHash) ?? s.stateHash,
-      actionId: s.action?.actionId,
+      actionId: resolveAction(s),
     })),
     outcome: j.outcome === "goal-reached" ? "goal-reached" : "dropped-off",
     backtracks: j.backtracks,

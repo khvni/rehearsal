@@ -63,6 +63,8 @@ export interface PersonaJourneyArgs {
   assertions: Assertion[];
   seed: number;
   maxSteps: number;
+  /** Decision client injected by the caller; runners fall back to their own selectJev() when absent (a serialized Function invocation ignores it — the function selects from its own env). */
+  jev?: JevClient;
 }
 
 export interface OpenPageResult {

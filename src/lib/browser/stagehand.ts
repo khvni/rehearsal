@@ -422,7 +422,7 @@ export class StagehandRunner implements BrowserRunner {
       );
       const { personaJourneyLoop } = await import("../simulation/persona");
       const { selectJev } = await import("../decisions/jev");
-      return personaJourneyLoop(driver, this.opts.jev ?? selectJev(), args);
+      return personaJourneyLoop(driver, args.jev ?? this.opts.jev ?? selectJev(), args);
     });
   }
 

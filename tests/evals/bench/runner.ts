@@ -145,7 +145,7 @@ export class FixtureSiteRunner implements BrowserRunner {
       probe: () => fixtureProbe(pageFor(this.site, new URL(current).pathname) ?? "", current),
       screenshot: async () => null,
     };
-    return personaJourneyLoop(driver, new FixtureJevClient(), args);
+    return personaJourneyLoop(driver, args.jev ?? new FixtureJevClient(), args);
   }
 
   async close(): Promise<void> {}
@@ -242,7 +242,7 @@ export class HermeticSiteRunner implements BrowserRunner {
       const { personaJourneyLoop } = await import("@/lib/simulation/persona");
       const { FixtureJevClient } = await import("@/lib/decisions/jev");
       const driver = new LivePagePersonaDriver(page, args.viewport, this.evidenceDir, 30000);
-      return await personaJourneyLoop(driver, new FixtureJevClient(), args);
+      return await personaJourneyLoop(driver, args.jev ?? new FixtureJevClient(), args);
     } finally {
       await ctx.close();
     }

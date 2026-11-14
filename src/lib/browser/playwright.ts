@@ -264,7 +264,7 @@ export class PlaywrightRunner implements BrowserRunner {
       const driver = new LivePagePersonaDriver(page as PersonaPage, args.viewport, this.evidenceDir, 30000);
       const { personaJourneyLoop } = await import("../simulation/persona");
       const { selectJev } = await import("../decisions/jev");
-      return await personaJourneyLoop(driver, this.jev ?? selectJev(), args);
+      return await personaJourneyLoop(driver, args.jev ?? this.jev ?? selectJev(), args);
     } finally {
       await ctx.close();
     }
