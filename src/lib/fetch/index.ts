@@ -10,7 +10,6 @@ export class PlainFetcher implements PageFetcher {
   readonly name = "plain-fetch";
 
   async fetchHtml(url: string): Promise<string> {
-    await politeDelay(await assertPublicUrl(url));
     const res = await fetchPublic(url, {
       headers: { "user-agent": UA, accept: "text/html,application/xhtml+xml" },
       signal: AbortSignal.timeout(30000),

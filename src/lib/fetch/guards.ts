@@ -142,6 +142,7 @@ const MAX_REDIRECTS = 3;
 export async function fetchPublic(start: string, init: RequestInit = {}): Promise<Response> {
   let target = await assertPublicUrl(start);
   for (let hop = 0; ; hop++) {
+    await politeDelay(target);
     const res = await fetch(target, { ...init, redirect: "manual" });
     const location = res.headers.get("location");
     if (res.status < 300 || res.status >= 400 || !location) return res;
