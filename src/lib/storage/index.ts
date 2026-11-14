@@ -1,6 +1,6 @@
 import { mkdirSync, readFileSync, writeFileSync, existsSync, readdirSync } from "node:fs";
 import path from "node:path";
-import { Experiment, type ExperimentStore } from "../contracts";
+import { Experiment, isExperimentId, type ExperimentStore } from "../contracts";
 
 /** Experiment ids are `exp_<hex>`; anything else (e.g. `../x` from the URL) never touches the filesystem. */
 const SAFE_ID = /^[A-Za-z0-9_-]+$/;
@@ -20,16 +20,26 @@ export class JsonFileStore implements ExperimentStore {
     }
   }
 
+  /** Path for a valid experiment id that resolves inside the store dir; null otherwise. */
+  private fileFor(id: string): string | null {
+    if (!isExperimentId(id)) return null;
+    const root = path.resolve(this.dir);
+    const p = path.resolve(root, `${id}.json`);
+    return p.startsWith(root + path.sep) ? p : null;
+  }
+
   async save(e: Experiment): Promise<void> {
+    const p = this.fileFor(e.id);
+    if (!p) throw new Error("invalid experiment id");
     const onWorkers = typeof navigator !== "undefined" && navigator.userAgent === "Cloudflare-Workers";
     if (!onWorkers) {
       // Node/local: real write errors (disk full, permissions) must surface — a silent
       // drop would let create() report success for an experiment reads can't find.
-      writeFileSync(path.join(this.dir, `${e.id}.json`), JSON.stringify(e, null, 2));
+      writeFileSync(p, JSON.stringify(e, null, 2));
       return;
     }
     try {
-      writeFileSync(path.join(this.dir, `${e.id}.json`), JSON.stringify(e, null, 2));
+      writeFileSync(p, JSON.stringify(e, null, 2));
     } catch {
       /* workerd fs is read-only — writes no-op (D1Store is the real store there) */
     }
@@ -37,7 +47,8 @@ export class JsonFileStore implements ExperimentStore {
 
   async get(id: string): Promise<Experiment | null> {
     if (!SAFE_ID.test(id)) return null;
-    const p = path.join(this.dir, `${id}.json`);
+    const p = this.fileFor(id);
+    if (!p) return null;
     try {
       if (!existsSync(p)) return null;
       return Experiment.parse(JSON.parse(readFileSync(p, "utf8")));

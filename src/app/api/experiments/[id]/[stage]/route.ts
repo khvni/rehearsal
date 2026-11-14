@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { isExperimentId } from "@/lib/contracts";
 import { Orchestrator, StageInProgressError } from "@/lib/orchestrator";
 import { specToMarkdown } from "@/lib/analysis/spec";
 
@@ -14,6 +15,7 @@ function orchestrator(): Orchestrator {
 
 export async function POST(_req: Request, { params }: { params: Promise<{ id: string; stage: string }> }) {
   const { id, stage } = await params;
+  if (!isExperimentId(id)) return NextResponse.json({ error: "not found" }, { status: 404 });
   const orch = orchestrator();
   try {
     switch (stage) {
@@ -48,6 +50,7 @@ export async function POST(_req: Request, { params }: { params: Promise<{ id: st
 
 export async function GET(_req: Request, { params }: { params: Promise<{ id: string; stage: string }> }) {
   const { id, stage } = await params;
+  if (!isExperimentId(id)) return NextResponse.json({ error: "not found" }, { status: 404 });
   if (stage !== "spec") return NextResponse.json({ error: "unsupported" }, { status: 400 });
   const experiment = await orchestrator().get(id);
   if (!experiment?.spec) return NextResponse.json({ error: "no spec yet" }, { status: 404 });
