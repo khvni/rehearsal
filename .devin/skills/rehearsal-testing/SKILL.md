@@ -44,12 +44,13 @@ eval cases.** `npm run check:skill-sync` fails the build otherwise.
 ## Unit tests (tests/unit/)
 
 - `metrics.test.ts` — `measurePage` via `PlaywrightRunner.openPage` on synthetic pages served from loopback (scroll, CTA prominence ties, heading skips/multiple h1, nav count, font buckets, trunk test), `metricsFromHtml` fallback, and each `metricFindings` rule (grouping, severity, evidence)
-- `core.test.ts` — contract parsing, extractor, graph dedup, mulberry32 determinism, profile shaping, fixture Jev scoring, patch compilation, rule findings, spec markdown
+- `core.test.ts` — contract parsing (incl. `ExperimentConfig` budget upper bounds, clamping of over-limit stored configs), extractor, graph dedup, mulberry32 determinism, profile shaping, fixture Jev scoring, patch compilation, rule findings, spec markdown
 - `questions.test.ts` — question bank shape, homepage-first ordering, context-derived questions, answer detection (endpoint class / URL / text, start-only homepage questions, endpoint label filters, re-answering stored questions), LLM refinement skip + keyword questions, `unanswered-question` findings + summary
 - `egress-guard.test.ts` — SSRF: `resolvePublicHost` rejects private/link-local/metadata/unspecified hosts; the loopback egress proxy (`src/lib/fetch/egress-proxy.ts`) refuses CONNECT + plain-HTTP to private IPs; a real Chromium behind it gets 403 on redirect hops to 169.254.169.254 / loopback and on internal subresources, and `assertPublicPage` rejects the blocked final URL
 - `access.test.ts` — `REHEARSAL_ACCESS_TOKEN` gate (`hasAccess` Bearer/Basic, `src/proxy.ts` 401 on every route only when set) and the `withRunSlot` concurrency cap (`REHEARSAL_MAX_CONCURRENT_RUNS`, slot freed on error)
 - `orchestrator-lock.test.ts` — per-experiment run lock: a second concurrent `discover`/`spec`/`runAll` on the same experiment throws `StageInProgressError` (route → 409) without calling the runner again; other experiments run in parallel; the lock is released after success and failure
 - `agent-activity.test.ts` — `ActivityEvent` contract, `JsonFileStore.appendActivity`/`activity` (order, per-experiment isolation, `ACTIVITY_EVENT_LIMIT` cap, hostile-id safety), orchestrator emission during discover/verify/markFailed, and `GET /api/experiments/:id/activity` (feed + 404)
+- `experiments-route.test.ts` — `POST /api/experiments` returns 400 for configs over the budget bounds, before the rate limit, URL check or store write; in-bounds configs are capped to the demo `MAX_TRAJECTORIES`/`MAX_VERIFY_RUNS`
 - `intents.test.ts` — `classifyGoal` keyword heuristics, LLM refinement fallback, endpoint label/path classification, `discoverEndpoints`/`weightEndpoints` determinism + overrides, optional Experiment fields
 
 ## Browser tests (tests/e2e/)

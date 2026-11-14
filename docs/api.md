@@ -25,4 +25,7 @@ A stage runs any missing earlier stages first; one run per experiment at a time 
 
 `config` is an optional `ExperimentConfig`: `seed` (1337), `maxStates` (30), `maxDepth` (3),
 `trajectories` (1000), `verifyCount` (8), `viewports` (`["desktop","mobile"]`). These budgets
-are per experiment; there are no env overrides.
+are per experiment; there are no env overrides. Upper bounds (`EXPERIMENT_LIMITS`): `maxStates` ≤ 50,
+`maxDepth` ≤ 5, `trajectories` ≤ 5000, `verifyCount` ≤ 16, `viewports` at most 2 distinct values.
+A config outside these bounds gets a 400 `{error: "invalid config", issues}`.
+Stored experiments created before these bounds still load, with each budget clamped to its limit.
