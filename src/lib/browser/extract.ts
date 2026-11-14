@@ -93,7 +93,10 @@ export function extractPage(rawHtml: string, pageUrl: string): ExtractedPage {
 
   const onButton = (attribs: Record<string, string>, text: string) => {
     const label = text || normalizeLabel(attribs["aria-label"] ?? attribs.value ?? "button");
-    push({ type: "click", label, role: "button", enabled: !("disabled" in attribs), safeToExecute: true });
+    // Buttons inside a <form> default to type=submit — never submit third-party forms.
+    const type = (attribs.type ?? "").toLowerCase();
+    const submits = type === "submit" || (type === "" && stack.some((e) => e.name === "form"));
+    push({ type: "click", label, role: "button", enabled: !("disabled" in attribs), safeToExecute: !submits });
   };
 
   const onInput = (attribs: Record<string, string>) => {
