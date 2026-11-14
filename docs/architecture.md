@@ -125,7 +125,7 @@ a variable that is missing here or in `.env.example`, or if `.env.example` lists
 | `GEMINI_MODEL_MOCKUP` | `analysis/gemini.ts` | `GEMINI_MODEL_DEEP` — the generation model for spec-stage preview pages; retryable errors fall back to `GEMINI_MODEL_FAST` |
 | `REHEARSAL_GEMINI_MAX_CALLS` | `analysis/gemini.ts` | `6` Gemini calls per run (reset at discover), first come first served; a run makes up to 6 (assertions, goal intent, visitor questions, findings, spec, mockup), and calls past the cap use the deterministic fallback |
 | `JEV_API_KEY` (or `OPENROUTER_API_KEY`) | `decisions/jev.ts` | `FixtureJevClient` |
-| `JEV_BASE_URL` / `JEV_MODEL` | `decisions/jev.ts` | `https://openrouter.ai/api/alpha/decisions` / `typesafe/jev-1.13` |
+| `JEV_BASE_URL` / `JEV_MODEL` | `decisions/jev.ts` | `https://api.typesafe.ai/v1/systemone` / `jev-latest` |
 | `BRIGHTDATA_API_KEY` + `BRIGHTDATA_ZONE` | `fetch/index.ts` | Web Unlocker skipped (both are required) |
 | `BRIGHTDATA_BROWSER_WS`, or `BRIGHTDATA_BROWSER_USER` + `BRIGHTDATA_BROWSER_PASSWORD` | `browser/brightdata.ts` | Bright Data Browser API skipped |
 | `BROWSERBASE_API_KEY` / `BROWSERBASE_PROJECT_ID` | `fetch/index.ts`, `browser/runner.ts` | Browserbase Fetch + Stagehand on Browserbase skipped |
