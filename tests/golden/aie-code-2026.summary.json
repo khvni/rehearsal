@@ -14,7 +14,7 @@
   "states": 12,
   "edges": 112,
   "trajectories": 200,
-  "goalReached": 77,
+  "goalReached": 85,
   "verified": 2,
   "verifiedPassed": 0,
   "findings": [
@@ -67,6 +67,12 @@
       "count": 1
     },
     {
+      "ruleOrTitle": "Endpoint buried: signup \"APPLY TO ATTEND\"",
+      "severity": "medium",
+      "principle": "mindless-choices",
+      "count": 1
+    },
+    {
       "ruleOrTitle": "\"How do I contact the organizers?\" has no answer path",
       "severity": "low",
       "principle": "navigation",
@@ -100,8 +106,8 @@
     },
     {
       "class": "signup",
-      "count": 1,
-      "reached": 1,
+      "count": 5,
+      "reached": 5,
       "weight": 0.95
     },
     {
@@ -113,13 +119,13 @@
     {
       "class": "contact-form",
       "count": 1,
-      "reached": 1,
+      "reached": 0,
       "weight": 0.5
     },
     {
       "class": "next-steps",
       "count": 1,
-      "reached": 1,
+      "reached": 0,
       "weight": 0.5
     }
   ],
@@ -130,6 +136,7 @@
     "#. Post-event page still invites registration (# of # pages) [M]",
     "#. Desktop: missing site ID, primary navigation, search, you-are-here indicator (trunk test fails) [M]",
     "#. Dense link surface increases scan cost (# of # pages) [S]",
+    "#. Endpoint buried: signup \"APPLY TO ATTEND\" [S]",
     "#. Desktop: homepage requires # screens of scrolling [S]",
     "#. Desktop: missing site ID (trunk test fails) [S]",
     "#. \"How much does it cost?\" has no answer path [S]",
