@@ -1,6 +1,6 @@
 import type { ModelConfig } from "@browserbasehq/stagehand";
 import { z } from "zod";
-import type { Assertion, BrowserRun, DomPatch, Viewport } from "./index";
+import type { Assertion, BrandSignals, BrowserRun, DomPatch, Viewport } from "./index";
 import type { PageMetrics } from "./metrics";
 
 // Browser backends (src/lib/browser/*): runner interface, trajectory args and runner options.
@@ -48,6 +48,8 @@ export interface OpenPageResult {
   screenshotPath?: string;
   /** Layout metrics from the `measurePage` hook, taken in the same session as the screenshot. */
   metrics?: PageMetrics;
+  /** Computed design tokens captured in the same session (the `captureBrand` hook). */
+  brand?: BrandSignals;
 }
 
 /**
