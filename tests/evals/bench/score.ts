@@ -47,7 +47,6 @@ export function scoreSite(manifest: FixtureSiteManifest, run: BenchRun, runnerNa
   const produced = producedFindings(exp.findings);
   const missing: ExpectedFinding[] = [];
   const unexpected: FindingScore[] = [];
-  let expectedMatched = 0;
   let accountable = 0;
 
   for (const p of produced) {
@@ -57,7 +56,6 @@ export function scoreSite(manifest: FixtureSiteManifest, run: BenchRun, runnerNa
       unexpected.push(p);
     } else if (matches(manifest.expectedFindings)) {
       p.matchedAs = "expected";
-      expectedMatched += 1;
       accountable += 1;
     } else if (matches(manifest.toleratedFindings)) {
       p.matchedAs = "tolerated";
@@ -65,9 +63,11 @@ export function scoreSite(manifest: FixtureSiteManifest, run: BenchRun, runnerNa
     }
   }
   for (const e of manifest.expectedFindings) {
-    if (!produced.some((p) => p.matchedAs === "expected" && matchFinding(e, p))) missing.push(e);
+    if (!produced.some((p) => matchFinding(e, p))) missing.push(e);
   }
   const expectedTotal = manifest.expectedFindings.length;
+  // Recall counts *expected rules* covered — duplicate produced matches can't inflate it.
+  const expectedMatched = expectedTotal - missing.length;
   const recall = expectedTotal === 0 ? 1 : expectedMatched / expectedTotal;
   const precision = produced.length === 0 ? (expectedTotal === 0 ? 1 : 0) : accountable / produced.length;
 
@@ -151,6 +151,11 @@ export function scoreSite(manifest: FixtureSiteManifest, run: BenchRun, runnerNa
   }
   for (const u of unexpected) {
     expectationFailures.push(`unexpectedFinding: "${u.title}"`);
+  }
+  // Expected findings must be produced — a manifest that declares them always
+  // fails when one is missing, regardless of the recall floor.
+  for (const m of missing) {
+    expectationFailures.push(`missingExpectedFinding: "${m.titleMatch}"`);
   }
 
   return {
