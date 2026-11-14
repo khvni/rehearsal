@@ -18,10 +18,17 @@ export class JsonFileStore implements ExperimentStore {
   }
 
   async save(e: Experiment): Promise<void> {
+    const onWorkers = typeof navigator !== "undefined" && navigator.userAgent === "Cloudflare-Workers";
+    if (!onWorkers) {
+      // Node/local: real write errors (disk full, permissions) must surface — a silent
+      // drop would let create() report success for an experiment reads can't find.
+      writeFileSync(path.join(this.dir, `${e.id}.json`), JSON.stringify(e, null, 2));
+      return;
+    }
     try {
       writeFileSync(path.join(this.dir, `${e.id}.json`), JSON.stringify(e, null, 2));
     } catch {
-      /* read-only fs (workerd) — writes no-op */
+      /* workerd fs is read-only — writes no-op (D1Store is the real store there) */
     }
   }
 
