@@ -143,6 +143,8 @@ describe("eval: orchestrator analyze/spec emit each finding once across states",
     async save(e) { mem.set(e.id, Experiment.parse(JSON.parse(JSON.stringify(e)))); },
     async get(id) { return mem.get(id) ?? null; },
     async list() { return [...mem.values()]; },
+    async appendActivity() {},
+    async activity() { return []; },
   };
 
   it("findings and spec changes are unique per (principle, title)", async () => {

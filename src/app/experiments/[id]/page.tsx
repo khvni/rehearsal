@@ -16,6 +16,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardGroup } from "@/components/ui/card";
 import { Tabs, TabsItem } from "@/components/ui/tabs";
 import { ThinkingStep, ThinkingSteps, ThinkingStepsContent, ThinkingStepsHeader } from "@/components/ui/thinking-steps";
+import { AgentActivity } from "@/components/agent-activity";
 import { HeatLegend, StateGraph, visitCounts } from "./state-graph";
 
 const STAGES = ["discover", "simulate", "verify", "analyze", "compare", "spec"] as const;
@@ -289,6 +290,8 @@ export default function ExperimentPage() {
       )}
 
       <div className="grid">
+        <AgentActivity id={id} live={live} />
+
         <Panel
           title="Decision graph"
           className="span-2"

@@ -49,6 +49,7 @@ eval cases.** `npm run check:skill-sync` fails the build otherwise.
 - `egress-guard.test.ts` — SSRF: `resolvePublicHost` rejects private/link-local/metadata/unspecified hosts; the loopback egress proxy (`src/lib/fetch/egress-proxy.ts`) refuses CONNECT + plain-HTTP to private IPs; a real Chromium behind it gets 403 on redirect hops to 169.254.169.254 / loopback and on internal subresources, and `assertPublicPage` rejects the blocked final URL
 - `access.test.ts` — `REHEARSAL_ACCESS_TOKEN` gate (`hasAccess` Bearer/Basic, `src/proxy.ts` 401 on every route only when set) and the `withRunSlot` concurrency cap (`REHEARSAL_MAX_CONCURRENT_RUNS`, slot freed on error)
 - `orchestrator-lock.test.ts` — per-experiment run lock: a second concurrent `discover`/`spec`/`runAll` on the same experiment throws `StageInProgressError` (route → 409) without calling the runner again; other experiments run in parallel; the lock is released after success and failure
+- `agent-activity.test.ts` — `ActivityEvent` contract, `JsonFileStore.appendActivity`/`activity` (order, per-experiment isolation, `ACTIVITY_EVENT_LIMIT` cap, hostile-id safety), orchestrator emission during discover/verify/markFailed, and `GET /api/experiments/:id/activity` (feed + 404)
 - `intents.test.ts` — `classifyGoal` keyword heuristics, LLM refinement fallback, endpoint label/path classification, `discoverEndpoints`/`weightEndpoints` determinism + overrides, optional Experiment fields
 
 ## Browser tests (tests/e2e/)

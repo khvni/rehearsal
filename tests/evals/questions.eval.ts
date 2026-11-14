@@ -110,6 +110,8 @@ describe("eval: orchestrator stores visitor questions in analyze (fixture adapte
     async save(e) { mem.set(e.id, Experiment.parse(JSON.parse(JSON.stringify(e)))); },
     async get(id) { return mem.get(id) ?? null; },
     async list() { return [...mem.values()]; },
+    async appendActivity() {},
+    async activity() { return []; },
   };
 
   it("analyze → questions + unanswered-question findings", async () => {

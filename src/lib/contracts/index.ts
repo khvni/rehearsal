@@ -371,6 +371,34 @@ export const VisitorQuestion = z.object({
 });
 export type VisitorQuestion = z.infer<typeof VisitorQuestion>;
 
+// ── Activity feed (what the agent is doing, live) ───────────────────────────
+
+/** Activity events stored per experiment are capped to the newest N. */
+export const ACTIVITY_EVENT_LIMIT = 500;
+
+export const ActivityKind = z.enum([
+  "info",
+  "fetch",
+  "map",
+  "decide",
+  "browser",
+  "assert",
+  "finding",
+  "error",
+]);
+export type ActivityKind = z.infer<typeof ActivityKind>;
+
+/** One line of the live feed: an observable thing the agent did. */
+export const ActivityEvent = z.object({
+  ts: z.string(),
+  /** Pipeline stage the event belongs to, or "run" for run-level failures. */
+  stage: z.string(),
+  kind: ActivityKind,
+  message: z.string(),
+  url: z.string().optional(),
+});
+export type ActivityEvent = z.infer<typeof ActivityEvent>;
+
 // ── Experiment ──────────────────────────────────────────────────────────────
 
 export const ExperimentStatus = z.enum([
