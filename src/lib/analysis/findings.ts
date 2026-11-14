@@ -5,13 +5,12 @@ import type {
   Endpoint,
   EndpointClass,
   EndpointJourney,
-  Finding,
   LlmClient,
   SiteState,
 } from "../contracts";
 import { isVagueLabel } from "../browser/extract";
 import { isRunError } from "../browser/types";
-import { EvidenceType, KrugDimension, KrugPrinciple, Severity } from "../contracts";
+import { EvidenceType, Finding, KrugDimension, KrugPrinciple, Severity } from "../contracts";
 import { logEvent } from "../telemetry";
 import { rubricPromptSection } from "./rubric";
 
@@ -321,7 +320,7 @@ Return FINDINGS_JSON: {"findings": [{"title","category"(rubric key),"severity","
       findings?: Partial<Finding>[];
     };
     return (parsed.findings ?? [])
-      .filter((f) => f.title && f.description)
+      .filter((f) => typeof f.title === "string" && f.title && typeof f.description === "string" && f.description)
       .map((f) => ({
         findingId: fid(),
         title: String(f.title),
@@ -332,10 +331,14 @@ Return FINDINGS_JSON: {"findings": [{"title","category"(rubric key),"severity","
         affectedStates: states.slice(0, 3).map((s) => s.stateId),
         affectedActions: [],
         evidencePaths: [],
-        recommendation: String(f.recommendation ?? ""),
+        recommendation: typeof f.recommendation === "string" ? f.recommendation : "",
         verificationStatus: f.evidenceType === "verified-failure" ? "verified" : "unverified",
         krugPrinciple: pick(KrugPrinciple, f.krugPrinciple, "dont-make-me-think"),
-      }));
+      }))
+      .flatMap((f) => {
+        const r = Finding.safeParse(f);
+        return r.success ? [r.data] : [];
+      });
   } catch (err) {
     logEvent({ stage: "analyze", kind: "llm-findings-failed", data: { llm: llm.name, error: String(err).slice(0, 160) } });
     return [];

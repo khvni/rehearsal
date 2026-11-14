@@ -51,6 +51,7 @@ eval cases.** `npm run check:skill-sync` fails the build otherwise.
 - `orchestrator-lock.test.ts` — per-experiment run lock: a second concurrent `discover`/`spec`/`runAll` on the same experiment throws `StageInProgressError` (route → 409) without calling the runner again; other experiments run in parallel; the lock is released after success and failure
 - `agent-activity.test.ts` — `ActivityEvent` contract, `JsonFileStore.appendActivity`/`activity` (order, per-experiment isolation, `ACTIVITY_EVENT_LIMIT` cap, hostile-id safety), orchestrator emission during discover/verify/markFailed, and `GET /api/experiments/:id/activity` (feed + 404)
 - `experiments-route.test.ts` — `POST /api/experiments` returns 400 for configs over the budget bounds, before the rate limit, URL check or store write; in-bounds configs are capped to the demo `MAX_TRAJECTORIES`/`MAX_VERIFY_RUNS`
+- `llm-output-validation.test.ts` — LLM output is checked against the contracts before it is stored: `compileAssertions` keeps only valid `Assertion`s (null selector = absent, keyword fallback when none survive), `llmFindings` drops non-`Finding` items, `generateSpec` ignores malformed summary/changes/phases, `JsonFileStore.save` rejects invalid experiments and `list()` skips unparseable documents
 - `intents.test.ts` — `classifyGoal` keyword heuristics, LLM refinement fallback, endpoint label/path classification, `discoverEndpoints`/`weightEndpoints` determinism + overrides, optional Experiment fields
 
 ## Browser tests (tests/e2e/)

@@ -32,21 +32,26 @@ export async function generateSpec(experiment: Experiment, llm: LlmClient): Prom
     evidencePaths: f.evidencePaths,
   }));
 
-  const llmSpec = await llm
+  const llmSpec: unknown = await llm
     .complete(specPrompt(experiment, changes), { deep: true, json: true })
-    .then((raw) => JSON.parse(stripFences(raw)) as Partial<SpecReport>)
+    .then((raw) => JSON.parse(stripFences(raw)))
     .catch(() => null);
+  // LLM output is untrusted: keep only the parts that parse against the contract.
+  const fields = llmSpec && typeof llmSpec === "object" ? (llmSpec as Record<string, unknown>) : {};
+  const summary = SpecReport.shape.summary.safeParse(fields.summary);
+  const llmChanges = Array.isArray(fields.changes)
+    ? fields.changes.flatMap((c, i) => {
+        const r = SpecChange.safeParse(c && typeof c === "object" ? { ...c, rank: i + 1 } : c);
+        return r.success ? [r.data] : [];
+      })
+    : [];
+  const phases = SpecReport.shape.rebuildPhases.safeParse(fields.rebuildPhases);
 
-  // LLM output is untrusted: keep it only when it parses against the contract.
-  const llmChanges = SpecChange.array().safeParse(
-    Array.isArray(llmSpec?.changes) ? llmSpec.changes.map((c, i) => ({ ...c, rank: i + 1 })) : undefined,
-  );
-  const llmPhases = SpecReport.shape.rebuildPhases.safeParse(llmSpec?.rebuildPhases);
   return {
     ...base,
-    summary: typeof llmSpec?.summary === "string" && llmSpec.summary.trim() ? llmSpec.summary : fallbackSummary(experiment, changes.length),
-    changes: llmChanges.success && llmChanges.data.length >= changes.length ? llmChanges.data : changes,
-    rebuildPhases: llmPhases.success && llmPhases.data.length > 0 ? llmPhases.data : fallbackPhases(changes),
+    summary: summary.success && summary.data.trim() ? summary.data : fallbackSummary(experiment, changes.length),
+    changes: llmChanges.length >= changes.length ? llmChanges : changes,
+    rebuildPhases: phases.success && phases.data.length > 0 ? phases.data : fallbackPhases(changes),
   };
 }
 

@@ -4,7 +4,7 @@ import {
   ExperimentConfig,
   VIEWPORTS,
   type ActivityKind,
-  type Assertion,
+  Assertion,
   type BrowserRunner,
   type Comparison,
   type ExperimentStore,
@@ -554,13 +554,13 @@ GOAL: ${goal}
 Return ASSERTION_LIST as a JSON array of {kind, value, selector?}.`,
         { json: true },
       );
-      const parsed = JSON.parse(raw.replace(/```json|```/g, "").trim());
-      if (Array.isArray(parsed) && parsed.length > 0) {
-        return parsed.slice(0, 4).map((a) => ({
-          kind: a.kind ?? "text-present",
-          value: String(a.value ?? goal.split(/\s+/).slice(0, 4).join(" ")),
-          selector: a.selector,
-        }));
+      const parsed: unknown = JSON.parse(raw.replace(/```json|```/g, "").trim());
+      if (Array.isArray(parsed)) {
+        const valid = parsed
+          .map((a) => Assertion.safeParse(a && typeof a === "object" && a.selector === null ? { ...a, selector: undefined } : a))
+          .flatMap((r) => (r.success ? [r.data] : []))
+          .slice(0, 4);
+        if (valid.length > 0) return valid;
       }
     } catch {
       /* fall through to heuristic */
@@ -599,7 +599,7 @@ Return ASSERTION_LIST as a JSON array of {kind, value, selector?}.`,
 
   private async update(exp: Experiment, status: Experiment["status"]): Promise<void> {
     exp.status = status;
-    await this.store.save(exp);
+    await this.store.save(Experiment.parse(exp));
   }
 
   async dispose(): Promise<void> {
