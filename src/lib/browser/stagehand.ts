@@ -19,6 +19,7 @@ import { assertPublicUrl } from "../fetch/guards";
 import { compilePatches } from "../variants";
 import { agentLoop } from "./agent";
 import { isSameOrigin } from "./extract";
+import { chromiumSandboxEnabled } from "./sandbox";
 import { measurePage } from "./metrics";
 import { captureBrand } from "../rebuild/brand";
 import { DEFAULT_EVIDENCE_DIR } from "./playwright";
@@ -152,6 +153,7 @@ export class StagehandRunner implements BrowserRunner {
         : await localBrowser.launch({
             headless: true,
             viewport: vp,
+            chromiumSandbox: this.opts.chromiumSandbox ?? chromiumSandboxEnabled(),
             ...(this.opts.executablePath ? { executablePath: this.opts.executablePath } : {}),
           });
     let sh: Stagehand | undefined;
