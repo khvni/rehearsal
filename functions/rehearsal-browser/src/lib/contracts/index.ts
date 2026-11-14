@@ -303,6 +303,8 @@ export const SpecChange = z.object({
   findingId: z.string().optional(),
   krugPrinciple: KrugPrinciple.optional(),
   change: z.string(),
+  /** Ordered concrete edits applying this change — names the control or page it lands on. */
+  steps: z.array(z.string()).default([]),
   rationale: z.string(),
   effort: z.enum(["S", "M", "L"]),
   evidencePaths: z.array(z.string()).default([]),
@@ -477,6 +479,34 @@ export const RebuildResult = z.object({
 });
 export type RebuildResult = z.infer<typeof RebuildResult>;
 
+// ── Spec-applied mockup (preview routes) ────────────────────────────────────
+
+/** One mockup page of the target site with the spec applied — self-contained HTML, no external resources. */
+export const MockupPage = z.object({
+  /** URL-path-derived slug; served at /experiments/{id}/preview/{slug} (root page is "index"). */
+  slug: z.string().regex(/^[a-z0-9][a-z0-9-]*$/),
+  /** The crawled page this mockup rewrites. */
+  sourceUrl: z.string(),
+  title: z.string(),
+  /** One line on what the spec changed on this page. */
+  summary: z.string(),
+  html: z.string(),
+  /** Who produced the page: Gemini or the deterministic template. */
+  source: z.enum(["gemini", "template"]),
+  bytes: z.number().int().nonnegative(),
+});
+export type MockupPage = z.infer<typeof MockupPage>;
+
+/** The spec stage's mockup deliverable, stored on the experiment record. */
+export const MockupResult = z.object({
+  generatedAt: z.string(),
+  brand: BrandProfile,
+  pages: z.array(MockupPage),
+  /** LLM adapter name actually used ("gemini", "gemini-fixture"…). */
+  llm: z.string(),
+});
+export type MockupResult = z.infer<typeof MockupResult>;
+
 // ── Experiment ──────────────────────────────────────────────────────────────
 
 export const ExperimentStatus = z.enum([
@@ -539,6 +569,7 @@ export const Experiment = z.object({
   journeys: z.array(EndpointJourney).optional(),
   questions: z.array(VisitorQuestion).optional(),
   rebuild: RebuildResult.optional(),
+  mockup: MockupResult.optional(),
   errors: z.array(z.string()).default([]),
   /** Structured, coded form of each failure (page loads, stage errors); `errors` keeps the readable lines. */
   failures: z.array(RunFailure).default([]),

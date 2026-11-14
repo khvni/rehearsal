@@ -4,13 +4,16 @@ import { logEvent } from "../telemetry";
 /**
  * Gemini API client — REST over generativelanguage (stable across SDK churn).
  * Models: gemini-4-hydrogen (fast/cheap structured calls), gemini-4-argon
- * (findings, recommendations, spec generation).
+ * (findings, recommendations, spec generation, mockup pages).
+ * The "mockup" slot (GEMINI_MODEL_MOCKUP) defaults to the deep model so the
+ * frontier generation model builds previews; retryable errors fall back to fast.
  */
 export class GeminiClient implements LlmClient {
   readonly name = "gemini";
   private apiKey: string;
   private fast: string;
   private deep: string;
+  private mockup: string;
   private maxCalls: number;
   private calls = 0;
   private usage = { calls: 0, inputTokens: 0, outputTokens: 0, totalTokens: 0 };
@@ -20,8 +23,9 @@ export class GeminiClient implements LlmClient {
     this.apiKey = process.env.GEMINI_API_KEY ?? "";
     this.fast = process.env.GEMINI_MODEL_FAST ?? "gemini-4-hydrogen";
     this.deep = process.env.GEMINI_MODEL_DEEP ?? "gemini-4-argon";
-    const max = Number(process.env.REHEARSAL_GEMINI_MAX_CALLS ?? 3);
-    this.maxCalls = Number.isFinite(max) && max >= 0 ? max : 3;
+    this.mockup = process.env.GEMINI_MODEL_MOCKUP ?? this.deep;
+    const max = Number(process.env.REHEARSAL_GEMINI_MAX_CALLS ?? 6);
+    this.maxCalls = Number.isFinite(max) && max >= 0 ? max : 6;
     if (!this.apiKey) throw new Error("GeminiClient requires GEMINI_API_KEY");
   }
 
@@ -36,10 +40,10 @@ export class GeminiClient implements LlmClient {
   }
 
   /** Over budget throws; every caller already falls back to its deterministic path on error. */
-  async complete(prompt: string, opts?: { deep?: boolean; json?: boolean }): Promise<string> {
+  async complete(prompt: string, opts?: { deep?: boolean; json?: boolean; model?: string }): Promise<string> {
     if (this.calls >= this.maxCalls) throw new Error(`Gemini call budget (${this.maxCalls}/run) exhausted`);
     this.calls++;
-    const model = opts?.deep ? this.deep : this.fast;
+    const model = opts?.model === "mockup" ? this.mockup : opts?.deep ? this.deep : this.fast;
     try {
       return await this.generate(model, prompt, opts?.json ?? false);
     } catch (err) {

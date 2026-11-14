@@ -22,7 +22,8 @@ export interface JevClient {
 /** Text LLM client (src/lib/analysis/gemini.ts). */
 export interface LlmClient {
   readonly name: string;
-  complete(prompt: string, opts?: { deep?: boolean; json?: boolean }): Promise<string>;
+  /** `model` is a named slot ("mockup"); adapters resolve it to a configured model id and ignore unknown slots. */
+  complete(prompt: string, opts?: { deep?: boolean; json?: boolean; model?: string }): Promise<string>;
   /** Start a new per-run call budget (called when an experiment's discover stage begins). */
   resetBudget?(): void;
 }

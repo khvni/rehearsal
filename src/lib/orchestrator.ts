@@ -45,6 +45,7 @@ import { metricsFromHtml } from "./browser/metrics";
 import { isSameOrigin } from "./browser/extract";
 import { errorText } from "./browser/types";
 import { generateSpec, specToMarkdown } from "./analysis/spec";
+import { generateMockup } from "./mockup";
 import { brandSignalsFromHtml, generateRebuild, mergeSignals } from "./rebuild";
 import { selectStore } from "./storage";
 import { captureError, logEvent, traceTags, withTrace } from "./telemetry";
@@ -587,6 +588,13 @@ export class Orchestrator {
           `${u.calls} calls · ~${(u.totalTokens / 1000).toFixed(1)}k tokens${u.estimated ? " (est)" : ""}`;
         const parts = [usage.llm && `llm ${fmt(usage.llm)}`, usage.jev && `jev ${fmt(usage.jev)}`].filter(Boolean);
         await this.emit(id, "spec", "info", `Model usage this run: ${parts.join(" · ")}`);
+      }
+      // Mockup is a bonus deliverable: a spec failure can't lose it, and vice versa.
+      try {
+        exp.mockup = await generateMockup(exp, this.llm);
+        await this.emit(id, "spec", "info", `Mockup built: ${exp.mockup.pages.length} pages under /experiments/${id}/preview/`);
+      } catch (err) {
+        logEvent({ experimentId: id, stage: "spec", kind: "llm-fallback", data: { error: `mockup skipped: ${String(err).slice(0, 160)}` } });
       }
       // Evidence/spec files are best-effort; edge runtimes have a read-only fs.
       try {

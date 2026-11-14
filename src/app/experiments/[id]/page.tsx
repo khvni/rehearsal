@@ -267,6 +267,7 @@ export default function ExperimentPage() {
           <span className="tabular">{exp.simulations.length.toLocaleString()} journeys</span>
           <span className="sep" aria-hidden>·</span>
           <span className="tabular">{shortDate(exp.createdAt)}</span>
+          {exp.mockup && <Link className="mono" href={`/experiments/${id}/preview/`}>View preview</Link>}
           {exp.rebuild && <Link className="mono" href={`/experiments/${id}/rebuild`}>View rebuild</Link>}
         </div>
         {exp.personas.length > 0 && (

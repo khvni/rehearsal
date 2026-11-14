@@ -28,6 +28,12 @@ is the dashboard page (brand, inferred goals, pages), and `GET /experiments/:id/
 rebuilt page as the raw self-contained HTML document (`text/html`, `no-store`); 404 `{error}` for an unknown
 experiment, no rebuild yet, or an unknown slug.
 
+The `spec` stage's mockup is served the same way under `preview`: `GET /experiments/:id/preview/`
+redirects to the mockup's index page, `GET /experiments/:id/preview/:slug` returns one mockup page as raw
+self-contained HTML (`text/html`, `no-store`) — every internal link stays under that directory, and no page
+fetches a third-party resource. `GET /mockups` lists experiments that have one. 404 `{error}` for an unknown
+experiment, no mockup yet, or an unknown slug.
+
 `config` is an optional `ExperimentConfig`: `seed` (1337), `maxStates` (30), `maxDepth` (3),
 `trajectories` (1000), `verifyCount` (8), `viewports` (`["desktop","mobile"]`). These budgets
 are per experiment; there are no env overrides. Upper bounds (`EXPERIMENT_LIMITS`): `maxStates` ≤ 50,
