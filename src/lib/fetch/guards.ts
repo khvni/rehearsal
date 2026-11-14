@@ -27,6 +27,26 @@ function isPrivateIp(ip: string): boolean {
   return false;
 }
 
+/** Resolve `hostname` and return the address to connect to; throws if it is blocked or private.
+ *  Every resolved address must be public, so a mixed DNS answer cannot slip a private one through.
+ *  REHEARSAL_ALLOW_PRIVATE=1 permits localhost/private targets (tests only). */
+export async function resolvePublicHost(hostname: string): Promise<string> {
+  const host = hostname.toLowerCase().replace(/^\[|\]$/g, "");
+  if (ipaddr.isIP(host)) {
+    if (process.env.REHEARSAL_ALLOW_PRIVATE !== "1" && isPrivateIp(host)) throw new Error(`Blocked private IP: ${host}`);
+    return host;
+  }
+  if (process.env.REHEARSAL_ALLOW_PRIVATE === "1") return (await dns.lookup(host)).address;
+  if (BLOCKED_HOSTNAMES.has(host) || host.endsWith(".local") || host.endsWith(".internal")) {
+    throw new Error(`Blocked hostname: ${host}`);
+  }
+  const addresses = await dns.lookup(host, { all: true });
+  if (addresses.length === 0) throw new Error(`Hostname did not resolve: ${host}`);
+  const blocked = addresses.find((a) => isPrivateIp(a.address));
+  if (blocked) throw new Error(`Hostname resolves to private IP: ${host} -> ${blocked.address}`);
+  return addresses[0].address;
+}
+
 /** Assert a target URL is a public http(s) page. Throws on violation.
  *  REHEARSAL_ALLOW_PRIVATE=1 permits localhost/private targets (tests only). */
 export async function assertPublicUrl(raw: string): Promise<URL> {
@@ -35,16 +55,7 @@ export async function assertPublicUrl(raw: string): Promise<URL> {
   if (url.protocol !== "http:" && url.protocol !== "https:") {
     throw new Error(`Blocked protocol: ${url.protocol}`);
   }
-  const host = url.hostname.toLowerCase();
-  if (BLOCKED_HOSTNAMES.has(host) || host.endsWith(".local") || host.endsWith(".internal")) {
-    throw new Error(`Blocked hostname: ${host}`);
-  }
-  if (ipaddr.isIP(host)) {
-    if (isPrivateIp(host)) throw new Error(`Blocked private IP: ${host}`);
-    return url;
-  }
-  const { address } = await dns.lookup(host);
-  if (isPrivateIp(address)) throw new Error(`Hostname resolves to private IP: ${host} -> ${address}`);
+  await resolvePublicHost(url.hostname);
   return url;
 }
 

@@ -37,6 +37,7 @@ import {
 import { metricFindings } from "./analysis/metric-findings";
 import { metricsFromHtml } from "./browser/metrics";
 import { isSameOrigin } from "./browser/extract";
+import { errorText } from "./browser/types";
 import { generateSpec, specToMarkdown } from "./analysis/spec";
 import { selectStore } from "./storage";
 import { captureError, logEvent, traceTags, withTrace } from "./telemetry";
@@ -200,7 +201,7 @@ export class Orchestrator {
               }
             }
           } catch (e) {
-            logEvent({ experimentId: id, stage: "discover", kind: "page-fail", data: { url, error: String(e).slice(0, 160) } });
+            logEvent({ experimentId: id, stage: "discover", kind: "page-fail", data: { url, error: errorText(e, 160) } });
             await captureError(e, { url, depth, viewport: vpName }, {
               tags: traceTags("discover", { experimentId: id, targetUrl: experiment.targetUrl }),
               level: "warning",

@@ -4,12 +4,17 @@ REST surface under `src/app/api/` (Node runtime, `force-dynamic`). Every route b
 checked against the code by `npm run check:facts` — add a row in the same commit as a new
 route or method.
 
+With `REHEARSAL_ACCESS_TOKEN` set, every route except `/api/hooks/*` needs
+`Authorization: Bearer <token>` (or Basic auth with the token as the password) and returns
+401 otherwise. `POST /api/experiments/:id/:stage` returns 429 (`Retry-After: 30`) when
+`REHEARSAL_MAX_CONCURRENT_RUNS` stage requests are already running.
+
 | Method | Path | Body / params | Returns |
 |---|---|---|---|
 | POST | `/api/experiments` | `{targetUrl, goal, config?}` (`url` accepted as an alias of `targetUrl`) | the created `Experiment`; 400 if `targetUrl`/`goal` missing or the URL fails `assertPublicUrl` |
 | GET | `/api/experiments` | — | `[{id, targetUrl, goal, status, createdAt}]` |
 | GET | `/api/experiments/:id` | — | the full `Experiment` (contract in `src/lib/contracts`); 404 if unknown |
-| POST | `/api/experiments/:id/:stage` | `:stage` = a pipeline stage or `run` | the updated `Experiment`; 400 on an unknown stage, 409 `{error, runningStage}` while another stage or `run` of the same experiment is in progress, 500 on a stage error |
+| POST | `/api/experiments/:id/:stage` | `:stage` = a pipeline stage or `run` | the updated `Experiment`; 400 on an unknown stage, 409 `{error, runningStage}` while another stage or `run` of the same experiment is in progress, 429 at the concurrency cap, 500 on a stage error |
 | POST | `/api/hooks/sentry` | Sentry webhook (raw JSON), headers `Sentry-Hook-Signature` + `Sentry-Hook-Resource` (`event_alert` or `issue`) | `{ok, issueId, action: created\|updated\|reopened\|skipped, number?}`; `{ok, ignored}` for other resources/actions; 401 bad signature, 503 without `SENTRY_WEBHOOK_SECRET`. See docs/telemetry.md |
 | GET | `/api/experiments/:id/:stage` | `:stage` = `spec` only | `spec.md` as `text/markdown`; 404 before the spec stage ran |
 

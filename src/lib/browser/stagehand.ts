@@ -18,7 +18,7 @@ import { compilePatches } from "../variants";
 import { isSameOrigin } from "./extract";
 import { measurePage } from "./metrics";
 import { DEFAULT_EVIDENCE_DIR } from "./playwright";
-import { evaluateAssertion, shouldShoot, summarizeRun } from "./types";
+import { errorText, evaluateAssertion, shouldShoot, summarizeRun } from "./types";
 
 const NAV_TIMEOUT_MS = 60_000;
 /** Stagehand only exposes console events, so forward uncaught errors/rejections to console.error. */
@@ -70,6 +70,23 @@ async function firstVisible(page: Page, selector: string): Promise<Locator | nul
     if (await loc.isVisible().catch(() => false)) return loc;
   }
   return null;
+}
+
+/** Reject a page that redirected off the target origin or onto a non-public address. */
+async function assertLanded(page: Page, target: URL): Promise<void> {
+  const finalUrl = await page.url();
+  if (!isSameOrigin(finalUrl, target.origin)) throw new Error(`Redirected off-origin to ${new URL(finalUrl).origin}`);
+  await assertPublicUrl(finalUrl);
+}
+
+/** After a step navigates, drop a non-public page before screenshots or assertions can read it. */
+async function leaveIfNotPublic(page: Page): Promise<void> {
+  try {
+    await assertPublicUrl(await page.url());
+  } catch (e) {
+    await page.goto("about:blank").catch(() => undefined);
+    throw e;
+  }
 }
 
 function stagehandProbe(page: Page): AssertionProbe {
@@ -158,9 +175,10 @@ export class StagehandRunner implements BrowserRunner {
     viewport: Viewport,
     opts?: { patches?: DomPatch[]; shotName?: string },
   ): Promise<OpenPageResult> {
-    await assertPublicUrl(url);
+    const target = await assertPublicUrl(url);
     return this.withSession(viewport, opts?.patches, async (_sh, page) => {
       await page.goto(url, { waitUntil: "domcontentloaded", timeout: NAV_TIMEOUT_MS });
+      await assertLanded(page, target);
       await page.waitForTimeout(1200);
       const screenshotPath = await this.shoot(page, String(opts?.shotName ?? Date.now()));
       const metrics = await measurePage(page);
@@ -172,7 +190,9 @@ export class StagehandRunner implements BrowserRunner {
   private async step(sh: Stagehand, page: Page, a: TrajectoryAction): Promise<void> {
     const origin = new URL(await page.url()).origin;
     if (a.href && isSameOrigin(a.href, origin)) {
+      await assertPublicUrl(a.href);
       await page.goto(a.href, { waitUntil: "domcontentloaded", timeout: NAV_TIMEOUT_MS });
+      await leaveIfNotPublic(page);
       return;
     }
     const loc = await firstVisible(page, stableSelector(a));
@@ -185,6 +205,7 @@ export class StagehandRunner implements BrowserRunner {
       throw new Error(`no element labelled "${a.label}" and no Stagehand model configured for act()`);
     }
     await page.waitForLoadState("domcontentloaded", NAV_TIMEOUT_MS).catch(() => undefined);
+    await leaveIfNotPublic(page);
   }
 
   async runTrajectory(args: TrajectoryArgs): Promise<BrowserRun> {
@@ -194,17 +215,18 @@ export class StagehandRunner implements BrowserRunner {
     const screenshots: string[] = [];
     const assertions: BrowserRun["assertions"] = [];
     try {
-      await assertPublicUrl(args.url);
+      const target = await assertPublicUrl(args.url);
       await this.withSession(args.viewport, args.patches, async (sh, page) => {
         await page.addInitScript(PAGE_ERROR_BRIDGE);
         await page.on("console", (ev) => {
           const p = ev.params as { type?: string; args?: { value?: unknown }[] };
           if (p.type === "error") {
             const text = (p.args ?? []).map((x) => String(x.value ?? "")).join(" ");
-            errors.push(`console: ${text.slice(0, 200)}`);
+            errors.push(`console: ${errorText(text)}`);
           }
         });
         await page.goto(args.url, { waitUntil: "domcontentloaded", timeout: NAV_TIMEOUT_MS });
+        await assertLanded(page, target);
         await page.waitForTimeout(800);
         const shot0 = await this.shoot(page, `${args.runId}_0`);
         if (shot0) screenshots.push(shot0);
@@ -216,7 +238,7 @@ export class StagehandRunner implements BrowserRunner {
             await this.step(sh, page, a);
             steps.push({ actionId: a.actionId, label: a.label, ok: true });
           } catch (e) {
-            steps.push({ actionId: a.actionId, label: a.label, ok: false, error: String(e).slice(0, 160) });
+            steps.push({ actionId: a.actionId, label: a.label, ok: false, error: errorText(e, 160) });
           }
           if (shouldShoot(i, total)) {
             const shot = await this.shoot(page, `${args.runId}_${i + 1}`).catch(() => null);
@@ -229,7 +251,7 @@ export class StagehandRunner implements BrowserRunner {
         }
       });
     } catch (e) {
-      errors.push(`run: ${String(e).slice(0, 200)}`);
+      errors.push(`run: ${errorText(e)}`);
     }
     return summarizeRun({ runId: args.runId, viewport: args.viewport, started, steps, assertions, errors, screenshots });
   }

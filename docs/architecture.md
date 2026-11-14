@@ -79,7 +79,11 @@ vendors are combined by routing, not by sharing a browser.
 
 **Fetch** (`src/lib/fetch`) — Bright Data Web Unlocker (`POST https://api.brightdata.com/request`
 with `{ zone, url, format: "raw" }`) → Browserbase Fetch (`browserbase.fetch`) → plain `fetch`.
-Every path runs `assertPublicUrl` + per-host politeness first. Bright Data SERP API and Web
+Every path runs `assertPublicUrl` + per-host politeness first. Plain fetches re-check every
+redirect hop. Local Chromium sends every request (redirects and subresources too) through a
+loopback egress proxy (`fetch/egress-proxy.ts`) that resolves each host, refuses private,
+link-local and metadata addresses, and connects to the IP it checked; runners also re-check
+`page.url()` after each navigation. Bright Data SERP API and Web
 Scraper API / datasets target search engines and prebuilt site scrapers, so they are not wired.
 
 ## Environment variables
@@ -106,6 +110,8 @@ a variable that is missing here or in `.env.example`, or if `.env.example` lists
 | `TIGERDATA_URL` (or `DATABASE_URL`) | `storage/index.ts` | `JsonFileStore` under `data/experiments/` |
 | `NEXT_PUBLIC_POSTHOG_KEY` / `NEXT_PUBLIC_POSTHOG_HOST` | `app/layout.tsx` | alikhani.co's project key / `https://us.i.posthog.com` |
 | `SNOWFLAKE_ACCOUNT_URL`, `SNOWFLAKE_TOKEN`, `SNOWFLAKE_CORTEX_SERVICE` | `storage/index.ts` | Cortex Search disabled |
+| `REHEARSAL_ACCESS_TOKEN` | `proxy.ts` | No gate: every page and API route is open. Set it on any public host; browsers prompt for it (Basic auth, any username) and API clients send `Authorization: Bearer <token>` |
+| `REHEARSAL_MAX_CONCURRENT_RUNS` | `access/index.ts` | `2` pipeline stage requests at once per process; extras get 429 |
 | `REHEARSAL_ALLOW_PRIVATE` | `fetch/guards.ts` | SSRF guard enforced. `1` lets tests target localhost; never set it in a deployment |
 
 Terraform provisions the deploy subset (`terraform/README.md`); `scripts/verify-facts.ts`
