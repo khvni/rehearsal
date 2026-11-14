@@ -61,7 +61,11 @@ export interface BrowserRunner {
   readonly name: string;
   /** True when `runAgentTask` is usable (backend has a model). Absent/false => verify uses runTrajectory. */
   readonly supportsAgent?: boolean;
-  openPage(url: string, viewport: Viewport, opts?: { patches?: DomPatch[]; shotName?: string }): Promise<OpenPageResult>;
+  openPage(
+    url: string,
+    viewport: Viewport,
+    opts?: { patches?: DomPatch[]; shotName?: string; scope?: string },
+  ): Promise<OpenPageResult>;
   runTrajectory(args: TrajectoryArgs): Promise<BrowserRun>;
   /**
    * Agent-driven trajectory: observe/act/extract loop instead of scripted locators.
@@ -69,6 +73,14 @@ export interface BrowserRunner {
    * stage falls back to `runTrajectory` when absent (AGENTS.md rule 4).
    */
   runAgentTask?(args: AgentRunArgs): Promise<BrowserRun>;
+  /**
+   * Drop sessions pooled across `openPage` calls (runners may reuse one session
+   * for a whole crawl). Called by the orchestrator when a discover stage ends;
+   * per-call sessions close themselves regardless. `scope` releases only the
+   * sessions opened under that `openPage` scope so concurrent runs sharing one
+   * runner never close each other's captures; omit it to release everything.
+   */
+  releaseCaptures?(scope?: string): Promise<void>;
   close(): Promise<void>;
 }
 

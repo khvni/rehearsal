@@ -372,6 +372,25 @@ export const EndpointJourney = z.object({
 });
 export type EndpointJourney = z.infer<typeof EndpointJourney>;
 
+/** A visitor archetype inferred from a first-page probe: who shows up and what they came to do. */
+export const VisitorPersona = z.object({
+  /** Stable id derived from the persona's intent category (deterministic across runs). */
+  personaId: z.string(),
+  /** Display name ("Info-seeker"). */
+  name: z.string(),
+  /** One line on who this visitor is and how they decide. */
+  summary: z.string(),
+  /** Visitor-phrased goal this persona pursues. */
+  goal: z.string(),
+  /** RFX intent category the persona maps to. */
+  intent: IntentCategory,
+  /** Endpoint classes the site actually exposes that this persona is aiming at. */
+  targetEndpointClasses: z.array(EndpointClass).default([]),
+  /** Crawled labels (CTAs, nav items, endpoints) the persona was inferred from. */
+  signals: z.array(z.string()).default([]),
+});
+export type VisitorPersona = z.infer<typeof VisitorPersona>;
+
 /** A question a visitor is likely to have, and whether the site gives them a path to the answer. */
 export const VisitorQuestion = z.object({
   questionId: z.string(),
@@ -487,6 +506,26 @@ export const RebuildResult = z.object({
 });
 export type RebuildResult = z.infer<typeof RebuildResult>;
 
+// ── Usage accounting (per-run model calls + tokens) ──────────────────────────
+
+/** Call/token totals for one model provider. `estimated` marks byte-derived
+ * estimates (chars/4) when the provider reports no usage metadata. */
+export const TokenUsage = z.object({
+  calls: z.number().int().nonnegative(),
+  inputTokens: z.number().int().nonnegative().default(0),
+  outputTokens: z.number().int().nonnegative().default(0),
+  totalTokens: z.number().int().nonnegative().default(0),
+  estimated: z.boolean().optional(),
+});
+export type TokenUsage = z.infer<typeof TokenUsage>;
+
+/** Per-run model usage, stamped onto the experiment record at each save. */
+export const UsageReport = z.object({
+  llm: TokenUsage.optional(),
+  jev: TokenUsage.optional(),
+});
+export type UsageReport = z.infer<typeof UsageReport>;
+
 // ── Spec-applied mockup (preview routes) ────────────────────────────────────
 
 /** One self-contained mockup page stored on the experiment; served raw under /experiments/{id}/preview/. */
@@ -557,6 +596,10 @@ export const Experiment = z.object({
   id: z.string(),
   targetUrl: z.string().url(),
   goal: z.string(),
+  /** Where `goal` came from: the request, a first-page probe's inference, or a generic default when the probe failed. */
+  goalSource: z.enum(["user", "inferred", "default"]).default("user"),
+  /** Visitor personas derived from the probed first page; empty when the caller supplied the goal or the probe failed. */
+  personas: z.array(VisitorPersona).default([]),
   status: ExperimentStatus,
   createdAt: z.string(),
   configuration: StoredExperimentConfig,
@@ -573,6 +616,7 @@ export const Experiment = z.object({
   journeys: z.array(EndpointJourney).optional(),
   questions: z.array(VisitorQuestion).optional(),
   rebuild: RebuildResult.optional(),
+  usage: UsageReport.optional(),
   mockup: MockupResult.optional(),
   errors: z.array(z.string()).default([]),
   /** Structured, coded form of each failure (page loads, stage errors); `errors` keeps the readable lines. */

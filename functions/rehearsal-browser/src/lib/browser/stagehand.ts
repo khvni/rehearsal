@@ -23,6 +23,7 @@ import { chromiumSandboxEnabled } from "./sandbox";
 import { measurePage } from "./metrics";
 import { captureBrand } from "../rebuild/brand";
 import { DEFAULT_EVIDENCE_DIR } from "./playwright";
+import { logEvent } from "../telemetry";
 import { errorText, evaluateAssertion, shouldShoot, summarizeRun } from "./types";
 
 const NAV_TIMEOUT_MS = 60_000;
@@ -105,13 +106,23 @@ function stagehandProbe(page: Page): AssertionProbe {
 }
 
 /**
- * Browserbase Stagehand (v4). Each call gets its own browser (a Browserbase session,
- * or a local Chrome for env=local). Steps try a deterministic locator first and fall
- * back to `act()` — natural-language, self-healing — when the label no longer matches.
+ * Browserbase Stagehand (v4). `openPage` captures pool one browser session per
+ * viewport for a whole crawl (one paid session instead of one per state);
+ * `runTrajectory`/`runAgentTask` still get isolated sessions — init scripts and
+ * console listeners must not leak between runs. Steps try a deterministic
+ * locator first and fall back to `act()` — natural-language, self-healing —
+ * when the label no longer matches.
  */
 export class StagehandRunner implements BrowserRunner {
   readonly name: string;
   private evidenceDir: string;
+  /** Pooled capture sessions for `openPage`, keyed by run scope + viewport — one
+   * paid Browserbase session per crawl instead of one per state; scopes keep
+   * concurrent runs on one runner from sharing pages or closing each other. */
+  private captures = new Map<
+    string,
+    { scope?: string; session: Promise<{ browser: StagehandBrowser; sh: Stagehand; page: Page }> }
+  >();
 
   constructor(private opts: StagehandRunnerOptions) {
     if (opts.env === "browserbase" && !opts.browserbaseApiKey) {
@@ -178,6 +189,64 @@ export class StagehandRunner implements BrowserRunner {
     }
   }
 
+  /** The launch half of `withSession`, kept alive so a crawl reuses one session per viewport. */
+  private async captureSession(
+    viewport: Viewport,
+  ): Promise<{ browser: StagehandBrowser; sh: Stagehand; page: Page }> {
+    const { Stagehand, browserbase, localBrowser } = await import("@browserbasehq/stagehand");
+    const vp = { width: viewport.width, height: viewport.height };
+    const browser: StagehandBrowser =
+      this.opts.env === "browserbase"
+        ? await browserbase.launch({
+            apiKey: this.opts.browserbaseApiKey!,
+            ...(this.opts.browserbaseProjectId ? { projectId: this.opts.browserbaseProjectId } : {}),
+            browserSettings: { viewport: vp },
+          })
+        : await localBrowser.launch({
+            headless: true,
+            viewport: vp,
+            chromiumSandbox: this.opts.chromiumSandbox ?? chromiumSandboxEnabled(),
+            ...(this.opts.executablePath ? { executablePath: this.opts.executablePath } : {}),
+          });
+    // Anything after launch failing must not leak the paid session.
+    try {
+      const sh = await Stagehand.create({ browser, selfHeal: true, ...(this.opts.model ? { model: this.opts.model } : {}) });
+      const page = (await browser.context.activePage()) ?? (await browser.context.newPage());
+      await page.setViewportSize(vp.width, vp.height);
+      logEvent({ stage: "discover", kind: "browser-session", data: { runner: this.name, viewport: `${vp.width}x${vp.height}`, pooled: true } });
+      return { browser, sh, page };
+    } catch (e) {
+      await browser.close().catch(() => undefined);
+      throw e;
+    }
+  }
+
+  private async capturePage(viewport: Viewport, scope?: string): Promise<Page> {
+    const key = `${scope ?? ""}|${viewport.width}x${viewport.height}`;
+    let entry = this.captures.get(key);
+    if (!entry) {
+      entry = { scope, session: this.captureSession(viewport) };
+      this.captures.set(key, entry);
+    }
+    try {
+      return (await entry.session).page;
+    } catch (e) {
+      this.captures.delete(key);
+      throw e;
+    }
+  }
+
+  /** Drop pooled capture sessions for one run scope (or all when omitted) — called when a discover stage ends. */
+  async releaseCaptures(scope?: string): Promise<void> {
+    const entries = [...this.captures.entries()].filter(([, e]) => scope === undefined || e.scope === scope);
+    for (const [key] of entries) this.captures.delete(key);
+    for (const [, e] of entries) {
+      const session = await e.session.catch(() => undefined);
+      await session?.sh.close().catch(() => undefined);
+      await session?.browser.close().catch(() => undefined);
+    }
+  }
+
   /** Best-effort screenshot: returns the evidence path, or null on read-only runtimes. */
   private async shoot(page: Page, name: string): Promise<string | null> {
     try {
@@ -192,19 +261,31 @@ export class StagehandRunner implements BrowserRunner {
   async openPage(
     url: string,
     viewport: Viewport,
-    opts?: { patches?: DomPatch[]; shotName?: string },
+    opts?: { patches?: DomPatch[]; shotName?: string; scope?: string },
   ): Promise<OpenPageResult> {
     const target = await assertPublicUrl(url);
-    return this.withSession(viewport, opts?.patches, async (_sh, page) => {
-      await page.goto(url, { waitUntil: "domcontentloaded", timeout: NAV_TIMEOUT_MS });
-      await assertLanded(page, target);
-      await page.waitForTimeout(1200);
-      const screenshotPath = await this.shoot(page, String(opts?.shotName ?? Date.now()));
-      const metrics = await measurePage(page);
-      const html = await page.evaluate<string>("document.documentElement.outerHTML");
-      const brand = await captureBrand(page).catch(() => undefined);
-      return { html, screenshotPath: screenshotPath ?? undefined, metrics, brand };
-    });
+    // Patched captures need an isolated context (init scripts would leak across pages).
+    if (opts?.patches?.length) {
+      return this.withSession(viewport, opts.patches, async (_sh, page) => {
+        await page.goto(url, { waitUntil: "domcontentloaded", timeout: NAV_TIMEOUT_MS });
+        await assertLanded(page, target);
+        await page.waitForTimeout(1200);
+        const screenshotPath = await this.shoot(page, String(opts?.shotName ?? Date.now()));
+        const metrics = await measurePage(page);
+        const html = await page.evaluate<string>("document.documentElement.outerHTML");
+        const brand = await captureBrand(page).catch(() => undefined);
+        return { html, screenshotPath: screenshotPath ?? undefined, metrics, brand };
+      });
+    }
+    const page = await this.capturePage(viewport, opts?.scope);
+    await page.goto(url, { waitUntil: "domcontentloaded", timeout: NAV_TIMEOUT_MS });
+    await assertLanded(page, target);
+    await page.waitForTimeout(1200);
+    const screenshotPath = await this.shoot(page, String(opts?.shotName ?? Date.now()));
+    const metrics = await measurePage(page);
+    const html = await page.evaluate<string>("document.documentElement.outerHTML");
+    const brand = await captureBrand(page).catch(() => undefined);
+    return { html, screenshotPath: screenshotPath ?? undefined, metrics, brand };
   }
 
   private async step(sh: Stagehand, page: Page, a: TrajectoryAction): Promise<void> {
@@ -323,6 +404,6 @@ export class StagehandRunner implements BrowserRunner {
   }
 
   async close(): Promise<void> {
-    // Sessions are opened and closed per call.
+    await this.releaseCaptures();
   }
 }

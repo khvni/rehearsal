@@ -1,4 +1,4 @@
-import type { LlmClient } from "../contracts";
+import type { CallContext, LlmClient, TokenUsage } from "../contracts";
 import { logEvent } from "../telemetry";
 
 /**
@@ -16,6 +16,8 @@ export class GeminiClient implements LlmClient {
   private mockup: string;
   private maxCalls: number;
   private calls = 0;
+  private usage = { calls: 0, inputTokens: 0, outputTokens: 0, totalTokens: 0 };
+  private experimentId: string | undefined;
 
   constructor() {
     this.apiKey = process.env.GEMINI_API_KEY ?? "";
@@ -27,8 +29,14 @@ export class GeminiClient implements LlmClient {
     if (!this.apiKey) throw new Error("GeminiClient requires GEMINI_API_KEY");
   }
 
-  resetBudget(): void {
+  resetBudget(ctx?: CallContext): void {
     this.calls = 0;
+    this.usage = { calls: 0, inputTokens: 0, outputTokens: 0, totalTokens: 0 };
+    this.experimentId = ctx?.experimentId;
+  }
+
+  usageReport(): TokenUsage {
+    return { ...this.usage };
   }
 
   /** Over budget throws; every caller already falls back to its deterministic path on error. */
@@ -48,6 +56,7 @@ export class GeminiClient implements LlmClient {
   }
 
   private async generate(model: string, prompt: string, json: boolean): Promise<string> {
+    const started = Date.now();
     const res = await fetch(
       `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${this.apiKey}`,
       {
@@ -66,7 +75,28 @@ export class GeminiClient implements LlmClient {
     if (!res.ok) throw new Error(`Gemini ${model} failed: ${res.status}`);
     const data = (await res.json()) as {
       candidates?: { content?: { parts?: { text?: string }[] } }[];
+      usageMetadata?: { promptTokenCount?: number; candidatesTokenCount?: number; totalTokenCount?: number };
     };
+    const usage = data.usageMetadata ?? {};
+    const inputTokens = usage.promptTokenCount ?? Math.ceil(prompt.length / 4);
+    const outputTokens = usage.candidatesTokenCount ?? 0;
+    this.usage.calls++;
+    this.usage.inputTokens += inputTokens;
+    this.usage.outputTokens += outputTokens;
+    this.usage.totalTokens += usage.totalTokenCount ?? inputTokens + outputTokens;
+    logEvent({
+      experimentId: this.experimentId,
+      stage: "llm",
+      kind: "llm-call",
+      data: {
+        model,
+        inputTokens,
+        outputTokens,
+        totalTokens: usage.totalTokenCount ?? inputTokens + outputTokens,
+        durationMs: Date.now() - started,
+        estimated: !data.usageMetadata,
+      },
+    });
     return data.candidates?.[0]?.content?.parts?.map((p) => p.text ?? "").join("") ?? "";
   }
 }
@@ -79,8 +109,14 @@ function isRetryableWithFastModel(err: unknown): boolean {
 /** Deterministic offline stand-in: structured responses keyed by prompt shape. */
 export class FixtureLlmClient implements LlmClient {
   readonly name = "gemini-fixture";
+  private calls = 0;
+
+  usageReport(): TokenUsage {
+    return { calls: this.calls, inputTokens: 0, outputTokens: 0, totalTokens: 0, estimated: true };
+  }
 
   async complete(prompt: string): Promise<string> {
+    this.calls++;
     if (prompt.includes("ASSERTION_LIST")) {
       // Goal object (last content word, e.g. "schedule") must be reached as a page.
       const filler = new Set(["find", "the", "a", "an", "to", "for", "of", "get", "see", "view", "check", "locate", "look", "page", "out", "where", "how", "what", "and", "or", "in", "on", "with", "up", "join", "sign", "start", "request", "understand", "does", "it", "this", "their", "its", "product"]);
