@@ -17,6 +17,7 @@ eval cases.** `npm run check:skill-sync` fails the build otherwise.
 - `analyze` — rule-based + Gemini findings, each classified by evidence type + Krug principle
 - `compare` — DOM-patch variant applied in isolated context; baseline vs variant deltas
 - `spec` — SpecReport generated; spec.md written under data/experiments/<id>/
+- `rebuild` — brand extraction from crawled states → goal inference from CTAs/nav/titles/endpoints → per-goal branded page generation (Gemini, deterministic template fallback); stored as experiment.rebuild, served at /experiments/:id/rebuild[/slug]
 
 ## Eval cases (tests/evals/, gated by evals.config.json thresholds)
 
@@ -53,6 +54,11 @@ eval cases.** `npm run check:skill-sync` fails the build otherwise.
 - **Determinism**: seed 1337 default, counter `randomUUID` patched via `syncBuiltinESMExports` (also mocked per-file in evals — Jev tiebreak jitter is actionId-keyed), optional `referenceNow` pins the clock for stale-date heuristics; stage durations use `hrtime` so pinning doesn't zero them. Strip `durationsMs`/`overBudget`/`generatedAt` to compare two runs (`stripTiming`).
 - **Scoring** (`score.ts`): findings group into rule keys (digit-normalized title + krugPrinciple); precision = (expected+tolerated matches)/produced, recall = expected-matched/expected; journey/state coverage from trajectories; endpoint coverage from `journeys`; spec item coverage = matched `expectedSpecItems`/`expected` total (1 when none declared). `expectationFailures` lists every violated floor — `--check` exits non-zero when any site has one.
 - **Flags**: `--site <id>` one site, `--out <dir>` report dir, `--browser` chromium runner, `--seed`, `--check` gate mode.
+- `rebuild-stage.eval.ts` — rebuild stage (`src/lib/rebuild`) with fixture adapters; thresholds are local constants in the file:
+  - brand extraction — `brandSignalsFromHtml` on the AIE fixture returns the site name, ≥ 8 nav items (Apply to attend, Speakers, Program…) resolved against the page URL, and a cssVars record; `rollupBrand` over the fixture states is deterministic (two calls deep-equal)
+  - goal inference — `inferGoals` on a fixture-built experiment returns ≥ 4 goals: the experiment goal first (source `experiment-goal`), ≥ 1 `cta`-sourced goal, unique url-safe slugs, weights in [0,1]
+  - generated pages — `generateRebuild` with `FixtureLlmClient` yields one page per goal; no `<script>`, every `<img src>` on the audited origin, each page contains its goal's CTA label; byte-identical across two runs
+  - orchestrator wiring — fixture runner/store/Jev/LLM: `rebuild` (chaining every earlier stage) stores `experiment.rebuild`, it round-trips through the `Experiment` contract, discover stores per-state `brand` signals, and `rebuild.llm` is the fixture adapter name
 
 ## Unit tests (tests/unit/)
 
