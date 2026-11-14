@@ -73,7 +73,9 @@ describe("BrowserbaseFunctionRunner", () => {
         body: init?.body ? JSON.parse(String(init.body)) : undefined,
         key: (init?.headers as Record<string, string>)["x-bb-api-key"],
       });
-      const next = statuses.shift()!;
+      // Once the scripted statuses drain, repeat the last one — a long-running
+      // invocation stays RUNNING however fast this machine drains the array.
+      const next = statuses.length ? statuses.shift()! : { status: "RUNNING" };
       return new Response(JSON.stringify({ id: "inv_1", ...next }), { status: 200 });
     }) as typeof fetch;
     return { calls, runner: new BrowserbaseFunctionRunner({ apiKey: "bb", functionId: "fn_1", fetchImpl, sleep: async () => {}, pollMs: 10, timeoutMs: 50 }) };
