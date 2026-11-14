@@ -1,0 +1,94 @@
+{
+  "id": "checkout-loop",
+  "name": "Flowboard (SaaS)",
+  "goal": "sign up for the free trial",
+  "mountPath": "/",
+  "pages": {
+    "/": "checkout-loop/index.html",
+    "/product": "checkout-loop/product.html",
+    "/plans": "checkout-loop/plans.html",
+    "/signup/trial": "checkout-loop/trial.html"
+  },
+  "stubMissing": true,
+  "referenceNow": "2026-11-13T12:00:00.000Z",
+  "expectedSiteType": "saas",
+  "expectedIntentCategory": "proposal",
+  "expectedEndpointClasses": [
+    "signup"
+  ],
+  "expectedFindings": [
+    {
+      "titleMatch": "ambiguous link labels",
+      "krugPrinciple": "dont-make-me-think",
+      "severity": "medium"
+    },
+    {
+      "titleMatch": "dense link surface increases scan cost",
+      "krugPrinciple": "scanning-not-reading",
+      "severity": "medium"
+    }
+  ],
+  "toleratedFindings": [
+    {
+      "titleMatch": "endpoint buried: (signup|pricing|contact-form)",
+      "krugPrinciple": "mindless-choices"
+    },
+    {
+      "titleMatch": "endpoint unreachable: contact-form",
+      "krugPrinciple": "navigation"
+    },
+    {
+      "titleMatch": "assertion failed in browser"
+    },
+    {
+      "titleMatch": "has no answer path"
+    },
+    {
+      "titleMatch": "expected visitor questions"
+    },
+    {
+      "titleMatch": "trunk test"
+    }
+  ],
+  "unexpectedFindings": [
+    {
+      "titleMatch": "no signup endpoint found"
+    },
+    {
+      "titleMatch": "endpoint unreachable: signup"
+    }
+  ],
+  "expectedSpecItems": [
+    {
+      "match": "ambiguous link labels|vague label"
+    },
+    {
+      "match": "dense link surface|scan cost"
+    }
+  ],
+  "budgetsMs": {
+    "discover": 60000,
+    "simulate": 30000,
+    "verify": 60000,
+    "analyze": 30000,
+    "compare": 60000,
+    "spec": 30000,
+    "total": 240000
+  },
+  "expectations": {
+    "minGoalReachRate": 0,
+    "minJourneyCoverage": 0.04,
+    "minFindingsPrecision": 1,
+    "minFindingsRecall": 1,
+    "minSpecItemCoverage": 1
+  },
+  "config": {
+    "maxStates": 30,
+    "maxDepth": 3,
+    "trajectories": 200,
+    "verifyCount": 2,
+    "viewports": [
+      "desktop"
+    ]
+  }
+}
