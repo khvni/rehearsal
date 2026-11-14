@@ -53,6 +53,8 @@ async function runStage(orch: Orchestrator, id: string, stage: string): Promise<
       return NextResponse.json(await orch.compare(id));
     case "spec":
       return NextResponse.json(await orch.spec(id));
+    case "rebuild":
+      return NextResponse.json(await orch.rebuild(id));
     case "run":
       return NextResponse.json(await orch.runAll(id));
     default:

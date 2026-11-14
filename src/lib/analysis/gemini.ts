@@ -18,8 +18,8 @@ export class GeminiClient implements LlmClient {
     this.apiKey = process.env.GEMINI_API_KEY ?? "";
     this.fast = process.env.GEMINI_MODEL_FAST ?? "gemini-4-hydrogen";
     this.deep = process.env.GEMINI_MODEL_DEEP ?? "gemini-4-argon";
-    const max = Number(process.env.REHEARSAL_GEMINI_MAX_CALLS ?? 2);
-    this.maxCalls = Number.isFinite(max) && max >= 0 ? max : 2;
+    const max = Number(process.env.REHEARSAL_GEMINI_MAX_CALLS ?? 3);
+    this.maxCalls = Number.isFinite(max) && max >= 0 ? max : 3;
     if (!this.apiKey) throw new Error("GeminiClient requires GEMINI_API_KEY");
   }
 

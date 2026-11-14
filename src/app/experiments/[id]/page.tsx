@@ -19,7 +19,7 @@ import { ThinkingStep, ThinkingSteps, ThinkingStepsContent, ThinkingStepsHeader 
 import { AgentActivity } from "@/components/agent-activity";
 import { HeatLegend, StateGraph, visitCounts } from "./state-graph";
 
-const STAGES = ["discover", "simulate", "verify", "analyze", "compare", "spec"] as const;
+const STAGES = ["discover", "simulate", "verify", "analyze", "compare", "spec", "rebuild"] as const;
 type Stage = (typeof STAGES)[number] | "run";
 const STATUS_STAGE: Partial<Record<Experiment["status"], (typeof STAGES)[number]>> = {
   discovering: "discover",
@@ -30,7 +30,7 @@ const STATUS_STAGE: Partial<Record<Experiment["status"], (typeof STAGES)[number]
 };
 type Section = "graph" | "evidence" | "findings" | "comparisons" | "spec";
 
-const RUNNING_STATUSES = ["discovering", "simulating", "verifying", "analyzing", "comparing"];
+const RUNNING_STATUSES = ["discovering", "simulating", "verifying", "analyzing", "comparing", "rebuilding"];
 
 const SECTION_STAGES: Record<Section, { stages: Stage[]; statuses: string[] }> = {
   graph: { stages: ["discover", "simulate"], statuses: ["discovering", "simulating"] },
@@ -217,6 +217,7 @@ export default function ExperimentPage() {
     analyze: findings.length > 0,
     compare: exp.variants.length + exp.comparisons.length > 0,
     spec: Boolean(exp.spec),
+    rebuild: Boolean(exp.rebuild),
   };
   // Stages run in order and analyze/compare may legitimately produce nothing, so a later stage implies earlier ones ran.
   for (let i = STAGES.length - 2; i >= 0; i--) stageDone[STAGES[i]] ||= stageDone[STAGES[i + 1]];
@@ -261,6 +262,7 @@ export default function ExperimentPage() {
           <span className="tabular">{exp.simulations.length.toLocaleString()} journeys</span>
           <span className="sep" aria-hidden>·</span>
           <span className="tabular">{shortDate(exp.createdAt)}</span>
+          {exp.rebuild && <Link className="mono" href={`/experiments/${id}/rebuild`}>View rebuild</Link>}
         </div>
       </header>
 
@@ -516,6 +518,7 @@ const STAGE_LABEL: Record<(typeof STAGES)[number], string> = {
   analyze: "Analyze",
   compare: "Compare",
   spec: "Spec",
+  rebuild: "Rebuild",
 };
 
 const STAGE_LINE: Record<(typeof STAGES)[number], string> = {
@@ -525,6 +528,7 @@ const STAGE_LINE: Record<(typeof STAGES)[number], string> = {
   analyze: "Grades what went wrong",
   compare: "Patches the page and tries again",
   spec: "Writes up what to fix",
+  rebuild: "Generate the redesigned pages",
 };
 
 const VIEWPORTS = ["desktop", "mobile"] as const;
