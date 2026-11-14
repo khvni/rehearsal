@@ -1,12 +1,21 @@
+import { createHash } from "node:crypto";
 import type {
   ActionNode,
   BehavioralProfile,
+  CallContext,
   DecisionQuestion,
   DecisionResult,
   JevClient,
+  JevScoreCache,
   SiteState,
+  TokenUsage,
 } from "../contracts";
 import { logEvent } from "../telemetry";
+
+/** Jev reports no usage metadata; estimate tokens as bytes/4 of the JSON payloads. */
+function estTokens(bytes: number): number {
+  return Math.ceil(bytes / 4);
+}
 
 /**
  * Jev / System One client.
@@ -30,6 +39,7 @@ export class HttpJevClient implements JevClient {
   private baseUrl: string;
   private apiKey: string;
   private model: string;
+  private usage = { calls: 0, inputTokens: 0, outputTokens: 0 };
 
   constructor() {
     this.baseUrl = process.env.JEV_BASE_URL ?? "https://openrouter.ai/api/alpha/decisions";
@@ -38,7 +48,20 @@ export class HttpJevClient implements JevClient {
     if (!this.apiKey) throw new Error("HttpJevClient requires JEV_API_KEY or OPENROUTER_API_KEY");
   }
 
-  async decide(state: Record<string, unknown>, questions: DecisionQuestion[]): Promise<DecisionResult[]> {
+  resetBudget(): void {
+    this.usage = { calls: 0, inputTokens: 0, outputTokens: 0 };
+  }
+
+  usageReport(): TokenUsage {
+    const { calls, inputTokens, outputTokens } = this.usage;
+    return { calls, inputTokens, outputTokens, totalTokens: inputTokens + outputTokens, estimated: true };
+  }
+
+  async decide(
+    state: Record<string, unknown>,
+    questions: DecisionQuestion[],
+    ctx?: CallContext,
+  ): Promise<DecisionResult[]> {
     const body = {
       model: this.model,
       state,
@@ -49,14 +72,34 @@ export class HttpJevClient implements JevClient {
         ]),
       ),
     };
+    const started = Date.now();
     const res = await fetch(this.baseUrl, {
       method: "POST",
       headers: { authorization: `Bearer ${this.apiKey}`, "content-type": "application/json" },
       body: JSON.stringify(body),
       signal: AbortSignal.timeout(20000),
     });
+    const requestBytes = JSON.stringify(body).length;
+    const responseBytes = Number(res.headers.get("content-length") ?? 0);
+    this.usage.calls++;
+    this.usage.inputTokens += estTokens(requestBytes);
     if (!res.ok) throw new Error(`Jev request failed: ${res.status}`);
-    const raw = (await res.json()) as RawDecisionResponse;
+    const text = await res.text();
+    this.usage.outputTokens += estTokens(responseBytes || text.length);
+    logEvent({
+      experimentId: ctx?.experimentId,
+      stage: "simulate",
+      kind: "jev-call",
+      data: {
+        model: this.model,
+        questions: questions.length,
+        inputTokens: estTokens(requestBytes),
+        outputTokens: estTokens(responseBytes || text.length),
+        durationMs: Date.now() - started,
+        estimated: true,
+      },
+    });
+    const raw = JSON.parse(text) as RawDecisionResponse;
     const decisions = raw.decisions ?? raw.questions ?? {};
     return questions.map((q) => {
       const d = decisions[q.name] ?? {};
@@ -78,8 +121,18 @@ export class HttpJevClient implements JevClient {
  */
 export class FixtureJevClient implements JevClient {
   readonly name = "jev-fixture";
+  private calls = 0;
+
+  resetBudget(): void {
+    this.calls = 0;
+  }
+
+  usageReport(): TokenUsage {
+    return { calls: this.calls, inputTokens: 0, outputTokens: 0, totalTokens: 0, estimated: true };
+  }
 
   async decide(state: Record<string, unknown>, questions: DecisionQuestion[]): Promise<DecisionResult[]> {
+    this.calls++;
     const goal = String(state.goal ?? "").toLowerCase();
     const profile = String(state.profile ?? "goal-directed");
     const stop = new Set(["the", "a", "an", "to", "for", "of", "in", "on", "and", "or", "is"]);
@@ -134,13 +187,36 @@ export class FallbackJevClient implements JevClient {
     this.name = `${live.name}+fallback`;
   }
 
-  async decide(state: Record<string, unknown>, questions: DecisionQuestion[]): Promise<DecisionResult[]> {
+  async decide(
+    state: Record<string, unknown>,
+    questions: DecisionQuestion[],
+    ctx?: CallContext,
+  ): Promise<DecisionResult[]> {
     try {
-      return await this.live.decide(state, questions);
+      return await this.live.decide(state, questions, ctx);
     } catch (err) {
       logEvent({ stage: "simulate", kind: "jev-fallback", data: { from: this.live.name, error: String(err).slice(0, 160) } });
       return this.fixture.decide(state, questions);
     }
+  }
+
+  resetBudget(): void {
+    this.live.resetBudget?.();
+    this.fixture.resetBudget();
+  }
+
+  usageReport(): TokenUsage {
+    const merge = (r?: TokenUsage) =>
+      r ?? { calls: 0, inputTokens: 0, outputTokens: 0, totalTokens: 0, estimated: true };
+    const live = merge(this.live.usageReport?.());
+    const fixture = merge(this.fixture.usageReport());
+    return {
+      calls: live.calls + fixture.calls,
+      inputTokens: live.inputTokens + fixture.inputTokens,
+      outputTokens: live.outputTokens + fixture.outputTokens,
+      totalTokens: live.totalTokens + fixture.totalTokens,
+      estimated: true,
+    };
   }
 }
 
@@ -162,16 +238,41 @@ interface ScoredAction {
   weight: number;
 }
 
+/** 0..1: how contested the top action is — 0 when one option dominates, 1 on a dead heat. */
+function ambiguityFromWeights(weights: number[]): number {
+  if (weights.length < 2) return 0;
+  const [top, next] = [...weights].sort((a, b) => b - a);
+  return Math.min(1, Math.max(0, 1 - (top - next)));
+}
+
+/** Hash of everything Jev sees except actionIds — identical payloads score once per run. */
+function scoreSignature(state: SiteState, goal: string, profile: BehavioralProfile, values: string[]): string {
+  return createHash("sha1")
+    .update(
+      JSON.stringify([
+        goal,
+        profile,
+        state.url,
+        state.pageTitle,
+        state.visibleText.slice(0, 800),
+        values,
+      ]),
+    )
+    .digest("hex");
+}
+
 /**
- * Score candidate actions in a state via one Jev `choice` question + one `score`
- * question for state ambiguity. Invalid/unavailable choices are rejected by
- * construction: options are keyed by real actionIds and mapped back.
+ * Score candidate actions in a state via one Jev `choice` question. Ambiguity is
+ * derived from the weight spread (no second question — nothing consumed the old
+ * model-rated score). `opts.cache` dedupes identical scoring inputs within a run
+ * (e.g. the desktop+mobile captures of one URL carry the same Jev payload).
  */
 export async function scoreActions(
   jev: JevClient,
   state: SiteState,
   goal: string,
   profile: BehavioralProfile,
+  opts?: { cache?: JevScoreCache; experimentId?: string },
 ): Promise<{ scored: ScoredAction[]; ambiguity: number }> {
   const candidates = state.actions.filter((a) => a.enabled && a.safeToExecute);
   if (candidates.length === 0) return { scored: [], ambiguity: 0.5 };
@@ -179,6 +280,15 @@ export async function scoreActions(
   const criteria = Object.fromEntries(
     candidates.map((a) => [a.actionId, `${a.label} (${a.role ?? a.type})`]),
   );
+  const signature = scoreSignature(state, goal, profile, Object.values(criteria));
+  const cached = opts?.cache?.get(signature);
+  if (cached && cached.weights.length === candidates.length) {
+    return {
+      scored: candidates.map((action, i) => ({ action, weight: cached.weights[i] })),
+      ambiguity: cached.ambiguity,
+    };
+  }
+
   const results = await jev.decide(
     {
       goal,
@@ -197,25 +307,18 @@ export async function scoreActions(
         instructions: "Which available action best advances the user's objective?",
         criteria,
       },
-      {
-        type: "score",
-        name: "ambiguity",
-        instructions:
-          "Rate how ambiguous/confusing this page state is for the objective: 0=obvious next step, 1=very ambiguous.",
-        criteria: { "0": "obvious", "0.5": "some ambiguity", "1": "very ambiguous" },
-      },
     ],
+    { experimentId: opts?.experimentId },
   );
 
   const choice = results.find((r) => r.question === "best_action");
-  const ambiguityRes = results.find((r) => r.question === "ambiguity");
-  const scored = candidates.map((action) => ({
-    action,
-    weight: Math.max(0.001, choice?.distribution[action.actionId] ?? 1 / candidates.length),
-  }));
-  const ambiguity =
-    (ambiguityRes?.distribution["1"] ?? 0) * 1 +
-    (ambiguityRes?.distribution["0.5"] ?? 0) * 0.5 +
-    (ambiguityRes?.distribution["0"] ?? 0) * 0;
-  return { scored, ambiguity };
+  const weights = candidates.map((action) =>
+    Math.max(0.001, choice?.distribution[action.actionId] ?? 1 / candidates.length),
+  );
+  const ambiguity = ambiguityFromWeights(weights);
+  opts?.cache?.set(signature, { weights, ambiguity });
+  return {
+    scored: candidates.map((action, i) => ({ action, weight: weights[i] })),
+    ambiguity,
+  };
 }

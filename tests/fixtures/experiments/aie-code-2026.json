@@ -3847,6 +3847,12 @@
         "findingId": "f_00000004_0",
         "principle": "cut-needless-words",
         "change": "Swap the apply/register button for a post-event path (recordings, next year's waitlist) or add a clear 'this event has ended' notice.",
+        "steps": [
+          "Swap the apply/register button for a post-event path (recordings, next year's waitlist) or add a clear 'this event has ended' notice.",
+          "Update the \"APPLY TO ATTEND\" button",
+          "Update the \"Apply through our MCP →\" link",
+          "Apply on ai.engineer/code/2026"
+        ],
         "rationale": "\"AI Engineer Code Summit 2026: AI Engineering Conference, Nov 10-12, San Francisco\" shows dates in the past (NOV 10-12, 2026) next to apply/register language — visitors are invited to act on something that's over. [reproducible-concern; Is text free of needless words, happy talk, stale claims?]",
         "effort": "M",
         "evidencePaths": []
@@ -3857,6 +3863,10 @@
         "findingId": "f_metric_trunk-test_62279188",
         "principle": "where-you-are",
         "change": "Add site ID, primary navigation, search, you-are-here indicator to the persistent header on every page.",
+        "steps": [
+          "Add site ID, primary navigation, search, you-are-here indicator to the persistent header on every page.",
+          "Apply on ai.engineer/code/2026/talks"
+        ],
         "rationale": "On 1 page(s) a visitor dropped in cold can't find: site ID, primary navigation, search, you-are-here indicator. Persistent navigation should answer what site this is, what page they're on, the major sections, how to search and where they are. [reproducible-concern; Is the next relevant action discoverable and conventional?]",
         "effort": "M",
         "evidencePaths": []
@@ -3867,6 +3877,10 @@
         "findingId": "f_00000005_1",
         "principle": "people-scan-they-dont-read",
         "change": "Group the secondary links under a few sections so the main action stands out.",
+        "steps": [
+          "Group the secondary links under a few sections so the main action stands out.",
+          "Apply on ai.engineer/code/2026"
+        ],
         "rationale": "\"AI Engineer Code Summit 2026: AI Engineering Conference, Nov 10-12, San Francisco\" offers 239 different links — too many choices to sort through at a glance. [reproducible-concern; Are important elements visually and semantically prioritized?]",
         "effort": "S",
         "evidencePaths": []
@@ -3877,6 +3891,10 @@
         "findingId": "f_metric_trunk-test_972a62d2",
         "principle": "where-you-are",
         "change": "Add site ID to the persistent header on every page.",
+        "steps": [
+          "Add site ID to the persistent header on every page.",
+          "Apply on ai.engineer/code/2026"
+        ],
         "rationale": "On 1 page(s) a visitor dropped in cold can't find: site ID. Persistent navigation should answer what site this is, what page they're on, the major sections, how to search and where they are. [reproducible-concern; Is the next relevant action discoverable and conventional?]",
         "effort": "S",
         "evidencePaths": []
@@ -3887,6 +3905,10 @@
         "findingId": "f_unanswered-question_cost",
         "principle": "where-you-are",
         "change": "Decide whether visitors should get an answer to \"How much does it cost?\"; if so, add it (or a clearly labeled link to it) where they arrive, and point it at the action you want them to take next.",
+        "steps": [
+          "Decide whether visitors should get an answer to \"How much does it cost?\"; if so, add it (or a clearly labeled link to it) where they arrive, and point it at the action you want them to take next.",
+          "Apply on ai.engineer/code/2026"
+        ],
         "rationale": "Visitors are likely to ask \"How much does it cost?\" (quotation, importance 0.75). None of the 2 pages found or their links answer it (looked for pricing). [hypothesis; Is the next relevant action discoverable and conventional?]",
         "effort": "S",
         "evidencePaths": []
@@ -3897,6 +3919,10 @@
         "findingId": "f_unanswered-question_ctx-apply-criteria",
         "principle": "where-you-are",
         "change": "Decide whether visitors should get an answer to \"Who gets accepted, and when will I hear back?\"; if so, add it (or a clearly labeled link to it) where they arrive, and point it at the action you want them to take next.",
+        "steps": [
+          "Decide whether visitors should get an answer to \"Who gets accepted, and when will I hear back?\"; if so, add it (or a clearly labeled link to it) where they arrive, and point it at the action you want them to take next.",
+          "Apply on ai.engineer/code/2026"
+        ],
         "rationale": "Visitors are likely to ask \"Who gets accepted, and when will I hear back?\" (proposal, importance 0.7, raised by the site's own copy). None of the 2 pages found or their links answer it (looked for matching copy). [hypothesis; Is the next relevant action discoverable and conventional?]",
         "effort": "S",
         "evidencePaths": []
@@ -3907,6 +3933,10 @@
         "findingId": "f_metric_nav-overload_752dcb69",
         "principle": "where-you-are",
         "change": "Group navigation into 7 or fewer top-level sections; move the rest into sub-navigation or the footer.",
+        "steps": [
+          "Group navigation into 7 or fewer top-level sections; move the rest into sub-navigation or the footer.",
+          "Apply on ai.engineer/code/2026"
+        ],
         "rationale": "The top navigation exposes up to 11 visible items (more than 7), which makes the major sections harder to name at a glance. [reproducible-concern; Is the next relevant action discoverable and conventional?]",
         "effort": "S",
         "evidencePaths": []
@@ -3917,6 +3947,10 @@
         "findingId": "f_unanswered-question_contact",
         "principle": "where-you-are",
         "change": "Decide whether visitors should get an answer to \"How do I contact the organizers?\"; if so, add it (or a clearly labeled link to it) where they arrive, and point it at the action you want them to take next.",
+        "steps": [
+          "Decide whether visitors should get an answer to \"How do I contact the organizers?\"; if so, add it (or a clearly labeled link to it) where they arrive, and point it at the action you want them to take next.",
+          "Apply on ai.engineer/code/2026"
+        ],
         "rationale": "Visitors are likely to ask \"How do I contact the organizers?\" (proposal, importance 0.5). None of the 2 pages found or their links answer it (looked for contact-form). [hypothesis; Is the next relevant action discoverable and conventional?]",
         "effort": "S",
         "evidencePaths": []
@@ -3927,6 +3961,10 @@
         "findingId": "f_unanswered-question_ctx-travel",
         "principle": "where-you-are",
         "change": "Decide whether visitors should get an answer to \"How do I get there and where should I stay?\"; if so, add it (or a clearly labeled link to it) where they arrive, and point it at the action you want them to take next.",
+        "steps": [
+          "Decide whether visitors should get an answer to \"How do I get there and where should I stay?\"; if so, add it (or a clearly labeled link to it) where they arrive, and point it at the action you want them to take next.",
+          "Apply on ai.engineer/code/2026"
+        ],
         "rationale": "Visitors are likely to ask \"How do I get there and where should I stay?\" (information, importance 0.45, raised by the site's own copy). None of the 2 pages found or their links answer it (looked for matching copy). [hypothesis; Is the next relevant action discoverable and conventional?]",
         "effort": "S",
         "evidencePaths": []
@@ -3937,6 +3975,10 @@
         "findingId": "f_unanswered-questions-summary",
         "principle": "where-you-are",
         "change": "Pick which questions the site should answer and which action each answer should lead to; start with \"How much does it cost?\", \"Who gets accepted, and when will I hear back?\", \"How do I contact the organizers?\".",
+        "steps": [
+          "Pick which questions the site should answer and which action each answer should lead to; start with \"How much does it cost?\", \"Who gets accepted, and when will I hear back?\", \"How do I contact the organizers?\".",
+          "Apply on ai.engineer/code/2026"
+        ],
         "rationale": "14/18 likely visitor questions are answered by the 2 pages found or their endpoints. Unanswered: \"How much does it cost?\", \"Who gets accepted, and when will I hear back?\", \"How do I contact the organizers?\", \"How do I get there and where should I stay?\". [hypothesis; Can the intended outcome be verified?]",
         "effort": "S",
         "evidencePaths": []
@@ -4791,5 +4833,643 @@
     ],
     "llm": "gemini-fixture"
   },
-  "errors": []
+  "usage": {
+    "llm": {
+      "calls": 3,
+      "inputTokens": 0,
+      "outputTokens": 0,
+      "totalTokens": 0,
+      "estimated": true
+    },
+    "jev": {
+      "calls": 1,
+      "inputTokens": 0,
+      "outputTokens": 0,
+      "totalTokens": 0,
+      "estimated": true
+    }
+  },
+  "mockup": {
+    "generatedAt": "2026-11-13T12:00:00.000Z",
+    "brand": {
+      "name": "AI Engineer Code Summit 2026",
+      "colors": {
+        "ink": "#0a0a0a",
+        "surface": "#ffffff",
+        "muted": "#6b6b6b",
+        "line": "#ededed",
+        "accent": "#f8df8c"
+      },
+      "fonts": {
+        "sans": "ui-sans-serif, system-ui, -apple-system, \"Segoe UI\", Roboto, Helvetica, Arial, sans-serif"
+      },
+      "cssVars": {},
+      "faviconUrl": "https://ai.engineer/favicon.ico",
+      "navItems": [
+        {
+          "label": "WELCOME AIE Code Summit 2026",
+          "href": "https://ai.engineer/code/2026#welcome"
+        },
+        {
+          "label": "WATCH & READ",
+          "href": "https://ai.engineer/code/2026#livestream"
+        },
+        {
+          "label": "WHY ATTEND",
+          "href": "https://ai.engineer/code/2026#why-attend"
+        },
+        {
+          "label": "APPLY TO ATTEND",
+          "href": "https://ai.engineer/code/2026#access"
+        },
+        {
+          "label": "SPEAKERS",
+          "href": "https://ai.engineer/code/2026#speakers"
+        },
+        {
+          "label": "PROGRAM Daily agenda",
+          "href": "https://ai.engineer/code/2026#program"
+        },
+        {
+          "label": "VENUE Hilton Union Square, SF",
+          "href": "https://ai.engineer/code/2026#venue"
+        },
+        {
+          "label": "SIDE EVENTS",
+          "href": "https://ai.engineer/code/2026#side-events"
+        },
+        {
+          "label": "FOR AGENTS",
+          "href": "https://ai.engineer/code/2026#developers"
+        },
+        {
+          "label": "SPONSORS",
+          "href": "https://ai.engineer/code/2026#sponsors"
+        },
+        {
+          "label": "FAQ",
+          "href": "https://ai.engineer/code/2026#faq"
+        },
+        {
+          "label": "Schedule",
+          "href": "https://ai.engineer/code/2026?"
+        },
+        {
+          "label": "Companies A–Z",
+          "href": "https://ai.engineer/code/2026?view=companies"
+        },
+        {
+          "label": "Both days 50",
+          "href": "https://ai.engineer/code/2026?"
+        },
+        {
+          "label": "Nov 11 27",
+          "href": "https://ai.engineer/code/2026?day=11"
+        },
+        {
+          "label": "Nov 12 23",
+          "href": "https://ai.engineer/code/2026?day=12"
+        },
+        {
+          "label": "November 11",
+          "href": "https://ai.engineer/code/2026#recording-company-2026-11-11"
+        },
+        {
+          "label": "0:11:26 Gimlet Labs",
+          "href": "https://ai.engineer/code/2026#recording-company-session-natalie-serrino"
+        },
+        {
+          "label": "0:00:00 Anthropic",
+          "href": "https://ai.engineer/code/2026#recording-company-session-lydia-hallie"
+        },
+        {
+          "label": "0:40:09 Cloudflare",
+          "href": "https://ai.engineer/code/2026#recording-company-session-michelle-chen"
+        }
+      ],
+      "ctaLabels": [
+        "Watch at 0:00:00 ↗",
+        "Watch on YouTube ↗",
+        "Watch",
+        "Schedule",
+        "Watch at 0:11:26 ↗",
+        "Watch at 0:40:09 ↗",
+        "Watch at 1:01:02 ↗",
+        "Watch at 1:30:40 ↗",
+        "Watch at 1:37:50 ↗",
+        "Watch at 1:50:46 ↗",
+        "Watch at 1:58:35 ↗",
+        "Watch at 2:21:16 ↗"
+      ],
+      "tone": "playful",
+      "voiceNotes": [
+        "Uses emoji in copy",
+        "Sentences average about 10 words"
+      ]
+    },
+    "pages": [
+      {
+        "slug": "code-2026",
+        "sourceUrl": "https://ai.engineer/code/2026",
+        "title": "AI Engineer Code Summit 2026: AI Engineering Conference, Nov 10-12, San Francisco · mockup",
+        "summary": "Applies 4 spec changes: The page still invites registration for an event that already happened; Too many links compete for attention; Desktop: a visitor landing here can't find site ID; Visitors can't find an answer to \"How much does it cost?\"",
+        "html": "<!doctype html>\n<html lang=\"en\">\n<head>\n<meta charset=\"utf-8\">\n<meta name=\"viewport\" content=\"width=device-width, initial-scale=1\">\n<title>AI Engineer Code Summit 2026: AI Engineering Conference, Nov 10-12, San Francisco · mockup</title>\n<style>:root{--ink:#0a0a0a;--surface:#ffffff;--muted:#6b6b6b;--line:#ededed;--accent:#f8df8c;--on-accent:#0a0a0a;--link:#0a0a0a;--sans:ui-sans-serif, system-ui, -apple-system, \"Segoe UI\", Roboto, Helvetica, Arial, sans-serif;--mono:ui-monospace, SFMono-Regular, Menlo, monospace}\n*{box-sizing:border-box}\nhtml{-webkit-text-size-adjust:100%}\nbody{margin:0;background:var(--surface);color:var(--ink);font-family:var(--sans);font-size:16px;line-height:1.55;-webkit-font-smoothing:antialiased}\na{color:var(--link)}\n.wrap{max-width:44rem;margin:0 auto;padding:0 1.25rem}\n.mock-flag{background:var(--ink);color:var(--surface);font-size:.8125rem}\n.mock-flag .wrap{padding-top:.5rem;padding-bottom:.5rem;display:flex;gap:.5rem;align-items:baseline;flex-wrap:wrap}\n.mock-flag strong{font-weight:600}\n.mock-flag a{color:var(--surface);text-decoration:underline}\nheader.site{position:sticky;top:0;z-index:10;background:var(--surface);border-bottom:1px solid var(--line)}\nheader.site .wrap{display:flex;align-items:center;justify-content:space-between;gap:1rem;min-height:3.5rem;flex-wrap:wrap}\n.brand{display:inline-flex;align-items:center;color:var(--ink);text-decoration:none;font-weight:600}\nnav ul{display:flex;flex-wrap:wrap;gap:.25rem 1rem;list-style:none;margin:0;padding:0;font-size:.9375rem}\nnav a{color:var(--ink);text-decoration:none}\nnav a:hover{text-decoration:underline}\n.hero{padding:3.5rem 0 2.5rem;border-bottom:1px solid var(--line)}\nh1{font-size:clamp(1.875rem,4vw,2.5rem);line-height:1.15;margin:0 0 1rem;font-weight:600;text-wrap:balance}\n.lede{font-size:1.125rem;color:var(--muted);margin:0 0 1.75rem;max-width:36em}\n.act{display:flex;flex-wrap:wrap;align-items:center;gap:.75rem 1rem}\n.cta{display:inline-flex;align-items:center;min-height:2.75rem;padding:.625rem 1.25rem;border-radius:.5rem;background:var(--accent);color:var(--on-accent);font-weight:600;text-decoration:none}\n.cta:hover{filter:brightness(1.08)}\n.cta:focus-visible,a:focus-visible{outline:2px solid var(--accent);outline-offset:3px}\n.status{font-size:.9375rem;color:var(--muted)}\nmain section{padding:2rem 0;border-bottom:1px solid var(--line)}\nh2{font-size:1.25rem;line-height:1.3;margin:0 0 .75rem;font-weight:600}\nmain p{margin:0 0 .75rem;max-width:38em}\nmain ul{margin:0;padding-left:1.25rem}\nmain li{margin:.25rem 0}\nul.links{list-style:none;padding:0}\nfooter.site{padding:2rem 0 3rem;color:var(--muted);font-size:.875rem}\nfooter.site ul.links{display:flex;flex-wrap:wrap;gap:.25rem 1rem;list-style:none;padding:0;margin:.5rem 0 0}\nfooter.site a{color:var(--muted)}\n@media (max-width:640px){.hero{padding:2.5rem 0 2rem}nav ul{gap:.25rem .75rem}}</style>\n</head>\n<body>\n<div class=\"mock-flag\"><div class=\"wrap\"><strong>Rehearsal mockup</strong><span>Applies 4 spec changes: The page still invites registration for an event that already happened; Too many links compete for attention; Desktop: a visitor landing here can&#39;t find site ID; Visitors can&#39;t find an answer to &quot;How much does it cost?&quot;</span></div></div>\n<header class=\"site\"><div class=\"wrap\"><a class=\"brand\" href=\"/experiments/exp_00000001/preview/code-2026\"><span class=\"name\">AI Engineer Code Summit 2026</span></a><nav aria-label=\"Primary\"><ul><li><a href=\"/experiments/exp_00000001/preview/code-2026\">WELCOME AIE Code Summit 2026</a></li><li><a href=\"#\">Schedule</a></li><li><a href=\"#\">Companies A–Z</a></li><li><a href=\"#\">Nov 11 27</a></li><li><a href=\"#\">Nov 12 23</a></li></ul></nav></div></header>\n<main>\n<section class=\"hero\"><div class=\"wrap\"><h1>AI Engineer Code Summit 2026: AI Engineering Conference, Nov 10-12, San Francisco</h1><p class=\"lede\">Search… / WELCOME AIE Code Summit 2026 WATCH &amp; READ Recordings, essays &amp; transcripts WHY ATTEND Built for practitioners APPLY TO ATTEND SPEAKERS First speakers announced PROGRAM Daily agenda VENUE Hilton Union Square…</p><div class=\"act\"><a class=\"cta\" href=\"/experiments/exp_00000001/preview/code-2026\">Watch</a></div></div></section>\n<div class=\"wrap\">\n<section><h2>AI Engineer Code Summit 2026: AI Engineering Conference, Nov 10-12, San…</h2><p>AIE CODE returns for its second annual code-focused summit. Catch up on the year with the world’s top agentic engineers, sharing the workflows and breakthroughs changing how software gets built.</p><ul><li>800 admitted last year. 1.5 million talk views worldwide.</li><li>A highly selective gathering. Invitations by application only.</li><li>Rewatch both conference days, or browse individual sessions for their illustrated reading editions, recordings, and full timestamped transcripts. Separate…</li></ul></section>\n<section><h2>Keep exploring</h2><ul class=\"links\"><li><a href=\"/experiments/exp_00000001/preview/code-2026-talks\">talks</a></li></ul></section>\n</div>\n</main>\n<footer class=\"site\"><div class=\"wrap\"><p>Mockup of ai.engineer/code/2026 rebuilt from ai.engineer. Applies: The page still invites registration for an event that already happened; Too many links compete for attention; Desktop: a visitor landing here can&#39;t find site ID; Visitors can&#39;t find an answer to &quot;How much does it cost?&quot;.</p></div></footer>\n</body>\n</html>",
+        "source": "template",
+        "bytes": 5391
+      },
+      {
+        "slug": "code-2026-talks",
+        "sourceUrl": "https://ai.engineer/code/2026/talks",
+        "title": "Sessions · mockup",
+        "summary": "Applies 1 spec change: Desktop: a visitor landing here can't find site ID, primary navigation, search, you-are-here indicator",
+        "html": "<!doctype html>\n<html lang=\"en\">\n<head>\n<meta charset=\"utf-8\">\n<meta name=\"viewport\" content=\"width=device-width, initial-scale=1\">\n<title>Sessions — AIE Code 2026 · mockup</title>\n<style>:root{--ink:#0a0a0a;--surface:#ffffff;--muted:#6b6b6b;--line:#ededed;--accent:#f8df8c;--on-accent:#0a0a0a;--link:#0a0a0a;--sans:ui-sans-serif, system-ui, -apple-system, \"Segoe UI\", Roboto, Helvetica, Arial, sans-serif;--mono:ui-monospace, SFMono-Regular, Menlo, monospace}\n*{box-sizing:border-box}\nhtml{-webkit-text-size-adjust:100%}\nbody{margin:0;background:var(--surface);color:var(--ink);font-family:var(--sans);font-size:16px;line-height:1.55;-webkit-font-smoothing:antialiased}\na{color:var(--link)}\n.wrap{max-width:44rem;margin:0 auto;padding:0 1.25rem}\n.mock-flag{background:var(--ink);color:var(--surface);font-size:.8125rem}\n.mock-flag .wrap{padding-top:.5rem;padding-bottom:.5rem;display:flex;gap:.5rem;align-items:baseline;flex-wrap:wrap}\n.mock-flag strong{font-weight:600}\n.mock-flag a{color:var(--surface);text-decoration:underline}\nheader.site{position:sticky;top:0;z-index:10;background:var(--surface);border-bottom:1px solid var(--line)}\nheader.site .wrap{display:flex;align-items:center;justify-content:space-between;gap:1rem;min-height:3.5rem;flex-wrap:wrap}\n.brand{display:inline-flex;align-items:center;color:var(--ink);text-decoration:none;font-weight:600}\nnav ul{display:flex;flex-wrap:wrap;gap:.25rem 1rem;list-style:none;margin:0;padding:0;font-size:.9375rem}\nnav a{color:var(--ink);text-decoration:none}\nnav a:hover{text-decoration:underline}\n.hero{padding:3.5rem 0 2.5rem;border-bottom:1px solid var(--line)}\nh1{font-size:clamp(1.875rem,4vw,2.5rem);line-height:1.15;margin:0 0 1rem;font-weight:600;text-wrap:balance}\n.lede{font-size:1.125rem;color:var(--muted);margin:0 0 1.75rem;max-width:36em}\n.act{display:flex;flex-wrap:wrap;align-items:center;gap:.75rem 1rem}\n.cta{display:inline-flex;align-items:center;min-height:2.75rem;padding:.625rem 1.25rem;border-radius:.5rem;background:var(--accent);color:var(--on-accent);font-weight:600;text-decoration:none}\n.cta:hover{filter:brightness(1.08)}\n.cta:focus-visible,a:focus-visible{outline:2px solid var(--accent);outline-offset:3px}\n.status{font-size:.9375rem;color:var(--muted)}\nmain section{padding:2rem 0;border-bottom:1px solid var(--line)}\nh2{font-size:1.25rem;line-height:1.3;margin:0 0 .75rem;font-weight:600}\nmain p{margin:0 0 .75rem;max-width:38em}\nmain ul{margin:0;padding-left:1.25rem}\nmain li{margin:.25rem 0}\nul.links{list-style:none;padding:0}\nfooter.site{padding:2rem 0 3rem;color:var(--muted);font-size:.875rem}\nfooter.site ul.links{display:flex;flex-wrap:wrap;gap:.25rem 1rem;list-style:none;padding:0;margin:.5rem 0 0}\nfooter.site a{color:var(--muted)}\n@media (max-width:640px){.hero{padding:2.5rem 0 2rem}nav ul{gap:.25rem .75rem}}</style>\n</head>\n<body>\n<div class=\"mock-flag\"><div class=\"wrap\"><strong>Rehearsal mockup</strong><span>Applies 1 spec change: Desktop: a visitor landing here can&#39;t find site ID, primary navigation, search, you-are-here indicator</span></div></div>\n<header class=\"site\"><div class=\"wrap\"><a class=\"brand\" href=\"/experiments/exp_00000001/preview/code-2026\"><span class=\"name\">AI Engineer Code Summit 2026</span></a><nav aria-label=\"Primary\"><ul><li><a href=\"/experiments/exp_00000001/preview/code-2026\">WELCOME AIE Code Summit 2026</a></li><li><a href=\"#\">Schedule</a></li><li><a href=\"#\">Companies A–Z</a></li><li><a href=\"#\">Nov 11 27</a></li><li><a href=\"#\">Nov 12 23</a></li></ul></nav></div></header>\n<main>\n<section class=\"hero\"><div class=\"wrap\"><h1>Sessions</h1><p class=\"lede\">find the conference schedule</p><div class=\"act\"><a class=\"cta\" href=\"/experiments/exp_00000001/preview/code-2026\">Continue</a></div></div></section>\n<div class=\"wrap\">\n<section><h2>Keep exploring</h2><ul class=\"links\"><li><a href=\"/experiments/exp_00000001/preview/code-2026\">2026</a></li></ul></section>\n</div>\n</main>\n<footer class=\"site\"><div class=\"wrap\"><p>Mockup of ai.engineer/code/2026/talks rebuilt from ai.engineer. Applies: Desktop: a visitor landing here can&#39;t find site ID, primary navigation, search, you-are-here indicator.</p></div></footer>\n</body>\n</html>",
+        "source": "template",
+        "bytes": 4183
+      }
+    ],
+    "llm": "gemini-fixture"
+  },
+  "errors": [],
+  "failures": [
+    {
+      "code": "UNKNOWN",
+      "stage": "discover",
+      "message": "no fixture for https://ai.engineer/code/2026?",
+      "url": "https://ai.engineer/code/2026?"
+    },
+    {
+      "code": "UNKNOWN",
+      "stage": "discover",
+      "message": "no fixture for https://ai.engineer/code/2026/guide/sponsorship",
+      "url": "https://ai.engineer/code/2026/guide/sponsorship"
+    },
+    {
+      "code": "UNKNOWN",
+      "stage": "discover",
+      "message": "no fixture for https://ai.engineer/code/2026?view=companies",
+      "url": "https://ai.engineer/code/2026?view=companies"
+    },
+    {
+      "code": "UNKNOWN",
+      "stage": "discover",
+      "message": "no fixture for https://ai.engineer/code/2026?day=11",
+      "url": "https://ai.engineer/code/2026?day=11"
+    },
+    {
+      "code": "UNKNOWN",
+      "stage": "discover",
+      "message": "no fixture for https://ai.engineer/code/2026?day=12",
+      "url": "https://ai.engineer/code/2026?day=12"
+    },
+    {
+      "code": "UNKNOWN",
+      "stage": "discover",
+      "message": "no fixture for https://ai.engineer/code/2026/talks/natalie-serrino",
+      "url": "https://ai.engineer/code/2026/talks/natalie-serrino"
+    },
+    {
+      "code": "UNKNOWN",
+      "stage": "discover",
+      "message": "no fixture for https://ai.engineer/code/2026/talks/lydia-hallie",
+      "url": "https://ai.engineer/code/2026/talks/lydia-hallie"
+    },
+    {
+      "code": "UNKNOWN",
+      "stage": "discover",
+      "message": "no fixture for https://ai.engineer/code/2026/talks/michelle-chen",
+      "url": "https://ai.engineer/code/2026/talks/michelle-chen"
+    },
+    {
+      "code": "UNKNOWN",
+      "stage": "discover",
+      "message": "no fixture for https://ai.engineer/code/2026/talks/lauren-tan",
+      "url": "https://ai.engineer/code/2026/talks/lauren-tan"
+    },
+    {
+      "code": "UNKNOWN",
+      "stage": "discover",
+      "message": "no fixture for https://ai.engineer/code/2026/talks/online-inference-security",
+      "url": "https://ai.engineer/code/2026/talks/online-inference-security"
+    },
+    {
+      "code": "UNKNOWN",
+      "stage": "discover",
+      "message": "no fixture for https://ai.engineer/code/2026/talks/online-harvey-agent-platform",
+      "url": "https://ai.engineer/code/2026/talks/online-harvey-agent-platform"
+    },
+    {
+      "code": "UNKNOWN",
+      "stage": "discover",
+      "message": "no fixture for https://ai.engineer/code/2026/talks/online-aws-specification-analyzer",
+      "url": "https://ai.engineer/code/2026/talks/online-aws-specification-analyzer"
+    },
+    {
+      "code": "UNKNOWN",
+      "stage": "discover",
+      "message": "no fixture for https://ai.engineer/code/2026/talks/online-meta-oncall",
+      "url": "https://ai.engineer/code/2026/talks/online-meta-oncall"
+    },
+    {
+      "code": "UNKNOWN",
+      "stage": "discover",
+      "message": "no fixture for https://ai.engineer/code/2026/talks/philipp-schmid",
+      "url": "https://ai.engineer/code/2026/talks/philipp-schmid"
+    },
+    {
+      "code": "UNKNOWN",
+      "stage": "discover",
+      "message": "no fixture for https://ai.engineer/code/2026/talks/ankit-mathur",
+      "url": "https://ai.engineer/code/2026/talks/ankit-mathur"
+    },
+    {
+      "code": "UNKNOWN",
+      "stage": "discover",
+      "message": "no fixture for https://ai.engineer/code/2026/talks/andrew-finch",
+      "url": "https://ai.engineer/code/2026/talks/andrew-finch"
+    },
+    {
+      "code": "UNKNOWN",
+      "stage": "discover",
+      "message": "no fixture for https://ai.engineer/code/2026/talks/luke-alvoeiro",
+      "url": "https://ai.engineer/code/2026/talks/luke-alvoeiro"
+    },
+    {
+      "code": "UNKNOWN",
+      "stage": "discover",
+      "message": "no fixture for https://ai.engineer/code/2026/talks/online-cline-rsi",
+      "url": "https://ai.engineer/code/2026/talks/online-cline-rsi"
+    },
+    {
+      "code": "UNKNOWN",
+      "stage": "discover",
+      "message": "no fixture for https://ai.engineer/code/2026/talks/online-undo-button",
+      "url": "https://ai.engineer/code/2026/talks/online-undo-button"
+    },
+    {
+      "code": "UNKNOWN",
+      "stage": "discover",
+      "message": "no fixture for https://ai.engineer/code/2026/talks/online-duolingo-tests",
+      "url": "https://ai.engineer/code/2026/talks/online-duolingo-tests"
+    },
+    {
+      "code": "UNKNOWN",
+      "stage": "discover",
+      "message": "no fixture for https://ai.engineer/code/2026/talks/online-zenity-skills",
+      "url": "https://ai.engineer/code/2026/talks/online-zenity-skills"
+    },
+    {
+      "code": "UNKNOWN",
+      "stage": "discover",
+      "message": "no fixture for https://ai.engineer/code/2026/talks/diogo-almeida",
+      "url": "https://ai.engineer/code/2026/talks/diogo-almeida"
+    },
+    {
+      "code": "UNKNOWN",
+      "stage": "discover",
+      "message": "no fixture for https://ai.engineer/code/2026/talks/chinmay-goyal",
+      "url": "https://ai.engineer/code/2026/talks/chinmay-goyal"
+    },
+    {
+      "code": "UNKNOWN",
+      "stage": "discover",
+      "message": "no fixture for https://ai.engineer/code/2026/talks/uipath",
+      "url": "https://ai.engineer/code/2026/talks/uipath"
+    },
+    {
+      "code": "UNKNOWN",
+      "stage": "discover",
+      "message": "no fixture for https://ai.engineer/code/2026/talks/brian-kennedy",
+      "url": "https://ai.engineer/code/2026/talks/brian-kennedy"
+    },
+    {
+      "code": "UNKNOWN",
+      "stage": "discover",
+      "message": "no fixture for https://ai.engineer/code/2026/talks/scott-roberts",
+      "url": "https://ai.engineer/code/2026/talks/scott-roberts"
+    },
+    {
+      "code": "UNKNOWN",
+      "stage": "discover",
+      "message": "no fixture for https://ai.engineer/code/2026/talks/online-subagent-distributed-systems",
+      "url": "https://ai.engineer/code/2026/talks/online-subagent-distributed-systems"
+    },
+    {
+      "code": "UNKNOWN",
+      "stage": "discover",
+      "message": "no fixture for https://ai.engineer/code/2026/talks/online-skills-knowledge",
+      "url": "https://ai.engineer/code/2026/talks/online-skills-knowledge"
+    },
+    {
+      "code": "UNKNOWN",
+      "stage": "discover",
+      "message": "no fixture for https://ai.engineer/code/2026/talks/fabian-hedin",
+      "url": "https://ai.engineer/code/2026/talks/fabian-hedin"
+    },
+    {
+      "code": "UNKNOWN",
+      "stage": "discover",
+      "message": "no fixture for https://ai.engineer/code/2026/talks/zach-bruggeman",
+      "url": "https://ai.engineer/code/2026/talks/zach-bruggeman"
+    },
+    {
+      "code": "UNKNOWN",
+      "stage": "discover",
+      "message": "no fixture for https://ai.engineer/code/2026/talks/steve-yegge",
+      "url": "https://ai.engineer/code/2026/talks/steve-yegge"
+    },
+    {
+      "code": "UNKNOWN",
+      "stage": "discover",
+      "message": "no fixture for https://ai.engineer/code/2026/talks/simon-willison",
+      "url": "https://ai.engineer/code/2026/talks/simon-willison"
+    },
+    {
+      "code": "UNKNOWN",
+      "stage": "discover",
+      "message": "no fixture for https://ai.engineer/code/2026/talks/jason-liu",
+      "url": "https://ai.engineer/code/2026/talks/jason-liu"
+    },
+    {
+      "code": "UNKNOWN",
+      "stage": "discover",
+      "message": "no fixture for https://ai.engineer/code/2026/talks/armin-ronacher",
+      "url": "https://ai.engineer/code/2026/talks/armin-ronacher"
+    },
+    {
+      "code": "UNKNOWN",
+      "stage": "discover",
+      "message": "no fixture for https://ai.engineer/code/2026/talks/zach-lloyd",
+      "url": "https://ai.engineer/code/2026/talks/zach-lloyd"
+    },
+    {
+      "code": "UNKNOWN",
+      "stage": "discover",
+      "message": "no fixture for https://ai.engineer/code/2026/talks/brandon-thomas",
+      "url": "https://ai.engineer/code/2026/talks/brandon-thomas"
+    },
+    {
+      "code": "UNKNOWN",
+      "stage": "discover",
+      "message": "no fixture for https://ai.engineer/code/2026/talks/online-ayush-cli",
+      "url": "https://ai.engineer/code/2026/talks/online-ayush-cli"
+    },
+    {
+      "code": "UNKNOWN",
+      "stage": "discover",
+      "message": "no fixture for https://ai.engineer/code/2026/talks/online-brian-douglas",
+      "url": "https://ai.engineer/code/2026/talks/online-brian-douglas"
+    },
+    {
+      "code": "UNKNOWN",
+      "stage": "discover",
+      "message": "no fixture for https://ai.engineer/code/2026/talks/online-rohan-optimization",
+      "url": "https://ai.engineer/code/2026/talks/online-rohan-optimization"
+    },
+    {
+      "code": "UNKNOWN",
+      "stage": "discover",
+      "message": "no fixture for https://ai.engineer/code/2026/talks/online-dmitry-maintenance",
+      "url": "https://ai.engineer/code/2026/talks/online-dmitry-maintenance"
+    },
+    {
+      "code": "UNKNOWN",
+      "stage": "discover",
+      "message": "no fixture for https://ai.engineer/code/2026/talks/walden-yan",
+      "url": "https://ai.engineer/code/2026/talks/walden-yan"
+    },
+    {
+      "code": "UNKNOWN",
+      "stage": "discover",
+      "message": "no fixture for https://ai.engineer/code/2026/talks/jeffrey-pinner",
+      "url": "https://ai.engineer/code/2026/talks/jeffrey-pinner"
+    },
+    {
+      "code": "UNKNOWN",
+      "stage": "discover",
+      "message": "no fixture for https://ai.engineer/code/2026/talks/doug-clauson",
+      "url": "https://ai.engineer/code/2026/talks/doug-clauson"
+    },
+    {
+      "code": "UNKNOWN",
+      "stage": "discover",
+      "message": "no fixture for https://ai.engineer/code/2026/talks/lance-martin",
+      "url": "https://ai.engineer/code/2026/talks/lance-martin"
+    },
+    {
+      "code": "UNKNOWN",
+      "stage": "discover",
+      "message": "no fixture for https://ai.engineer/code/2026/talks/syntax-lunch",
+      "url": "https://ai.engineer/code/2026/talks/syntax-lunch"
+    },
+    {
+      "code": "UNKNOWN",
+      "stage": "discover",
+      "message": "no fixture for https://ai.engineer/code/2026/talks/online-robinhood-review",
+      "url": "https://ai.engineer/code/2026/talks/online-robinhood-review"
+    },
+    {
+      "code": "UNKNOWN",
+      "stage": "discover",
+      "message": "no fixture for https://ai.engineer/code/2026/talks/jarred-sumner",
+      "url": "https://ai.engineer/code/2026/talks/jarred-sumner"
+    },
+    {
+      "code": "UNKNOWN",
+      "stage": "discover",
+      "message": "no fixture for https://ai.engineer/code/2026/talks/online-uber-merging",
+      "url": "https://ai.engineer/code/2026/talks/online-uber-merging"
+    },
+    {
+      "code": "UNKNOWN",
+      "stage": "discover",
+      "message": "no fixture for https://ai.engineer/code/2026/talks/ishaan-dey",
+      "url": "https://ai.engineer/code/2026/talks/ishaan-dey"
+    },
+    {
+      "code": "UNKNOWN",
+      "stage": "discover",
+      "message": "no fixture for https://ai.engineer/code/2026/talks/justin-mccarthy",
+      "url": "https://ai.engineer/code/2026/talks/justin-mccarthy"
+    },
+    {
+      "code": "UNKNOWN",
+      "stage": "discover",
+      "message": "no fixture for https://ai.engineer/code/2026/talks/online-stephen-cassandra",
+      "url": "https://ai.engineer/code/2026/talks/online-stephen-cassandra"
+    },
+    {
+      "code": "UNKNOWN",
+      "stage": "discover",
+      "message": "no fixture for https://ai.engineer/code/2026/talks/melvin-johnson",
+      "url": "https://ai.engineer/code/2026/talks/melvin-johnson"
+    },
+    {
+      "code": "UNKNOWN",
+      "stage": "discover",
+      "message": "no fixture for https://ai.engineer/code/2026/talks/quinn-slack",
+      "url": "https://ai.engineer/code/2026/talks/quinn-slack"
+    },
+    {
+      "code": "UNKNOWN",
+      "stage": "discover",
+      "message": "no fixture for https://ai.engineer/code/2026/talks/dexter-horthy",
+      "url": "https://ai.engineer/code/2026/talks/dexter-horthy"
+    },
+    {
+      "code": "UNKNOWN",
+      "stage": "discover",
+      "message": "no fixture for https://ai.engineer/code/2026/talks/thariq-shihipar",
+      "url": "https://ai.engineer/code/2026/talks/thariq-shihipar"
+    },
+    {
+      "code": "UNKNOWN",
+      "stage": "discover",
+      "message": "no fixture for https://ai.engineer/data",
+      "url": "https://ai.engineer/data"
+    },
+    {
+      "code": "UNKNOWN",
+      "stage": "discover",
+      "message": "no fixture for https://ai.engineer/newsletter",
+      "url": "https://ai.engineer/newsletter"
+    },
+    {
+      "code": "UNKNOWN",
+      "stage": "discover",
+      "message": "no fixture for https://ai.engineer/speakers/melvin-johnson",
+      "url": "https://ai.engineer/speakers/melvin-johnson"
+    },
+    {
+      "code": "UNKNOWN",
+      "stage": "discover",
+      "message": "no fixture for https://ai.engineer/speakers/diogo-almeida",
+      "url": "https://ai.engineer/speakers/diogo-almeida"
+    },
+    {
+      "code": "UNKNOWN",
+      "stage": "discover",
+      "message": "no fixture for https://ai.engineer/speakers/jarred-sumner",
+      "url": "https://ai.engineer/speakers/jarred-sumner"
+    },
+    {
+      "code": "UNKNOWN",
+      "stage": "discover",
+      "message": "no fixture for https://ai.engineer/speakers/zach-bruggeman",
+      "url": "https://ai.engineer/speakers/zach-bruggeman"
+    },
+    {
+      "code": "UNKNOWN",
+      "stage": "discover",
+      "message": "no fixture for https://ai.engineer/speakers/michelle-chen",
+      "url": "https://ai.engineer/speakers/michelle-chen"
+    },
+    {
+      "code": "UNKNOWN",
+      "stage": "discover",
+      "message": "no fixture for https://ai.engineer/speakers/lydia-hallie",
+      "url": "https://ai.engineer/speakers/lydia-hallie"
+    },
+    {
+      "code": "UNKNOWN",
+      "stage": "discover",
+      "message": "no fixture for https://ai.engineer/speakers/fabian-hedin",
+      "url": "https://ai.engineer/speakers/fabian-hedin"
+    },
+    {
+      "code": "UNKNOWN",
+      "stage": "discover",
+      "message": "no fixture for https://ai.engineer/speakers/dex-horthy",
+      "url": "https://ai.engineer/speakers/dex-horthy"
+    },
+    {
+      "code": "UNKNOWN",
+      "stage": "discover",
+      "message": "no fixture for https://ai.engineer/speakers/jason-liu",
+      "url": "https://ai.engineer/speakers/jason-liu"
+    },
+    {
+      "code": "UNKNOWN",
+      "stage": "discover",
+      "message": "no fixture for https://ai.engineer/speakers/zach-lloyd",
+      "url": "https://ai.engineer/speakers/zach-lloyd"
+    },
+    {
+      "code": "UNKNOWN",
+      "stage": "discover",
+      "message": "no fixture for https://ai.engineer/speakers/armin-ronacher",
+      "url": "https://ai.engineer/speakers/armin-ronacher"
+    },
+    {
+      "code": "UNKNOWN",
+      "stage": "discover",
+      "message": "no fixture for https://ai.engineer/speakers/natalie-serrino",
+      "url": "https://ai.engineer/speakers/natalie-serrino"
+    },
+    {
+      "code": "UNKNOWN",
+      "stage": "discover",
+      "message": "no fixture for https://ai.engineer/speakers/thariq-shihipar",
+      "url": "https://ai.engineer/speakers/thariq-shihipar"
+    },
+    {
+      "code": "UNKNOWN",
+      "stage": "discover",
+      "message": "no fixture for https://ai.engineer/speakers/quinn-slack",
+      "url": "https://ai.engineer/speakers/quinn-slack"
+    },
+    {
+      "code": "UNKNOWN",
+      "stage": "discover",
+      "message": "no fixture for https://ai.engineer/speakers/lauren-tan",
+      "url": "https://ai.engineer/speakers/lauren-tan"
+    },
+    {
+      "code": "UNKNOWN",
+      "stage": "discover",
+      "message": "no fixture for https://ai.engineer/speakers/brandon-thomas",
+      "url": "https://ai.engineer/speakers/brandon-thomas"
+    },
+    {
+      "code": "UNKNOWN",
+      "stage": "discover",
+      "message": "no fixture for https://ai.engineer/speakers/simon-willison",
+      "url": "https://ai.engineer/speakers/simon-willison"
+    },
+    {
+      "code": "UNKNOWN",
+      "stage": "discover",
+      "message": "no fixture for https://ai.engineer/speakers/steve-yegge",
+      "url": "https://ai.engineer/speakers/steve-yegge"
+    },
+    {
+      "code": "UNKNOWN",
+      "stage": "discover",
+      "message": "no fixture for https://ai.engineer/speakers/richelle-ji",
+      "url": "https://ai.engineer/speakers/richelle-ji"
+    },
+    {
+      "code": "UNKNOWN",
+      "stage": "discover",
+      "message": "no fixture for https://ai.engineer/speakers/corey-quinn",
+      "url": "https://ai.engineer/speakers/corey-quinn"
+    },
+    {
+      "code": "UNKNOWN",
+      "stage": "discover",
+      "message": "no fixture for https://ai.engineer/speakers/walden-yan",
+      "url": "https://ai.engineer/speakers/walden-yan"
+    },
+    {
+      "code": "UNKNOWN",
+      "stage": "discover",
+      "message": "no fixture for https://ai.engineer/speakers/luke-alvoeiro",
+      "url": "https://ai.engineer/speakers/luke-alvoeiro"
+    },
+    {
+      "code": "UNKNOWN",
+      "stage": "discover",
+      "message": "no fixture for https://ai.engineer/speakers/francisco-javier-arceo",
+      "url": "https://ai.engineer/speakers/francisco-javier-arceo"
+    }
+  ]
 }

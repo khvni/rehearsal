@@ -81,6 +81,16 @@ export class GraphBuilder {
   }
 }
 
+/**
+ * First state per crawled URL. Multi-viewport crawls store one state per
+ * viewport, so prompts that only need page text shouldn't pay for the same
+ * page twice. Keyed on the raw URL (not normalized): query strings are the
+ * only thing distinguishing paginated/filtered pages from each other.
+ */
+export function uniqueStatesByUrl(states: SiteState[]): SiteState[] {
+  return [...new Map(states.map((s) => [s.url, s])).values()];
+}
+
 /** BFS adjacency: stateId -> [{action, toStateId}] using known destinations. */
 export function adjacency(graph: StateGraph): Map<string, { action: ActionNode; toStateId?: string }[]> {
   const states = new Map(graph.states.map((s) => [s.stateId, s]));

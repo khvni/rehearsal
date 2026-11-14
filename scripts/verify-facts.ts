@@ -131,6 +131,7 @@ const STACK_EXEMPT: Record<string, Record<string, string>> = {
 const NOT_DEPLOYED: Record<string, string> = {
   GEMINI_MODEL_FAST: "has a code default",
   GEMINI_MODEL_DEEP: "has a code default",
+  GEMINI_MODEL_MOCKUP: "has a code default (the deep model)",
   REHEARSAL_GEMINI_MAX_CALLS: "has a code default",
   REHEARSAL_MAX_CONCURRENT_RUNS: "has a code default",
   JEV_BASE_URL: "has a code default",

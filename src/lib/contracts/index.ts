@@ -310,6 +310,8 @@ export const SpecChange = z.preprocess(
     findingId: z.string().optional(),
     principle: UsabilityPrinciple.optional(),
     change: z.string(),
+    /** Ordered concrete edits applying this change — names the control or page it lands on. */
+    steps: z.array(z.string()).default([]),
     rationale: z.string(),
     effort: z.enum(["S", "M", "L"]),
     evidencePaths: z.array(z.string()).default([]),
@@ -524,6 +526,30 @@ export const UsageReport = z.object({
 });
 export type UsageReport = z.infer<typeof UsageReport>;
 
+// ── Spec-applied mockup (preview routes) ────────────────────────────────────
+
+/** One self-contained mockup page stored on the experiment; served raw under /experiments/{id}/preview/. */
+export const MockupPage = z.object({
+  slug: z.string().regex(/^[a-z0-9][a-z0-9-]*$/),
+  sourceUrl: z.string().url(),
+  title: z.string(),
+  summary: z.string(),
+  /** Full HTML document; already sanitized — no scripts, no external resources. */
+  html: z.string(),
+  source: z.enum(["gemini", "template"]),
+  bytes: z.number().int().nonnegative(),
+});
+export type MockupPage = z.infer<typeof MockupPage>;
+
+export const MockupResult = z.object({
+  generatedAt: z.string(),
+  brand: BrandProfile,
+  pages: z.array(MockupPage),
+  /** LLM adapter name actually used ("gemini", "gemini-fixture"…). */
+  llm: z.string(),
+});
+export type MockupResult = z.infer<typeof MockupResult>;
+
 // ── Experiment ──────────────────────────────────────────────────────────────
 
 export const ExperimentStatus = z.enum([
@@ -591,6 +617,7 @@ export const Experiment = z.object({
   questions: z.array(VisitorQuestion).optional(),
   rebuild: RebuildResult.optional(),
   usage: UsageReport.optional(),
+  mockup: MockupResult.optional(),
   errors: z.array(z.string()).default([]),
   /** Structured, coded form of each failure (page loads, stage errors); `errors` keeps the readable lines. */
   failures: z.array(RunFailure).default([]),

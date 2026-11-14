@@ -11,6 +11,7 @@ import type {
   SiteState,
 } from "../contracts";
 import { logEvent } from "../telemetry";
+import { uniqueStatesByUrl } from "../graph";
 import { CTA_VERB_RE, rollupBrand } from "./brand";
 import { inferGoals } from "./goals";
 import { sanitizeRebuildHtml } from "./sanitize";
@@ -19,7 +20,7 @@ import { renderGoalPage } from "./templates";
 const MAX_NAV = 6;
 const STATUS_RE =
   /\b(applications?|registration|tickets?|sales?|enrollment|signups?|early[- ]bird|waitlist)\s+(are|is)\s+(now\s+)?(open|closed|live|sold out|available)\b[^.\n]{0,60}/i;
-const STALE_RE = /\b(stale|outdated|out[- ]of[- ]date|old date|past (event|date)|expired|last year)\b/i;
+const STALE_RE = /\b(stale|outdated|out[- ]of[- ]date|old date|past (event|date)|dates? in the past|still invites registration|already happened|expired|last year)\b/i;
 
 function normUrl(url: string | undefined): string | undefined {
   if (!url) return undefined;
@@ -240,7 +241,7 @@ function knownUrls(exp: Experiment, seeds: RebuildPageContent[]): Set<string> {
 function buildPrompt(exp: Experiment, brand: BrandProfile, goals: RebuildGoal[], seeds: RebuildPageContent[]): string {
   const facts = {
     site: { name: brand.name, url: exp.targetUrl, tone: brand.tone, voiceNotes: brand.voiceNotes, ctaLabels: brand.ctaLabels },
-    pages: (exp.graph?.states ?? []).slice(0, 12).map((s) => ({ url: s.url, title: s.pageTitle, text: s.visibleText.slice(0, 1200) })),
+    pages: uniqueStatesByUrl(exp.graph?.states ?? []).slice(0, 12).map((s) => ({ url: s.url, title: s.pageTitle, text: s.visibleText.slice(0, 1200) })),
     endpoints: (exp.endpoints ?? []).slice(0, 20).map((e) => ({ class: e.class, label: e.label, url: e.url })),
     findings: exp.findings.slice(0, 10).map((f) => ({ title: f.title, recommendation: f.recommendation })),
     specChanges: (exp.spec?.changes ?? []).slice(0, 10).map((c) => ({ title: c.title, change: c.change })),

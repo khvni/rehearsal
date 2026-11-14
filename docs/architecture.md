@@ -114,7 +114,8 @@ a variable that is missing here or in `.env.example`, or if `.env.example` lists
 |---|---|---|
 | `GEMINI_API_KEY` | `analysis/gemini.ts`, `browser/stagehand.ts` | `FixtureLlmClient`; Stagehand falls back to the Browserbase Model Gateway |
 | `GEMINI_MODEL_FAST` / `GEMINI_MODEL_DEEP` | `analysis/gemini.ts` | `gemini-4-hydrogen` / `gemini-4-argon` |
-| `REHEARSAL_GEMINI_MAX_CALLS` | `analysis/gemini.ts` | `2` Gemini calls per run (reset at discover), first come first served; a run makes up to 5 (assertions, goal intent, visitor questions, findings, spec), and calls past the cap use the deterministic fallback |
+| `GEMINI_MODEL_MOCKUP` | `analysis/gemini.ts` | `GEMINI_MODEL_DEEP` — the generation model for spec-stage preview pages; retryable errors fall back to `GEMINI_MODEL_FAST` |
+| `REHEARSAL_GEMINI_MAX_CALLS` | `analysis/gemini.ts` | `6` Gemini calls per run (reset at discover), first come first served; a run makes up to 6 (assertions, goal intent, visitor questions, findings, spec, mockup), and calls past the cap use the deterministic fallback |
 | `JEV_API_KEY` (or `OPENROUTER_API_KEY`) | `decisions/jev.ts` | `FixtureJevClient` |
 | `JEV_BASE_URL` / `JEV_MODEL` | `decisions/jev.ts` | `https://openrouter.ai/api/alpha/decisions` / `typesafe/jev-1.13` |
 | `BRIGHTDATA_API_KEY` + `BRIGHTDATA_ZONE` | `fetch/index.ts` | Web Unlocker skipped (both are required) |
