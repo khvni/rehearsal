@@ -132,16 +132,41 @@ export function serveSite(site: FixtureSite): Promise<ServedSite> {
     res.end("not found");
   });
   const port = sitePort(site);
-  return new Promise((resolve, reject) => {
-    server.once("error", reject);
-    server.listen(port, "127.0.0.1", () => {
-      const origin = `http://127.0.0.1:${port}`;
-      resolve({
-        server,
-        origin,
-        targetUrl: `${origin}${site.manifest.mountPath}`,
-        close: () => new Promise((r) => server.close(() => r())),
+  const origin = `http://127.0.0.1:${port}`;
+  return listenWhenFree(server, port).then(() => ({
+    server,
+    origin,
+    targetUrl: `${origin}${site.manifest.mountPath}`,
+    close: () => new Promise<void>((r) => server.close(() => r())),
+  }));
+}
+
+/**
+ * Eval files run in parallel workers and several serve the same manifest, so the
+ * stable port may be held by a sibling worker. Wait for it instead of failing;
+ * a random port would break determinism (see sitePort).
+ */
+async function listenWhenFree(server: Server, port: number, timeoutMs = 110_000): Promise<void> {
+  const deadline = Date.now() + timeoutMs;
+  for (;;) {
+    try {
+      await new Promise<void>((resolve, reject) => {
+        const onError = (e: Error) => {
+          server.off("listening", onListening);
+          reject(e);
+        };
+        const onListening = () => {
+          server.off("error", onError);
+          resolve();
+        };
+        server.once("error", onError);
+        server.once("listening", onListening);
+        server.listen(port, "127.0.0.1");
       });
-    });
-  });
+      return;
+    } catch (e) {
+      if ((e as NodeJS.ErrnoException).code !== "EADDRINUSE" || Date.now() >= deadline) throw e;
+      await new Promise((r) => setTimeout(r, 100));
+    }
+  }
 }
