@@ -18,7 +18,7 @@ import {
   type Variant,
   type VisitorPersona,
 } from "./contracts";
-import { selectFetcher } from "./fetch";
+import { PlainFetcher, selectFetcher } from "./fetch";
 import { assertPublicUrl, robotsAllows } from "./fetch/guards";
 import { agentVerifyEnabled, extractPage, selectRunner } from "./browser/runner";
 import { RehearsalError, classifyError, dominantCode, formatFailure, toFailure } from "./errors";
@@ -73,6 +73,8 @@ const PROBE_TIMEOUT_MS = 15_000;
 
 interface OrchestratorDeps {
   fetcher?: PageFetcher;
+  /** Plain-HTTP probe fetcher for rescan/signature checks and the discover quota fallback — must never be provider-quota-bound. Defaults to PlainFetcher. */
+  probeFetcher?: PageFetcher;
   jev?: JevClient;
   llm?: LlmClient;
   store?: ExperimentStore;
@@ -94,6 +96,7 @@ export class Orchestrator {
   /** Experiment id -> stage currently running. One run per experiment at a time. */
   private running = new Map<string, string>();
   private fetcher: PageFetcher;
+  private probeFetcher: PageFetcher;
   private jev: JevClient;
   private llm: LlmClient;
   private store: ExperimentStore;
@@ -101,6 +104,7 @@ export class Orchestrator {
 
   constructor(deps: OrchestratorDeps = {}) {
     this.fetcher = deps.fetcher ?? selectFetcher();
+    this.probeFetcher = deps.probeFetcher ?? new PlainFetcher();
     this.jev = deps.jev ?? selectJev();
     this.llm = deps.llm ?? selectLlm();
     this.store = deps.store ?? selectStore();
@@ -285,7 +289,7 @@ export class Orchestrator {
       const goal = opts?.goal?.trim() || undefined;
       const goalChanged = Boolean(goal && goal !== exp.goal);
       const stored = new Map((exp.siteSignatures ?? []).map((s) => [normalizeSiteUrl(s.url), s]));
-      const probes = [exp.targetUrl, ...[...stored.values()].map((s) => s.url).slice(0, 16)].filter(
+      const probes = [exp.targetUrl, ...[...stored.values()].map((s) => s.url)].filter(
         (u, i, a) => a.indexOf(u) === i,
       );
       const mismatches: string[] = [];
@@ -296,7 +300,7 @@ export class Orchestrator {
         const timer = setTimeout(() => ctrl.abort(new Error("rescan probe timed out")), PROBE_TIMEOUT_MS);
         try {
           const html = await Promise.race([
-            this.fetcher.fetchHtml(url, { signal: ctrl.signal }),
+            this.probeFetcher.fetchHtml(url, { signal: ctrl.signal }),
             new Promise<never>((_, reject) =>
               ctrl.signal.addEventListener("abort", () => reject(ctrl.signal.reason), { once: true }),
             ),
@@ -443,7 +447,7 @@ export class Orchestrator {
         for (const vpName of config.viewports) {
           const viewport = VIEWPORTS[vpName];
           const openPage = async (url: string, depth: number) => {
-            if (providerQuotaHit) return { html: await this.fetcher.fetchHtml(url) };
+            if (providerQuotaHit) return { html: await this.probeFetcher.fetchHtml(url) };
             try {
               return await this.runner.openPage(url, viewport, {
                 shotName: `${id}_${vpName}_d${depth}`,
@@ -456,9 +460,9 @@ export class Orchestrator {
                 id,
                 "discover",
                 "info",
-                `${this.runner.name} is out of provider quota — continuing with ${this.fetcher.name} (no screenshots)`,
+                `${this.runner.name} is out of provider quota — continuing with ${this.probeFetcher.name} (no screenshots)`,
               );
-              return { html: await this.fetcher.fetchHtml(url) };
+              return { html: await this.probeFetcher.fetchHtml(url) };
             }
           };
           const frontier: { url: string; depth: number; from?: { stateId: string; actionId: string } }[] = [
@@ -530,16 +534,22 @@ export class Orchestrator {
       const signatures = new Map<string, { url: string; signature: string }>();
       for (const s of experiment.graph.states) {
         const key = normalizeSiteUrl(s.url);
-        if (!signatures.has(key)) {
-          signatures.set(key, {
-            url: s.url,
-            signature: contentSignatureFor(s.url, {
-              title: s.pageTitle,
-              visibleText: s.visibleText,
-              actions: s.actions,
-            }),
-          });
+        if (signatures.has(key)) continue;
+        // Signatures must match what rescan re-probes: derive them from the
+        // plain-fetch decode path (UTF-8), not the crawl html a browser may
+        // have decoded differently (windows-1252 fallback for undeclared
+        // charsets). On probe failure, fall back to the crawled extraction.
+        let page: { title: string; visibleText: string; actions: { label: string; role?: string; href?: string }[] } = {
+          title: s.pageTitle,
+          visibleText: s.visibleText,
+          actions: s.actions,
+        };
+        try {
+          page = extractPage(await this.probeFetcher.fetchHtml(s.url), s.url);
+        } catch {
+          // keep the crawl-extracted signature
         }
+        signatures.set(key, { url: s.url, signature: contentSignatureFor(s.url, page) });
       }
       experiment.siteSignatures = [...signatures.values()];
       if (experiment.graph.states.length === 0) {

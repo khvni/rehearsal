@@ -303,19 +303,20 @@ export function normalizeSiteUrl(raw: string): string {
 
 /**
  * Per-page content signature for rescan's "did the site actually change" check:
- * normalized URL + title + visible text + sorted action labels — inputs a plain
- * fetch can reproduce (no screenshot, metrics, or viewport). Inputs are NFKC-
- * folded, whitespace-collapsed and ASCII-folds — discover may decode a page in a
- * browser (windows-1252 fallback) while rescan fetches as UTF-8, and non-ASCII
- * bytes must not hash differently across the two paths.
+ * normalized URL + title + visible text + sorted action label/destination pairs
+ * — inputs a plain fetch can reproduce (no screenshot, metrics, or viewport).
+ * NFKC + whitespace folding smooths serialization-only diffs; `href` is in the
+ * signature so a link whose destination changed still counts as a change. Both
+ * sides must come from the same decode path — discover stores signatures from a
+ * plain-fetch probe and rescan re-fetches with the same fetcher.
  */
 export function contentSignatureFor(
   url: string,
-  page: { title: string; visibleText: string; actions: { label: string; role?: string }[] },
+  page: { title: string; visibleText: string; actions: { label: string; role?: string; href?: string }[] },
 ): string {
-  const fold = (s: string) => s.normalize("NFKC").replace(/[^\x00-\x7F]+/g, " ").replace(/\s+/g, " ").trim();
+  const fold = (s: string) => s.normalize("NFKC").replace(/\s+/g, " ").trim();
   const actionSig = page.actions
-    .map((a) => `${a.role ?? "link"}:${a.label.toLowerCase()}`)
+    .map((a) => `${a.role ?? "link"}:${a.label.toLowerCase()}:${a.href ?? ""}`)
     .sort()
     .join("|");
   return createHash("sha1")
