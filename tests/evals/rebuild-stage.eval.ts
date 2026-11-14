@@ -168,6 +168,8 @@ describe("eval: orchestrator wires the rebuild stage (fixture adapters)", () => 
     async save(e) { mem.set(e.id, Experiment.parse(JSON.parse(JSON.stringify(e)))); },
     async get(id) { return mem.get(id) ?? null; },
     async list() { return [...mem.values()]; },
+    async appendActivity() {},
+    async activity() { return []; },
   };
 
   it("rebuild chains earlier stages, stores experiment.rebuild, and round-trips the contract", async () => {

@@ -5,14 +5,8 @@ import type { BrowserRun, BrowserRunner, DomPatch, EnvVars, OpenPageResult, Traj
 import { assertPublicUrl } from "../fetch/guards";
 import { compilePatches } from "../variants";
 import { measurePage } from "./metrics";
-<<<<<<< HEAD
-import { DEFAULT_EVIDENCE_DIR, assertPublicPage, executeTrajectory, watchPageErrors } from "./playwright";
-||||||| parent of 44f1c80 (feat(rebuild): brand extraction, goal inference, branded page generation)
-import { DEFAULT_EVIDENCE_DIR, executeTrajectory, watchPageErrors } from "./playwright";
-=======
 import { captureBrand } from "../rebuild/brand";
-import { DEFAULT_EVIDENCE_DIR, executeTrajectory, watchPageErrors } from "./playwright";
->>>>>>> 44f1c80 (feat(rebuild): brand extraction, goal inference, branded page generation)
+import { DEFAULT_EVIDENCE_DIR, assertPublicPage, executeTrajectory, watchPageErrors } from "./playwright";
 import { errorText, summarizeRun } from "./types";
 
 const BRIGHTDATA_HOST = "brd.superproxy.io:9222";

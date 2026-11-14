@@ -407,7 +407,6 @@ export const ActivityEvent = z.object({
 });
 export type ActivityEvent = z.infer<typeof ActivityEvent>;
 
-||||||| parent of 63f008e (feat(contracts): rebuild stage contracts + src/lib/rebuild facade)
 // ── Rebuild: goals + generated pages ────────────────────────────────────────
 
 /** One plausible visitor goal inferred from the crawled site's own CTAs/nav/titles/endpoints. */
