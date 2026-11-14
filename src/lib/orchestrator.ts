@@ -62,7 +62,7 @@ export const PIPELINE_STAGES = [
   "rebuild",
 ] as const;
 
-/** Hard cap on the first-page probe so a hanging fetch can't stall experiment creation. */
+/** Hard cap on the probe's page fetch so a hanging request can't stall experiment creation (robots prefetch + host politeness delay may add up to ~12s on top). */
 const PROBE_TIMEOUT_MS = 15_000;
 
 interface OrchestratorDeps {
