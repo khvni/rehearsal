@@ -153,7 +153,6 @@ export function StateGraph({
 
     const nextPool = new Map<string, Node>();
     const nodes = states.map((s) => {
-      const v = visits.get(s.stateId) ?? 0;
       const cell = cellFor.get(s.stateId)!;
       const key = `${viewport}|${s.stateId}|${s.url}|${s.pageTitle}|${s.stateId === rootId}|${cell.col}:${cell.row}`;
       const kept = pool.get(key);
@@ -166,7 +165,9 @@ export function StateGraph({
         position: { x: cell.col * (width + 40), y: cell.row * 110 },
         initialWidth: width,
         initialHeight: NODE_HEIGHT,
-        ariaLabel: `${shortPath(s.url)}, ${s.pageTitle}, ${v} visits`,
+        // Stable nodes keep their measurements; a baked-in visit count would
+        // go stale on the next poll, so the label stays static.
+        ariaLabel: `${shortPath(s.url)}, ${s.pageTitle}`,
         data: {
           label: (
             <div className="node">
