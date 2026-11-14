@@ -4,14 +4,16 @@ locals {
   # Only non-empty values are written to the droplet's env file.
   app_env = {
     for k, v in {
-      GEMINI_API_KEY     = var.gemini_api_key
-      JEV_API_KEY        = var.jev_api_key
-      BRIGHTDATA_API_KEY = var.brightdata_api_key
-      BRIGHTDATA_ZONE    = var.brightdata_zone
-      SENTRY_DSN         = var.sentry_dsn
-      DATABASE_URL       = var.database_url
+      REHEARSAL_ACCESS_TOKEN = var.rehearsal_access_token
+      GEMINI_API_KEY         = var.gemini_api_key
+      JEV_API_KEY            = var.jev_api_key
+      BRIGHTDATA_API_KEY     = var.brightdata_api_key
+      BRIGHTDATA_ZONE        = var.brightdata_zone
+      SENTRY_DSN             = var.sentry_dsn
+      DATABASE_URL           = var.database_url
     } : k => v if v != ""
   }
+  env_file = join("\n", [for k, v in local.app_env : "${k}=${v}"])
 }
 
 resource "digitalocean_droplet" "rehearsal" {
@@ -25,12 +27,46 @@ resource "digitalocean_droplet" "rehearsal" {
 
   # Installs Node 22 + Chromium, builds the app, runs `next start` under systemd on
   # 127.0.0.1:3000, and fronts it with Caddy (auto-HTTPS when a domain is set).
+  # No secrets here: user_data is readable from the droplet's metadata service.
   user_data = templatefile("${path.module}/cloud-init.yaml.tftpl", {
     github_repo = var.github_repo
     git_ref     = var.git_ref
     site        = local.fqdn == "" ? ":80" : local.fqdn
-    env_file    = join("\n", concat(["NODE_ENV=production"], [for k, v in local.app_env : "${k}=${v}"]))
   })
+}
+
+# Secrets reach the droplet over SSH after boot, into /etc/rehearsal/env (0600, root).
+resource "terraform_data" "app_env" {
+  triggers_replace = [digitalocean_droplet.rehearsal.id, sha256(local.env_file)]
+
+  lifecycle {
+    precondition {
+      condition     = length(var.ssh_key_fingerprints) > 0
+      error_message = "ssh_key_fingerprints must list the key Terraform uses to provision /etc/rehearsal/env."
+    }
+  }
+
+  connection {
+    type        = "ssh"
+    host        = digitalocean_droplet.rehearsal.ipv4_address
+    user        = "root"
+    private_key = var.ssh_private_key == "" ? null : var.ssh_private_key
+    agent       = var.ssh_private_key == ""
+    timeout     = "5m"
+  }
+
+  provisioner "remote-exec" {
+    inline = ["cloud-init status --wait >/dev/null || true", "install -d -m 0700 /etc/rehearsal"]
+  }
+
+  provisioner "file" {
+    content     = "${local.env_file}\n"
+    destination = "/etc/rehearsal/env"
+  }
+
+  provisioner "remote-exec" {
+    inline = ["chmod 0600 /etc/rehearsal/env", "systemctl restart rehearsal"]
+  }
 }
 
 resource "digitalocean_firewall" "rehearsal" {

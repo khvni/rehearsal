@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { isExperimentId } from "@/lib/contracts";
 import { Orchestrator, StageInProgressError } from "@/lib/orchestrator";
 import { specToMarkdown } from "@/lib/analysis/spec";
+import { maxConcurrentRuns, withRunSlot } from "@/lib/access";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -18,24 +19,14 @@ export async function POST(_req: Request, { params }: { params: Promise<{ id: st
   if (!isExperimentId(id)) return NextResponse.json({ error: "not found" }, { status: 404 });
   const orch = orchestrator();
   try {
-    switch (stage) {
-      case "discover":
-        return NextResponse.json(await orch.discover(id));
-      case "simulate":
-        return NextResponse.json(await orch.simulate(id));
-      case "verify":
-        return NextResponse.json(await orch.verify(id));
-      case "analyze":
-        return NextResponse.json(await orch.analyze(id));
-      case "compare":
-        return NextResponse.json(await orch.compare(id));
-      case "spec":
-        return NextResponse.json(await orch.spec(id));
-      case "run":
-        return NextResponse.json(await orch.runAll(id));
-      default:
-        return NextResponse.json({ error: `unknown stage ${stage}` }, { status: 400 });
+    const slot = await withRunSlot(() => runStage(orch, id, stage));
+    if (slot.busy) {
+      return NextResponse.json(
+        { error: `busy: ${maxConcurrentRuns()} pipeline stages already running, retry shortly` },
+        { status: 429, headers: { "retry-after": "30" } },
+      );
     }
+    return slot.value;
   } catch (e) {
     if (e instanceof StageInProgressError) {
       return NextResponse.json({ error: e.message, runningStage: e.runningStage }, { status: 409 });
@@ -45,6 +36,27 @@ export async function POST(_req: Request, { params }: { params: Promise<{ id: st
     }
     await orch.markFailed(id, e).catch(() => undefined);
     return NextResponse.json({ error: String(e).slice(0, 400) }, { status: 500 });
+  }
+}
+
+async function runStage(orch: Orchestrator, id: string, stage: string): Promise<NextResponse> {
+  switch (stage) {
+    case "discover":
+      return NextResponse.json(await orch.discover(id));
+    case "simulate":
+      return NextResponse.json(await orch.simulate(id));
+    case "verify":
+      return NextResponse.json(await orch.verify(id));
+    case "analyze":
+      return NextResponse.json(await orch.analyze(id));
+    case "compare":
+      return NextResponse.json(await orch.compare(id));
+    case "spec":
+      return NextResponse.json(await orch.spec(id));
+    case "run":
+      return NextResponse.json(await orch.runAll(id));
+    default:
+      return NextResponse.json({ error: `unknown stage ${stage}` }, { status: 400 });
   }
 }
 

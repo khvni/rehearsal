@@ -12,6 +12,7 @@ import type {
   TrajectoryArgs,
   Viewport,
 } from "../contracts";
+import type { startEgressProxy } from "../fetch/egress-proxy";
 import { assertPublicUrl, politeDelay, robotsAllows } from "../fetch/guards";
 import { compilePatches } from "../variants";
 import { isSameOrigin } from "./extract";
@@ -46,6 +47,12 @@ export async function checkAssertion(page: Page, a: Assertion): Promise<boolean>
   return evaluateAssertion(playwrightProbe(page), a);
 }
 
+/** Throw when the page has landed on a non-public http(s) URL (redirect, DNS rebinding, click-through). */
+export async function assertPublicPage(page: Page): Promise<void> {
+  const url = page.url();
+  if (/^https?:/i.test(url)) await assertPublicUrl(url);
+}
+
 /** Shared Playwright trajectory loop used by the local and Bright Data runners. */
 export async function executeTrajectory(
   page: Page,
@@ -59,8 +66,10 @@ export async function executeTrajectory(
 
   await assertPublicUrl(args.url);
   await page.goto(args.url, { waitUntil: "domcontentloaded", timeout: opts.navTimeoutMs });
+  await assertPublicPage(page);
   await page.waitForTimeout(800);
   await settleInterstitial(page);
+  await assertPublicPage(page);
   const shot0 = path.join(evidenceDir, `${args.runId}_0.png`);
   await page
     .screenshot({ path: shot0, timeout: PAGE_CALL_MS })
@@ -92,6 +101,7 @@ export async function executeTrajectory(
     } catch (e) {
       steps.push({ actionId: a.actionId, label: a.label, ok: false, error: errorText(e, 160) });
     }
+    await assertPublicPage(page);
     if (shouldShoot(i, total)) {
       const shot = path.join(evidenceDir, `${args.runId}_${i + 1}.png`);
       await page
@@ -129,7 +139,8 @@ export function watchPageErrors(page: Page, errors: string[]): void {
 /** Local headless Chromium — the zero-key fallback for dev, evals and e2e. */
 export class PlaywrightRunner implements BrowserRunner {
   readonly name = "local-playwright";
-  private browser: Browser | null = null;
+  private browser: Promise<Browser> | null = null;
+  private egress: Awaited<ReturnType<typeof startEgressProxy>> | null = null;
 
   constructor(private evidenceDir = DEFAULT_EVIDENCE_DIR) {
     // Edge runtimes (workerd) ship a read-only fs — evidence dir is best-effort.
@@ -140,12 +151,20 @@ export class PlaywrightRunner implements BrowserRunner {
     }
   }
 
-  private async getBrowser(): Promise<Browser> {
-    // Lazy import: playwright can't load on edge runtimes (e.g. Cloudflare Workers);
-    // keeping it out of the module graph lets the rest of the app boot there.
-    const { chromium } = await import("playwright");
-    this.browser ??= await chromium.launch({ headless: true });
+  private getBrowser(): Promise<Browser> {
+    this.browser ??= this.launch().catch((e) => {
+      this.browser = null;
+      throw e;
+    });
     return this.browser;
+  }
+
+  private async launch(): Promise<Browser> {
+    // Lazy imports: playwright and node:http can't load on edge runtimes (e.g. Cloudflare Workers).
+    const [{ chromium }, { startEgressProxy }] = await Promise.all([import("playwright"), import("../fetch/egress-proxy")]);
+    this.egress ??= await startEgressProxy();
+    // Playwright forces loopback through the proxy too (no implicit <-loopback> bypass).
+    return chromium.launch({ headless: true, proxy: { server: this.egress.server } });
   }
 
   private async newContext(viewport: Viewport, patches?: DomPatch[]): Promise<BrowserContext> {
@@ -173,10 +192,12 @@ export class PlaywrightRunner implements BrowserRunner {
       const res = await page.goto(url, { waitUntil: "domcontentloaded", timeout: 30000 });
       const contentType = res?.headers()["content-type"] ?? "";
       if (contentType && !/html|xml/i.test(contentType)) throw new Error(`Non-HTML response (${contentType}) for ${url}`);
+      await assertPublicPage(page);
       const finalOrigin = new URL(page.url()).origin;
       if (finalOrigin !== target.origin) throw new Error(`Redirected off-origin to ${finalOrigin}`);
       await page.waitForTimeout(1200);
       await settleInterstitial(page);
+      await assertPublicPage(page);
       const html = await withTimeout(page.content(), PAGE_CALL_MS, "page.content");
       const shotOk = await page
         .screenshot({ path: screenshotPath, fullPage: false, timeout: PAGE_CALL_MS })
@@ -209,7 +230,10 @@ export class PlaywrightRunner implements BrowserRunner {
   }
 
   async close(): Promise<void> {
-    await this.browser?.close();
+    const browser = this.browser;
     this.browser = null;
+    await browser?.then((b) => b.close(), () => undefined);
+    await this.egress?.close();
+    this.egress = null;
   }
 }

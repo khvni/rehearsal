@@ -122,7 +122,7 @@ function checkContracts(): CheckResult {
 const FRAMEWORK_ENV = new Set(["NODE_ENV", "NEXT_RUNTIME"]);
 
 /** Keys the deploy stacks must provision (variable + env mapping), unless exempted per stack. */
-const DEPLOYED_ENV = ["GEMINI_API_KEY", "JEV_API_KEY", "BRIGHTDATA_API_KEY", "BRIGHTDATA_ZONE", "SENTRY_DSN", "DATABASE_URL"];
+const DEPLOYED_ENV = ["REHEARSAL_ACCESS_TOKEN", "GEMINI_API_KEY", "JEV_API_KEY", "BRIGHTDATA_API_KEY", "BRIGHTDATA_ZONE", "SENTRY_DSN", "DATABASE_URL"];
 const STACK_EXEMPT: Record<string, Record<string, string>> = {
   cloudflare: { DATABASE_URL: "Postgres persistence is provisioned only on the primary DigitalOcean stack" },
 };
@@ -132,6 +132,7 @@ const NOT_DEPLOYED: Record<string, string> = {
   GEMINI_MODEL_FAST: "has a code default",
   GEMINI_MODEL_DEEP: "has a code default",
   REHEARSAL_GEMINI_MAX_CALLS: "has a code default",
+  REHEARSAL_MAX_CONCURRENT_RUNS: "has a code default",
   JEV_BASE_URL: "has a code default",
   JEV_MODEL: "has a code default",
   OPENROUTER_API_KEY: "alias of JEV_API_KEY",

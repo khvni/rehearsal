@@ -40,6 +40,13 @@ variable "ssh_key_fingerprints" {
   default     = []
 }
 
+variable "ssh_private_key" {
+  description = "Private key (PEM) matching one of ssh_key_fingerprints, used to write /etc/rehearsal/env after boot. Empty = use ssh-agent."
+  type        = string
+  sensitive   = true
+  default     = ""
+}
+
 variable "github_repo" {
   description = "GitHub repo (owner/name) the droplet clones and builds."
   type        = string
@@ -50,6 +57,17 @@ variable "git_ref" {
   description = "Branch or tag to deploy."
   type        = string
   default     = "main"
+}
+
+variable "rehearsal_access_token" {
+  description = "Shared secret for the dashboard and API (Basic-auth password, any username, or Bearer token). The droplet is public, so it is required."
+  type        = string
+  sensitive   = true
+
+  validation {
+    condition     = length(var.rehearsal_access_token) >= 16
+    error_message = "rehearsal_access_token must be at least 16 characters (e.g. openssl rand -hex 24)."
+  }
 }
 
 # App secrets. All optional: every adapter falls back to fixtures without its key.
