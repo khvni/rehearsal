@@ -5,6 +5,7 @@
  */
 import { hrtime } from "node:process";
 import type {
+  ActivityEvent,
   BenchSiteReport,
   Experiment,
   ExperimentConfig,
@@ -57,6 +58,7 @@ export function withPinnedClock<T>(iso: string | undefined, fn: () => Promise<T>
 /** In-memory store — bench runs never read or write data/experiments. */
 function memoryStore(): ExperimentStore {
   const map = new Map<string, Experiment>();
+  const feeds = new Map<string, ActivityEvent[]>();
   return {
     name: "bench-memory",
     save: async (e) => {
@@ -64,6 +66,15 @@ function memoryStore(): ExperimentStore {
     },
     get: async (id) => map.get(id) ?? null,
     list: async () => [...map.values()],
+    appendActivity: async (id, event) => {
+      const feed = feeds.get(id) ?? [];
+      feed.push(event);
+      feeds.set(id, feed);
+    },
+    activity: async (id, limit) => {
+      const events = feeds.get(id) ?? [];
+      return limit === undefined ? events : events.slice(-limit);
+    },
   };
 }
 
