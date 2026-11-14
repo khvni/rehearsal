@@ -109,6 +109,12 @@ export class BrowserbaseFunctionRunner implements BrowserRunner {
     }
     if (!res.ok) {
       const body = errorText(await res.text().catch(() => ""), 200);
+      if (res.status === 402 || res.status === 429) {
+        throw new RehearsalError(
+          "PROVIDER_QUOTA",
+          `Browserbase Function API ${res.status === 402 ? "402 Payment Required" : "429 Too Many Requests"} on ${path.split("/").slice(0, 4).join("/")}: provider quota exhausted — ${body}`,
+        );
+      }
       throw new RehearsalError("BROWSER_REMOTE_FAILED", `Browserbase Function API ${res.status} on ${path.split("/").slice(0, 4).join("/")}: ${body}`);
     }
     return (await res.json()) as Invocation;

@@ -20,6 +20,8 @@ export const ErrorCode = z.enum([
   "BOT_CHALLENGE",
   /** Discovery finished with zero states: every page load failed. */
   "DISCOVERY_EMPTY",
+  /** A provider (Browserbase Function/fetch, LLM, Jev) is out of quota or rate-limited — 402/429 patterns. */
+  "PROVIDER_QUOTA",
   "UNKNOWN",
 ]);
 export type ErrorCode = z.infer<typeof ErrorCode>;

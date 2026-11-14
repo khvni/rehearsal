@@ -41,3 +41,28 @@ export async function withRunSlot<T>(work: () => Promise<T>): Promise<{ busy: tr
     g.__rehearsalActiveRuns = (g.__rehearsalActiveRuns ?? 1) - 1;
   }
 }
+
+const RUN_QUEUE_RETRY_MS = 5_000;
+
+/**
+ * `withRunSlot` for background jobs: instead of resolving busy, retries until a
+ * slot frees so an accepted run can outlive its request. The returned promise
+ * resolves when `work` finishes — on Workers it goes to `ctx.waitUntil`.
+ */
+export function enqueueRun(work: () => Promise<void>, retryMs = RUN_QUEUE_RETRY_MS): Promise<void> {
+  return new Promise<void>((resolve, reject) => {
+    const attempt = () => {
+      void withRunSlot(async () => {
+        try {
+          await work();
+          resolve();
+        } catch (e) {
+          reject(e);
+        }
+      }).then((r) => {
+        if (r.busy) setTimeout(attempt, retryMs);
+      });
+    };
+    attempt();
+  });
+}

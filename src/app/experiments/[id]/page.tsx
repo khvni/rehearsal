@@ -29,7 +29,7 @@ const STATUS_STAGE: Partial<Record<Experiment["status"], (typeof STAGES)[number]
 };
 type Section = "graph" | "evidence" | "findings" | "comparisons" | "spec";
 
-const RUNNING_STATUSES = ["discovering", "simulating", "verifying", "analyzing", "comparing", "rebuilding"];
+const RUNNING_STATUSES = ["queued", "discovering", "simulating", "verifying", "analyzing", "comparing", "rebuilding"];
 
 const SECTION_STAGES: Record<Section, { stages: Stage[]; statuses: string[] }> = {
   graph: { stages: ["discover", "simulate"], statuses: ["discovering", "simulating"] },
@@ -56,6 +56,8 @@ export default function ExperimentPage() {
   const [loadError, setLoadError] = useState("");
   const [pending, setPending] = useState<Stage | null>(null);
   const [stageErrors, setStageErrors] = useState<Partial<Record<Stage, string>>>({});
+  const [rescanBusy, setRescanBusy] = useState(false);
+  const [rescanNote, setRescanNote] = useState("");
   const lastRunningStage = useRef<(typeof STAGES)[number] | null>(null);
   const [specDoc, setSpecDoc] = useState<SpecDoc | null>(null);
   const [viewport, setViewport] = useState<Viewport["name"]>("desktop");
@@ -99,6 +101,30 @@ export default function ExperimentPage() {
   useEffect(() => {
     if (specKey) void loadSpec();
   }, [specKey, loadSpec]);
+
+  async function rescan() {
+    setRescanBusy(true);
+    setRescanNote("");
+    try {
+      const res = await fetch(`/api/experiments/${id}/rescan`, { method: "POST" });
+      const data = (await res.json().catch(() => ({}))) as {
+        rescan?: { changed?: boolean; checked?: number };
+        error?: string;
+      };
+      if (!res.ok) {
+        setRescanNote(data.error ?? `Rescan failed (${res.status})`);
+      } else if (data.rescan?.changed) {
+        setRescanNote("Site changed — re-running the pipeline");
+      } else {
+        setRescanNote(`Site unchanged (${data.rescan?.checked ?? 0} pages checked)`);
+      }
+    } catch (e) {
+      setRescanNote(e instanceof Error ? e.message : String(e));
+    } finally {
+      setRescanBusy(false);
+      await refresh();
+    }
+  }
 
   async function runStage(stage: Stage) {
     setPending(stage);
@@ -301,12 +327,15 @@ export default function ExperimentPage() {
             </li>
           ))}
         </ol>
-        <Button className="pipeline-run" loading={pending === "run"} disabled={pending !== null} onClick={() => void runStage("run")}>
+        <Button className="pipeline-run" loading={pending === "run"} disabled={pending !== null || rescanBusy} onClick={() => void runStage("run")}>
           {pending === "run" ? "Running…" : doneCount === STAGES.length ? "Run again" : "Run all steps"}
         </Button>
-        {!live && (
+        <Button variant="secondary" loading={rescanBusy} disabled={pending !== null || rescanBusy} onClick={() => void rescan()}>
+          {rescanBusy ? "Checking…" : "Rescan site"}
+        </Button>
+        {(!live || rescanNote) && (
           <p className="pipeline-status tabular">
-            {doneCount === STAGES.length ? "All steps complete" : `${doneCount} of ${STAGES.length} steps complete`}
+            {rescanNote || (doneCount === STAGES.length ? "All steps complete" : `${doneCount} of ${STAGES.length} steps complete`)}
           </p>
         )}
       </div>
@@ -419,7 +448,7 @@ export default function ExperimentPage() {
         >
           <CardGroup className="list stagger" fluidHover={false}>
             {runs.map((r, idx) => (
-              <Card key={r.runId} index={idx} className="run-card">
+              <Card key={`${r.runId}#${idx}`} index={idx} className="run-card">
                 <CardContent className="card">
                 <div className="card-title">
                   <Badge variant="dot" color={r.success ? "green" : "red"}>

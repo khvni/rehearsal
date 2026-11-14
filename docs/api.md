@@ -11,11 +11,12 @@ With `REHEARSAL_ACCESS_TOKEN` set, every route except `/api/hooks/*` needs
 
 | Method | Path | Body / params | Returns |
 |---|---|---|---|
-| POST | `/api/experiments` | `{targetUrl, goal?, config?}` (`url` accepted as an alias of `targetUrl`; `goal` optional — a first-page probe infers goal + `personas` when omitted) | the created `Experiment`; 400 if `targetUrl` missing or the URL fails `assertPublicUrl` |
+| POST | `/api/experiments` | `{targetUrl, goal?, config?, idempotencyKey?}` (`url` accepted as an alias of `targetUrl`; `goal` optional — a first-page probe infers goal + `personas` when omitted; `Idempotency-Key` header accepted as the dedupe key) | the `Experiment` (status `queued`; the pipeline runs as a background job that survives the request). A repeat `idempotencyKey` or a previously scanned normalized site returns the existing record with `dedupe: "idempotency"\|"site"` and never consumes the daily-create budget; 400 if `targetUrl` missing or fails `assertPublicUrl` |
 | GET | `/api/experiments` | — | `[{id, targetUrl, goal, status, createdAt}]` |
 | GET | `/api/experiments/:id` | — | the full `Experiment` (contract in `src/lib/contracts`); 404 if unknown |
 | GET | `/api/experiments/:id/activity` | — | `ActivityEvent[]` (contract in `src/lib/contracts`), chronological, capped at `ACTIVITY_EVENT_LIMIT`; 404 if unknown |
 | POST | `/api/experiments/:id/:stage` | `:stage` = a pipeline stage or `run` | the updated `Experiment`; 400 on an unknown stage, 409 `{error, runningStage}` while another stage or `run` of the same experiment is in progress, 429 at the concurrency cap, 500 on a stage error |
+| POST | `/api/experiments/:id/rescan` | `{goal?}` | the `Experiment` plus `rescan: RescanReport`. Probes the pages discover stored via the plain fetcher and compares content signatures: changed → artifacts reset + the pipeline re-runs as a background job (202); unchanged → no-op (200); a new `goal` regenerates goal-derived artifacts on the kept graph without a recrawl (202); 404 unknown, 409 while a run is in progress |
 | POST | `/api/hooks/sentry` | Sentry webhook (raw JSON), headers `Sentry-Hook-Signature` + `Sentry-Hook-Resource` (`event_alert` or `issue`) | `{ok, issueId, action: created\|updated\|reopened\|skipped, number?}`; `{ok, ignored}` for other resources/actions; 401 bad signature, 503 without `SENTRY_WEBHOOK_SECRET`. See docs/telemetry.md |
 | GET | `/api/experiments/:id/:stage` | `:stage` = `spec` only | `spec.md` as `text/markdown`; 404 before the spec stage ran |
 

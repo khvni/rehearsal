@@ -45,7 +45,7 @@ export class BrowserbaseFetcher implements PageFetcher {
           }),
         ])
       : await work;
-    if (res.statusCode >= 400) throw new Error(`Browserbase fetch failed: ${res.statusCode}`);
+    if (res.statusCode >= 400) throw new Error(`Browserbase fetch failed: ${res.statusCode}${res.statusCode === 402 ? " Payment Required" : res.statusCode === 429 ? " Too Many Requests" : ""}`);
     return typeof res.content === "string" ? res.content : JSON.stringify(res.content);
   }
 }
