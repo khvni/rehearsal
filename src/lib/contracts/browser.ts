@@ -56,6 +56,8 @@ export interface OpenPageResult {
  */
 export interface BrowserRunner {
   readonly name: string;
+  /** True when `runAgentTask` is usable (backend has a model). Absent/false => verify uses runTrajectory. */
+  readonly supportsAgent?: boolean;
   openPage(url: string, viewport: Viewport, opts?: { patches?: DomPatch[]; shotName?: string }): Promise<OpenPageResult>;
   runTrajectory(args: TrajectoryArgs): Promise<BrowserRun>;
   /**
