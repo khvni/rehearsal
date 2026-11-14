@@ -172,6 +172,8 @@ describe("eval: orchestrator wires intents/endpoints through the pipeline (fixtu
     async save(e) { mem.set(e.id, Experiment.parse(JSON.parse(JSON.stringify(e)))); },
     async get(id) { return mem.get(id) ?? null; },
     async list() { return [...mem.values()]; },
+    async appendActivity() {},
+    async activity() { return []; },
   };
 
   it("discover → analyze stores intents, endpoints, journeys; goal reached via schedule endpoint", async () => {
