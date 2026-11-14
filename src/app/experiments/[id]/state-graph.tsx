@@ -1,7 +1,15 @@
 "use client";
 
-import { useMemo, useState } from "react";
-import { ReactFlow, Background, BackgroundVariant, Controls, type Edge, type Node } from "@xyflow/react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import {
+  ReactFlow,
+  Background,
+  BackgroundVariant,
+  Controls,
+  type Edge,
+  type Node,
+  type ReactFlowInstance,
+} from "@xyflow/react";
 import "@xyflow/react/dist/style.css";
 import type { StateGraph as Graph, Trajectory, Viewport } from "@/lib/contracts";
 
@@ -30,6 +38,7 @@ function heat(visits: number, max: number): number {
 }
 
 const HEAT_STEPS = [0, 0.25, 0.5, 0.75, 1];
+const NODE_HEIGHT = 68;
 
 function heatFill(t: number): string {
   return `color-mix(in oklab, var(--hl) ${Math.round(t * 32)}%, var(--panel))`;
@@ -90,39 +99,82 @@ export function StateGraph({
   viewport: Viewport["name"];
 }) {
   const [hovered, setHovered] = useState<string | null>(null);
+  const rf = useRef<ReactFlowInstance | null>(null);
+  // Layout cells and node objects persist across polls: React Flow keys its
+  // measurements by node-object identity, so pooled nodes never re-measure
+  // (they'd flash hidden otherwise) and existing states never move. They live
+  // in state, not refs, so renders may read them; they are never set, so they
+  // stay referentially stable.
+  const [cells] = useState(() => new Map<string, { col: number; row: number }>());
+  const [pool] = useState(() => new Map<string, Node>());
+  const seen = useRef<string | null>(null);
 
-  const fresh = useMemo(() => {
+  const states = useMemo(
+    () => graph.states.filter((s) => s.viewport.name === viewport),
+    [graph, viewport],
+  );
+  const structureSig = `${viewport}:${states.map((s) => s.stateId).join(",")}`;
+
+  const { nodes, edgeData } = useMemo(() => {
     const visits = visitCounts(simulations);
     const transitions = transitionCounts(simulations);
-    const states = graph.states.filter((s) => s.viewport.name === viewport);
     const ids = new Set(states.map((s) => s.stateId));
     const pairs = new Map<string, [string, string]>();
     for (const e of graph.edges) {
       if (e.fromStateId === e.toStateId || !ids.has(e.fromStateId) || !ids.has(e.toStateId)) continue;
       pairs.set(`${e.fromStateId}>${e.toStateId}`, [e.fromStateId, e.toStateId]);
     }
-    const maxVisits = Math.max(0, ...states.map((s) => visits.get(s.stateId) ?? 0));
     const maxFlow = Math.max(0, ...[...pairs.keys()].map((k) => transitions.get(k) ?? 0));
     const perRow = viewport === "mobile" ? 3 : 5;
     const width = viewport === "mobile" ? 200 : 220;
-    const pos = layout(states.map((s) => s.stateId), [...pairs.values()], visits, perRow);
+    const suggested = layout(states.map((s) => s.stateId), [...pairs.values()], visits, perRow);
     const rootId = states[0]?.stateId;
 
+    const cellFor = new Map<string, { col: number; row: number }>();
+    const occupied = new Set<string>();
+    const mark = (c: { col: number; row: number }) => occupied.add(`${c.row}:${c.col}`);
+    for (const s of states) {
+      const cell = cells.get(`${viewport}:${s.stateId}`);
+      if (cell) {
+        cellFor.set(s.stateId, cell);
+        mark(cell);
+      }
+    }
+    for (const s of states) {
+      if (cellFor.has(s.stateId)) continue;
+      let cell = suggested.get(s.stateId) ?? { col: 0, row: 0 };
+      while (occupied.has(`${cell.row}:${cell.col}`)) {
+        cell = cell.col + 1 < perRow ? { col: cell.col + 1, row: cell.row } : { col: 0, row: cell.row + 1 };
+      }
+      cells.set(`${viewport}:${s.stateId}`, cell);
+      cellFor.set(s.stateId, cell);
+      mark(cell);
+    }
+
+    const nextPool = new Map<string, Node>();
     const nodes = states.map((s) => {
-      const v = visits.get(s.stateId) ?? 0;
-      const t = heat(v, maxVisits);
-      const p = pos.get(s.stateId) ?? { col: 0, row: 0 };
-      return {
+      const cell = cellFor.get(s.stateId)!;
+      const key = `${viewport}|${s.stateId}|${s.url}|${s.pageTitle}|${s.stateId === rootId}|${cell.col}:${cell.row}`;
+      const kept = pool.get(key);
+      if (kept) {
+        nextPool.set(key, kept);
+        return kept;
+      }
+      const node = {
         id: s.stateId,
-        position: { x: p.col * (width + 40), y: p.row * 110 },
-        ariaLabel: `${shortPath(s.url)}, ${s.pageTitle}, ${v} visits`,
+        position: { x: cell.col * (width + 40), y: cell.row * 110 },
+        initialWidth: width,
+        initialHeight: NODE_HEIGHT,
+        // Stable nodes keep their measurements; a baked-in visit count would
+        // go stale on the next poll, so the label stays static.
+        ariaLabel: `${shortPath(s.url)}, ${s.pageTitle}`,
         data: {
           label: (
             <div className="node">
               <div className="node-path">{shortPath(s.url)}</div>
               <div className="node-title">{s.pageTitle}</div>
               <div className="node-foot">
-                <span className={`node-visits ${v === 0 ? "zero" : ""}`}>{v.toLocaleString()} visits</span>
+                <span className="node-visits" />
                 {s.stateId === rootId && <span className="node-start">Start</span>}
               </div>
             </div>
@@ -132,46 +184,46 @@ export function StateGraph({
           width,
           padding: "8px 10px",
           borderRadius: 8,
-          background: heatFill(t),
-          border: `1px solid ${heatBorder(t)}`,
+          border: "1px solid var(--border)",
           color: "var(--text)",
           textAlign: "left" as const,
           boxShadow: "none",
         },
       } satisfies Node;
+      nextPool.set(key, node);
+      return node;
     });
+    pool.clear();
+    for (const [k, v] of nextPool) pool.set(k, v);
 
-    const edges = [...pairs].map(([key, [source, target]]) => {
+    const edgeData = [...pairs].map(([key, [source, target]]) => {
       const flow = transitions.get(key) ?? 0;
       const w = maxFlow > 0 && flow > 0 ? Math.log1p(flow) / Math.log1p(maxFlow) : 0;
       return { id: key, source, target, flow, w };
     });
 
-    return { nodes, edges };
-  }, [graph, simulations, viewport]);
+    return { nodes, edgeData };
+  }, [graph, simulations, viewport, states, cells, pool]);
 
-  // Polling hands us new graph objects every few seconds. Keep node objects
-  // stable until the content changes, so React Flow keeps its measurements.
-  const sig = [
-    viewport,
-    graph.states.map((st) => st.stateId).join(","),
-    graph.edges.length,
-    simulations.map((t) => `${t.trajectoryId}=${t.steps.map((s) => s.stateId).join(">")}`).join(","),
-  ].join("|");
-  const [kept, setKept] = useState({ sig, base: fresh });
-  if (kept.sig !== sig) setKept({ sig, base: fresh });
-  const base = kept.sig === sig ? kept.base : fresh;
+  // Reframe only when the visible topology changes; the queued fit resolves
+  // after the new nodes are measured, so the bounds are complete. The prop
+  // `fitView` already frames the mount.
+  useEffect(() => {
+    const changed = seen.current !== null && seen.current !== structureSig;
+    seen.current = structureSig;
+    if (changed) void rf.current?.fitView({ padding: 0.12, duration: 220 });
+  }, [structureSig]);
 
-  const { edges, dimCss } = useMemo(() => {
+  const { edges, liveCss } = useMemo(() => {
     const neighbors = new Set<string>();
     if (hovered) {
       neighbors.add(hovered);
-      for (const e of base.edges) {
+      for (const e of edgeData) {
         if (e.source === hovered) neighbors.add(e.target);
         if (e.target === hovered) neighbors.add(e.source);
       }
     }
-    const edges: Edge[] = base.edges.map((e) => {
+    const edges: Edge[] = edgeData.map((e) => {
       const incident = hovered !== null && (e.source === hovered || e.target === hovered);
       const opacity = hovered ? (incident ? 0.95 : 0.04) : e.flow > 0 ? 0.25 + e.w * 0.55 : 0.12;
       return {
@@ -187,25 +239,42 @@ export function StateGraph({
         },
       };
     });
-    // Dim through CSS so hovering never hands React Flow new node objects;
-    // replacing nodes mid-poll drops their measurements and blanks the graph.
-    const keep = [...neighbors].map((id) => `[data-id=${JSON.stringify(id)}]`).join(", ");
-    const dimCss = hovered ? `.graph-wrap .react-flow__node:not(${keep}) { opacity: 0.3; }` : "";
-    return { edges, dimCss };
-  }, [base, hovered]);
+    // Heat and visit counts ride on a stylesheet so polling never hands
+    // React Flow new node objects; dim on hover works the same way.
+    const visits = visitCounts(simulations);
+    const maxVisits = Math.max(0, ...states.map((s) => visits.get(s.stateId) ?? 0));
+    const rules: string[] = [];
+    for (const s of states) {
+      const v = visits.get(s.stateId) ?? 0;
+      const t = heat(v, maxVisits);
+      const sel = `.graph-wrap .react-flow__node[data-id=${JSON.stringify(s.stateId)}]`;
+      rules.push(
+        `${sel} { background: ${heatFill(t)}; border-color: ${heatBorder(t)}; }`,
+        `${sel} .node-visits::before { content: ${JSON.stringify(`${v.toLocaleString()} visits`)}; }`,
+        `${sel} .node-visits { color: ${v === 0 ? "var(--text-2)" : "var(--text)"}; font-weight: ${v === 0 ? 400 : 500}; }`,
+      );
+    }
+    if (hovered) {
+      const keep = [...neighbors].map((id) => `[data-id=${JSON.stringify(id)}]`).join(", ");
+      rules.push(`.graph-wrap .react-flow__node:not(${keep}) { opacity: 0.3; }`);
+    }
+    return { edges, liveCss: rules.join("\n") };
+  }, [edgeData, hovered, simulations, states]);
 
   return (
     <div className={`graph-wrap ${viewport}`}>
-      {dimCss && <style>{dimCss}</style>}
+      <style>{liveCss}</style>
       <ReactFlow
-        key={`${viewport}:${base.nodes.length}:${simulations.length}`}
-        nodes={base.nodes}
+        nodes={nodes}
         edges={edges}
         fitView
         fitViewOptions={{ padding: 0.12 }}
         minZoom={0.2}
         nodesConnectable={false}
         nodesDraggable={false}
+        onInit={(instance) => {
+          rf.current = instance;
+        }}
         onNodeMouseEnter={(_, n) => setHovered(n.id)}
         onNodeMouseLeave={() => setHovered(null)}
         onNodeClick={(_, n) => setHovered((h) => (h === n.id ? null : n.id))}

@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import type { Experiment, Finding, KrugPrinciple, PanelState, Viewport } from "@/lib/contracts";
@@ -21,6 +21,13 @@ import { HeatLegend, StateGraph, visitCounts } from "./state-graph";
 
 const STAGES = ["discover", "simulate", "verify", "analyze", "compare", "spec"] as const;
 type Stage = (typeof STAGES)[number] | "run";
+const STATUS_STAGE: Partial<Record<Experiment["status"], (typeof STAGES)[number]>> = {
+  discovering: "discover",
+  simulating: "simulate",
+  verifying: "verify",
+  analyzing: "analyze",
+  comparing: "compare",
+};
 type Section = "graph" | "evidence" | "findings" | "comparisons" | "spec";
 
 const RUNNING_STATUSES = ["discovering", "simulating", "verifying", "analyzing", "comparing"];
@@ -50,6 +57,7 @@ export default function ExperimentPage() {
   const [loadError, setLoadError] = useState("");
   const [pending, setPending] = useState<Stage | null>(null);
   const [stageErrors, setStageErrors] = useState<Partial<Record<Stage, string>>>({});
+  const lastRunningStage = useRef<(typeof STAGES)[number] | null>(null);
   const [specDoc, setSpecDoc] = useState<SpecDoc | null>(null);
   const [viewport, setViewport] = useState<Viewport["name"]>("desktop");
 
@@ -57,7 +65,10 @@ export default function ExperimentPage() {
     try {
       const res = await fetch(`/api/experiments/${id}`, { cache: "no-store" });
       if (!res.ok) return setLoadError(await readError(res));
-      setExp((await res.json()) as Experiment);
+      const next = (await res.json()) as Experiment;
+      setExp(next);
+      const running = STATUS_STAGE[next.status];
+      if (running) lastRunningStage.current = running;
       setLoadError("");
     } catch (e) {
       setLoadError(e instanceof Error ? e.message : String(e));
@@ -97,7 +108,12 @@ export default function ExperimentPage() {
       const res = await fetch(`/api/experiments/${id}/${stage}`, { method: "POST" });
       if (!res.ok) {
         const message = await readError(res);
-        setStageErrors((prev) => ({ ...prev, [stage]: message }));
+        // A run-all failure lands on the stage it stopped at, so the step marks red.
+        setStageErrors((prev) => ({
+          ...prev,
+          [stage]: message,
+          ...(stage === "run" && lastRunningStage.current ? { [lastRunningStage.current]: message } : {}),
+        }));
       }
     } catch (e) {
       setStageErrors((prev) => ({ ...prev, [stage]: e instanceof Error ? e.message : String(e) }));
@@ -153,7 +169,7 @@ export default function ExperimentPage() {
   const busy = (section: Section) =>
     SECTION_STAGES[section].statuses.includes(exp.status) ||
     (pending !== null && SECTION_STAGES[section].stages.includes(pending)) ||
-    (section === "spec" && pending === "run");
+    (section === "spec" && pending === "run" && nextStage === "spec");
 
   const stageError = (section: Section) =>
     SECTION_STAGES[section].stages.map((s) => stageErrors[s]).find(Boolean);
@@ -205,9 +221,18 @@ export default function ExperimentPage() {
   // Stages run in order and analyze/compare may legitimately produce nothing, so a later stage implies earlier ones ran.
   for (let i = STAGES.length - 2; i >= 0; i--) stageDone[STAGES[i]] ||= stageDone[STAGES[i + 1]];
   const nextStage = STAGES.find((s) => !stageDone[s]);
+  const runningStage = STATUS_STAGE[exp.status];
   const stageActive = (s: (typeof STAGES)[number]) =>
-    pending === s || ((pending === "run" || RUNNING_STATUSES.includes(exp.status)) && s === nextStage);
+    pending === s || s === runningStage || (pending === "run" && s === nextStage);
   const doneCount = STAGES.filter((s) => stageDone[s]).length;
+  const stepIndex =
+    pending !== null && pending !== "run"
+      ? STAGES.indexOf(pending)
+      : runningStage !== undefined
+        ? STAGES.indexOf(runningStage)
+        : nextStage !== undefined
+          ? STAGES.indexOf(nextStage)
+          : STAGES.length - 1;
   const live = pending !== null || RUNNING_STATUSES.includes(exp.status);
   const statusColor = exp.status === "failed" ? "red" : exp.status === "complete" ? "green" : RUNNING_STATUSES.includes(exp.status) ? "blue" : "gray";
   const specState: PanelState = (() => {
@@ -234,6 +259,8 @@ export default function ExperimentPage() {
           <Badge variant="dot" color={statusColor}>{exp.status}</Badge>
           <a className="mono" href={exp.targetUrl} target="_blank" rel="noreferrer">{exp.targetUrl}</a>
           <span className="tabular">{exp.simulations.length.toLocaleString()} journeys</span>
+          <span className="sep" aria-hidden>·</span>
+          <span className="tabular">{shortDate(exp.createdAt)}</span>
         </div>
       </header>
 
@@ -243,12 +270,13 @@ export default function ExperimentPage() {
             <li key={s}>
               <button
                 type="button"
-                className={`step ${stageDone[s] ? "done" : ""} ${stageActive(s) ? "active" : ""}`}
+                className={`step ${stageDone[s] && !stageErrors[s] ? "done" : ""} ${stageActive(s) ? "active" : ""} ${stageErrors[s] ? "error" : ""}`}
                 disabled={pending !== null}
                 onClick={() => void runStage(s)}
-                aria-label={`${STAGE_LABEL[s]}: ${stageActive(s) ? "running" : stageDone[s] ? "done" : "not run"}. Run this step.`}
+                aria-current={stageActive(s) ? "step" : undefined}
+                aria-label={`${STAGE_LABEL[s]}: ${stageActive(s) ? "running" : stageErrors[s] ? "failed" : stageDone[s] ? "done" : "not run"}. Run this step.`}
               >
-                <span className="step-mark" aria-hidden>{stageDone[s] ? <CheckIcon size={12} /> : i + 1}</span>
+                <span className="step-mark" aria-hidden>{stageErrors[s] ? <CrossIcon size={12} /> : stageDone[s] ? <CheckIcon size={12} /> : i + 1}</span>
                 <span className="step-name">{STAGE_LABEL[s]}</span>
               </button>
             </li>
@@ -257,11 +285,16 @@ export default function ExperimentPage() {
         <Button className="pipeline-run" loading={pending === "run"} disabled={pending !== null} onClick={() => void runStage("run")}>
           {pending === "run" ? "Running…" : doneCount === STAGES.length ? "Run again" : "Run all steps"}
         </Button>
+        {!live && (
+          <p className="pipeline-status tabular">
+            {doneCount === STAGES.length ? "All steps complete" : `${doneCount} of ${STAGES.length} steps complete`}
+          </p>
+        )}
       </div>
 
       {live && (
         <ThinkingSteps className="live">
-          <ThinkingStepsHeader>{`Rehearsing, step ${Math.min(doneCount + 1, STAGES.length)} of ${STAGES.length}`}</ThinkingStepsHeader>
+          <ThinkingStepsHeader>{`Rehearsing, step ${stepIndex + 1} of ${STAGES.length}`}</ThinkingStepsHeader>
           <ThinkingStepsContent>
             {STAGES.map((s, i) => (
               <ThinkingStep
@@ -297,6 +330,7 @@ export default function ExperimentPage() {
           className="span-2"
           meta={<span className="tabular">{viewportStates.length} states · {viewportEdges.length} links</span>}
           busy={busy("graph")}
+          loadingPreview={<div className="skel-canvas" />}
           state={graphState}
           emptyAction={!graph ? runButton("discover") : undefined}
           actions={
@@ -324,6 +358,7 @@ export default function ExperimentPage() {
           meta={runs.length > 0 && <span className="tabular">{passed} of {runs.length} passed</span>}
           busy={busy("evidence")}
           enter="none"
+          loadingPreview={<SkeletonRows />}
           emptyAction={runButton("verify")}
           state={panelState("evidence", runs.length > 0, "Replaying journeys…", "Nobody has tried it yet.")}
         >
@@ -369,6 +404,7 @@ export default function ExperimentPage() {
           meta={<SeverityCounts findings={findings} />}
           busy={busy("findings")}
           enter="none"
+          loadingPreview={<SkeletonRows />}
           emptyAction={runs.length > 0 ? runButton("analyze") : undefined}
           state={panelState("findings", findings.length > 0, "Grading…", runs.length > 0 ? "Nothing graded yet." : "Nothing to grade until verify runs.")}
         >
@@ -408,6 +444,7 @@ export default function ExperimentPage() {
           className="span-2"
           meta={exp.variants.length + exp.comparisons.length > 0 && <span className="tabular">{exp.variants.length} variants · {exp.comparisons.length} comparisons</span>}
           busy={busy("comparisons")}
+          loadingPreview={<SkeletonRows />}
           emptyAction={findings.length > 0 ? runButton("compare") : undefined}
           state={panelState(
             "comparisons",
@@ -452,7 +489,9 @@ export default function ExperimentPage() {
       <Panel
         title="spec.md"
         className="spec-panel"
+        meta={exp.spec && <span className="tabular">{shortDate(exp.spec.generatedAt)}</span>}
         busy={busy("spec")}
+        loadingPreview={<SkeletonRows />}
         state={specState}
         emptyAction={findings.length > 0 ? runButton("spec") : undefined}
         actions={
@@ -496,6 +535,26 @@ const EVIDENCE_LABEL: Record<string, string> = {
   "reproducible-concern": "Reproducible concern",
   hypothesis: "Hypothesis",
 };
+
+function SkeletonRows() {
+  return (
+    <div className="skel-rows">
+      {[0, 1, 2].map((i) => (
+        <div key={i} className="skel-row">
+          <span className="skeleton" />
+          <span className="skeleton short" />
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function shortDate(iso: string): string {
+  const d = new Date(iso);
+  return Number.isNaN(d.getTime())
+    ? iso
+    : d.toLocaleDateString(undefined, { month: "short", day: "numeric" });
+}
 
 /** Lower is better for every numeric delta shown; goal reached is passed as (variant, baseline). */
 function delta(baseline: number, variant: number): string | undefined {
