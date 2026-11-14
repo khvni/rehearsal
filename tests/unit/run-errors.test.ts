@@ -90,7 +90,7 @@ describe("BrowserbaseFunctionRunner", () => {
     const res = await runner.openPage("https://a.test/", VP);
     expect(res.html).toBe("<html></html>");
     expect(calls[0].url).toBe("https://api.browserbase.com/v1/functions/fn_1/invoke");
-    expect(calls[0].body).toMatchObject({ params: { op: "openPage", args: { url: "https://a.test/" } } });
+    expect(calls[0].body).toMatchObject({ op: "openPage", args: { url: "https://a.test/" } });
     expect(calls[0].key).toBe("bb");
     expect(calls[2].url).toBe("https://api.browserbase.com/v1/functions/invocations/inv_1");
   });
