@@ -5,7 +5,7 @@ import {
   StateGraph,
   Viewport,
 } from "../contracts";
-import { normalizeUrl, stateHashFor } from "../browser/extract";
+import { stateHashFor } from "../browser/extract";
 
 /** Build a SiteState from extracted page data with deterministic dedup hash. */
 export function makeState(args: {
@@ -82,12 +82,13 @@ export class GraphBuilder {
 }
 
 /**
- * First state per normalized URL. Multi-viewport crawls store one state per
+ * First state per crawled URL. Multi-viewport crawls store one state per
  * viewport, so prompts that only need page text shouldn't pay for the same
- * page twice.
+ * page twice. Keyed on the raw URL (not normalized): query strings are the
+ * only thing distinguishing paginated/filtered pages from each other.
  */
 export function uniqueStatesByUrl(states: SiteState[]): SiteState[] {
-  return [...new Map(states.map((s) => [normalizeUrl(s.url), s])).values()];
+  return [...new Map(states.map((s) => [s.url, s])).values()];
 }
 
 /** BFS adjacency: stateId -> [{action, toStateId}] using known destinations. */
