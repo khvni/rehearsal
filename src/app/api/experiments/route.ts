@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { ExperimentConfig } from "@/lib/contracts";
 import { Orchestrator } from "@/lib/orchestrator";
 import { clientIp, underDailyLimit } from "@/lib/ratelimit";
 
@@ -23,19 +24,26 @@ export async function POST(req: Request) {
       targetUrl?: string;
       url?: string;
       goal?: string;
-      config?: { trajectories?: number; verifyCount?: number };
+      config?: unknown;
     };
     body.targetUrl ??= body.url;
     if (!body.targetUrl || !body.goal) {
       return NextResponse.json({ error: "targetUrl and goal are required" }, { status: 400 });
     }
+    const parsed = ExperimentConfig.safeParse(body.config ?? {});
+    if (!parsed.success) {
+      return NextResponse.json(
+        { error: "invalid config", issues: parsed.error.issues.map((i) => `${i.path.join(".")}: ${i.message}`) },
+        { status: 400 },
+      );
+    }
     if (!(await underDailyLimit(`exp-create:${clientIp(req)}`, CREATE_PER_IP_PER_DAY))) {
       return NextResponse.json({ error: "daily experiment limit reached" }, { status: 429 });
     }
     const config = {
-      ...body.config,
-      trajectories: Math.min(body.config?.trajectories ?? MAX_TRAJECTORIES, MAX_TRAJECTORIES),
-      verifyCount: Math.min(body.config?.verifyCount ?? MAX_VERIFY_RUNS, MAX_VERIFY_RUNS),
+      ...parsed.data,
+      trajectories: Math.min(parsed.data.trajectories, MAX_TRAJECTORIES),
+      verifyCount: Math.min(parsed.data.verifyCount, MAX_VERIFY_RUNS),
     };
     const experiment = await orchestrator().createExperiment(body.targetUrl, body.goal, config);
     return NextResponse.json(experiment);

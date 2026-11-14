@@ -33,6 +33,28 @@ describe("contracts", () => {
     expect(ExperimentConfig.parse({}).trajectories).toBe(1000);
   });
 
+  it("bounds experiment budgets", () => {
+    const max = { maxStates: 50, maxDepth: 5, trajectories: 5000, verifyCount: 16, viewports: ["mobile", "desktop"] };
+    expect(ExperimentConfig.parse(max)).toMatchObject(max);
+    for (const over of [
+      { trajectories: 1e9 },
+      { trajectories: 5001 },
+      { maxStates: 51 },
+      { maxDepth: 6 },
+      { verifyCount: 17 },
+      { viewports: ["desktop", "desktop"] },
+      { viewports: ["desktop", "mobile", "desktop"] },
+    ]) {
+      expect(() => ExperimentConfig.parse(over), JSON.stringify(over)).toThrow();
+    }
+    expect(() =>
+      Experiment.parse({
+        id: "exp_t", targetUrl: AIE_URL, goal: "g", status: "created",
+        createdAt: new Date().toISOString(), configuration: { maxStates: 1_000_000 },
+      }),
+    ).toThrow();
+  });
+
   it("rejects invalid finding evidence type", () => {
     const base = {
       findingId: "f1", title: "t", category: "clarity", severity: "high",
