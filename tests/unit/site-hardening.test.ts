@@ -34,6 +34,28 @@ describe("extractPage on real-world link shapes", () => {
     const giant = `<title>Big</title>${"<p>x</p>".repeat(400_000)}<a href="/late">Late</a>`;
     expect(extractPage(giant, PAGE).actions.some((a) => a.label === "Late")).toBe(false);
   });
+
+  it.each([
+    ["unclosed <head", "<head".repeat(200_000)],
+    ["unclosed <head>", "<head>".repeat(300_000)],
+    ["deep <div> nesting with stray closes", "<div>".repeat(200_000) + "</span>".repeat(200_000)],
+    ["unclosed anchors", '<a href="/x">'.repeat(150_000)],
+    ["unclosed headings", "<h1>x".repeat(300_000)],
+  ])("stays linear on hostile markup: %s", (_name, hostile) => {
+    const started = performance.now();
+    extractPage(hostile, PAGE);
+    expect(performance.now() - started).toBeLessThan(1000);
+  });
+
+  it("decodes entities and keeps unclosed anchors and buttons", () => {
+    const page = extractPage(
+      `<title>A &amp; B</title><h2>Don&#x27;t</h2><a href="/q?a=1&amp;b=2">Go`,
+      PAGE,
+    );
+    expect(page.title).toBe("A & B");
+    expect(page.headings).toEqual(["Don't"]);
+    expect(page.actions[0]).toMatchObject({ label: "Go", href: "https://example.com/q?a=1&b=2" });
+  });
 });
 
 describe("robots.txt rules", () => {
