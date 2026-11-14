@@ -2,12 +2,16 @@ import { mkdirSync } from "node:fs";
 import path from "node:path";
 import type { Browser, BrowserContext, LaunchOptions, Page } from "playwright";
 import type {
+  AgentJourney,
   Assertion,
   AssertionProbe,
   BrowserRun,
   BrowserRunner,
   DomPatch,
+  JevClient,
   OpenPageResult,
+  PersonaJourneyArgs,
+  PersonaPage,
   PlaywrightStepOptions,
   TrajectoryArgs,
   Viewport,
@@ -17,6 +21,7 @@ import { assertPublicUrl, politeDelay, robotsAllows } from "../fetch/guards";
 import { compilePatches } from "../variants";
 import { isSameOrigin } from "./extract";
 import { measurePage } from "./metrics";
+import { LivePagePersonaDriver } from "./persona";
 import { chromiumSandboxEnabled } from "./sandbox";
 import { captureBrand } from "../rebuild/brand";
 import { errorText, evaluateAssertion, shouldShoot, summarizeRun } from "./types";
@@ -151,11 +156,14 @@ export class PlaywrightRunner implements BrowserRunner {
   readonly name = "local-playwright";
   private browser: Promise<Browser> | null = null;
   private egress: Awaited<ReturnType<typeof startEgressProxy>> | null = null;
+  private jev?: JevClient;
 
   constructor(
     private evidenceDir = DEFAULT_EVIDENCE_DIR,
     private sandbox = chromiumSandboxEnabled(),
+    jev?: JevClient,
   ) {
+    this.jev = jev;
     // Edge runtimes (workerd) ship a read-only fs — evidence dir is best-effort.
     try {
       mkdirSync(evidenceDir, { recursive: true });
@@ -241,6 +249,25 @@ export class PlaywrightRunner implements BrowserRunner {
       await ctx?.close();
     }
     return summarizeRun({ runId: args.runId, viewport: args.viewport, started, errors, ...result });
+  }
+
+  async runPersonaJourney(args: PersonaJourneyArgs): Promise<AgentJourney> {
+    await assertPublicUrl(args.url);
+    const ctx = await this.newContext(args.viewport);
+    try {
+      const page = await ctx.newPage();
+      await page.goto(args.url, { waitUntil: "domcontentloaded", timeout: 30000 });
+      await assertPublicPage(page);
+      await page.waitForTimeout(800);
+      await settleInterstitial(page);
+      await assertPublicPage(page);
+      const driver = new LivePagePersonaDriver(page as PersonaPage, args.viewport, this.evidenceDir, 30000);
+      const { personaJourneyLoop } = await import("../simulation/persona");
+      const { selectJev } = await import("../decisions/jev");
+      return await personaJourneyLoop(driver, this.jev ?? selectJev(), args);
+    } finally {
+      await ctx.close();
+    }
   }
 
   async close(): Promise<void> {

@@ -34,9 +34,17 @@ telemetry: Sentry (SENTRY_DSN) + data/events/*.jsonl → /api/hooks/sentry → f
 
 1. **discover**: fetch → render → extract actions → `GraphBuilder` dedups by `stateHash`
    (normalized URL + viewport + action signature + modal flag). Budget: 30 states / depth 3.
-2. **simulate**: `scoreActions` asks Jev `choice` (best action per state) + `score` (ambiguity);
-   weights → `simulateTrajectories` samples ≤1000 seeded paths across 3 behavioral profiles.
-3. **verify**: `selectTrajectories` picks the riskiest ~8 (+always a goal-reached path if any);
+2. **simulate**: a bounded persona swarm (`maxAgents`/~200, `maxStepsPerAgent`, `maxConcurrentAgents`)
+   walks the live site — one `runPersonaJourney` browser invocation per agent. Each step is one
+   batched `jev.decide` scoring every candidate action plus a `__leave__` option; a seeded RNG
+   samples the pick. Journeys are emergent and end `goal-reached` or `dropped-off` with a
+   first-class reason; `PersonaSwarm` (journeys, drop-off distribution, state visits) persists on
+   the experiment and journeys are also translated to `Trajectory`s for the dashboard heat map.
+   Backends without `runPersonaJourney` fall back to the legacy seeded sampler (`scoreActions` →
+   `simulateTrajectories`).
+3. **verify**: swarm mode replays `selectJourneys` — most-dropped + most-travelled journeys
+   interleaved (≥1 goal-reached kept) — step-by-step through the recorded actions. Legacy mode
+   uses `selectTrajectories` on the riskiest ~8 (+always a goal-reached path if any);
    `runTrajectory` executes them in desktop (and mobile for the top path), checking assertions.
 4. **analyze**: `ruleFindings` (always-on: stale dates + apply CTA, vague labels, nav density,
    missing identity, failed assertions) + `llmFindings` (gemini-4-argon, rubric-grounded JSON).

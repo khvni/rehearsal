@@ -178,19 +178,109 @@ export const TrajectoryOutcome = z.enum([
   "repetition-limit",
   "max-depth",
   "dead-end",
+  /** Emergent-journey outcome: the agent chose to abandon the goal (persona swarm). */
+  "dropped-off",
 ]);
 export type TrajectoryOutcome = z.infer<typeof TrajectoryOutcome>;
+
+/** Visitor persona kinds; derived from the intents the site offers (RFX categories). */
+export const PersonaKind = z.enum(["info-seeker", "quotation-checker", "proposal-comparer"]);
+export type PersonaKind = z.infer<typeof PersonaKind>;
 
 export const Trajectory = z.object({
   trajectoryId: z.string(),
   seed: z.number().int(),
   profile: BehavioralProfile,
+  /** Set when the trajectory was produced by a persona agent (swarm mode). */
+  persona: PersonaKind.optional(),
   steps: z.array(TrajectoryStep),
   outcome: TrajectoryOutcome,
   backtracks: z.number().int().nonnegative(),
   riskScore: z.number().optional(),
 });
 export type Trajectory = z.infer<typeof Trajectory>;
+
+// ── Persona swarm ───────────────────────────────────────────────────────────
+
+/** Why a persona agent stopped before reaching the goal. */
+export const DropOffReason = z.enum([
+  /** Page offered no actionable candidates. */
+  "dead-end",
+  /** Agent hit maxStepsPerAgent without reaching the goal. */
+  "max-steps",
+  /** Agent kept revisiting the same states (repetition cap). */
+  "going-in-circles",
+  /** Repeated navigation/action failures. */
+  "error",
+  /** Nothing on the page looked relevant to the persona's goal. */
+  "nothing-promising",
+  /** Page was confusing enough that the persona gave up. */
+  "confused",
+  /** Persona lost interest before reaching the goal. */
+  "lost-interest",
+]);
+export type DropOffReason = z.infer<typeof DropOffReason>;
+
+/** One step in an agent's journey: the page it landed on and the action it took to leave it. */
+export const AgentStep = z.object({
+  /** Content-derived hash — matches discovered State.stateHash when the page was crawled. */
+  stateHash: z.string(),
+  url: z.string(),
+  title: z.string(),
+  /** The action the agent took to leave this step (absent on the final step). */
+  action: z
+    .object({
+      actionId: z.string().optional(),
+      label: z.string(),
+      href: z.string().optional(),
+      role: z.string().optional(),
+    })
+    .optional(),
+  ok: z.boolean().optional(),
+  error: z.string().optional(),
+});
+export type AgentStep = z.infer<typeof AgentStep>;
+
+/** Where and why an agent abandoned; the first-class result the swarm exists to produce. */
+export const AgentDropOff = z.object({
+  reason: DropOffReason,
+  /** Index into `steps` of the state where the agent gave up. */
+  atStep: z.number().int().nonnegative(),
+  stateHash: z.string(),
+  url: z.string(),
+  screenshotPath: z.string().optional(),
+});
+export type AgentDropOff = z.infer<typeof AgentDropOff>;
+
+export const AgentJourney = z.object({
+  agentId: z.string(),
+  persona: PersonaKind,
+  seed: z.number().int(),
+  steps: z.array(AgentStep),
+  outcome: z.enum(["goal-reached", "dropped-off"]),
+  dropOff: AgentDropOff.optional(),
+  /** Times the agent revisited an already-seen stateHash. */
+  backtracks: z.number().int().nonnegative().default(0),
+});
+export type AgentJourney = z.infer<typeof AgentJourney>;
+
+export const PersonaSwarm = z.object({
+  seed: z.number().int(),
+  viewport: z.string(),
+  agents: z.number().int().nonnegative(),
+  /** Persona -> number of agents assigned. */
+  personaMix: z.record(z.string(), z.number().int().nonnegative()),
+  journeys: z.array(AgentJourney),
+  /** Drop-off reason -> agent count. */
+  dropOffDistribution: z.record(z.string(), z.number().int().nonnegative()),
+  /** stateHash -> number of agent steps that visited it (journey popularity heat). */
+  stateVisits: z.record(z.string(), z.number().int().nonnegative()),
+  /** Agent ids of the most-travelled journeys (highest cumulative state popularity). */
+  mostTravelled: z.array(z.string()),
+  /** Agent ids of journeys ending at the most common drop-off states. */
+  mostDropped: z.array(z.string()),
+});
+export type PersonaSwarm = z.infer<typeof PersonaSwarm>;
 
 // ── Verification ────────────────────────────────────────────────────────────
 
@@ -581,6 +671,9 @@ const StoredExperimentConfig = z
     maxDepth: z.number().int().positive().default(3),
     trajectories: z.number().int().positive().default(1000),
     verifyCount: z.number().int().positive().default(8),
+    maxAgents: z.number().int().positive().default(200),
+    maxStepsPerAgent: z.number().int().positive().default(12),
+    maxConcurrentAgents: z.number().int().positive().default(10),
     viewports: z.array(z.enum(["desktop", "mobile"])).default(["desktop", "mobile"]),
   })
   .transform((c): ExperimentConfig => ({
@@ -589,6 +682,9 @@ const StoredExperimentConfig = z
     maxDepth: Math.min(c.maxDepth, EXPERIMENT_LIMITS.maxDepth),
     trajectories: Math.min(c.trajectories, EXPERIMENT_LIMITS.trajectories),
     verifyCount: Math.min(c.verifyCount, EXPERIMENT_LIMITS.verifyCount),
+    maxAgents: Math.min(c.maxAgents, EXPERIMENT_LIMITS.maxAgents),
+    maxStepsPerAgent: Math.min(c.maxStepsPerAgent, EXPERIMENT_LIMITS.maxStepsPerAgent),
+    maxConcurrentAgents: Math.min(c.maxConcurrentAgents, EXPERIMENT_LIMITS.maxConcurrentAgents),
     viewports: [...new Set(c.viewports)],
   }));
 
@@ -606,6 +702,8 @@ export const Experiment = z.object({
   assertions: z.array(Assertion).default([]),
   graph: StateGraph.optional(),
   simulations: z.array(Trajectory).default([]),
+  /** Persona-swarm results (emergent journeys). Absent when the runner fell back to seeded sampling. */
+  swarm: PersonaSwarm.optional(),
   browserTests: z.array(BrowserRun).default([]),
   findings: z.array(Finding).default([]),
   variants: z.array(Variant).default([]),

@@ -41,10 +41,10 @@ export class HttpJevClient implements JevClient {
   private model: string;
   private usage = { calls: 0, inputTokens: 0, outputTokens: 0 };
 
-  constructor() {
-    this.baseUrl = process.env.JEV_BASE_URL ?? "https://openrouter.ai/api/alpha/decisions";
-    this.apiKey = process.env.JEV_API_KEY ?? process.env.OPENROUTER_API_KEY ?? "";
-    this.model = process.env.JEV_MODEL ?? "typesafe/jev-1.13";
+  constructor(env: Record<string, string | undefined> = process.env) {
+    this.baseUrl = env.JEV_BASE_URL ?? "https://openrouter.ai/api/alpha/decisions";
+    this.apiKey = env.JEV_API_KEY ?? env.OPENROUTER_API_KEY ?? "";
+    this.model = env.JEV_MODEL ?? "typesafe/jev-1.13";
     if (!this.apiKey) throw new Error("HttpJevClient requires JEV_API_KEY or OPENROUTER_API_KEY");
   }
 
@@ -119,6 +119,23 @@ export class HttpJevClient implements JevClient {
  * option's criteria/label text and the goal + behavioral profile. Powers evals
  * and offline development; identical input => identical output.
  */
+/* Reserved option key the persona swarm adds for "leave the site". */
+const LEAVE_OPTION_KEY = "__leave__";
+
+/** Baseline leave propensity per persona — info-seekers bail fastest, comparers dig in. */
+const PERSONA_LEAVE_FLOOR: Record<string, number> = {
+  "info-seeker": 1.0,
+  "quotation-checker": 0.85,
+  "proposal-comparer": 0.7,
+};
+const DEFAULT_LEAVE_FLOOR = 0.9;
+
+const PERSONA_ACTION_BONUS: Record<string, RegExp> = {
+  "info-seeker": /docs|learn|guide|about|blog|schedule|agenda|sessions|faq|info|watch|video/i,
+  "quotation-checker": /pricing|price|cost|quote|plan|billing|buy/i,
+  "proposal-comparer": /demo|sign ?up|contact|apply|talk|sales|trial|compare|proposal/i,
+};
+
 export class FixtureJevClient implements JevClient {
   readonly name = "jev-fixture";
   private calls = 0;
@@ -135,6 +152,8 @@ export class FixtureJevClient implements JevClient {
     this.calls++;
     const goal = String(state.goal ?? "").toLowerCase();
     const profile = String(state.profile ?? "goal-directed");
+    const persona = String(state.persona ?? "");
+    const stepIndex = Number((state.state as Record<string, unknown> | undefined)?.stepIndex ?? 0);
     const stop = new Set(["the", "a", "an", "to", "for", "of", "in", "on", "and", "or", "is"]);
     const goalTokens = new Set(
       goal.split(/[^a-z0-9]+/).filter((t) => t.length > 2 && !stop.has(t)),
@@ -143,12 +162,20 @@ export class FixtureJevClient implements JevClient {
       const criteria = q.criteria as Record<string, string>;
       const keys = Object.keys(criteria);
       const raw = keys.map((k) => {
+        // The leave option doesn't compete on tokens — it gets a persona-tuned
+        // floor that ramps with journey length (fatigue). Emergent drop-offs.
+        if (k === LEAVE_OPTION_KEY) {
+          const floor = PERSONA_LEAVE_FLOOR[persona] ?? DEFAULT_LEAVE_FLOOR;
+          return [k, floor * (1 + Math.min(stepIndex, 8) * 0.06) + stableJitter(k)] as const;
+        }
         const text = `${k} ${criteria[k]}`.toLowerCase();
         const tokens = new Set(text.split(/[^a-z0-9]+/));
         let score = 0.1;
         for (const t of tokens) if (goalTokens.has(t)) score += 2;
         if (profile === "impatient" && /buy|apply|register|now|schedule|top/i.test(text)) score += 1;
         if (profile === "exploratory" && /about|blog|info|more|docs/i.test(text)) score += 1;
+        const personaBonus = PERSONA_ACTION_BONUS[persona];
+        if (personaBonus?.test(text)) score += 0.6;
         // deterministic tiebreak by key
         score += stableJitter(k);
         return [k, score] as const;
@@ -220,10 +247,10 @@ export class FallbackJevClient implements JevClient {
   }
 }
 
-export function selectJev(): JevClient {
-  if (process.env.JEV_API_KEY || process.env.OPENROUTER_API_KEY) {
+export function selectJev(env: Record<string, string | undefined> = process.env): JevClient {
+  if (env.JEV_API_KEY || env.OPENROUTER_API_KEY) {
     try {
-      return new FallbackJevClient(new HttpJevClient());
+      return new FallbackJevClient(new HttpJevClient(env));
     } catch {
       /* fall through */
     }

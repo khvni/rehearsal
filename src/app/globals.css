@@ -846,6 +846,15 @@ a:hover { text-decoration-color: currentColor; }
 .chip.variant-verified, .chip.variant-applied, .chip.variant-rejected, .chip.variant-proposed { text-transform: capitalize; }
 .principle-code { color: var(--muted); font-variant-numeric: tabular-nums; }
 
+.swarm-dropoffs { margin-top: var(--s-4); }
+.swarm-sub { margin: 0 0 var(--s-2); font-size: var(--fs-12); color: var(--muted); }
+.swarm-dropoff-list { display: grid; gap: var(--s-2); margin: 0; padding: 0; list-style: none; }
+.swarm-dropoff { display: grid; grid-template-columns: minmax(140px, 1fr) 3fr minmax(72px, auto); align-items: center; gap: var(--s-3); font-size: var(--fs-12); }
+.swarm-reason { color: var(--text-2); }
+.swarm-bar { position: relative; height: 6px; border-radius: 3px; background: var(--raised); overflow: hidden; }
+.swarm-fill { position: absolute; inset: 0 auto 0 0; background: var(--hl); }
+.swarm-count { color: var(--muted); text-align: right; }
+
 .sev-counts { display: inline-flex; flex-wrap: wrap; gap: var(--s-1) var(--s-3); }
 .sev-count.sev-critical { color: var(--critical); }
 .sev-count.sev-high { color: var(--fail); }

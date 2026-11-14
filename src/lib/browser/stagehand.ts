@@ -3,6 +3,7 @@ import path from "node:path";
 import type { Locator, ModelConfig, Page, Stagehand, StagehandBrowser } from "@browserbasehq/stagehand";
 import type {
   AgentDriver,
+  AgentJourney,
   AgentRunArgs,
   AssertionProbe,
   BrowserRun,
@@ -10,6 +11,8 @@ import type {
   DomPatch,
   EnvVars,
   OpenPageResult,
+  PersonaJourneyArgs,
+  PersonaPage,
   StagehandRunnerOptions,
   TrajectoryAction,
   TrajectoryArgs,
@@ -22,6 +25,7 @@ import { isSameOrigin } from "./extract";
 import { chromiumSandboxEnabled } from "./sandbox";
 import { measurePage } from "./metrics";
 import { captureBrand } from "../rebuild/brand";
+import { LivePagePersonaDriver } from "./persona";
 import { DEFAULT_EVIDENCE_DIR } from "./playwright";
 import { logEvent } from "../telemetry";
 import { errorText, evaluateAssertion, shouldShoot, summarizeRun } from "./types";
@@ -400,6 +404,25 @@ export class StagehandRunner implements BrowserRunner {
       assertions: run?.assertions ?? [],
       errors: [...errors, ...(run?.errors ?? [])],
       screenshots: [...screenshots, ...(run?.screenshotPaths ?? [])],
+    });
+  }
+
+  /** Persona-agent journey: extraction snapshot → batched Jev scoring → seeded pick → act, per step. */
+  async runPersonaJourney(args: PersonaJourneyArgs): Promise<AgentJourney> {
+    const target = await assertPublicUrl(args.url);
+    return this.withSession(args.viewport, undefined, async (_sh, page) => {
+      await page.goto(target.toString(), { waitUntil: "domcontentloaded", timeout: NAV_TIMEOUT_MS });
+      await page.waitForTimeout(800);
+      await leaveIfNotPublic(page);
+      const driver = new LivePagePersonaDriver(
+        page as unknown as PersonaPage,
+        args.viewport,
+        this.evidenceDir,
+        NAV_TIMEOUT_MS,
+      );
+      const { personaJourneyLoop } = await import("../simulation/persona");
+      const { selectJev } = await import("../decisions/jev");
+      return personaJourneyLoop(driver, this.opts.jev ?? selectJev(), args);
     });
   }
 

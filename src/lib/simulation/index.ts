@@ -136,6 +136,7 @@ export function rankForVerification(trajectories: Trajectory[]): Trajectory[] {
   const scored = trajectories.map((t) => {
     let risk = 0;
     if (t.outcome === "terminal-failure") risk += 4;
+    if (t.outcome === "dropped-off") risk += 3.5; // emergent abandon — the interesting evidence
     if (t.outcome === "dead-end") risk += 3;
     if (t.outcome === "repetition-limit") risk += 2;
     risk += Math.min(t.backtracks, 5);

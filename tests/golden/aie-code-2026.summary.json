@@ -7,14 +7,17 @@
     "maxDepth": 3,
     "trajectories": 200,
     "verifyCount": 2,
+    "maxAgents": 40,
+    "maxStepsPerAgent": 8,
+    "maxConcurrentAgents": 8,
     "viewports": [
       "desktop"
     ]
   },
   "states": 12,
   "edges": 112,
-  "trajectories": 200,
-  "goalReached": 85,
+  "trajectories": 40,
+  "goalReached": 37,
   "verified": 2,
   "verifiedPassed": 0,
   "findings": [
@@ -34,12 +37,6 @@
       "ruleOrTitle": "The page still invites registration for an event that already happened (# of # pages)",
       "severity": "high",
       "principle": "cut-needless-words",
-      "count": 1
-    },
-    {
-      "ruleOrTitle": "\"APPLY TO ATTEND\" takes too many clicks to reach",
-      "severity": "medium",
-      "principle": "obvious-choices",
       "count": 1
     },
     {
@@ -136,7 +133,6 @@
     "#. The page still invites registration for an event that already happened (# of # pages) [M]",
     "#. Desktop: a visitor landing here can't find site ID, primary navigation, search, you-are-here indicator [M]",
     "#. Too many links compete for attention (# of # pages) [S]",
-    "#. \"APPLY TO ATTEND\" takes too many clicks to reach [S]",
     "#. Desktop: the homepage takes # screens of scrolling [S]",
     "#. Desktop: a visitor landing here can't find site ID [S]",
     "#. Visitors can't find an answer to \"How much does it cost?\" [S]",

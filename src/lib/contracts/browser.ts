@@ -1,6 +1,15 @@
 import type { ModelConfig } from "@browserbasehq/stagehand";
 import { z } from "zod";
-import type { Assertion, BrandSignals, BrowserRun, DomPatch, Viewport } from "./index";
+import type {
+  AgentJourney,
+  Assertion,
+  BrandSignals,
+  BrowserRun,
+  DomPatch,
+  JevClient,
+  PersonaKind,
+  Viewport,
+} from "./index";
 import type { PageMetrics } from "./metrics";
 
 // Browser backends (src/lib/browser/*): runner interface, trajectory args and runner options.
@@ -42,6 +51,20 @@ export interface AgentRunArgs extends TrajectoryArgs {
   goal: string;
 }
 
+/** One persona-agent journey over the live site (the swarm's unit of work). */
+export interface PersonaJourneyArgs {
+  /** Stable agent id, e.g. "agent-0042"; also prefixes screenshots. */
+  agentId: string;
+  url: string;
+  viewport: Viewport;
+  persona: PersonaKind;
+  goal: string;
+  /** Goal assertions (compiled + endpoint-derived) checked on each snapshot. */
+  assertions: Assertion[];
+  seed: number;
+  maxSteps: number;
+}
+
 export interface OpenPageResult {
   html: string;
   /** Absent on runtimes without a writable evidence dir (e.g. workerd). */
@@ -81,7 +104,49 @@ export interface BrowserRunner {
    * runner never close each other's captures; omit it to release everything.
    */
   releaseCaptures?(scope?: string): Promise<void>;
+  /**
+   * Persona-agent journey: one agent navigates from `url`, deciding each step
+   * with a batched Jev scoring call until it reaches the goal or drops off.
+   * Present only on backends that can run the loop (Function runner, Stagehand,
+   * Playwright, fixture sites); simulate falls back to seeded sampling when absent.
+   */
+  runPersonaJourney?(args: PersonaJourneyArgs): Promise<AgentJourney>;
   close(): Promise<void>;
+}
+
+/** What one persona agent sees of the current page — the decision input. */
+export interface PersonaSnapshot {
+  url: string;
+  title: string;
+  visibleText: string;
+  /** Every extracted action — hashed exactly like discovery so journey stateHashes match crawled states. */
+  actions: { label: string; role?: string }[];
+  /** Actionable candidates (enabled + safeToExecute), in DOM order. */
+  candidates: TrajectoryAction[];
+}
+
+/** The browser surface a persona journey drives — implemented per runner. */
+export interface PersonaDriver {
+  snapshot(): Promise<PersonaSnapshot>;
+  act(action: TrajectoryAction): Promise<{ ok: boolean; error?: string }>;
+  probe(): AssertionProbe;
+  /** Best-effort screenshot at drop-off; returns a path or null. */
+  screenshot(name: string): Promise<string | null>;
+}
+
+/** Minimal page surface both Playwright's Page and Stagehand's Page satisfy (LivePagePersonaDriver). */
+export interface PersonaPage {
+  evaluate<T>(expression: string): Promise<T>;
+  goto(url: string, options?: { waitUntil?: string; timeout?: number }): Promise<unknown>;
+  getByRole(
+    role: string,
+    options?: { name?: string; exact?: boolean },
+  ): { first(): { click(options?: { timeout?: number }): Promise<void> } };
+  waitForLoadState(state?: string, options?: { timeout?: number }): Promise<unknown>;
+  waitForTimeout(ms: number): Promise<void>;
+  url(): string | Promise<string>;
+  screenshot(options?: { timeout?: number }): Promise<Uint8Array>;
+  title(): Promise<string>;
 }
 
 /** Minimal page surface needed to evaluate assertions, implemented by every backend. */
@@ -113,6 +178,8 @@ export interface StagehandRunnerOptions {
   chromiumSandbox?: boolean;
   model?: ModelConfig;
   evidenceDir?: string;
+  /** Jev client for persona journeys; defaults to selectJev() (env-resolved). */
+  jev?: JevClient;
 }
 
 export interface PlaywrightStepOptions {
@@ -129,7 +196,7 @@ export interface EvaluatingPage {
 
 /** One browser operation shipped to the Browserbase Function (functions/rehearsal-browser). */
 export const BrowserFunctionParams = z.object({
-  op: z.enum(["openPage", "runTrajectory", "runAgentTask"]),
+  op: z.enum(["openPage", "runTrajectory", "runAgentTask", "runPersonaJourney"]),
   args: z.record(z.string(), z.unknown()),
 });
 export type BrowserFunctionParams = z.infer<typeof BrowserFunctionParams>;
