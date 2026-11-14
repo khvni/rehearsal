@@ -394,6 +394,14 @@ export const ExperimentConfig = z.object({
 });
 export type ExperimentConfig = z.infer<typeof ExperimentConfig>;
 
+/** Experiment ids are generated as `exp_` + 8 hex chars; anything else never reaches storage. */
+export const ExperimentId = z.string().regex(/^exp_[0-9a-f]{8}$/);
+export type ExperimentId = z.infer<typeof ExperimentId>;
+
+export function isExperimentId(id: unknown): id is ExperimentId {
+  return ExperimentId.safeParse(id).success;
+}
+
 export const Experiment = z.object({
   id: z.string(),
   targetUrl: z.string().url(),

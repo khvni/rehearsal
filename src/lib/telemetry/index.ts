@@ -1,5 +1,6 @@
 import { appendFileSync, mkdirSync } from "node:fs";
 import path from "node:path";
+import { isExperimentId } from "../contracts";
 
 /**
  * Telemetry — Sentry (DSN-gated, lazily imported) + a structured JSONL event
@@ -54,7 +55,7 @@ export function logEvent(e: TelemetryEvent): void {
   try {
     mkdirSync(LOG_DIR, { recursive: true });
     appendFileSync(
-      path.join(LOG_DIR, `${e.experimentId ?? "global"}.jsonl`),
+      path.join(LOG_DIR, `${isExperimentId(e.experimentId) ? e.experimentId : "global"}.jsonl`),
       JSON.stringify({ ...e, at: e.at ?? new Date().toISOString() }) + "\n",
     );
   } catch {
