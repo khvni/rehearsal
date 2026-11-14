@@ -5,7 +5,14 @@ import type { BrowserRun, BrowserRunner, DomPatch, EnvVars, OpenPageResult, Traj
 import { assertPublicUrl } from "../fetch/guards";
 import { compilePatches } from "../variants";
 import { measurePage } from "./metrics";
+<<<<<<< HEAD
 import { DEFAULT_EVIDENCE_DIR, assertPublicPage, executeTrajectory, watchPageErrors } from "./playwright";
+||||||| parent of 44f1c80 (feat(rebuild): brand extraction, goal inference, branded page generation)
+import { DEFAULT_EVIDENCE_DIR, executeTrajectory, watchPageErrors } from "./playwright";
+=======
+import { captureBrand } from "../rebuild/brand";
+import { DEFAULT_EVIDENCE_DIR, executeTrajectory, watchPageErrors } from "./playwright";
+>>>>>>> 44f1c80 (feat(rebuild): brand extraction, goal inference, branded page generation)
 import { errorText, summarizeRun } from "./types";
 
 const BRIGHTDATA_HOST = "brd.superproxy.io:9222";
@@ -102,7 +109,8 @@ export class BrightDataBrowserRunner implements BrowserRunner {
       await page.waitForTimeout(1200);
       const shotOk = await page.screenshot({ path: screenshotPath, fullPage: false }).then(() => true).catch(() => false);
       const metrics = await measurePage(page);
-      return { html: await page.content(), screenshotPath: shotOk ? screenshotPath : undefined, metrics };
+      const brand = await captureBrand(page);
+      return { html: await page.content(), screenshotPath: shotOk ? screenshotPath : undefined, metrics, brand };
     });
   }
 

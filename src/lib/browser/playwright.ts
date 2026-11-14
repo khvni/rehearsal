@@ -18,6 +18,7 @@ import { compilePatches } from "../variants";
 import { isSameOrigin } from "./extract";
 import { measurePage } from "./metrics";
 import { chromiumSandboxEnabled } from "./sandbox";
+import { captureBrand } from "../rebuild/brand";
 import { errorText, evaluateAssertion, shouldShoot, summarizeRun } from "./types";
 
 export const DEFAULT_EVIDENCE_DIR = path.join(process.cwd(), "data", "evidence");
@@ -216,7 +217,8 @@ export class PlaywrightRunner implements BrowserRunner {
         .then(() => true)
         .catch(() => false);
       const metrics = await withTimeout(measurePage(page), PAGE_CALL_MS, "measurePage");
-      return { html, screenshotPath: shotOk ? screenshotPath : undefined, metrics };
+      const brand = await withTimeout(captureBrand(page), PAGE_CALL_MS, "captureBrand").catch(() => undefined);
+      return { html, screenshotPath: shotOk ? screenshotPath : undefined, metrics, brand };
     } finally {
       await ctx.close();
     }
