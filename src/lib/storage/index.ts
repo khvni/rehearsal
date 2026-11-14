@@ -18,7 +18,11 @@ export class JsonFileStore implements ExperimentStore {
   }
 
   async save(e: Experiment): Promise<void> {
-    writeFileSync(path.join(this.dir, `${e.id}.json`), JSON.stringify(e, null, 2));
+    try {
+      writeFileSync(path.join(this.dir, `${e.id}.json`), JSON.stringify(e, null, 2));
+    } catch {
+      /* read-only fs (workerd) — writes no-op */
+    }
   }
 
   async get(id: string): Promise<Experiment | null> {
@@ -126,18 +130,21 @@ const D1_SCHEMA_SQL = `
  */
 export class D1Store implements ExperimentStore {
   readonly name = "d1";
+  /** Adapters no-op without keys: a missing DB binding degrades to empty reads / dropped writes. */
+  private fallback = new JsonFileStore();
 
-  private async db(): Promise<D1Binding> {
+  private async db(): Promise<D1Binding | null> {
     const { getCloudflareContext } = await import("@opennextjs/cloudflare");
     const { env } = await getCloudflareContext({ async: true });
     const db = (env as { DB?: D1Binding }).DB;
-    if (!db) throw new Error("D1Store requires a D1 'DB' binding");
+    if (!db) return null;
     await db.prepare(D1_SCHEMA_SQL).run();
     return db;
   }
 
   async save(e: Experiment): Promise<void> {
     const db = await this.db();
+    if (!db) return this.fallback.save(e);
     await db
       .prepare(
         `INSERT INTO experiments (id, status, target_url, goal, payload, created_at)
@@ -150,12 +157,14 @@ export class D1Store implements ExperimentStore {
 
   async get(id: string): Promise<Experiment | null> {
     const db = await this.db();
+    if (!db) return this.fallback.get(id);
     const row = await db.prepare(`SELECT payload FROM experiments WHERE id=?`).bind(id).first<{ payload: string }>();
     return row ? Experiment.parse(JSON.parse(row.payload)) : null;
   }
 
   async list(): Promise<Experiment[]> {
     const db = await this.db();
+    if (!db) return this.fallback.list();
     const { results } = await db
       .prepare(`SELECT payload FROM experiments ORDER BY created_at DESC`)
       .all<{ payload: string }>();
