@@ -85,8 +85,11 @@ export function scoreSite(manifest: FixtureSiteManifest, run: BenchRun, runnerNa
   const journeys = exp.journeys ?? [];
   const discovered = endpoints.length;
   const reached = journeys.filter((j) => j.goalReached > 0).length;
+  const graphIds = new Set(graph.states.map((s) => s.stateId));
   const visited = new Set<string>();
-  for (const t of exp.simulations) for (const s of t.steps) visited.add(s.stateId);
+  // Journey steps on pages the crawler never reached keep their raw stateHash —
+  // count only real graph states or coverage can exceed 1.
+  for (const t of exp.simulations) for (const s of t.steps) if (graphIds.has(s.stateId)) visited.add(s.stateId);
   const stateCoverage = graph.states.length === 0 ? 0 : visited.size / graph.states.length;
 
   // ── simulate ────────────────────────────────────────────────────────────
