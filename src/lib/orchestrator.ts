@@ -24,6 +24,7 @@ import { RehearsalError, dominantCode, formatFailure, toFailure } from "./errors
 import { GraphBuilder, makeState } from "./graph";
 import { selectJev, scoreActions } from "./decisions/jev";
 import { simulateTrajectories, selectTrajectories } from "./simulation";
+import { journeysToTrajectories, runPersonaSwarm, selectJourneys } from "./simulation/swarm";
 import { selectLlm } from "./analysis/gemini";
 import { endpointFindings, llmFindings, ruleFindings } from "./analysis/findings";
 import { collapseFindings } from "./analysis/dedupe";
@@ -375,40 +376,75 @@ export class Orchestrator {
       exp.assertions = await this.compileAssertions(exp.goal);
       await this.emit(id, "simulate", "info", `Compiled ${exp.assertions.length} assertions for the goal`);
       if (!exp.endpoints) await this.mapIntents(exp);
+      const goalAssertions = [...exp.assertions, ...endpointGoalAssertions(exp.graph, exp.intents?.[0], exp.endpoints)];
 
-      // Score each state's actions once; dedupe identical Jev payloads (e.g. viewport twins of a URL).
-      const weights: SimWeights = { byState: new Map(), ambiguity: new Map() };
-      const scoreCache: JevScoreCache = new Map();
-      const scoredStates = graph.states.slice(0, config.maxStates);
-      for (const state of scoredStates) {
-        const { scored, ambiguity } = await scoreActions(this.jev, state, exp.goal, "goal-directed", {
-          cache: scoreCache,
-          experimentId: id,
-        });
-        weights.byState.set(
-          state.stateId,
-          new Map(scored.map((s) => [s.action.actionId, s.weight])),
+      if (typeof this.runner.runPersonaJourney === "function") {
+        // Emergent journeys: bounded persona swarm navigating the real site.
+        await this.emit(
+          id,
+          "simulate",
+          "info",
+          `Swarming ${config.maxAgents} persona agents over ${exp.targetUrl} (≤${config.maxStepsPerAgent} steps each, ${config.maxConcurrentAgents} concurrent)`,
         );
-        weights.ambiguity.set(state.stateId, ambiguity);
-      }
-      await this.emit(
-        id,
-        "simulate",
-        "decide",
-        `Scored actions across ${weights.byState.size} states — ${scoreCache.size} model calls (${weights.byState.size - scoreCache.size} deduped)`,
-      );
+        exp.swarm = await runPersonaSwarm({
+          runner: this.runner,
+          url: exp.targetUrl,
+          goal: exp.goal,
+          assertions: goalAssertions,
+          endpoints: exp.endpoints,
+          intents: exp.intents,
+          config,
+          viewport: VIEWPORTS[config.viewports[0]],
+          jev: this.jev,
+        });
+        exp.simulations = journeysToTrajectories(exp.swarm, graph);
+        const reached = exp.swarm.journeys.filter((j) => j.outcome === "goal-reached").length;
+        const dropped = exp.swarm.journeys.length - reached;
+        const dist = Object.entries(exp.swarm.dropOffDistribution)
+          .map(([reason, n]) => `${reason}×${n}`)
+          .join(", ");
+        await this.emit(
+          id,
+          "simulate",
+          "decide",
+          `Swarm settled: ${reached} agents reached the goal, ${dropped} dropped off${dist ? ` (${dist})` : ""}`,
+        );
+      } else {
+        // Fallback for runners without journey support: Jev-scored seeded sampling.
+        // Score each state's actions once; dedupe identical Jev payloads (e.g. viewport twins of a URL).
+        const weights: SimWeights = { byState: new Map(), ambiguity: new Map() };
+        const scoreCache: JevScoreCache = new Map();
+        const scoredStates = graph.states.slice(0, config.maxStates);
+        for (const state of scoredStates) {
+          const { scored, ambiguity } = await scoreActions(this.jev, state, exp.goal, "goal-directed", {
+            cache: scoreCache,
+            experimentId: id,
+          });
+          weights.byState.set(
+            state.stateId,
+            new Map(scored.map((s) => [s.action.actionId, s.weight])),
+          );
+          weights.ambiguity.set(state.stateId, ambiguity);
+        }
+        await this.emit(
+          id,
+          "simulate",
+          "decide",
+          `Scored actions across ${weights.byState.size} states — ${scoreCache.size} model calls (${weights.byState.size - scoreCache.size} deduped)`,
+        );
 
-      exp.simulations = simulateTrajectories({
-        graph,
-        startStateId: start.stateId,
-        weights,
-        assertions: [...exp.assertions, ...endpointGoalAssertions(exp.graph, exp.intents?.[0], exp.endpoints)],
-        seed: config.seed,
-        count: config.trajectories,
-        maxDepth: config.maxDepth,
-      });
-      const reached = exp.simulations.filter((t) => t.outcome === "goal-reached").length;
-      await this.emit(id, "simulate", "info", `Simulated ${exp.simulations.length} journeys — ${reached} reached the goal`);
+        exp.simulations = simulateTrajectories({
+          graph,
+          startStateId: start.stateId,
+          weights,
+          assertions: goalAssertions,
+          seed: config.seed,
+          count: config.trajectories,
+          maxDepth: config.maxDepth,
+        });
+        const reached = exp.simulations.filter((t) => t.outcome === "goal-reached").length;
+        await this.emit(id, "simulate", "info", `Simulated ${exp.simulations.length} journeys — ${reached} reached the goal`);
+      }
       await this.update(exp, "created");
       return exp;
     });
@@ -422,23 +458,54 @@ export class Orchestrator {
     await this.update(e, "verifying");
     return withTrace("verify", { experimentId: id, targetUrl: e.targetUrl }, async () => {
       const graph = e.graph!;
-      const actionById = new Map(graph.states.flatMap((st) => st.actions.map((a) => [a.actionId, a] as const)));
-      const selected = selectTrajectories(e.simulations, e.configuration.verifyCount);
+      interface Replayable {
+        id: string;
+        actions: { actionId?: string; label: string; href?: string; role?: string }[];
+      }
+      // Journey actions carry synthetic act_N ids — resolve to the graph actionId
+      // matching label/role/href on the same state so recorded runs resolve in compare.
+      const actionIdByKey = new Map(
+        graph.states.flatMap((st) =>
+          st.actions.map(
+            (a) => [`${st.stateHash}|${a.role ?? "link"}|${a.label}|${a.href ?? ""}`, a.actionId] as const,
+          ),
+        ),
+      );
+      // Emergent journeys replay their recorded actions; sampled trajectories resolve actionIds via the graph.
+      const replayables: Replayable[] =
+        e.swarm && e.swarm.journeys.length > 0
+          ? selectJourneys(e.swarm, e.configuration.verifyCount).map((j) => ({
+              id: j.agentId,
+              actions: j.steps.flatMap((s) => {
+                if (!s.action) return [];
+                const actionId = actionIdByKey.get(
+                  `${s.stateHash}|${s.action.role ?? "link"}|${s.action.label}|${s.action.href ?? ""}`,
+                );
+                return [{ actionId, label: s.action.label, href: s.action.href, role: s.action.role }];
+              }),
+            }))
+          : selectTrajectories(e.simulations, e.configuration.verifyCount).map((traj) => ({
+              id: traj.trajectoryId,
+              actions: traj.steps
+                .map((s) => s.actionId)
+                .filter(Boolean)
+                .map((actionId) => {
+                  for (const st of graph.states) {
+                    const a = st.actions.find((x) => x.actionId === actionId);
+                    if (a) return { actionId: a.actionId, label: a.label, href: a.href, role: a.role };
+                  }
+                  return null;
+                })
+                .filter(Boolean) as { actionId: string; label: string; href?: string; role?: string }[],
+            }));
 
-      for (const traj of selected) {
-        const actions = traj.steps
-          .map((s) => s.actionId)
-          .filter(Boolean)
-          .map((actionId) => {
-            const a = actionById.get(actionId!);
-            return a ? { actionId: a.actionId, label: a.label, href: a.href, role: a.role } : null;
-          })
-          .filter(Boolean) as { actionId: string; label: string; href?: string; role?: string }[];
+      for (const selected of replayables) {
+        const actions = selected.actions;
 
         const vps = e.configuration.viewports.slice(0, 1);
-        if (traj === selected[0] && e.configuration.viewports.includes("mobile") && !vps.includes("mobile")) vps.push("mobile");
+        if (selected === replayables[0] && e.configuration.viewports.includes("mobile") && !vps.includes("mobile")) vps.push("mobile");
         for (const vpName of vps) {
-          const runId = `run_${traj.trajectoryId}_${vpName}`;
+          const runId = `run_${selected.id}_${vpName}`;
           await this.emit(id, "verify", "browser", `${runId}: replaying ${actions.length} steps on ${vpName}`);
           const args = {
             url: e.targetUrl,

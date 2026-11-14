@@ -7,14 +7,17 @@
     "maxDepth": 3,
     "trajectories": 200,
     "verifyCount": 2,
+    "maxAgents": 40,
+    "maxStepsPerAgent": 8,
+    "maxConcurrentAgents": 8,
     "viewports": [
       "desktop"
     ]
   },
   "states": 12,
   "edges": 112,
-  "trajectories": 200,
-  "goalReached": 85,
+  "trajectories": 40,
+  "goalReached": 39,
   "verified": 2,
   "verifiedPassed": 0,
   "findings": [

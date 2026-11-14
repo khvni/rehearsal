@@ -7,6 +7,7 @@ import { clientIp, underDailyLimit } from "@/lib/ratelimit";
 const CREATE_PER_IP_PER_DAY = 3;
 const MAX_TRAJECTORIES = 1000;
 const MAX_VERIFY_RUNS = 8;
+const MAX_AGENTS = 200;
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -44,6 +45,8 @@ export async function POST(req: Request) {
       ...parsed.data,
       trajectories: Math.min(parsed.data.trajectories, MAX_TRAJECTORIES),
       verifyCount: Math.min(parsed.data.verifyCount, MAX_VERIFY_RUNS),
+      maxAgents: Math.min(parsed.data.maxAgents, MAX_AGENTS),
+      maxConcurrentAgents: Math.min(parsed.data.maxConcurrentAgents, 20),
     };
     const experiment = await orchestrator().createExperiment(body.targetUrl, body.goal, config);
     return NextResponse.json(experiment);

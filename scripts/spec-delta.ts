@@ -17,7 +17,7 @@ import { createServer, type Server } from "node:http";
 import { syncBuiltinESMExports } from "node:module";
 import path from "node:path";
 import type { Browser, BrowserContext } from "playwright";
-import type { BrowserRunner, DomPatch, Experiment, OpenPageResult, TrajectoryArgs, Viewport } from "../src/lib/contracts";
+import type { AgentJourney, BrowserRunner, DomPatch, Experiment, OpenPageResult, PersonaJourneyArgs, TrajectoryArgs, Viewport } from "../src/lib/contracts";
 import { summarizeRun } from "../src/lib/browser/types";
 import { executeTrajectory, launchChromium, watchPageErrors } from "../src/lib/browser/playwright";
 import { measurePage } from "../src/lib/browser/metrics";
@@ -41,6 +41,9 @@ export const CONFIG = {
   maxDepth: 3,
   trajectories: 200,
   verifyCount: 2,
+  maxAgents: 40,
+  maxStepsPerAgent: 8,
+  maxConcurrentAgents: 8,
   viewports: ["desktop" as const],
 };
 const GOAL = "find the conference schedule";
@@ -332,6 +335,23 @@ class HermeticRunner implements BrowserRunner {
     // Aborted third-party requests surface as console errors; they're an artifact of hermeticity.
     const kept = errors.filter((e) => !/net::ERR_FAILED|Failed to load resource/i.test(e));
     return summarizeRun({ runId: a.runId, viewport: a.viewport, started, errors: kept, ...result });
+  }
+
+  /** Emergent journey — FixtureJevClient keeps persona runs byte-identical. */
+  async runPersonaJourney(args: PersonaJourneyArgs): Promise<AgentJourney> {
+    await assertPublicUrl(args.url);
+    const ctx = await this.context(args.viewport);
+    try {
+      const page = await ctx.newPage();
+      await page.goto(args.url, { waitUntil: "networkidle", timeout: 30000 });
+      const { LivePagePersonaDriver } = await import("../src/lib/browser/persona");
+      const { personaJourneyLoop } = await import("../src/lib/simulation/persona");
+      const { FixtureJevClient } = await import("../src/lib/decisions/jev");
+      const driver = new LivePagePersonaDriver(page, args.viewport, this.evidenceDir, 30000);
+      return await personaJourneyLoop(driver, new FixtureJevClient(), args);
+    } finally {
+      await ctx.close();
+    }
   }
 
   async close(): Promise<void> {

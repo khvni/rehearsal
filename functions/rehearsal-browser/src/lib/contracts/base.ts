@@ -119,7 +119,15 @@ export const EndpointClass = z.enum([
 export type EndpointClass = z.infer<typeof EndpointClass>;
 
 // Upper bounds on client-supplied budgets: the create route is public, so each one caps crawl, vendor and CPU cost.
-export const EXPERIMENT_LIMITS = { maxStates: 50, maxDepth: 5, trajectories: 5000, verifyCount: 16 } as const;
+export const EXPERIMENT_LIMITS = {
+  maxStates: 50,
+  maxDepth: 5,
+  trajectories: 5000,
+  verifyCount: 16,
+  maxAgents: 500,
+  maxStepsPerAgent: 25,
+  maxConcurrentAgents: 50,
+} as const;
 
 export const ExperimentConfig = z.object({
   seed: z.number().int().default(1337),
@@ -127,6 +135,10 @@ export const ExperimentConfig = z.object({
   maxDepth: z.number().int().positive().max(EXPERIMENT_LIMITS.maxDepth).default(3),
   trajectories: z.number().int().positive().max(EXPERIMENT_LIMITS.trajectories).default(1000),
   verifyCount: z.number().int().positive().max(EXPERIMENT_LIMITS.verifyCount).default(8),
+  /** Persona swarm bounds — each agent is one browser session on the Browserbase Function. */
+  maxAgents: z.number().int().positive().max(EXPERIMENT_LIMITS.maxAgents).default(200),
+  maxStepsPerAgent: z.number().int().positive().max(EXPERIMENT_LIMITS.maxStepsPerAgent).default(12),
+  maxConcurrentAgents: z.number().int().positive().max(EXPERIMENT_LIMITS.maxConcurrentAgents).default(10),
   viewports: z
     .array(z.enum(["desktop", "mobile"]))
     .max(2)

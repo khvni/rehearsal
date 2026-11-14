@@ -372,6 +372,42 @@ export default function ExperimentPage() {
           </div>
         </Panel>
 
+        {exp.swarm && (
+          <Panel
+            title="Persona swarm"
+            meta={<span className="tabular">{exp.swarm.agents} agents · {exp.swarm.journeys.filter((j) => j.outcome === "goal-reached").length} reached</span>}
+            enter="none"
+            state={{ kind: "ready" }}
+          >
+            <div className="chips" role="list" aria-label="Persona mix">
+              {Object.entries(exp.swarm.personaMix).map(([persona, n]) => (
+                <span key={persona} className="chip" role="listitem">{persona} ×{n}</span>
+              ))}
+            </div>
+            {Object.keys(exp.swarm.dropOffDistribution).length > 0 && (
+              <div className="swarm-dropoffs">
+                <p className="swarm-sub">Drop-off reasons</p>
+                <ul className="swarm-dropoff-list">
+                  {Object.entries(exp.swarm.dropOffDistribution)
+                    .sort((a, b) => b[1] - a[1])
+                    .map(([reason, n]) => {
+                      const share = Math.round((n / Math.max(1, exp.swarm!.agents)) * 100);
+                      return (
+                        <li key={reason} className="swarm-dropoff">
+                          <span className="swarm-reason">{reason}</span>
+                          <span className="swarm-bar" aria-hidden>
+                            <span className="swarm-fill" style={{ width: `${share}%` }} />
+                          </span>
+                          <span className="tabular swarm-count">{n} · {share}%</span>
+                        </li>
+                      );
+                    })}
+                </ul>
+              </div>
+            )}
+          </Panel>
+        )}
+
         <Panel
           title="Browser runs"
           meta={runs.length > 0 && <span className="tabular">{passed} of {runs.length} passed</span>}

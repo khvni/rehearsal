@@ -4,7 +4,8 @@ import { StagehandRunner, stagehandModelFromEnv } from "./src/lib/browser/stageh
 import { errorText } from "./src/lib/browser/types";
 import { readdirSync, readFileSync } from "node:fs";
 import { basename } from "node:path";
-import type { AgentRunArgs, DomPatch, TrajectoryArgs, Viewport } from "./src/lib/contracts";
+import type { AgentRunArgs, DomPatch, PersonaJourneyArgs, TrajectoryArgs, Viewport } from "./src/lib/contracts";
+import { selectJev } from "./src/lib/decisions/jev";
 
 const EXTENSION_ID = process.env.BROWSERBASE_EXTENSION_ID ?? "29075ec7-2db9-4013-adef-4f3b6c718abe";
 const EVIDENCE_DIR = "/tmp/rehearsal-evidence";
@@ -27,6 +28,7 @@ defineFn(
       browserbaseExtensionId: EXTENSION_ID,
       evidenceDir: EVIDENCE_DIR,
       model: stagehandModelFromEnv(env),
+      jev: selectJev(env), // context.secrets carry JEV_API_KEY/OPENROUTER_API_KEY, not process.env
     });
     try {
       const a = params.args;
@@ -42,6 +44,10 @@ defineFn(
         case "runAgentTask": {
           const run = await runner.runAgentTask(a as unknown as AgentRunArgs);
           return done({ ok: true, value: { run, shots: collectShots() }, sessionId: context.session.id });
+        }
+        case "runPersonaJourney": {
+          const journey = await runner.runPersonaJourney(a as unknown as PersonaJourneyArgs);
+          return done({ ok: true, value: { journey, shots: collectShots() }, sessionId: context.session.id });
         }
       }
     } catch (e) {

@@ -1,13 +1,15 @@
-import type {
-  AgentRunArgs,
-  BrowserFunctionParams,
-  BrowserRun,
-  BrowserRunner,
-  BrowserbaseFunctionRunnerOptions,
-  DomPatch,
-  OpenPageResult,
-  TrajectoryArgs,
-  Viewport,
+import {
+  AgentJourney,
+  type AgentRunArgs,
+  type BrowserFunctionParams,
+  type BrowserRun,
+  type BrowserRunner,
+  type BrowserbaseFunctionRunnerOptions,
+  type DomPatch,
+  type OpenPageResult,
+  type PersonaJourneyArgs,
+  type TrajectoryArgs,
+  type Viewport,
 } from "../contracts";
 import { RehearsalError } from "../errors";
 import { assertPublicUrl } from "../fetch/guards";
@@ -63,6 +65,20 @@ export class BrowserbaseFunctionRunner implements BrowserRunner {
     const out = (await this.call({ op: "runAgentTask", args: { ...args } })) as { run: BrowserRun; shots?: { name: string; png: string }[] };
     out.run.screenshotPaths = (out.shots ?? []).flatMap((s) => [this.saveShot(s.name, s.png)]);
     return out.run;
+  }
+
+  async runPersonaJourney(args: PersonaJourneyArgs): Promise<AgentJourney> {
+    await assertPublicUrl(args.url);
+    const out = (await this.call({ op: "runPersonaJourney", args: { ...args } })) as {
+      journey: AgentJourney;
+      shots?: { name: string; png: string }[];
+    };
+    const journey = AgentJourney.parse(out.journey);
+    const shots = out.shots ?? [];
+    if (journey.dropOff && shots.length > 0) {
+      journey.dropOff.screenshotPath = this.saveShot(shots[shots.length - 1].name, shots[shots.length - 1].png);
+    }
+    return journey;
   }
 
   /** Best-effort evidence write — read-only runtimes degrade to keeping the (remote) path name. */

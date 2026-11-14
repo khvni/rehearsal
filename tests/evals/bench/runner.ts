@@ -10,11 +10,15 @@
 import { mkdirSync } from "node:fs";
 import path from "node:path";
 import type {
+  AgentJourney,
   AssertionProbe,
   BrowserRunner,
   BrowserRun,
   DomPatch,
   OpenPageResult,
+  PersonaDriver,
+  PersonaJourneyArgs,
+  TrajectoryAction,
   TrajectoryArgs,
   Viewport,
 } from "@/lib/contracts";
@@ -102,6 +106,48 @@ export class FixtureSiteRunner implements BrowserRunner {
     return summarizeRun({ runId: a.runId, viewport: a.viewport, started, steps, assertions, errors, screenshots: [] });
   }
 
+  /**
+   * Emergent journey over the page map: the persona loop snapshots the current
+   * fixture page, scores candidates with FixtureJevClient (deterministic), and
+   * follows same-origin links. Buttons without destinations are no-ops — the
+   * agent re-sees the state and eventually drops off "going-in-circles".
+   */
+  async runPersonaJourney(args: PersonaJourneyArgs): Promise<AgentJourney> {
+    const { personaJourneyLoop } = await import("@/lib/simulation/persona");
+    const { FixtureJevClient } = await import("@/lib/decisions/jev");
+    let current = args.url;
+    const driver: PersonaDriver = {
+      snapshot: async () => {
+        const html = pageFor(this.site, new URL(current).pathname);
+        if (html === null) {
+          return { url: current, title: current, visibleText: "", actions: [], candidates: [] };
+        }
+        const extracted = extractPage(html, current);
+        return {
+          url: current,
+          title: extracted.title,
+          visibleText: extracted.visibleText,
+          actions: extracted.actions.map((a) => ({ label: a.label, role: a.role })),
+          candidates: extracted.actions
+            .map((a, i) => ({ a, actionId: `act_${i}` }))
+            .filter(({ a }) => a.enabled && a.safeToExecute)
+            .map(({ a, actionId }): TrajectoryAction => ({ actionId, label: a.label, href: a.href, role: a.role })),
+        };
+      },
+      act: async (action) => {
+        if (!action.href) return { ok: true }; // in-page button — no fixture destination
+        if (pageFor(this.site, new URL(action.href).pathname) === null) {
+          return { ok: false, error: `unmapped destination ${action.href}` };
+        }
+        current = action.href;
+        return { ok: true };
+      },
+      probe: () => fixtureProbe(pageFor(this.site, new URL(current).pathname) ?? "", current),
+      screenshot: async () => null,
+    };
+    return personaJourneyLoop(driver, args.jev ?? new FixtureJevClient(), args);
+  }
+
   async close(): Promise<void> {}
 }
 
@@ -180,6 +226,23 @@ export class HermeticSiteRunner implements BrowserRunner {
         errors,
         screenshots: [],
       });
+    } finally {
+      await ctx.close();
+    }
+  }
+
+  /** Emergent journey in hermetic Chromium — FixtureJevClient keeps runs byte-identical. */
+  async runPersonaJourney(args: PersonaJourneyArgs): Promise<AgentJourney> {
+    await assertPublicUrl(args.url);
+    const ctx = await this.context(args.viewport);
+    try {
+      const page = await ctx.newPage();
+      await page.goto(args.url, { waitUntil: "networkidle", timeout: 30000 });
+      const { LivePagePersonaDriver } = await import("@/lib/browser/persona");
+      const { personaJourneyLoop } = await import("@/lib/simulation/persona");
+      const { FixtureJevClient } = await import("@/lib/decisions/jev");
+      const driver = new LivePagePersonaDriver(page, args.viewport, this.evidenceDir, 30000);
+      return await personaJourneyLoop(driver, args.jev ?? new FixtureJevClient(), args);
     } finally {
       await ctx.close();
     }
