@@ -11,7 +11,7 @@ eval cases.** `npm run check:skill-sync` fails the build otherwise.
 
 ## Pipeline stages (src/lib/orchestrator.ts, PIPELINE_STAGES)
 
-- `discover` — fetch + browser runner (Browserbase Function → Stagehand → local Playwright) open page, extract elements, build deduplicated state graph; Stagehand pools one browser session per viewport per crawl (`releaseCaptures` frees it when the stage ends)
+- `discover` — fetch + browser runner (Browserbase Function → Stagehand → local Playwright) open page, extract elements, build deduplicated state graph; Stagehand pools one browser session per viewport per crawl (`releaseCaptures` frees it when the stage ends; sessions are keyed per run `scope` so concurrent runs share nothing)
 - `simulate` — Jev scores actions per state (one `choice` call per distinct scoring payload; a per-run signature cache dedupes identical inputs such as viewport twins of a URL; ambiguity is derived from the weight spread); seeded sampler produces ≥500 trajectories
 - `verify` — risk-ranked trajectories executed in real desktop/mobile browsers; assertions checked. `REHEARSAL_VERIFY_AGENT` swaps scripted locators for an observe/act/extract agent loop (`browser/agent.ts`, runners with `supportsAgent`)
 - `analyze` — rule-based + Gemini findings, each classified by evidence type + usability principle; LLM evidence deduped to one state per URL

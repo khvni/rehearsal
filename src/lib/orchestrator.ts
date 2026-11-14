@@ -176,6 +176,7 @@ export class Orchestrator {
   private async runDiscover(id: string): Promise<Experiment> {
     const experiment = await this.mustGet(id);
     this.llm.resetBudget?.({ experimentId: id });
+    this.jev.resetBudget?.({ experimentId: id });
     await this.update(experiment, "discovering");
     return withTrace("discover", { experimentId: id, targetUrl: experiment.targetUrl }, async () => {
       const config = experiment.configuration;
@@ -208,6 +209,7 @@ export class Orchestrator {
             try {
               const { html, screenshotPath, metrics, brand } = await this.runner.openPage(url, viewport, {
                 shotName: `${id}_${vpName}_d${depth}`,
+                scope: id,
               });
               const extracted = extractPage(html, url);
               const state = makeState({
@@ -255,7 +257,7 @@ export class Orchestrator {
           }
         }
       } finally {
-        await this.runner.releaseCaptures?.();
+        await this.runner.releaseCaptures?.(id);
       }
       experiment.graph = builder.build();
       experiment.failures = [...experiment.failures.filter((f) => f.stage !== "discover"), ...pageFailures];
