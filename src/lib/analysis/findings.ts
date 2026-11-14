@@ -115,7 +115,7 @@ export function ruleFindings(args: {
     if (links.length > 24) {
       findings.push({
         findingId: fid(),
-        title: `${links.length} links compete for attention on one page`,
+        title: "Too many links compete for attention",
         category: "hierarchy",
         severity: "medium",
         evidenceType: "reproducible-concern",
@@ -232,7 +232,7 @@ export function endpointFindings(args: {
     } else if (j.medianSteps !== undefined && j.medianSteps > deepSteps) {
       findings.push({
         findingId: `f_endpoint-deep_${e.endpointId}`,
-        title: `"${e.label.slice(0, 60)}" is ${j.medianSteps} clicks deep`,
+        title: `"${e.label.slice(0, 60)}" takes too many clicks to reach`,
         category: "navigation",
         severity: e.weight >= highWeight ? "medium" : "low",
         evidenceType: "reproducible-concern",

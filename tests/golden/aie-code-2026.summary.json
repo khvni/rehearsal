@@ -37,21 +37,9 @@
       "count": 1
     },
     {
-      "ruleOrTitle": "\"APPLY TO ATTEND\" is # clicks deep",
+      "ruleOrTitle": "\"APPLY TO ATTEND\" takes too many clicks to reach",
       "severity": "medium",
       "principle": "obvious-choices",
-      "count": 1
-    },
-    {
-      "ruleOrTitle": "# links compete for attention on one page",
-      "severity": "medium",
-      "principle": "people-scan-they-dont-read",
-      "count": 2
-    },
-    {
-      "ruleOrTitle": "# links compete for attention on one page (# of # pages)",
-      "severity": "medium",
-      "principle": "people-scan-they-dont-read",
       "count": 1
     },
     {
@@ -62,6 +50,12 @@
     },
     {
       "ruleOrTitle": "Desktop: the homepage takes # screens of scrolling",
+      "severity": "medium",
+      "principle": "people-scan-they-dont-read",
+      "count": 1
+    },
+    {
+      "ruleOrTitle": "Too many links compete for attention (# of # pages)",
       "severity": "medium",
       "principle": "people-scan-they-dont-read",
       "count": 1
@@ -141,10 +135,8 @@
     "#. Browser check failed: the URL \"schedule\" (# of # runs) [M]",
     "#. The page still invites registration for an event that already happened (# of # pages) [M]",
     "#. Desktop: a visitor landing here can't find site ID, primary navigation, search, you-are-here indicator [M]",
-    "#. # links compete for attention on one page [S]",
-    "#. # links compete for attention on one page [S]",
-    "#. # links compete for attention on one page (# of # pages) [S]",
-    "#. \"APPLY TO ATTEND\" is # clicks deep [S]",
+    "#. Too many links compete for attention (# of # pages) [S]",
+    "#. \"APPLY TO ATTEND\" takes too many clicks to reach [S]",
     "#. Desktop: the homepage takes # screens of scrolling [S]",
     "#. Desktop: a visitor landing here can't find site ID [S]",
     "#. Visitors can't find an answer to \"How much does it cost?\" [S]",

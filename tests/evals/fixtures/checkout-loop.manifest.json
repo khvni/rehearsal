@@ -28,7 +28,7 @@
       "severity": "medium"
     },
     {
-      "titleMatch": "is \\d+ clicks deep",
+      "titleMatch": "takes too many clicks",
       "principle": "obvious-choices",
       "severity": "medium"
     },
@@ -40,7 +40,7 @@
   ],
   "toleratedFindings": [
     {
-      "titleMatch": "is \\d+ clicks deep",
+      "titleMatch": "takes too many clicks",
       "principle": "obvious-choices"
     },
     {
