@@ -276,13 +276,15 @@ export function StateGraph({
     return { nodes, edgeData };
   }, [graph, simulations, viewport, states, cells, pool]);
 
-  // Reframe only when the visible topology changes; the queued fit resolves
-  // after the new nodes are measured, so the bounds are complete. The prop
-  // `fitView` already frames the mount.
+  // Reframe only when the visible topology changes. Node measurements land
+  // asynchronously after the swap, so the fit waits for the first dimensions
+  // change — fitting here would compute bounds from stale boxes and clip.
+  // The prop `fitView` already frames the mount.
+  const pendingFit = useRef(false);
   useEffect(() => {
     const changed = seen.current !== null && seen.current !== structureSig;
     seen.current = structureSig;
-    if (changed) void rf.current?.fitView({ padding: 0.12, duration: 220 });
+    if (changed) pendingFit.current = true;
   }, [structureSig]);
 
   // Fullscreen: hold the page still, let Esc leave, and reframe once the
@@ -408,6 +410,12 @@ export function StateGraph({
         nodesDraggable={false}
         onInit={(instance) => {
           rf.current = instance;
+        }}
+        onNodesChange={(changes) => {
+          if (pendingFit.current && changes.some((c) => c.type === "dimensions")) {
+            pendingFit.current = false;
+            void rf.current?.fitView({ padding: 0.12, duration: 220 });
+          }
         }}
         onNodeMouseEnter={(_, n) => setHovered(n.id)}
         onNodeMouseLeave={() => setHovered(null)}
