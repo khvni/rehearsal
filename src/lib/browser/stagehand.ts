@@ -22,7 +22,6 @@ import { isSameOrigin } from "./extract";
 import { measurePage } from "./metrics";
 import { captureBrand } from "../rebuild/brand";
 import { DEFAULT_EVIDENCE_DIR } from "./playwright";
-import { chromiumSandboxEnabled } from "./sandbox";
 import { errorText, evaluateAssertion, shouldShoot, summarizeRun } from "./types";
 
 const NAV_TIMEOUT_MS = 60_000;
@@ -153,7 +152,6 @@ export class StagehandRunner implements BrowserRunner {
         : await localBrowser.launch({
             headless: true,
             viewport: vp,
-            chromiumSandbox: this.opts.chromiumSandbox ?? chromiumSandboxEnabled(),
             ...(this.opts.executablePath ? { executablePath: this.opts.executablePath } : {}),
           });
     let sh: Stagehand | undefined;
@@ -192,8 +190,8 @@ export class StagehandRunner implements BrowserRunner {
       await page.waitForTimeout(1200);
       const screenshotPath = await this.shoot(page, String(opts?.shotName ?? Date.now()));
       const metrics = await measurePage(page);
-      const brand = await captureBrand(page);
       const html = await page.evaluate<string>("document.documentElement.outerHTML");
+      const brand = await captureBrand(page).catch(() => undefined);
       return { html, screenshotPath: screenshotPath ?? undefined, metrics, brand };
     });
   }

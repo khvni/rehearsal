@@ -1,6 +1,6 @@
 import { mkdirSync } from "node:fs";
 import path from "node:path";
-import type { Browser, BrowserContext, LaunchOptions, Page } from "playwright";
+import type { Browser, BrowserContext, Page } from "playwright";
 import type {
   Assertion,
   AssertionProbe,
@@ -17,7 +17,6 @@ import { assertPublicUrl, politeDelay, robotsAllows } from "../fetch/guards";
 import { compilePatches } from "../variants";
 import { isSameOrigin } from "./extract";
 import { measurePage } from "./metrics";
-import { chromiumSandboxEnabled } from "./sandbox";
 import { captureBrand } from "../rebuild/brand";
 import { errorText, evaluateAssertion, shouldShoot, summarizeRun } from "./types";
 
@@ -34,14 +33,6 @@ export function withTimeout<T>(work: Promise<T>, ms: number, label: string): Pro
 }
 
 const PAGE_CALL_MS = 15000;
-
-/** Headless Chromium with its sandbox on (Playwright passes --no-sandbox unless chromiumSandbox is set). */
-export async function launchChromium(sandbox = chromiumSandboxEnabled(), options: LaunchOptions = {}): Promise<Browser> {
-  // Lazy import: playwright can't load on edge runtimes (e.g. Cloudflare Workers);
-  // keeping it out of the module graph lets the rest of the app boot there.
-  const { chromium } = await import("playwright");
-  return chromium.launch({ ...options, headless: true, chromiumSandbox: sandbox });
-}
 
 export function playwrightProbe(page: Page): AssertionProbe {
   return {
@@ -152,10 +143,7 @@ export class PlaywrightRunner implements BrowserRunner {
   private browser: Promise<Browser> | null = null;
   private egress: Awaited<ReturnType<typeof startEgressProxy>> | null = null;
 
-  constructor(
-    private evidenceDir = DEFAULT_EVIDENCE_DIR,
-    private sandbox = chromiumSandboxEnabled(),
-  ) {
+  constructor(private evidenceDir = DEFAULT_EVIDENCE_DIR) {
     // Edge runtimes (workerd) ship a read-only fs — evidence dir is best-effort.
     try {
       mkdirSync(evidenceDir, { recursive: true });
@@ -174,10 +162,10 @@ export class PlaywrightRunner implements BrowserRunner {
 
   private async launch(): Promise<Browser> {
     // Lazy imports: playwright and node:http can't load on edge runtimes (e.g. Cloudflare Workers).
-    const { startEgressProxy } = await import("../fetch/egress-proxy");
+    const [{ chromium }, { startEgressProxy }] = await Promise.all([import("playwright"), import("../fetch/egress-proxy")]);
     this.egress ??= await startEgressProxy();
     // Playwright forces loopback through the proxy too (no implicit <-loopback> bypass).
-    return launchChromium(this.sandbox, { proxy: { server: this.egress.server } });
+    return chromium.launch({ headless: true, proxy: { server: this.egress.server } });
   }
 
   private async newContext(viewport: Viewport, patches?: DomPatch[]): Promise<BrowserContext> {

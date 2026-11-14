@@ -109,7 +109,7 @@ export class BrightDataBrowserRunner implements BrowserRunner {
       await page.waitForTimeout(1200);
       const shotOk = await page.screenshot({ path: screenshotPath, fullPage: false }).then(() => true).catch(() => false);
       const metrics = await measurePage(page);
-      const brand = await captureBrand(page);
+      const brand = await captureBrand(page).catch(() => undefined);
       return { html: await page.content(), screenshotPath: shotOk ? screenshotPath : undefined, metrics, brand };
     });
   }
