@@ -233,6 +233,8 @@ export default function ExperimentPage() {
           <Badge variant="dot" color={statusColor}>{exp.status}</Badge>
           <a className="mono" href={exp.targetUrl} target="_blank" rel="noreferrer">{exp.targetUrl}</a>
           <span className="tabular">{exp.simulations.length.toLocaleString()} journeys</span>
+          <span className="sep" aria-hidden>·</span>
+          <span className="tabular">{shortDate(exp.createdAt)}</span>
         </div>
       </header>
 
@@ -242,12 +244,13 @@ export default function ExperimentPage() {
             <li key={s}>
               <button
                 type="button"
-                className={`step ${stageDone[s] ? "done" : ""} ${stageActive(s) ? "active" : ""}`}
+                className={`step ${stageDone[s] ? "done" : ""} ${stageActive(s) ? "active" : ""} ${stageErrors[s] ? "error" : ""}`}
                 disabled={pending !== null}
                 onClick={() => void runStage(s)}
-                aria-label={`${STAGE_LABEL[s]}: ${stageActive(s) ? "running" : stageDone[s] ? "done" : "not run"}. Run this step.`}
+                aria-current={stageActive(s) ? "step" : undefined}
+                aria-label={`${STAGE_LABEL[s]}: ${stageActive(s) ? "running" : stageErrors[s] ? "failed" : stageDone[s] ? "done" : "not run"}. Run this step.`}
               >
-                <span className="step-mark" aria-hidden>{stageDone[s] ? <CheckIcon size={12} /> : i + 1}</span>
+                <span className="step-mark" aria-hidden>{stageDone[s] ? <CheckIcon size={12} /> : stageErrors[s] ? <CrossIcon size={12} /> : i + 1}</span>
                 <span className="step-name">{STAGE_LABEL[s]}</span>
               </button>
             </li>
@@ -256,6 +259,11 @@ export default function ExperimentPage() {
         <Button className="pipeline-run" loading={pending === "run"} disabled={pending !== null} onClick={() => void runStage("run")}>
           {pending === "run" ? "Running…" : doneCount === STAGES.length ? "Run again" : "Run all steps"}
         </Button>
+        {!live && (
+          <p className="pipeline-status tabular">
+            {doneCount === STAGES.length ? "All steps complete" : `${doneCount} of ${STAGES.length} steps complete`}
+          </p>
+        )}
       </div>
 
       {live && (
@@ -294,6 +302,7 @@ export default function ExperimentPage() {
           className="span-2"
           meta={<span className="tabular">{viewportStates.length} states · {viewportEdges.length} links</span>}
           busy={busy("graph")}
+          loadingPreview={<div className="skel-canvas" />}
           state={graphState}
           emptyAction={!graph ? runButton("discover") : undefined}
           actions={
@@ -321,6 +330,7 @@ export default function ExperimentPage() {
           meta={runs.length > 0 && <span className="tabular">{passed} of {runs.length} passed</span>}
           busy={busy("evidence")}
           enter="none"
+          loadingPreview={<SkeletonRows />}
           emptyAction={runButton("verify")}
           state={panelState("evidence", runs.length > 0, "Replaying journeys…", "Nobody has tried it yet.")}
         >
@@ -366,6 +376,7 @@ export default function ExperimentPage() {
           meta={<SeverityCounts findings={findings} />}
           busy={busy("findings")}
           enter="none"
+          loadingPreview={<SkeletonRows />}
           emptyAction={runs.length > 0 ? runButton("analyze") : undefined}
           state={panelState("findings", findings.length > 0, "Grading…", runs.length > 0 ? "Nothing graded yet." : "Nothing to grade until verify runs.")}
         >
@@ -405,6 +416,7 @@ export default function ExperimentPage() {
           className="span-2"
           meta={exp.variants.length + exp.comparisons.length > 0 && <span className="tabular">{exp.variants.length} variants · {exp.comparisons.length} comparisons</span>}
           busy={busy("comparisons")}
+          loadingPreview={<SkeletonRows />}
           emptyAction={findings.length > 0 ? runButton("compare") : undefined}
           state={panelState(
             "comparisons",
@@ -449,7 +461,9 @@ export default function ExperimentPage() {
       <Panel
         title="spec.md"
         className="spec-panel"
+        meta={exp.spec && <span className="tabular">{shortDate(exp.spec.generatedAt)}</span>}
         busy={busy("spec")}
+        loadingPreview={<SkeletonRows />}
         state={specState}
         emptyAction={findings.length > 0 ? runButton("spec") : undefined}
         actions={
@@ -493,6 +507,26 @@ const EVIDENCE_LABEL: Record<string, string> = {
   "reproducible-concern": "Reproducible concern",
   hypothesis: "Hypothesis",
 };
+
+function SkeletonRows() {
+  return (
+    <div className="skel-rows">
+      {[0, 1, 2].map((i) => (
+        <div key={i} className="skel-row">
+          <span className="skeleton" />
+          <span className="skeleton short" />
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function shortDate(iso: string): string {
+  const d = new Date(iso);
+  return Number.isNaN(d.getTime())
+    ? iso
+    : d.toLocaleDateString(undefined, { month: "short", day: "numeric" });
+}
 
 /** Lower is better for every numeric delta shown; goal reached is passed as (variant, baseline). */
 function delta(baseline: number, variant: number): string | undefined {
