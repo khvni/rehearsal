@@ -11,7 +11,7 @@ With `REHEARSAL_ACCESS_TOKEN` set, every route except `/api/hooks/*` needs
 
 | Method | Path | Body / params | Returns |
 |---|---|---|---|
-| POST | `/api/experiments` | `{targetUrl, goal, config?}` (`url` accepted as an alias of `targetUrl`) | the created `Experiment`; 400 if `targetUrl`/`goal` missing or the URL fails `assertPublicUrl` |
+| POST | `/api/experiments` | `{targetUrl, goal?, config?}` (`url` accepted as an alias of `targetUrl`; `goal` optional — a first-page probe infers goal + `personas` when omitted) | the created `Experiment`; 400 if `targetUrl` missing or the URL fails `assertPublicUrl` |
 | GET | `/api/experiments` | — | `[{id, targetUrl, goal, status, createdAt}]` |
 | GET | `/api/experiments/:id` | — | the full `Experiment` (contract in `src/lib/contracts`); 404 if unknown |
 | GET | `/api/experiments/:id/activity` | — | `ActivityEvent[]` (contract in `src/lib/contracts`), chronological, capped at `ACTIVITY_EVENT_LIMIT`; 404 if unknown |

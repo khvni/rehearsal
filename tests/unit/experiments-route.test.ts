@@ -38,4 +38,17 @@ describe("POST /api/experiments", () => {
       expect.objectContaining({ trajectories: 1000, verifyCount: 8, maxStates: 50, viewports: ["desktop", "mobile"] }),
     );
   });
+
+  it("requires targetUrl only — goal is optional and forwarded undefined", async () => {
+    createExperiment.mockClear();
+    const res = await post({ goal: "x" });
+    expect(res.status).toBe(400);
+    expect((await res.json()).error).toBe("targetUrl is required");
+    expect(createExperiment).not.toHaveBeenCalled();
+
+    createExperiment.mockResolvedValueOnce({ id: "exp_t" });
+    const res2 = await post({ targetUrl: "https://example.com/" });
+    expect(res2.status).toBe(200);
+    expect(createExperiment).toHaveBeenCalledWith("https://example.com/", undefined, expect.anything());
+  });
 });

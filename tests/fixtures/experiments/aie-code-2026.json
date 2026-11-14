@@ -2,6 +2,8 @@
   "id": "exp_00000001",
   "targetUrl": "https://ai.engineer/code/2026",
   "goal": "find the conference schedule",
+  "goalSource": "user",
+  "personas": [],
   "status": "complete",
   "createdAt": "2026-11-13T12:00:00.000Z",
   "configuration": {

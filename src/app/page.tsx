@@ -92,7 +92,7 @@ function PastExperiments() {
 
 export default function Home() {
   const [url, setUrl] = useState("https://ai.engineer/code/2026");
-  const [goal, setGoal] = useState("Determine whether someone can still register for the conference");
+  const [goal, setGoal] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const router = useRouter();
@@ -105,7 +105,7 @@ export default function Home() {
       const res = await fetch("/api/experiments", {
         method: "POST",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({ targetUrl: url.trim(), goal: goal.trim() }),
+        body: JSON.stringify({ targetUrl: url.trim(), goal: goal.trim() || undefined }),
       });
       const data = (await res.json().catch(() => ({}))) as { id?: string; error?: string };
       if (res.ok && data.id) {
@@ -141,13 +141,13 @@ export default function Home() {
             />
           </Field>
           <Field>
-            <FieldLabel htmlFor="goal">Goal</FieldLabel>
-            <Textarea id="goal" required rows={2} value={goal} onChange={(e) => setGoal(e.target.value)} />
-            <FieldDescription>What should a visitor be able to do on this page?</FieldDescription>
+            <FieldLabel htmlFor="goal">Goal <span className="muted">(optional)</span></FieldLabel>
+            <Textarea id="goal" rows={2} value={goal} onChange={(e) => setGoal(e.target.value)} />
+            <FieldDescription>What should a visitor be able to do here? Leave blank and Rehearsal infers it from the site&rsquo;s own CTAs and links.</FieldDescription>
           </Field>
           {error && <FieldError>{error}</FieldError>}
         </FieldGroup>
-        <Button type="submit" className="launch-submit" loading={busy} disabled={busy || !url.trim() || !goal.trim()}>
+        <Button type="submit" className="launch-submit" loading={busy} disabled={busy || !url.trim()}>
           {busy ? "Starting…" : "Start rehearsal"}
           {!busy && <ArrowIcon size={14} />}
         </Button>
