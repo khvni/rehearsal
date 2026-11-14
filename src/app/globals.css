@@ -988,6 +988,7 @@ table.delta + table.delta { margin-top: var(--s-4); }
   .panel { padding: var(--s-4); }
   .panel-head h2 { font-size: var(--fs-14); }
   .graph-wrap, .graph-wrap.mobile { height: 420px; }
+  .graph-wrap.expanded { height: auto; }
 }
 
 @media (prefers-reduced-motion: reduce) {
