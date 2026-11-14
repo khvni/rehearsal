@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Inter } from "next/font/google";
 import { FluidProvider } from "@/lib/fluid-provider";
+import { PostHogInit } from "@/components/posthog-init";
 import "./globals.css";
 
 const inter = Inter({ subsets: ["latin"], axes: ["opsz"], variable: "--font-inter" });
@@ -15,6 +16,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     <html lang="en" className={inter.variable}>
       <body>
         <FluidProvider>{children}</FluidProvider>
+        <PostHogInit />
       </body>
     </html>
   );

@@ -6,7 +6,7 @@ import rehearsal from "./eslint-rules/index.mjs";
 export default defineConfig([
   ...nextVitals,
   ...nextTs,
-  globalIgnores([".next/**", "out/**", "node_modules/**", "data/**", "playwright-report/**", "test-results/**"]),
+  globalIgnores([".next/**", ".open-next/**", ".wrangler/**", "out/**", "node_modules/**", "data/**", "playwright-report/**", "test-results/**"]),
   {
     plugins: { rehearsal },
     rules: {

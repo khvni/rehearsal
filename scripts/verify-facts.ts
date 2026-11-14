@@ -136,6 +136,8 @@ const NOT_DEPLOYED: Record<string, string> = {
   JEV_MODEL: "has a code default",
   OPENROUTER_API_KEY: "alias of JEV_API_KEY",
   TIGERDATA_URL: "alias of DATABASE_URL",
+  NEXT_PUBLIC_POSTHOG_KEY: "client-side var with a code default (alikhani.co's key)",
+  NEXT_PUBLIC_POSTHOG_HOST: "client-side var with a code default",
   BRIGHTDATA_BROWSER_WS: "optional browser backend, not provisioned yet",
   BRIGHTDATA_BROWSER_USER: "optional browser backend, not provisioned yet",
   BRIGHTDATA_BROWSER_PASSWORD: "optional browser backend, not provisioned yet",
