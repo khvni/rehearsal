@@ -116,13 +116,13 @@ describe("LLM output is validated against the contracts before it is stored", ()
       createdAt: "2026-01-01T00:00:00.000Z", configuration: {},
       findings: [{
         findingId: "f1", title: "Vague CTA", category: "clarity", severity: "high", evidenceType: "hypothesis",
-        description: "d", affectedStates: [], recommendation: "r", verificationStatus: "unverified", krugPrinciple: "omit-words",
+        description: "d", affectedStates: [], recommendation: "r", verificationStatus: "unverified", principle: "cut-needless-words",
       }],
     });
     const spec = await generateSpec(base, stubLlm({
       "rebuild spec": JSON.stringify({
         summary: 7,
-        changes: [{ title: "t", change: "c", rationale: "r", effort: "XL", krugPrinciple: "made-up" }],
+        changes: [{ title: "t", change: "c", rationale: "r", effort: "XL", principle: "made-up" }],
         rebuildPhases: [{ name: "p", items: "not-an-array" }],
       }),
     }));

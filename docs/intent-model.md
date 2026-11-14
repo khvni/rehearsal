@@ -369,7 +369,7 @@ interface ExperimentConfig {
 **Finding linkage.** Every v3 finding carries metric provenance in `description` (or in a future `metric` field):
 
 ```
-{ metric: "folds-to-endpoint", value: 4, threshold: 2, endpointId, goalId, krugPrinciple }
+{ metric: "folds-to-endpoint", value: 4, threshold: 2, endpointId, goalId, principle }
 ```
 
 **Spec grouping.** Each `SpecChange` adds `intent?: IntentClass` and `endpointId?: string`. `specToMarkdown` groups changes as `## RFI / ## RFQ / ## RFP → ### <endpoint>`, keeping severity order within each group.

@@ -4,11 +4,11 @@ import { normalizeUrl } from "../browser/extract";
 
 /** Rule thresholds for metric findings (docs/krug-principles.md K2/K4/K6/K7). */
 export const METRIC_RULES = {
-  /** Homepage screens of scrolling: >= low → low, >= medium → medium (K2). */
+  /** Homepage screens of scrolling: >= low → low, >= medium → medium. */
   longScrollScreens: { low: 4, medium: 8 },
-  /** Above-fold CTAs tied for most prominent before the choice stops being mindless (K4). */
+  /** Above-fold CTAs tied for most prominent before the choice stops being obvious. */
   maxEquallyProminentCtas: 2,
-  /** Krug/Miller-style ceiling on primary nav items; > high → medium (K6). */
+  /** Ceiling on primary nav items; > high → medium. */
   navItems: { max: 7, high: 12 },
 } as const;
 
@@ -62,7 +62,7 @@ export function metricFindings(states: SiteState[], opts: { homepageUrl?: string
   const isHome = (s: SiteState) => normalizeUrl(s.url) === home;
   const out: Finding[] = [];
 
-  // K2 — homepage requires N screens of scrolling.
+  // Homepage requires N screens of scrolling.
   for (const g of group(
     measured.flatMap((state) => {
       const r = state.metrics.foldRatio;
@@ -73,16 +73,16 @@ export function metricFindings(states: SiteState[], opts: { homepageUrl?: string
     const m = g.states[0].metrics;
     out.push(
       finding("long-scroll", g, {
-        title: `${vpLabel(g.states[0])}: homepage requires ${m.foldRatio} screens of scrolling`,
+        title: `${vpLabel(g.states[0])}: the homepage takes ${m.foldRatio} screens of scrolling`,
         category: "hierarchy",
-        krugPrinciple: "scanning-not-reading",
-        description: `The homepage is ${m.pageHeightPx}px tall at a ${m.viewportHeightPx}px viewport — ${m.foldRatio} screens, roughly ${m.estimatedScrollTimeSec}s of scanning before a visitor has seen everything. Scanners satisfice on what's near the top.`,
+        principle: "people-scan-they-dont-read",
+        description: `The homepage is ${m.pageHeightPx}px tall at a ${m.viewportHeightPx}px viewport — ${m.foldRatio} screens, roughly ${m.estimatedScrollTimeSec}s before a visitor has seen everything. Visitors mostly see what sits near the top.`,
         recommendation: "Pull the primary path and key facts into the first one or two screens; collapse or link out secondary sections.",
       }),
     );
   }
 
-  // K7 — nothing to do above the fold on the homepage.
+  // Nothing to do above the fold on the homepage.
   for (const g of group(
     measured
       .filter((s) => isHome(s) && s.metrics.aboveFoldCtaCount === 0)
@@ -92,14 +92,14 @@ export function metricFindings(states: SiteState[], opts: { homepageUrl?: string
       finding("no-cta-above-fold", g, {
         title: `${vpLabel(g.states[0])}: no call to action above the fold on the homepage`,
         category: "clarity",
-        krugPrinciple: "homepage",
+        principle: "homepage-explains-itself",
         description: "No button or button-styled link is visible in the first screen, so \"What can I do here?\" goes unanswered at a glance.",
         recommendation: "Place one clearly styled primary action in the first screen.",
       }),
     );
   }
 
-  // K4 — no single dominant CTA above the fold.
+  // No single dominant CTA above the fold.
   for (const g of group(
     measured
       .filter((s) => (s.metrics.primaryCtaAmbiguity ?? 0) > METRIC_RULES.maxEquallyProminentCtas)
@@ -111,14 +111,14 @@ export function metricFindings(states: SiteState[], opts: { homepageUrl?: string
       finding("cta-ambiguity", g, {
         title: `${vpLabel(worst)}: no single dominant call to action above the fold`,
         category: "cognitive-effort",
-        krugPrinciple: "mindless-choices",
-        description: `${worst.metrics.primaryCtaAmbiguity} above-the-fold actions are equally prominent by size${labels ? ` (${labels})` : ""} on "${worst.pageTitle}", so visitors must stop and compare instead of making a mindless choice.`,
+        principle: "obvious-choices",
+        description: `${worst.metrics.primaryCtaAmbiguity} above-the-fold actions are equally prominent by size${labels ? ` (${labels})` : ""} on "${worst.pageTitle}", so visitors have to stop and compare instead of picking the obvious next step.`,
         recommendation: "Make one primary action visibly dominant (size, fill, position) and demote the rest to secondary styling.",
       }),
     );
   }
 
-  // K6 — primary nav has too many items.
+  // Primary nav has too many items.
   for (const g of group(
     measured
       .filter((s) => s.metrics.navItemCount > METRIC_RULES.navItems.max)
@@ -133,14 +133,14 @@ export function metricFindings(states: SiteState[], opts: { homepageUrl?: string
       finding("nav-overload", g, {
         title: `${vpLabel(g.states[0])}: primary navigation has ${max} items`,
         category: "navigation",
-        krugPrinciple: "navigation",
+        principle: "where-you-are",
         description: `The top navigation exposes up to ${max} visible items (more than ${METRIC_RULES.navItems.max}), which makes the major sections harder to name at a glance.`,
         recommendation: `Group navigation into ${METRIC_RULES.navItems.max} or fewer top-level sections; move the rest into sub-navigation or the footer.`,
       }),
     );
   }
 
-  // K2 — heading outline: missing/multiple h1, skipped levels. DOM-level, so grouped across viewports.
+  // Heading outline: missing/multiple h1, skipped levels. DOM-level, so grouped across viewports.
   const seenOutline = new Set<string>();
   const outlineItems = measured.flatMap((state) => {
     const h = state.metrics.headingOutline;
@@ -159,14 +159,14 @@ export function metricFindings(states: SiteState[], opts: { homepageUrl?: string
       finding("heading-outline", g, {
         title: `Heading outline is broken: ${issues}`,
         category: "hierarchy",
-        krugPrinciple: "scanning-not-reading",
-        description: `${urls.length} page(s) have a heading outline with ${issues}${g.states[0].metrics.headingOutline.h1Text.length ? ` (h1: ${g.states[0].metrics.headingOutline.h1Text.map((t) => `"${t}"`).join(", ")})` : ""}. Headings are the scanning skeleton; gaps and competing h1s blur what matters most.`,
+        principle: "people-scan-they-dont-read",
+        description: `${urls.length} page(s) have a heading outline with ${issues}${g.states[0].metrics.headingOutline.h1Text.length ? ` (h1: ${g.states[0].metrics.headingOutline.h1Text.map((t) => `"${t}"`).join(", ")})` : ""}. Headings are how scanners build the page's outline; gaps and competing h1s blur what matters most.`,
         recommendation: "Use exactly one h1 naming the page, then nest h2/h3 without skipping levels.",
       }),
     );
   }
 
-  // K2 — the visually largest text is not the h1.
+  // The visually largest text is not the h1.
   for (const g of group(
     measured
       .filter((s) => s.metrics.largestTextIsH1 === false && s.metrics.headingOutline.h1Count > 0)
@@ -176,14 +176,14 @@ export function metricFindings(states: SiteState[], opts: { homepageUrl?: string
       finding("hierarchy-mismatch", g, {
         title: `${vpLabel(g.states[0])}: largest text on the page is not the h1`,
         category: "hierarchy",
-        krugPrinciple: "scanning-not-reading",
+        principle: "people-scan-they-dont-read",
         description: `On ${g.states.length} page(s) some other text renders larger than the h1, so visual prominence doesn't match importance.`,
         recommendation: "Make the page's h1 the most prominent text, or promote the largest text to be the h1.",
       }),
     );
   }
 
-  // K6 — trunk test.
+  // The trunk test: can a visitor dropped in cold name the site, the page, the sections, and where they are.
   const SIGNALS: [keyof PageMetrics["trunkTest"], string][] = [
     ["hasSiteName", "site ID"],
     ["hasPageName", "page name"],
@@ -204,11 +204,11 @@ export function metricFindings(states: SiteState[], opts: { homepageUrl?: string
     const missing = g.key.split("|")[2];
     out.push(
       finding("trunk-test", g, {
-        title: `${vpLabel(g.states[0])}: missing ${missing} (trunk test fails)`,
+        title: `${vpLabel(g.states[0])}: a visitor landing here can't find ${missing}`,
         category: "navigation",
-        krugPrinciple: "navigation",
+        principle: "where-you-are",
         description: `On ${g.states.length} page(s) a visitor dropped in cold can't find: ${missing}. Persistent navigation should answer what site this is, what page they're on, the major sections, how to search and where they are.`,
-        recommendation: `Add the missing trunk-test signals (${missing}) to the persistent header on every page.`,
+        recommendation: `Add ${missing} to the persistent header on every page.`,
       }),
     );
   }

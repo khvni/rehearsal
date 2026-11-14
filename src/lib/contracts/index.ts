@@ -7,9 +7,10 @@ import {
   EXPERIMENT_LIMITS,
   ExperimentConfig,
   IntentCategory,
-  KrugDimension,
-  KrugPrinciple,
+  RubricDimension,
+  UsabilityPrinciple,
   Severity,
+  normalizePrincipleFields,
 } from "./base";
 
 // ── Browser ─────────────────────────────────────────────────────────────────
@@ -238,20 +239,24 @@ export const EvidenceType = z.enum([
 ]);
 export type EvidenceType = z.infer<typeof EvidenceType>;
 
-export const Finding = z.object({
-  findingId: z.string(),
-  title: z.string(),
-  category: KrugDimension,
-  severity: Severity,
-  evidenceType: EvidenceType,
-  description: z.string(),
-  affectedStates: z.array(z.string()),
-  affectedActions: z.array(z.string()).default([]),
-  evidencePaths: z.array(z.string()).default([]),
-  recommendation: z.string(),
-  verificationStatus: z.enum(["verified", "reproduced", "unverified"]),
-  krugPrinciple: KrugPrinciple,
-});
+// Stored records predate the rename: `krugPrinciple` and older slugs normalize forward.
+export const Finding = z.preprocess(
+  normalizePrincipleFields,
+  z.object({
+    findingId: z.string(),
+    title: z.string(),
+    category: RubricDimension,
+    severity: Severity,
+    evidenceType: EvidenceType,
+    description: z.string(),
+    affectedStates: z.array(z.string()),
+    affectedActions: z.array(z.string()).default([]),
+    evidencePaths: z.array(z.string()).default([]),
+    recommendation: z.string(),
+    verificationStatus: z.enum(["verified", "reproduced", "unverified"]),
+    principle: UsabilityPrinciple,
+  }),
+);
 export type Finding = z.infer<typeof Finding>;
 
 // ── Variants ────────────────────────────────────────────────────────────────
@@ -296,16 +301,19 @@ export type Comparison = z.infer<typeof Comparison>;
 
 // ── Spec report (the deliverable) ───────────────────────────────────────────
 
-export const SpecChange = z.object({
-  rank: z.number().int().positive(),
-  title: z.string(),
-  findingId: z.string().optional(),
-  krugPrinciple: KrugPrinciple.optional(),
-  change: z.string(),
-  rationale: z.string(),
-  effort: z.enum(["S", "M", "L"]),
-  evidencePaths: z.array(z.string()).default([]),
-});
+export const SpecChange = z.preprocess(
+  normalizePrincipleFields,
+  z.object({
+    rank: z.number().int().positive(),
+    title: z.string(),
+    findingId: z.string().optional(),
+    principle: UsabilityPrinciple.optional(),
+    change: z.string(),
+    rationale: z.string(),
+    effort: z.enum(["S", "M", "L"]),
+    evidencePaths: z.array(z.string()).default([]),
+  }),
+);
 export type SpecChange = z.infer<typeof SpecChange>;
 
 export const SpecReport = z.object({

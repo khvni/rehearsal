@@ -5,8 +5,8 @@ Hackathon submission (AIE x MLH @ Code Summit): [docs/submission.md](docs/submis
 Rehearsal tries your website the way visitors will, before they do. Give it a public
 URL and a goal. It maps the pages, simulates visitor journeys, replays the risky ones
 in a real browser, and tests a fix on an isolated copy. Then it writes `spec.md`:
-ranked changes plus a rebuild plan, each citing Steve Krug's
-*Don't Make Me Think, Revisited* (`docs/krug-principles.md`).
+ranked changes plus a rebuild plan, each citing a usability principle
+(`docs/krug-principles.md`).
 
 Demo target: https://ai.engineer/code/2026
 
@@ -69,7 +69,7 @@ Environment variables: [docs/architecture.md#environment-variables](docs/archite
 - **Skill sync.** `npm run check:skill-sync` fails if a stage or eval file lands
   without a testing-skill update.
 - **Contracts.** Every module boundary is a zod schema in `src/lib/contracts`.
-- **Facts.** `npm run check:facts` flags contracts, env vars, Krug ids and API docs
+- **Facts.** `npm run check:facts` flags contracts, env vars, principle ids and API docs
   that drift from the code ([docs/verification.md](docs/verification.md)).
 - **Determinism.** Seeded RNG (mulberry32). The same seed gives the same journeys.
 - **Safety.** Public http(s) URLs only, robots.txt honored, at most 1 request per 2s
@@ -78,7 +78,7 @@ Environment variables: [docs/architecture.md#environment-variables](docs/archite
 ## Docs
 
 - `docs/PRD.md`: product spec
-- `docs/krug-principles.md`: the rubric
+- `docs/krug-principles.md`: the rubric (internal canon; findings show its plain-language titles)
 - `docs/architecture.md`: module map
 - `docs/demo-script.md`: the 60-second demo
 - `terraform/README.md`: deployment

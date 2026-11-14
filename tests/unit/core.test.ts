@@ -69,7 +69,7 @@ describe("contracts", () => {
     const base = {
       findingId: "f1", title: "t", category: "clarity", severity: "high",
       evidenceType: "not-real", description: "d", affectedStates: [],
-      recommendation: "r", verificationStatus: "verified", krugPrinciple: "conventions",
+      recommendation: "r", verificationStatus: "verified", principle: "familiar-conventions",
     };
     expect(() => Finding.parse(base)).toThrow();
   });
@@ -201,7 +201,7 @@ describe("rule findings", () => {
     const findings = ruleFindings({ states: [state], runs: [], assertions: [], referenceNowIso: now.toISOString() });
     const stale = findings.find((f) => /post-event|stale|invites registration/i.test(f.title));
     expect(stale).toBeDefined();
-    expect(stale?.krugPrinciple).toBe("omit-words");
+    expect(stale?.principle).toBe("cut-needless-words");
   });
 });
 
@@ -227,7 +227,7 @@ describe("browser run success", () => {
     expect(crashed.consoleErrorCount).toBe(0);
   });
 
-  it("emits one low-severity console-errors finding per viewport, citing K9", () => {
+  it("emits one low-severity console-errors finding per viewport, citing a principle", () => {
     const state = makeState({ url: AIE_URL, viewport: VIEWPORTS.desktop, title: "AIE", visibleText: "", actions: [] });
     const noisy = summarizeRun({ ...base, errors: ["console: boom"] });
     const clean = summarizeRun({ ...base, runId: "r2", errors: [] });
@@ -236,7 +236,7 @@ describe("browser run success", () => {
     expect(f).toHaveLength(1);
     expect(f[0].findingId).toBe("f_console-errors_desktop");
     expect(f[0].severity).toBe("low");
-    expect(f[0].krugPrinciple).toBe("testing-beats-arguing");
+    expect(f[0].principle).toBe("test-dont-argue");
     expect(f[0].affectedStates).toEqual([state.stateId]);
     expect(f[0].description).toContain("2 page/console errors across 2 of 3 desktop runs");
     expect(ruleFindings({ states: [state], runs: [clean], assertions: [] }).some((x) => x.findingId.startsWith("f_console-errors_"))).toBe(false);
@@ -272,7 +272,7 @@ describe("spec markdown", () => {
     const spec = SpecReport.parse({
       targetUrl: AIE_URL, goal: "g", generatedAt: "2026-11-13T00:00:00Z",
       summary: "s", baselineRunIds: [],
-      changes: [{ rank: 1, title: "Fix stale CTA", change: "Replace apply with recordings", rationale: "dates passed", effort: "S", evidencePaths: [], krugPrinciple: "omit-words" }],
+      changes: [{ rank: 1, title: "Fix stale CTA", change: "Replace apply with recordings", rationale: "dates passed", effort: "S", evidencePaths: [], principle: "cut-needless-words" }],
       rebuildPhases: [{ name: "Truth pass", goal: "g", items: ["fix dates"] }],
     });
     const md = specToMarkdown(spec);

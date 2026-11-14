@@ -25,8 +25,8 @@ builds the fix.
 ## Product Purpose
 
 Rehearse a website before users do: discover its states, simulate goal-directed journeys,
-verify the riskiest paths in real desktop and mobile browsers, grade findings against Krug's
-rubric, apply one variant and re-verify it, then output a rebuild spec (`spec.md`). The dashboard
+verify the riskiest paths in real desktop and mobile browsers, grade findings against a
+usability rubric, apply one variant and re-verify it, then output a rebuild spec (`spec.md`). The dashboard
 is where a person starts an experiment, watches the stages run, and judges whether each finding
 is backed by evidence.
 
@@ -62,8 +62,8 @@ evidence. Long pipeline stages run in the background while the user stays on the
 
 - `tests/evals/fixtures/aie-code-2026.html`: hermetic target page used by evals, E2E, and the
   design check's experiment page.
-- `docs/krug-principles.md`: the rubric the findings cite, also the canon for this dashboard's
-  own clarity.
+- `docs/krug-principles.md`: the internal rubric canon the findings cite, also the canon for
+  this dashboard's own clarity. Findings surface its plain-language titles only.
 - `docs/sample-spec.md`: representative `spec.md` output rendered in the spec panel.
 
 ## Product Principles

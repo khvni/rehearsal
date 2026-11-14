@@ -29,12 +29,12 @@ None of this works on sentry.io or devpost.com. Here is what v3.0 changes.
 | 4 | **"Decision tree" was implicit.** The state graph stores states + edges. Trajectories are sampled from it, and the tree is never materialized or costed. | **Journey ontology.** `Intent → Goal → Endpoint → JourneyTree`. The tree is unrolled from the graph per intent and persona. Each edge carries a cost vector: clicks, scroll px, modeled scan fixations, words read, decision entropy. The tree is what the dashboard shows and what the spec cites (§5). |
 | 5 | **1,000 Monte Carlo walks over ≤30 states.** Most samples repeat, and results are noisy at any seed. | **Exact sweep.** Jev distributions become transition probabilities. Reach probability and expected cost per (intent, endpoint, persona) are computed **exactly** by dynamic programming over the absorbing chain. Monte Carlo stays only as a cross-check (eval) and for graphs above the exact-solve cap (§6). |
 | 6 | **Jev asked one generic question per state.** The fixture is token overlap. Gemini usage per run was unbounded: assertion compile + findings + spec, plus Stagehand `act()` on every heal. | **Explicit cost tiers (§6.3).** Tier 0 is deterministic code (classification rules, layout, trunk test, scan model, DP). Tier 1 is Jev, with typed `choice`/`noul`/`score` questions cached by `(stateHash, intent, persona)`. Tier 2 is Gemini: **≤2 calls per run by default** (archetype tie-break if needed + spec narrative). It is never inside the per-state loop. |
-| 7 | **Krug metrics were rule-of-thumb.** `ruleFindings` = stale dates, vague labels, link count, missing identity. | **Krug-grounded metric set (§7).** Trunk-test score (6 checks), four-questions-above-fold, hierarchy alignment (rank correlation of importance vs prominence), folds-to-endpoint, modeled scan time, competing primary CTAs, words above fold. Each metric has a threshold → finding → Krug key. |
+| 7 | **Usability metrics were rule-of-thumb.** `ruleFindings` = stale dates, vague labels, link count, missing identity. | **Usability-grounded metric set (§7).** Trunk-test score (6 checks), four-questions-above-fold, hierarchy alignment (rank correlation of importance vs prominence), folds-to-endpoint, modeled scan time, competing primary CTAs, words above fold. Each metric has a threshold → finding → principle. |
 | 8 | **Hard-coded to the AIE page.** Compare targets the stale finding by regex. Date rules assume an event site. Budgets (30 states / depth 3) are too small for mega-menu sites like snowflake.com. | **Works on any site.** Archetype-gated rules (stale-date only fires for `event`). The variant generator chooses a patch from the top finding's *type* (promote CTA, relabel, add nav marker), not from regex on its title. Budgets are per-intent and endpoint-seeking (§6.1). The 12-site corpus is the eval set (§9). |
 | 9 | **Comparison had a bug and weak deltas.** `backtracks` delta is populated from `steps.length`. Deltas are click counts only. | Deltas are re-expressed as **journey deltas**: Δ reach probability, Δ expected cost, Δ trunk score, Δ hierarchy alignment per affected endpoint. The `backtracks` bug is listed as a v3 fix item (§8 Phase 0). |
 | 10 | **Spec grouped by severity only.** | Spec is **grouped by intent → endpoint**: "RFQ: pricing is 3.2 folds + 2 clicks deep and below 9 competing CTAs." Severity ordering still applies within each group. Each change states the journey delta it is expected to produce, and the verified ones show the measured delta. |
 
-Kept from v2.0: adapters that no-op without keys, the evidence classes, Krug citations, the safety rules (public pages, politeness, **no form submission**), Terraform deploy, evals in CI, and skill-sync.
+Kept from v2.0: adapters that no-op without keys, the evidence classes, principle citations, the safety rules (public pages, politeness, **no form submission**), Terraform deploy, evals in CI, and skill-sync.
 
 ## 1. Product thesis (revised)
 
@@ -60,7 +60,7 @@ Rehearsal's sweep is deterministic, cached, and exhaustive over the tree, and it
 
 ## 2. Grounding: Don't Make Me Think (unchanged canon, new measurements)
 
-`docs/krug-principles.md` stays the canon (K1–K9, 10 rubric dimensions). v3.0 adds **measurable proxies** for the principles that v2.0 only cited (§7). Krug's satisficing model ("users glance, pick the first reasonable option, and muddle through") is the explicit behavioral model behind the scan model and the Jev persona prompts.
+`docs/krug-principles.md` stays the canon (K1–K9, 10 rubric dimensions). v3.0 adds **measurable proxies** for the principles that v2.0 only cited (§7). The satisficing model ("users glance, pick the first reasonable option, and muddle through") is the explicit behavioral model behind the scan model and the Jev persona prompts.
 
 ## 3. Intent taxonomy: RFI / RFQ / RFP
 
@@ -175,7 +175,7 @@ The tree is the "decision tree" users see; the graph is the storage form.
 
 ### 5.2 Scroll as a decision
 
-v2.0 treated a page as one decision. Krug's satisficing visitor decides per screenful, so v3.0 splits each page state into **fold sub-states** `(stateId, fold k)`. At each fold the visitor can:
+v2.0 treated a page as one decision. The satisficing visitor decides per screenful, so v3.0 splits each page state into **fold sub-states** `(stateId, fold k)`. At each fold the visitor can:
 
 - act on something visible in folds ≤ k, weighted toward fold k and toward high scan rank,
 - scroll to fold k+1, or
@@ -243,8 +243,8 @@ For each fold sub-state, intent, and persona, send **one batched Jev request** w
 
 | Persona | Behavior |
 |---|---|
-| `scanner` | Krug default: satisfices on scan rank, impatient |
-| `searcher` | Krug's farmer: prefers search and nav |
+| `scanner` | Default: satisfices on scan rank, impatient |
+| `searcher` | The farmer archetype: prefers search and nav |
 | `evaluator` | reads more, tolerates depth |
 
 The demo uses `scanner` only.
@@ -299,15 +299,15 @@ The replay re-measures fold positions and checks `reachedPredicate` (intent-mode
 
 Default cap: 12 runs per site.
 
-## 7. Krug-grounded metrics
+## 7. Usability-grounded metrics
 
-All metrics are Tier 0 except where noted. Each has a finding threshold, and every finding cites the Krug key. Thresholds are defaults in `evals.config.json`-style config, tunable per archetype.
+All metrics are Tier 0 except where noted. Each has a finding threshold, and every finding cites a principle. Thresholds are defaults in `evals.config.json`-style config, tunable per archetype.
 
-| Metric | Definition | Krug | Finding when | Evidence class |
+| Metric | Definition | Principle | Finding when | Evidence class |
 |---|---|---|---|---|
 | **Reach probability** `P_reach(g)` | DP over the Jev-weighted tree | K4, K9 | `< 0.5` for an endpoint with importance ≥ 0.1 | hypothesis (model) → verified-failure if replay fails |
 | **Folds to endpoint** | scroll folds on the best path | K2, K7 | primary RFQ/RFP entry > 2 folds on the homepage | reproducible-concern |
-| **Clicks to endpoint** | clicks on the best path | K4 | > 3 for importance ≥ 0.1 (Krug: effort and confidence, not raw count, so it is paired with entropy) | reproducible-concern |
+| **Clicks to endpoint** | clicks on the best path | K4 | > 3 for importance ≥ 0.1 (effort and confidence, not raw count, so it is paired with entropy) | reproducible-concern |
 | **Modeled scan time** | Σ cost-model seconds on the best path | K2 | > 15 s modeled for a primary endpoint | reproducible-concern (labeled "modeled") |
 | **Decision entropy** | mean Jev `next_move` entropy along the best path | K1, K4 | > 1.5 bits at any step | reproducible-concern |
 | **Hierarchy alignment** | Kendall τ between endpoint importance and entry-point prominence on the entry page | K2, K7 | τ < 0.3 | reproducible-concern |
@@ -399,7 +399,7 @@ The labeled corpus is `tests/evals/fixtures/sites/<host>/`. Each site has record
 | Cost caps | Gemini calls ≤ 2, Jev uncached requests ≤ budget, browser sessions ≤ budget; asserted from `RunCost` | pass | pass |
 | Cache efficacy | second run on the same fixtures: Jev cache hit rate | ≥ 0.95 | ≥ 0.95 |
 | Variant delta | promote-endpoint patch on a buried-pricing fixture raises `P_reach` and lowers folds | — | pass |
-| Findings | every finding cites a Krug key and a metric value; no `verified-failure` without a browser run id | pass | pass |
+| Findings | every finding cites a principle and a metric value; no `verified-failure` without a browser run id | pass | pass |
 | Spec | grouped by intent; every change traces to a finding + metric + evidence path | pass | pass |
 
 New eval files must be listed in `.devin/skills/rehearsal-testing/SKILL.md` (`npm run check:skill-sync`). Proposed: `intent.eval.ts` (classification + mapping), `layout.eval.ts` (visual weight, alignment, trunk), `sweep.eval.ts` (DP vs MC, determinism, cost caps).

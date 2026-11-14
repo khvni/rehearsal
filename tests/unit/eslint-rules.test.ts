@@ -37,9 +37,9 @@ tester.run("contracts-first", rehearsal.rules["contracts-first"], {
   ],
 });
 
-tester.run("finding-cites-krug", rehearsal.rules["finding-cites-krug"], {
+tester.run("finding-cites-principle", rehearsal.rules["finding-cites-principle"], {
   valid: [
-    { code: 'const f = { title: "t", category: "clarity", krugPrinciple: "dont-make-me-think" };' },
+    { code: 'const f = { title: "t", category: "clarity", principle: "dont-make-users-think" };' },
     { code: 'const f = { ...base, title: "t", category: "clarity" };' },
     { code: 'const s = { title: "t", text: "x" };' },
   ],

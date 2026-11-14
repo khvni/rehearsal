@@ -10,14 +10,14 @@ const EVIDENCE_RANK: Record<Finding["evidenceType"], number> = {
 };
 const STATUS_RANK: Record<Finding["verificationStatus"], number> = { verified: 3, reproduced: 2, unverified: 1 };
 
-const groupKey = (f: Finding) => `${f.krugPrinciple}|${f.title.trim().replace(/\s+/g, " ").toLowerCase()}`;
+const groupKey = (f: Finding) => `${f.principle}|${f.title.trim().replace(/\s+/g, " ").toLowerCase()}`;
 const union = (lists: string[][]) => [...new Set(lists.flat())];
 const strongest = <T extends string>(values: T[], rank: Record<T, number>): T =>
   values.reduce((best, v) => (rank[v] > rank[best] ? v : best));
 
 /**
  * Rules fire once per discovered state (or browser run), so the same finding repeats per page.
- * Collapse findings sharing (Krug principle + title) into one: first id, max severity, strongest
+ * Collapse findings sharing (principle + title) into one: first id, max severity, strongest
  * evidence, and the union of affected states/actions/evidence; the title gains an "N of M" count.
  */
 export function collapseFindings(

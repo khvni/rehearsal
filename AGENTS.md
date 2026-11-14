@@ -14,7 +14,7 @@ Rehearsal: a UX verification pipeline (see README.md + docs/PRD.md). Next.js 16 
 4. **Adapters no-op without keys.** Never crash on a missing env var — fall back to
    fixture/plain implementations.
 5. **Evidence classes.** Findings are `verified-failure` | `reproducible-concern` | `hypothesis`
-   and must cite a Krug principle (`docs/krug-principles.md`). No fabricated metrics.
+   and must cite a usability principle (`docs/krug-principles.md`). No fabricated metrics.
 6. **Safety.** `assertPublicUrl` guards every outbound fetch/navigation; never submit
    forms on third-party sites; variants apply only inside isolated Playwright contexts.
 

@@ -77,7 +77,7 @@ function synthExperiment(): Experiment {
       {
         findingId: "f1", title: "Stale date on the homepage", category: "clarity", severity: "medium", evidenceType: "reproducible-concern",
         description: "Homepage references an outdated 2024 event.", affectedStates: ["s0"], recommendation: "Remove outdated dates.",
-        verificationStatus: "reproduced", krugPrinciple: "dont-make-me-think",
+        verificationStatus: "reproduced", principle: "dont-make-users-think",
       },
     ],
     spec: {

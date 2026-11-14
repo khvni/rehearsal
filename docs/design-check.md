@@ -7,7 +7,7 @@ design tells in our UI before they merge.
 **Scope.** This guards the dashboard we build. It is not part of Rehearsal's pipeline: it never
 scans the sites Rehearsal audits, and nothing it reports becomes a Rehearsal finding or appears in
 `spec.md`. Rehearsal's own output is about visitor journeys and is graded against
-`docs/krug-principles.md`.
+`docs/krug-principles.md` (the internal rubric canon).
 
 ## What is checked
 

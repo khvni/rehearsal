@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { readFileSync } from "node:fs";
 import path from "node:path";
-import { KRUG_DIMENSIONS, VIEWPORTS, type Assertion } from "@/lib/contracts";
+import { RUBRIC_DIMENSIONS, VIEWPORTS, type Assertion } from "@/lib/contracts";
 import { extractPage } from "@/lib/browser/extract";
 import { GraphBuilder, makeState, adjacency } from "@/lib/graph";
 import { FixtureJevClient, scoreActions } from "@/lib/decisions/jev";
@@ -85,9 +85,9 @@ describe("eval: jev mapping validity", () => {
   });
 });
 
-describe("eval: krug rubric coverage", () => {
+describe("eval: rubric coverage", () => {
   it("every rubric dimension is defined and citable", () => {
-    for (const d of KRUG_DIMENSIONS) {
+    for (const d of RUBRIC_DIMENSIONS) {
       expect(RUBRIC[d].question.length).toBeGreaterThan(10);
       expect(RUBRIC[d].principle.length).toBeGreaterThan(3);
     }
@@ -107,11 +107,11 @@ describe("eval: findings quality on fixture", () => {
       expect(past.length).toBeGreaterThan(0);
       expect(stale).toBeDefined();
       expect(stale?.evidenceType).toBe("reproducible-concern");
-      expect(stale?.krugPrinciple).toBe("omit-words");
+      expect(stale?.principle).toBe("cut-needless-words");
     }
-    // every finding carries a valid krug principle + evidence class
+    // every finding carries a valid principle + evidence class
     for (const f of findings) {
-      expect(f.krugPrinciple.length).toBeGreaterThan(3);
+      expect(f.principle.length).toBeGreaterThan(3);
       expect(["verified-failure", "reproducible-concern", "hypothesis"]).toContain(f.evidenceType);
     }
   });

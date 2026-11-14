@@ -32,6 +32,6 @@ export default defineConfig([
   },
   {
     files: ["src/lib/analysis/**/*.ts", "src/lib/intents/**/*.ts"],
-    rules: { "rehearsal/finding-cites-krug": "error" },
+    rules: { "rehearsal/finding-cites-principle": "error" },
   },
 ]);

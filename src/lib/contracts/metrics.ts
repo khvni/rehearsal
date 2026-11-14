@@ -1,7 +1,7 @@
 import { z } from "zod";
 
 /**
- * Scanning/usability measurements for one rendered page (Krug K2/K4/K6/K7).
+ * Scanning/usability measurements for one rendered page (docs/krug-principles.md K2/K4/K6/K7).
  * `source: "browser"` = measured in a real layout via page.evaluate; `"html"` = DOM-only
  * fallback where layout-dependent fields are null.
  */

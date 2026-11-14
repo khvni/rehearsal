@@ -1,6 +1,6 @@
 import { PageMetrics, type EvaluatingPage, type Viewport } from "../contracts";
 
-/** Seconds a visitor spends per screen of scrolling while scanning (rough Krug-style glance budget). */
+/** Seconds a visitor spends per screen of scrolling while scanning (a rough glance budget). */
 export const SCROLL_SEC_PER_SCREEN = 1.5;
 /** CTAs whose prominence is within this fraction of the most prominent one count as "equally prominent". */
 export const CTA_PROMINENCE_TIE = 0.75;

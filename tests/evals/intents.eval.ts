@@ -123,7 +123,7 @@ describe("eval: endpoint findings on synthetic journeys", () => {
   it("flags the orphaned signup as endpoint-unreachable", () => {
     const f = findings.find((x) => x.findingId.startsWith("f_endpoint-unreachable_ep_signup"));
     expect(f).toBeDefined();
-    expect(f!.krugPrinciple).toBe("navigation");
+    expect(f!.principle).toBe("where-you-are");
   });
 
   it("flags the 4-click pricing page as endpoint-deep with its journey", () => {
@@ -131,7 +131,7 @@ describe("eval: endpoint findings on synthetic journeys", () => {
     expect(j.medianSteps).toBe(4);
     expect(j.samplePath).toEqual(["Features", "Product tour", "Compare editions", "Pricing"]);
     const f = findings.find((x) => x.findingId.startsWith("f_endpoint-deep_ep_pricing"));
-    expect(f?.krugPrinciple).toBe("mindless-choices");
+    expect(f?.principle).toBe("obvious-choices");
   });
 
   it("flags expected classes the site never exposes", () => {

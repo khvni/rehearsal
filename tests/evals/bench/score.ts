@@ -15,14 +15,14 @@ import { detectSiteType } from "@/lib/intents/endpoints";
 import type { BenchRun } from "./pipeline";
 
 /** Findings collapse to a rule: digit-normalized title + principle. */
-export function ruleKey(title: string, krugPrinciple: string): string {
+export function ruleKey(title: string, principle: string): string {
   const t = title.replace(/\d+/g, "#").replace(/\s+/g, " ").trim().toLowerCase();
-  return `${t}|${krugPrinciple}`;
+  return `${t}|${principle}`;
 }
 
 function matchFinding(expected: ExpectedFinding, produced: FindingScore): boolean {
   if (!new RegExp(expected.titleMatch, "i").test(produced.title)) return false;
-  if (expected.krugPrinciple && expected.krugPrinciple !== produced.krugPrinciple) return false;
+  if (expected.principle && expected.principle !== produced.principle) return false;
   if (expected.severity && expected.severity !== produced.severity) return false;
   return true;
 }
@@ -31,10 +31,10 @@ function matchFinding(expected: ExpectedFinding, produced: FindingScore): boolea
 export function producedFindings(findings: Finding[]): FindingScore[] {
   const byKey = new Map<string, FindingScore>();
   for (const f of findings) {
-    const key = ruleKey(f.title, f.krugPrinciple);
+    const key = ruleKey(f.title, f.principle);
     const cur = byKey.get(key);
     if (cur) cur.count += 1;
-    else byKey.set(key, { ruleKey: key, title: f.title, severity: f.severity, krugPrinciple: f.krugPrinciple, count: 1 });
+    else byKey.set(key, { ruleKey: key, title: f.title, severity: f.severity, principle: f.principle, count: 1 });
   }
   return [...byKey.values()].sort((a, b) => a.ruleKey.localeCompare(b.ruleKey));
 }

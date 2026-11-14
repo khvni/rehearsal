@@ -24,7 +24,7 @@ const aieHtml = readFileSync(path.join(__dirname, "fixtures", "aie-code-2026.htm
 const aiePage = extractPage(aieHtml, AIE_URL);
 const SEVERITY_RANK: Record<Finding["severity"], number> = { critical: 4, high: 3, medium: 2, low: 1 };
 
-const key = (f: Pick<Finding, "krugPrinciple" | "title">) => `${f.krugPrinciple}|${f.title.replace(/ \(\d+ of \d+ (pages|runs)\)$/, "")}`;
+const key = (f: Pick<Finding, "principle" | "title">) => `${f.principle}|${f.title.replace(/ \(\d+ of \d+ (pages|runs)\)$/, "")}`;
 const duplicateKeys = (findings: Finding[]) => {
   const counts = new Map<string, number>();
   for (const f of findings) counts.set(key(f), (counts.get(key(f)) ?? 0) + 1);
@@ -39,7 +39,7 @@ function failedRun(runId: string, assertions: Assertion[]): BrowserRun {
   };
 }
 
-// ── per-state rule findings collapse to one finding per (Krug principle + title) ──
+// ── per-state rule findings collapse to one finding per (principle + title) ──
 
 describe("eval: cross-state finding dedup", () => {
   const states = ["", "/speakers", "/sponsors", "/venue"].map((p) =>
@@ -79,11 +79,11 @@ describe("eval: cross-state finding dedup", () => {
   });
 
   it("titles carry the affected-scope count", () => {
-    const stale = collapsed.find((f) => f.title.startsWith("Post-event page still invites registration"));
-    expect(stale?.title).toBe(`Post-event page still invites registration (${states.length} of ${states.length} pages)`);
+    const stale = collapsed.find((f) => f.title.startsWith("The page still invites registration"));
+    expect(stale?.title).toBe(`The page still invites registration for an event that already happened (${states.length} of ${states.length} pages)`);
     expect(stale?.evidencePaths).toHaveLength(states.length);
     const failure = collapsed.filter((f) => f.evidenceType === "verified-failure");
-    expect(failure.map((f) => f.title)).toEqual(['Assertion failed in browser: url-matches "schedule" (2 of 2 runs)']);
+    expect(failure.map((f) => f.title)).toEqual(['Browser check failed: the URL "schedule" (2 of 2 runs)']);
     expect(failure[0].evidencePaths).toEqual(["/shots/run_a.png", "/shots/run_b.png"]);
   });
 
@@ -104,12 +104,12 @@ describe("eval: cross-state finding dedup", () => {
     );
     const both = [states[0], mobile[0], states[1], mobile[1]];
     const findings = collapseFindings(ruleFindings({ states: both, runs: [], assertions: [], referenceNowIso: REFERENCE_NOW }), { states: both, runs: 0 });
-    const stale = findings.find((f) => f.title.startsWith("Post-event page still invites registration"));
-    expect(stale?.title).toBe("Post-event page still invites registration (2 of 2 pages)");
+    const stale = findings.find((f) => f.title.startsWith("The page still invites registration"));
+    expect(stale?.title).toBe("The page still invites registration for an event that already happened (2 of 2 pages)");
     expect(stale?.affectedStates).toHaveLength(4);
     const one = [states[0], mobile[0]];
     const single = collapseFindings(ruleFindings({ states: one, runs: [], assertions: [], referenceNowIso: REFERENCE_NOW }), { states: one, runs: 0 });
-    expect(single.find((f) => f.title.startsWith("Post-event"))?.title).toBe("Post-event page still invites registration");
+    expect(single.find((f) => f.title.startsWith("The page still"))?.title).toBe("The page still invites registration for an event that already happened");
   });
 });
 
@@ -160,7 +160,7 @@ describe("eval: orchestrator analyze/spec emit each finding once across states",
     const pages = done.graph!.states.length;
     expect(pages).toBeGreaterThan(1);
     expect(duplicateKeys(done.findings)).toEqual([]);
-    const stale = done.findings.filter((f) => f.title.startsWith("Post-event page still invites registration"));
+    const stale = done.findings.filter((f) => f.title.startsWith("The page still invites registration"));
     expect(stale).toHaveLength(1);
     expect(stale[0].title).toMatch(new RegExp(`\\(\\d+ of ${pages} pages\\)$`));
     const titles = done.spec!.changes.map((c) => c.title);

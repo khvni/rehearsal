@@ -16,19 +16,19 @@ Open `index.html` in a browser, or `/mockups/find-videos/index.html` on the dev 
 
 Finding numbers refer to `docs/runs/ai.engineer/spec.md` in the repo.
 
-| Decision | Finding | Krug principle |
+| Decision | Finding | Principle |
 | --- | --- | --- |
-| Talks are the whole page. Venue, sponsors, side events, FAQ and the apply CTA are gone. | #9 homepage is 16 screens tall; #10 nine equally loud hero cards; #3 and #4 failed goal assertions | scanning-not-reading, mindless-choices |
-| One click target per talk: the whole row. The live site renders three links per session ("Read <title>", the title, "Read the talk →") to one URL. | #16 redundant per-talk links; #8 250–523 links per page | scanning-not-reading |
-| The player plays inline at the talk's own boundaries. On the live site, "Watch at 0:11:26" opens an 8-hour livestream in a new tab, and the bounded player sits on a separate talk page. | #8 talks sit behind heavy link surfaces | dont-make-me-think |
-| Search is the first control, visible and sticky while scrolling. | #6, #7 trunk test fails on search | navigation |
-| A single header: site ID, four links, "Talks" marked as the current page. Every header link stays inside CODE 2026. | #2 and #17 subpage nav routes to World's Fair 2025; #11 68 nav items; #22 no you-are-here indicator | navigation |
-| The lede states the event took place Nov 11–12, so nobody wonders whether to register. | #5 post-event page still invites registration; #14 contradictory pre/post-event copy | omit-words, dont-make-me-think |
-| One filter (All, Main stage, Online) and day headings in place of the Schedule / Companies A–Z switcher. "Schedule" in the header goes to the real schedule. | #13 "Schedule" means three different things | conventions |
-| One h1 ("Watch the talks"), h2 per day, and the h1 is the largest text. | #19 three h1s; #20 no h1; #21 largest text is not the h1 | scanning-not-reading |
-| No repeated decorative strings, binary digits or uppercase triplets. Labels say what they are: "Transcript", "Full day", "Copy link". | #15 repeated text strings; #18 generic button labels | omit-words, mindless-choices |
-| MCP, llms.txt and JSON links move to a "For agents" footer column. Full-day livestreams and the transcript zip are in the footer too. | #18 developer links in primary nav; rebuild plan phase 2 | mindless-choices |
-| Duration on every row, in tabular figures, so visitors can pick by length. | — (supports the watch goal) | scanning-not-reading |
+| Talks are the whole page. Venue, sponsors, side events, FAQ and the apply CTA are gone. | #9 The homepage explains itself is 16 screens tall; #10 nine equally loud hero cards; #3 and #4 failed goal assertions | People scan, they don't read, Make every choice obvious |
+| One click target per talk: the whole row. The live site renders three links per session ("Read <title>", the title, "Read the talk →") to one URL. | #16 redundant per-talk links; #8 250–523 links per page | People scan, they don't read |
+| The player plays inline at the talk's own boundaries. On the live site, "Watch at 0:11:26" opens an 8-hour livestream in a new tab, and the bounded player sits on a separate talk page. | #8 talks sit behind heavy link surfaces | Don't make users think |
+| Search is the first control, visible and sticky while scrolling. | #6, #7 trunk test fails on search | Always show where you are |
+| A single header: site ID, four links, "Talks" marked as the current page. Every header link stays inside CODE 2026. | #2 and #17 subpage nav routes to World's Fair 2025; #11 68 nav items; #22 no you-are-here indicator | Always show where you are |
+| The lede states the event took place Nov 11–12, so nobody wonders whether to register. | #5 post-event page still invites registration; #14 contradictory pre/post-event copy | Cut needless words, Don't make users think |
+| One filter (All, Main stage, Online) and day headings in place of the Schedule / Companies A–Z switcher. "Schedule" in the header goes to the real schedule. | #13 "Schedule" means three different things | Follow familiar conventions |
+| One h1 ("Watch the talks"), h2 per day, and the h1 is the largest text. | #19 three h1s; #20 no h1; #21 largest text is not the h1 | People scan, they don't read |
+| No repeated decorative strings, binary digits or uppercase triplets. Labels say what they are: "Transcript", "Full day", "Copy link". | #15 repeated text strings; #18 generic button labels | Cut needless words, Make every choice obvious |
+| MCP, llms.txt and JSON links move to a "For agents" footer column. Full-day livestreams and the transcript zip are in the footer too. | #18 developer links in primary nav; rebuild plan phase 2 | Make every choice obvious |
+| Duration on every row, in tabular figures, so visitors can pick by length. | — (supports the watch goal) | People scan, they don't read |
 
 Not addressed, because they belong to a registration goal: #1 and #12 (pricing and registration flow). A real rebuild would link "Next event" from the header once one is announced.
 
@@ -38,4 +38,4 @@ alikhani.co language: white background, `#111` ink, `#6b6b6b` muted text, `#eded
 
 ## Source data
 
-`demo/aie-snapshot/` was not in the checkout. The talk list comes from the homepage snapshot in `tests/evals/fixtures/aie-code-2026.html`. The start and end seconds come from each live talk page (`https://ai.engineer/code/2026/talks/<slug>`, crawled Nov 13, 2026), which publishes the exact range its embedded player uses. The YouTube player loads only when a talk is opened.
+`demo/aie-snapshot/` was not in the checkout. The talk list comes from the The homepage explains itself snapshot in `tests/evals/fixtures/aie-code-2026.html`. The start and end seconds come from each live talk page (`https://ai.engineer/code/2026/talks/<slug>`, crawled Nov 13, 2026), which publishes the exact range its embedded player uses. The YouTube player loads only when a talk is opened.
