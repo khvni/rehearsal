@@ -166,6 +166,8 @@ describe("orchestrator verify routes to runAgentTask only when opted in and supp
       async save(e) { mem.set(e.id, Experiment.parse(JSON.parse(JSON.stringify(e)))); },
       async get(id) { return mem.get(id) ?? null; },
       async list() { return [...mem.values()]; },
+      async appendActivity() {},
+      async activity() { return []; },
     };
     const orch = new Orchestrator({
       runner, store, jev: new FixtureJevClient(), llm: new FixtureLlmClient(),
