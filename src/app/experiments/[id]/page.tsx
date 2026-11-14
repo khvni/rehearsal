@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import type { Experiment, Finding, KrugPrinciple, PanelState, Viewport } from "@/lib/contracts";
@@ -20,6 +20,13 @@ import { HeatLegend, StateGraph, visitCounts } from "./state-graph";
 
 const STAGES = ["discover", "simulate", "verify", "analyze", "compare", "spec"] as const;
 type Stage = (typeof STAGES)[number] | "run";
+const STATUS_STAGE: Partial<Record<Experiment["status"], (typeof STAGES)[number]>> = {
+  discovering: "discover",
+  simulating: "simulate",
+  verifying: "verify",
+  analyzing: "analyze",
+  comparing: "compare",
+};
 type Section = "graph" | "evidence" | "findings" | "comparisons" | "spec";
 
 const RUNNING_STATUSES = ["discovering", "simulating", "verifying", "analyzing", "comparing"];
@@ -49,6 +56,7 @@ export default function ExperimentPage() {
   const [loadError, setLoadError] = useState("");
   const [pending, setPending] = useState<Stage | null>(null);
   const [stageErrors, setStageErrors] = useState<Partial<Record<Stage, string>>>({});
+  const lastRunningStage = useRef<(typeof STAGES)[number] | null>(null);
   const [specDoc, setSpecDoc] = useState<SpecDoc | null>(null);
   const [viewport, setViewport] = useState<Viewport["name"]>("desktop");
 
@@ -56,7 +64,10 @@ export default function ExperimentPage() {
     try {
       const res = await fetch(`/api/experiments/${id}`, { cache: "no-store" });
       if (!res.ok) return setLoadError(await readError(res));
-      setExp((await res.json()) as Experiment);
+      const next = (await res.json()) as Experiment;
+      setExp(next);
+      const running = STATUS_STAGE[next.status];
+      if (running) lastRunningStage.current = running;
       setLoadError("");
     } catch (e) {
       setLoadError(e instanceof Error ? e.message : String(e));
@@ -96,7 +107,12 @@ export default function ExperimentPage() {
       const res = await fetch(`/api/experiments/${id}/${stage}`, { method: "POST" });
       if (!res.ok) {
         const message = await readError(res);
-        setStageErrors((prev) => ({ ...prev, [stage]: message }));
+        // A run-all failure lands on the stage it stopped at, so the step marks red.
+        setStageErrors((prev) => ({
+          ...prev,
+          [stage]: message,
+          ...(stage === "run" && lastRunningStage.current ? { [lastRunningStage.current]: message } : {}),
+        }));
       }
     } catch (e) {
       setStageErrors((prev) => ({ ...prev, [stage]: e instanceof Error ? e.message : String(e) }));
@@ -152,7 +168,7 @@ export default function ExperimentPage() {
   const busy = (section: Section) =>
     SECTION_STAGES[section].statuses.includes(exp.status) ||
     (pending !== null && SECTION_STAGES[section].stages.includes(pending)) ||
-    (section === "spec" && pending === "run");
+    (section === "spec" && pending === "run" && nextStage === "spec");
 
   const stageError = (section: Section) =>
     SECTION_STAGES[section].stages.map((s) => stageErrors[s]).find(Boolean);
@@ -204,9 +220,18 @@ export default function ExperimentPage() {
   // Stages run in order and analyze/compare may legitimately produce nothing, so a later stage implies earlier ones ran.
   for (let i = STAGES.length - 2; i >= 0; i--) stageDone[STAGES[i]] ||= stageDone[STAGES[i + 1]];
   const nextStage = STAGES.find((s) => !stageDone[s]);
+  const runningStage = STATUS_STAGE[exp.status];
   const stageActive = (s: (typeof STAGES)[number]) =>
-    pending === s || ((pending === "run" || RUNNING_STATUSES.includes(exp.status)) && s === nextStage);
+    pending === s || s === runningStage || (pending === "run" && s === nextStage);
   const doneCount = STAGES.filter((s) => stageDone[s]).length;
+  const stepIndex =
+    pending !== null && pending !== "run"
+      ? STAGES.indexOf(pending)
+      : runningStage !== undefined
+        ? STAGES.indexOf(runningStage)
+        : nextStage !== undefined
+          ? STAGES.indexOf(nextStage)
+          : STAGES.length - 1;
   const live = pending !== null || RUNNING_STATUSES.includes(exp.status);
   const statusColor = exp.status === "failed" ? "red" : exp.status === "complete" ? "green" : RUNNING_STATUSES.includes(exp.status) ? "blue" : "gray";
   const specState: PanelState = (() => {
@@ -268,7 +293,7 @@ export default function ExperimentPage() {
 
       {live && (
         <ThinkingSteps className="live">
-          <ThinkingStepsHeader>{`Rehearsing, step ${Math.min(doneCount + 1, STAGES.length)} of ${STAGES.length}`}</ThinkingStepsHeader>
+          <ThinkingStepsHeader>{`Rehearsing, step ${stepIndex + 1} of ${STAGES.length}`}</ThinkingStepsHeader>
           <ThinkingStepsContent>
             {STAGES.map((s, i) => (
               <ThinkingStep
