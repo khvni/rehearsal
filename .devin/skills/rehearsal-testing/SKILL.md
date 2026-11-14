@@ -46,6 +46,7 @@ eval cases.** `npm run check:skill-sync` fails the build otherwise.
 - `metrics.test.ts` — `measurePage` via `PlaywrightRunner.openPage` on synthetic pages served from loopback (scroll, CTA prominence ties, heading skips/multiple h1, nav count, font buckets, trunk test), `metricsFromHtml` fallback, and each `metricFindings` rule (grouping, severity, evidence)
 - `core.test.ts` — contract parsing, extractor, graph dedup, mulberry32 determinism, profile shaping, fixture Jev scoring, patch compilation, rule findings, spec markdown
 - `questions.test.ts` — question bank shape, homepage-first ordering, context-derived questions, answer detection (endpoint class / URL / text, start-only homepage questions, endpoint label filters, re-answering stored questions), LLM refinement skip + keyword questions, `unanswered-question` findings + summary
+- `orchestrator-lock.test.ts` — per-experiment run lock: a second concurrent `discover`/`spec`/`runAll` on the same experiment throws `StageInProgressError` (route → 409) without calling the runner again; other experiments run in parallel; the lock is released after success and failure
 - `intents.test.ts` — `classifyGoal` keyword heuristics, LLM refinement fallback, endpoint label/path classification, `discoverEndpoints`/`weightEndpoints` determinism + overrides, optional Experiment fields
 
 ## Browser tests (tests/e2e/)
