@@ -130,6 +130,17 @@ describe("stage re-runs replace that stage's earlier results", () => {
     expect(again.browserTests[0].variantId).toBeUndefined();
   });
 
+  it("spec after compare references only baseline browser runs", async () => {
+    const { orch, id } = await setup();
+    const compared = await orch.compare(id);
+    const baselineIds = compared.browserTests.filter((r) => !r.variantId).map((r) => r.runId);
+    expect(baselineIds.length).toBeGreaterThan(0);
+    expect(compared.browserTests.some((r) => r.variantId)).toBe(true);
+
+    const result = await orch.spec(id);
+    expect(result.spec?.baselineRunIds).toEqual(baselineIds);
+  });
+
   it("analyze re-run after verify and compare re-runs counts each baseline run once", async () => {
     const { orch, id } = await setup();
     const analyzed = await orch.analyze(id);
