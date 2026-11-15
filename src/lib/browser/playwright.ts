@@ -24,7 +24,7 @@ import { measurePage } from "./metrics";
 import { LivePagePersonaDriver } from "./persona";
 import { chromiumSandboxEnabled } from "./sandbox";
 import { captureBrand } from "../rebuild/brand";
-import { errorText, evaluateAssertion, shouldShoot, summarizeRun } from "./types";
+import { errorText, evaluateAssertion, evaluateGoalAlternatives, shouldShoot, summarizeRun } from "./types";
 
 export const DEFAULT_EVIDENCE_DIR = path.join(process.cwd(), "data", "evidence");
 const USER_AGENT = "Rehearsal/0.1 (+https://github.com/khvni/rehearsal)";
@@ -79,7 +79,7 @@ export async function executeTrajectory(
   args: TrajectoryArgs,
   evidenceDir: string,
   opts: PlaywrightStepOptions,
-): Promise<{ steps: BrowserRun["steps"]; assertions: BrowserRun["assertions"]; screenshots: string[] }> {
+): Promise<{ steps: BrowserRun["steps"]; assertions: BrowserRun["assertions"]; goalAlternatives?: BrowserRun["assertions"]; screenshots: string[] }> {
   const steps: BrowserRun["steps"] = [];
   const screenshots: string[] = [];
   const assertions: BrowserRun["assertions"] = [];
@@ -134,7 +134,8 @@ export async function executeTrajectory(
   for (const assertion of args.assertions) {
     assertions.push({ assertion, passed: await checkAssertion(page, assertion) });
   }
-  return { steps, assertions, screenshots };
+  const goalAlternatives = await evaluateGoalAlternatives(playwrightProbe(page), args.goalAlternatives);
+  return { steps, assertions, goalAlternatives, screenshots };
 }
 
 const INTERSTITIAL_TITLE_RE = /just a moment|checking your browser|one moment, please|please wait/i;

@@ -23,7 +23,7 @@ import type {
   Viewport,
 } from "@/lib/contracts";
 import { type extractPage, memoizedExtractPage } from "@/lib/browser/extract";
-import { evaluateAssertion, summarizeRun } from "@/lib/browser/types";
+import { evaluateAssertion, evaluateGoalAlternatives, summarizeRun } from "@/lib/browser/types";
 import { compilePatches } from "@/lib/variants";
 import { assertPublicUrl } from "@/lib/fetch/guards";
 import { pageFor, type FixtureSite } from "./sites";
@@ -104,7 +104,8 @@ export class FixtureSiteRunner implements BrowserRunner {
     for (const assertion of a.assertions) {
       assertions.push({ assertion, passed: await evaluateAssertion(probe, assertion) });
     }
-    return summarizeRun({ runId: a.runId, viewport: a.viewport, started, steps, assertions, errors, screenshots: [] });
+    const goalAlternatives = await evaluateGoalAlternatives(probe, a.goalAlternatives);
+    return summarizeRun({ runId: a.runId, viewport: a.viewport, started, steps, assertions, goalAlternatives, errors, screenshots: [] });
   }
 
   /**

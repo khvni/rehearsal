@@ -49,7 +49,7 @@ import {
 import { metricFindings } from "./analysis/metric-findings";
 import { metricsFromHtml } from "./browser/metrics";
 import { contentSignatureFor, isSameOrigin, normalizeSiteUrl } from "./browser/extract";
-import { errorText } from "./browser/types";
+import { errorText, failedGoalAssertions, runSucceeded } from "./browser/types";
 import { generateSpec, specToMarkdown } from "./analysis/spec";
 import { generateMockup } from "./mockup";
 import { brandSignalsFromHtml, inferGoals, rollupBrand, mergeSignals } from "./rebuild";
@@ -1148,6 +1148,7 @@ export class Orchestrator {
       e.failures = e.failures.filter((f) => f.stage !== "verify");
       // A re-run replaces verify's own baseline runs; compare's variant runs stay behind them.
       const runs: BrowserRun[] = [];
+      const goalAlternatives = endpointGoalAssertions(e.graph, e.intents?.[0], e.endpoints);
       try {
         for (const selected of replayables) {
           const actions = selected.actions;
@@ -1162,6 +1163,7 @@ export class Orchestrator {
               viewport: VIEWPORTS[vpName],
               actions,
               assertions: e.assertions,
+              goalAlternatives,
               runId,
             };
             // Agent runs only where the backend has a model (opt-in); compare stays scripted so baseline/variant replay identically.
@@ -1173,7 +1175,7 @@ export class Orchestrator {
             for (const s of run.steps.filter((s) => !s.ok)) {
               await this.emit(id, "verify", "assert", `"${s.label}" failed${s.error ? ` — ${s.error}` : ""}`);
             }
-            for (const a of run.assertions.filter((a) => !a.passed)) {
+            for (const a of failedGoalAssertions(run)) {
               await this.emit(id, "verify", "assert", `Assertion failed: ${a.assertion.kind} "${a.assertion.value}"`);
             }
             await this.emit(id, "verify", "browser", `${runId}: ${run.success ? "goal reached" : "goal not reached"} in ${run.durationMs} ms`);
@@ -1273,6 +1275,7 @@ export class Orchestrator {
           viewport: baseline.viewport,
           actions: baselineActions,
           assertions: exp.assertions,
+          goalAlternatives: endpointGoalAssertions(exp.graph, exp.intents?.[0], exp.endpoints),
           runId: `run_variant_${variant.variantId}`,
           patches: variant.patches,
         });
@@ -1303,7 +1306,7 @@ export class Orchestrator {
         baselineRunId: baseline.runId,
         variantRunId: run.runId,
         deltas: {
-          goalCompleted: { baseline: baseline.success, variant: run.success },
+          goalCompleted: { baseline: runSucceeded(baseline), variant: runSucceeded(run) },
           interactionCount: { baseline: baseline.steps.length, variant: run.steps.length },
           backtracks: { baseline: backtracksOf(baseline), variant: backtracksOf(run) },
           failedInteractions: {
@@ -1311,7 +1314,7 @@ export class Orchestrator {
             variant: run.steps.filter((s) => !s.ok).length,
           },
           runtimeErrors: { baseline: baseline.errors.length, variant: run.errors.length },
-          findingReproduces: run.success === baseline.success,
+          findingReproduces: runSucceeded(run) === runSucceeded(baseline),
         },
       };
       exp.comparisons.push(comparison);

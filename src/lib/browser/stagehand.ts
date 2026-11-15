@@ -29,7 +29,7 @@ import { captureBrand } from "../rebuild/brand";
 import { LivePagePersonaDriver } from "./persona";
 import { DEFAULT_EVIDENCE_DIR } from "./playwright";
 import { logEvent } from "../telemetry";
-import { errorText, evaluateAssertion, shouldShoot, summarizeRun } from "./types";
+import { errorText, evaluateAssertion, evaluateGoalAlternatives, shouldShoot, summarizeRun } from "./types";
 
 const NAV_TIMEOUT_MS = 60_000;
 /** Stagehand only exposes console events, so forward uncaught errors/rejections to console.error. */
@@ -361,6 +361,7 @@ export class StagehandRunner implements BrowserRunner {
     const steps: BrowserRun["steps"] = [];
     const screenshots: string[] = [];
     const assertions: BrowserRun["assertions"] = [];
+    let goalAlternatives: BrowserRun["assertions"] = [];
     try {
       const target = await assertPublicUrl(args.url);
       await this.withSession(args.viewport, args.patches, async (sh, page) => {
@@ -384,11 +385,12 @@ export class StagehandRunner implements BrowserRunner {
         for (const assertion of args.assertions) {
           assertions.push({ assertion, passed: await evaluateAssertion(probe, assertion) });
         }
+        goalAlternatives = await evaluateGoalAlternatives(probe, args.goalAlternatives);
       });
     } catch (e) {
       errors.push(`run: ${errorText(e)}`);
     }
-    return summarizeRun({ runId: args.runId, viewport: args.viewport, started, steps, assertions, errors, screenshots });
+    return summarizeRun({ runId: args.runId, viewport: args.viewport, started, steps, assertions, goalAlternatives, errors, screenshots });
   }
 
   /** Agent-driven verify: observe/act over the live page via `agentLoop`. */
@@ -429,6 +431,7 @@ export class StagehandRunner implements BrowserRunner {
       started,
       steps: run?.steps ?? [],
       assertions: run?.assertions ?? [],
+      goalAlternatives: run?.goalAlternatives,
       errors: [...errors, ...(run?.errors ?? [])],
       screenshots: [...screenshots, ...(run?.screenshotPaths ?? [])],
     });

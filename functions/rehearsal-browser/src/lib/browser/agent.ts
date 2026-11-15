@@ -1,6 +1,6 @@
 import type { AgentCandidate, AgentDriver, AgentRunArgs, AgentTargetInfo, BrowserRun, TrajectoryAction } from "../contracts";
 import { normalizeLabel } from "./extract";
-import { errorText, evaluateAssertion, shouldShoot, summarizeRun } from "./types";
+import { errorText, evaluateAssertion, evaluateGoalAlternatives, shouldShoot, summarizeRun } from "./types";
 
 // Model output and page labels are untrusted: the loop only ever clicks a vetted element, and
 // never types, selects, scrolls, or submits — no form interaction on third-party sites.
@@ -75,6 +75,7 @@ export async function agentLoop(
   const steps: BrowserRun["steps"] = [];
   const screenshots: string[] = [];
   const assertions: BrowserRun["assertions"] = [];
+  let goalAlternatives: BrowserRun["assertions"] = [];
   try {
     const total = Math.min(args.actions.length, args.maxSteps ?? 12);
     for (let i = 0; i < total; i++) {
@@ -93,8 +94,9 @@ export async function agentLoop(
     for (const assertion of args.assertions) {
       assertions.push({ assertion, passed: await evaluateAssertion(probe, assertion) });
     }
+    goalAlternatives = await evaluateGoalAlternatives(probe, args.goalAlternatives);
   } catch (e) {
     errors.push(`run: ${errorText(e)}`);
   }
-  return summarizeRun({ runId: args.runId, viewport: args.viewport, started, steps, assertions, errors, screenshots });
+  return summarizeRun({ runId: args.runId, viewport: args.viewport, started, steps, assertions, goalAlternatives, errors, screenshots });
 }

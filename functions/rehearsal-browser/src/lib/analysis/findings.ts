@@ -9,7 +9,7 @@ import type {
   SiteState,
 } from "../contracts";
 import { isVagueLabel } from "../browser/extract";
-import { isRunError } from "../browser/types";
+import { failedGoalAssertions, isRunError } from "../browser/types";
 import { uniqueStatesByUrl } from "../graph";
 import { EvidenceType, Finding, RubricDimension, UsabilityPrinciple, Severity, LEGACY_PRINCIPLES } from "../contracts";
 import { logEvent } from "../telemetry";
@@ -44,23 +44,21 @@ export function ruleFindings(args: {
 
   // 1. Verified failures: any assertion that failed in a browser run.
   for (const run of runs) {
-    for (const { assertion, passed } of run.assertions) {
-      if (!passed) {
-        findings.push({
-          findingId: fid(),
-          title: `Browser check failed: ${ASSERTION_LABEL[assertion.kind]} "${assertion.value}"`,
-          category: "goal-completion",
-          severity: "high",
-          evidenceType: "verified-failure",
-          description: `In the ${run.viewport.name} browser run, ${ASSERTION_LABEL[assertion.kind]} didn't match "${assertion.value}" — what the check expected isn't what a visitor gets.`,
-          affectedStates: [],
-          affectedActions: [],
-          evidencePaths: run.screenshotPaths,
-          recommendation: "Open the live page and fix the mismatch so the check passes for a real visitor.",
-          verificationStatus: "verified",
-          principle: "test-dont-argue",
-        });
-      }
+    for (const { assertion } of failedGoalAssertions(run)) {
+      findings.push({
+        findingId: fid(),
+        title: `Browser check failed: ${ASSERTION_LABEL[assertion.kind]} "${assertion.value}"`,
+        category: "goal-completion",
+        severity: "high",
+        evidenceType: "verified-failure",
+        description: `In the ${run.viewport.name} browser run, ${ASSERTION_LABEL[assertion.kind]} didn't match "${assertion.value}" — what the check expected isn't what a visitor gets.`,
+        affectedStates: [],
+        affectedActions: [],
+        evidencePaths: run.screenshotPaths,
+        recommendation: "Open the live page and fix the mismatch so the check passes for a real visitor.",
+        verificationStatus: "verified",
+        principle: "test-dont-argue",
+      });
     }
   }
 
@@ -316,7 +314,7 @@ export async function llmFindings(args: {
     runs: runs.map((r) => ({
       viewport: r.viewport.name,
       success: r.success,
-      failedAssertions: r.assertions.filter((a) => !a.passed).map((a) => a.assertion),
+      failedAssertions: failedGoalAssertions(r).map((a) => a.assertion),
       consoleErrorCount: r.consoleErrorCount,
       errors: r.errors.slice(0, 10),
     })),

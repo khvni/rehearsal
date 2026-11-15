@@ -8,6 +8,7 @@ import type {
   TrajectoryOutcome,
 } from "../contracts";
 import { adjacency } from "../graph";
+import { goalSucceeded } from "../browser/types";
 
 /** Deterministic PRNG (mulberry32). Same seed → identical sequence. */
 export function mulberry32(seed: number): () => number {
@@ -41,11 +42,11 @@ export function applyProfile(
 export function goalSatisfiedInState(state: SiteState, assertions: Assertion[]): boolean {
   if (assertions.length === 0) return false;
   const hay = `${state.pageTitle}\n${state.visibleText}`.toLowerCase();
-  return assertions.some((a) => {
-    if (a.kind === "text-present") return hay.includes(a.value.toLowerCase());
-    if (a.kind === "url-matches") return state.url.toLowerCase().includes(a.value.toLowerCase());
-    return false;
-  });
+  return goalSucceeded(undefined, assertions.map((assertion) => ({
+    assertion,
+    passed: assertion.kind === "text-present" ? hay.includes(assertion.value.toLowerCase())
+      : assertion.kind === "url-matches" && state.url.toLowerCase().includes(assertion.value.toLowerCase()),
+  })));
 }
 
 /**
