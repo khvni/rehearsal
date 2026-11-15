@@ -232,7 +232,7 @@ describe("discover fetch-first + firecrawl fallback", () => {
   it.each(["anchors", "map"])("skips non-HTML resources from %s before fetching", async (source) => {
     process.env.REHEARSAL_ALLOW_PRIVATE = "1";
     const resources = ["README.md", "notes.txt", "data.json", "table.csv", "feed.xml", "report.pdf", "photo.PNG?size=2", "icon.svg#logo", "encoded%2Emd", "slides.pptx"];
-    const pages = ["about", "page.html", "index.htm", "document.xhtml", "docs.php", "v1.2/guide"];
+    const pages = ["about", "page.html", "index.htm", "document.xhtml", "docs.php", "v1.2/guide", "caf%E9"];
     const paths = [...resources, ...pages];
     const html = `<html><body><h1>Home</h1><p>Browse our documentation and resources.</p>${source === "anchors" ? paths.map((p) => `<a href="/${p}">${p}</a>`).join("") : ""}</body></html>`;
     const fetched: string[] = [];

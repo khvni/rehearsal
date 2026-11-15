@@ -158,12 +158,8 @@ function browserSkipped(e: Experiment): boolean {
 
 function isCrawlableLink(href: string | undefined, origin: string): boolean {
   if (!isSameOrigin(href, origin)) return false;
-  try {
-    const pathname = decodeURIComponent(new URL(href!).pathname);
-    return !/\.(?:md|mdx|markdown|txt|json|jsonl|csv|tsv|xml|ya?ml|pdf|docx?|xlsx?|pptx?|rtf|png|jpe?g|gif|svg|webp|avif|ico|bmp|tiff?|mp[34]|webm|ogg|wav|zip|gz|tar|7z|woff2?|ttf|otf|css|[cm]?js)$/i.test(pathname);
-  } catch {
-    return false;
-  }
+  const pathname = new URL(href!).pathname.replace(/%2e/gi, ".");
+  return !/\.(?:md|mdx|markdown|txt|json|jsonl|csv|tsv|xml|ya?ml|pdf|docx?|xlsx?|pptx?|rtf|png|jpe?g|gif|svg|webp|avif|ico|bmp|tiff?|mp[34]|webm|ogg|wav|zip|gz|tar|7z|woff2?|ttf|otf|css|[cm]?js)$/i.test(pathname);
 }
 
 export class Orchestrator {
