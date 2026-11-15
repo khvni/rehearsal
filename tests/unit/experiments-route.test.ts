@@ -49,7 +49,7 @@ describe("POST /api/experiments", () => {
       expect.objectContaining({ trajectories: 1000, verifyCount: 8, maxStates: 50, viewports: ["desktop", "mobile"] }),
       { idempotencyKey: undefined },
     );
-    expect(scheduleRun).toHaveBeenCalledWith("exp_t");
+    expect(scheduleRun).toHaveBeenCalledWith("exp_t", { origin: "http://localhost" });
   });
 
   it("returns the existing record on a repeat Idempotency-Key without creating or scheduling", async () => {
