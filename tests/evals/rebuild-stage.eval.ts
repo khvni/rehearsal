@@ -192,13 +192,16 @@ describe("eval: orchestrator wires the rebuild stage (fixture adapters)", () => 
         viewports: ["desktop"], trajectories: 200, verifyCount: 2, maxStates: 5,
       });
       await orch.rebuild(exp.id);
+      expect((await orch.get(exp.id))!.status).toBe("rebuilding");
+      while (!(await orch.get(exp.id))!.rebuild!.site!.completedAt) await orch.rebuild(exp.id);
       const stored = (await orch.get(exp.id))!;
       expect(stored.status).toBe("complete");
       expect(stored.spec).toBeDefined();
       expect(stored.graph?.states.every((s) => s.brand !== undefined)).toBe(true);
       expect(stored.rebuild).toBeDefined();
       expect(stored.rebuild!.llm).toBe(llm.name);
-      expect(stored.rebuild!.pages.length).toBe(stored.rebuild!.goals.length);
+      expect(stored.rebuild!.pages).toEqual([]);
+      expect(stored.rebuild!.site!.pages.length).toBe(stored.graph!.states.length);
       expect(stored.rebuild!.goals[0].source).toBe("experiment-goal");
       // what GET /api/experiments/[id] serializes must round-trip through the contract
       expect(Experiment.parse(JSON.parse(JSON.stringify(stored))).rebuild).toEqual(stored.rebuild);

@@ -52,7 +52,8 @@ import { contentSignatureFor, isSameOrigin, normalizeSiteUrl } from "./browser/e
 import { errorText } from "./browser/types";
 import { generateSpec, specToMarkdown } from "./analysis/spec";
 import { generateMockup } from "./mockup";
-import { brandSignalsFromHtml, generateRebuild, mergeSignals } from "./rebuild";
+import { brandSignalsFromHtml, inferGoals, rollupBrand, mergeSignals } from "./rebuild";
+import { buildPage, planSite, rebuildPending, REBUILD_BATCH, SITE_BYTE_CAP } from "./rebuild/site";
 import { selectStore } from "./storage";
 import { enqueueRun } from "./access";
 import { continueRun, isWorkersRuntime, runInBackground } from "./jobs";
@@ -432,7 +433,13 @@ export class Orchestrator {
       analyze: () => this.runAnalyze(id),
       compare: () => this.runCompare(id),
       spec: () => this.runSpec(id),
-      rebuild: () => this.runRebuild(id),
+      rebuild: async (deadline) => {
+        do {
+          await this.runRebuild(id);
+          if (!rebuildPending(await this.mustGet(id))) return { complete: true };
+        } while (deadline === undefined || (opts?.now ?? Date.now)() < deadline);
+        return { complete: false };
+      },
     };
     const startAt = cp && (PIPELINE_STAGES as readonly string[]).includes(cp.stage)
       ? cp.stage
@@ -642,10 +649,10 @@ export class Orchestrator {
   }
 
   /** A standalone rebuild gets a fresh call budget: the per-run budget resets only at discover, so a finished run has spent it. */
-  async rebuild(id: string): Promise<Experiment> {
+  async rebuild(id: string, opts?: { restart?: boolean }): Promise<Experiment> {
     return this.exclusive(id, "rebuild", async () => {
       this.llm.resetBudget?.({ experimentId: id });
-      return this.runRebuild(id);
+      return this.runRebuild(id, opts);
     });
   }
 
@@ -1308,19 +1315,44 @@ export class Orchestrator {
     });
   }
 
-  /** Stage 7 — rebuild the site per inferred visitor goal, in the site's own branding. */
-  private async runRebuild(id: string): Promise<Experiment> {
+  /** Stage 7 — one durable site planning or page-building step. */
+  private async runRebuild(id: string, opts?: { restart?: boolean }): Promise<Experiment> {
     const e = await this.mustGet(id);
     if (!e.spec) await this.runSpec(id);
     const exp = await this.mustGet(id);
+    if (exp.rebuild?.site?.completedAt && !opts?.restart) return exp;
+    this.llm.resetBudget?.({ experimentId: id });
     await this.update(exp, "rebuilding");
     return withTrace("rebuild", { experimentId: id, targetUrl: exp.targetUrl }, async () => {
-      exp.rebuild = await generateRebuild(exp, this.llm);
-      const { pages, goals, llm, llmError } = exp.rebuild;
-      const fromLlm = pages.filter((p) => p.source !== "template").length;
-      await this.emit(id, "rebuild", "info", `Rebuilt ${pages.length} page(s) for ${goals.length} goal(s) — ${fromLlm} written by ${llm}, ${pages.length - fromLlm} from templates`);
-      if (llmError) await this.emit(id, "rebuild", "error", `Rebuild copy fell back to templates: ${llmError}`);
-      await this.update(exp, "complete");
+      if (!exp.rebuild?.site || opts?.restart) {
+        const site = await planSite(exp, this.llm);
+        exp.rebuild = { generatedAt: new Date().toISOString(), brand: rollupBrand(exp.graph?.states ?? []), goals: inferGoals(exp), pages: [], llm: this.llm.name, site };
+        await this.emit(id, "rebuild", "info", `Planned ${site.pages.length} site pages (${site.plannerSource})`);
+      } else {
+        const site = exp.rebuild.site;
+        const batch = site.pages.filter(p => p.status === "planned").slice(0, REBUILD_BATCH);
+        const built = await Promise.all(batch.map(p => buildPage(exp, site, p, this.llm)));
+        let total = site.pages.reduce((n, p) => n + (p.bytes ?? 0), 0);
+        let capped = total >= SITE_BYTE_CAP;
+        for (const page of built) {
+          if (capped || total + (page.bytes ?? 0) > SITE_BYTE_CAP) {
+            capped = true;
+            Object.assign(site.pages.find(p => p.path === page.path)!, { status: "failed", issues: ["size cap"] });
+          } else {
+            total += page.bytes ?? 0;
+            site.pages[site.pages.findIndex(p => p.path === page.path)] = page;
+          }
+        }
+        if (capped) for (const page of site.pages) if (page.status === "planned") { page.status = "failed"; page.issues = ["size cap"]; }
+        await this.emit(id, "rebuild", "info", `Built ${site.pages.filter(p => p.status === "built").length} of ${site.pages.length} site pages`);
+        if (!site.pages.some(p => p.status === "planned")) {
+          site.completedAt = new Date().toISOString();
+          const counts = { openrouter: 0, gemini: 0, template: 0, failed: 0, issues: 0 };
+          for (const p of site.pages) { if (p.source) counts[p.source]++; if (p.status === "failed") counts.failed++; counts.issues += p.issues?.length ?? 0; }
+          await this.emit(id, "rebuild", "info", `Site rebuild complete: ${JSON.stringify(counts)}`);
+        }
+      }
+      await this.update(exp, exp.rebuild.site?.completedAt ? "complete" : "rebuilding");
       return exp;
     });
   }
@@ -1483,4 +1515,3 @@ function pagePath(url: string): string {
     return url.slice(0, 80);
   }
 }
-

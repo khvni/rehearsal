@@ -28,6 +28,8 @@ eval cases.** `npm run check:skill-sync` fails the build otherwise.
 - `POST /api/experiments/:id/rescan` re-probes the URLs in `experiment.siteSignatures` with the plain fetcher and compares `contentSignatureFor` — changed pages → artifacts reset + background re-run (202); unchanged → no-op (200); a new `goal` regenerates on the kept graph.
 - `PROVIDER_QUOTA` (`402`/`429` patterns): with a browser-runner crawl, discover falls back from the runner to the plain fetcher; a quota-dominated zero-state crawl throws `PROVIDER_QUOTA` instead of `DISCOVERY_EMPTY`. Firecrawl `402`/`429` responses classify the same way.
 
+Whole-site rebuild: `rebuild(id, {restart?})` persists one planning step or a batch of six pages; pipeline resume loops steps with a fresh LLM budget until the deadline. `rebuildPending` signals continuation. `tests/unit/rebuild-site.test.ts` covers sitemap normalization, planner fallback, page sanitization/retry, links, lint, shared CSS/document shell and durable batches. `rebuild-stage.eval.ts` now checks planning followed by continuation to completion; legacy `generateRebuild` tests remain for old goal pages.
+
 ## Eval cases (tests/evals/, gated by evals.config.json thresholds)
 
 - `core.eval.ts` — extraction coverage, simulation determinism/scale, Jev mapping validity, rubric coverage, stale-date finding (Scenario B), spec completeness, variant idempotency, SSRF guards

@@ -38,7 +38,7 @@ export interface JevClient {
 export interface LlmClient {
   readonly name: string;
   /** `model` is a named slot ("mockup", "rebuild"); adapters resolve it to a configured model id and ignore unknown slots. */
-  complete(prompt: string, opts?: { deep?: boolean; json?: boolean; model?: string }): Promise<string>;
+  complete(prompt: string, opts?: { deep?: boolean; json?: boolean; model?: string; timeoutMs?: number }): Promise<string>;
   /** Start a new per-run call budget (called when an experiment's discover stage begins). */
   resetBudget?(ctx?: CallContext): void;
   /** Per-run call/token totals since construction or the last budget reset. */
