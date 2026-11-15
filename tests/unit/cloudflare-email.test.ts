@@ -72,7 +72,12 @@ describe("Cloudflare email facts and rebuilt links", () => {
       "zzzz",
       "42ff",
       encode("not an email"),
-      encode("team@example.com?subject=injected"),
+      encode("team@example..com"),
+      encode("@example.com"),
+      encode("team@"),
+      encode("team@@example.com"),
+      encode('unquoted"local@example.com'),
+      encode("team@<example.com>"),
       encode("team@example.com\r\nBcc:evil@example.com"),
       "42".repeat(2000),
     ])
@@ -80,6 +85,8 @@ describe("Cloudflare email facts and rebuilt links", () => {
   });
   it.each([
     "o'connor@example.com",
+    "info@उदाहरण.भारत",
+    "team@example.com?subject=injected",
     "!#$%&'*+-/=?^_`{|}~@example.com",
     '"quoted<>&"@example.com',
     '"quoted@local"@example.com',

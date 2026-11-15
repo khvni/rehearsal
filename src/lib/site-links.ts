@@ -19,17 +19,15 @@ export function decodeCloudflareEmail(
     const at = email.lastIndexOf("@");
     const local = email.slice(0, at);
     const domain = email.slice(at + 1);
+    const quotedLocal =
+      local.length > 2 && local.startsWith('"') && local.endsWith('"');
     if (
       email.length <= 254 &&
       at > 0 &&
       !/[\s\p{Cc}]/u.test(email) &&
-      (/^[a-z\d!#$%&'*+/=?^_`{|}~\u0080-\u{10ffff}-]+(?:\.[a-z\d!#$%&'*+/=?^_`{|}~\u0080-\u{10ffff}-]+)*$/iu.test(
-        local,
-      ) ||
-        /^"(?:[^"\\]|\\.)+"$/u.test(local)) &&
-      /^[\p{L}\p{N}](?:[\p{L}\p{N}-]*[\p{L}\p{N}])?(?:\.[\p{L}\p{N}](?:[\p{L}\p{N}-]*[\p{L}\p{N}])?)*$/u.test(
-        domain,
-      )
+      (quotedLocal || !/[<>"\\@]/u.test(local)) &&
+      !/[<>"\\@]/u.test(domain) &&
+      domain.split(".").every(Boolean)
     )
       return email;
   } catch {
@@ -42,7 +40,7 @@ export function emailHref(email: string): string {
   const local = encodeURIComponent(email.slice(0, at))
     .replace(/'/g, "%27")
     .replace(/%2B/gi, "+");
-  return `mailto:${local}@${email.slice(at + 1)}`;
+  return `mailto:${local}@${encodeURIComponent(email.slice(at + 1))}`;
 }
 
 function decodedPath(url: URL): string {
