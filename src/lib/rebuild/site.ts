@@ -872,6 +872,11 @@ export function renderSiteDocument(exp: Experiment, path = "/"): string {
   );
   const base = baseFor(exp);
   const brand = exp.rebuild!.brand;
+  const pageTitle = page?.title ?? "Not rebuilt yet";
+  const normalizeTitle = (text: string) => text.trim().replace(/\s+/g, " ").toLowerCase();
+  const title = normalizeTitle(pageTitle).includes(normalizeTitle(brand.name))
+    ? pageTitle
+    : `${pageTitle} · ${brand.name}`;
   const homePath = homePathFor(site);
   const nav = rewriteSiteLinks(
     site.nav
@@ -911,7 +916,7 @@ export function renderSiteDocument(exp: Experiment, path = "/"): string {
   return [
     '<!doctype html><html lang="en"><head><meta charset="utf-8">',
     '<meta name="viewport" content="width=device-width,initial-scale=1">',
-    `<title>${esc(page?.title ?? "Not rebuilt yet")} · ${esc(brand.name)}</title>`,
+    `<title>${esc(title)}</title>`,
     `<link rel="stylesheet" href="${esc(base)}/_assets/site.css"></head><body>`,
     '<header class="rb-header"><div class="rb-container rb-cluster">',
     `<a class="rb-brand" href="${esc(base)}/">${logo}</a><nav aria-label="Main">${nav}</nav>`,

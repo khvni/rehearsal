@@ -14,6 +14,25 @@ function fixture(count = 8): Experiment {
 const fake = (output = ""): LlmClient => ({ name: "openrouter", complete: vi.fn(async () => output) });
 
 describe("whole-site rebuild", () => {
+  it.each([
+    ["Hikmah School – Islamic School", "Hikmah School – Islamic School", "Hikmah School – Islamic School"],
+    ["Welcome to Hikmah School – Islamic School", "Hikmah School – Islamic School", "Welcome to Hikmah School – Islamic School"],
+    ["HIKMAH SCHOOL – ISLAMIC SCHOOL", "Hikmah School – Islamic School", "HIKMAH SCHOOL – ISLAMIC SCHOOL"],
+    ["  Hikmah   School – Islamic School  ", " Hikmah School  – Islamic School ", "  Hikmah   School – Islamic School  "],
+    ["About Us – Hikmah School", "Hikmah School – Islamic School", "About Us – Hikmah School · Hikmah School – Islamic School"],
+    ["About Us", "Hikmah School", "About Us · Hikmah School"],
+    ["Home", "", "Home"],
+    ["", "Hikmah School", " · Hikmah School"],
+    ["School & <Friends>", "School & <Friends>", "School & <Friends>"],
+  ])("deduplicates the full brand in rebuilt title %j with brand %j", (pageTitle, brandName, expected) => {
+    const exp = fixture(1);
+    const site = deterministicPlan(exp);
+    site.pages[0] = { ...site.pages[0], title: pageTitle, status: "built", html: "<p>Built content</p>" };
+    exp.rebuild = { generatedAt: exp.createdAt, brand: { ...rollupBrand(exp.graph!.states), name: brandName }, goals: [], pages: [], llm: "fixture", site };
+    const rendered = renderSiteDocument(exp);
+    expect(parseHTML(rendered).document.title).toBe(expected);
+    expect(rendered).not.toContain("<Friends>");
+  });
   it("decodes crawled titles, headings and brand text once, then escapes the rendered title once", () => {
     const exp = fixture(1);
     const state = exp.graph!.states[0];
@@ -32,9 +51,9 @@ describe("whole-site rebuild", () => {
     exp.rebuild = { generatedAt: exp.createdAt, brand: rollupBrand(exp.graph!.states), goals: [], pages: [], llm: "fixture", site };
     const rendered = renderSiteDocument(Experiment.parse(exp));
     const renderedTitle = rendered.match(/<title>(.*?)<\/title>/)?.[1];
-    expect(renderedTitle).toBe("Hikmah – School &amp; Friends ’ &lt;script&gt;alert(1)&lt;/script&gt; · School &amp; Friends ’ &lt;script&gt;alert(1)&lt;/script&gt;");
+    expect(renderedTitle).toBe("Hikmah – School &amp; Friends ’ &lt;script&gt;alert(1)&lt;/script&gt;");
     expect(rendered).not.toContain("<script>");
-    expect(parseHTML(rendered).document.title).toBe(`${state.pageTitle} · ${exp.rebuild.brand.name}`);
+    expect(parseHTML(rendered).document.title).toBe(state.pageTitle);
   });
   it.each([
     ["https://www.youtube.com/watch?v=demo", "https://www.youtube.com/@acme?feature=footer#about"],
