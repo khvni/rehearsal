@@ -38,8 +38,10 @@ fetches a third-party resource. `GET /mockups` lists experiments that have one. 
 experiment, no mockup yet, or an unknown slug.
 
 `config` is an optional `ExperimentConfig`: `seed` (1337), `maxStates` (30), `maxDepth` (3),
-`trajectories` (1000), `verifyCount` (8), `viewports` (`["desktop","mobile"]`). These budgets
+`trajectories` (1000), `verifyCount` (8), `viewports` (`["desktop","mobile"]`),
+`firecrawlMapLimit` (20 — seed-expansion links from Firecrawl `/v1/map` when the plain crawl
+finds few; only fires with `FIRECRAWL_API_KEY`). These budgets
 are per experiment; there are no env overrides. Upper bounds (`EXPERIMENT_LIMITS`): `maxStates` ≤ 50,
-`maxDepth` ≤ 5, `trajectories` ≤ 5000, `verifyCount` ≤ 16, `viewports` at most 2 distinct values.
+`maxDepth` ≤ 5, `trajectories` ≤ 5000, `verifyCount` ≤ 16, `firecrawlMapLimit` ≤ 100, `viewports` at most 2 distinct values.
 A config outside these bounds gets a 400 `{error: "invalid config", issues}`.
 Stored experiments created before these bounds still load, with each budget clamped to its limit.

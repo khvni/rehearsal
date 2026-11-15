@@ -56,6 +56,7 @@ describe("LLM output is validated against the contracts before it is stored", ()
     const orch = new Orchestrator({
       runner, store, jev: new FixtureJevClient(), llm: stubLlm({ ASSERTION_LIST: BOGUS_ASSERTIONS }),
       fetcher: { name: "fixture-fetch", fetchHtml: async () => "" },
+      probeFetcher: { name: "fixture-fetch", fetchHtml: async () => PAGE },
     });
     const exp = await orch.createExperiment("https://acme.test", "find the pricing page", {
       viewports: ["desktop"], trajectories: 10, verifyCount: 1, maxStates: 2, maxDepth: 1,
@@ -73,6 +74,7 @@ describe("LLM output is validated against the contracts before it is stored", ()
       runner, store: new JsonFileStore(dir), jev: new FixtureJevClient(),
       llm: stubLlm({ ASSERTION_LIST: JSON.stringify([{ kind: "anything", value: "x", selector: null }]) }),
       fetcher: { name: "fixture-fetch", fetchHtml: async () => "" },
+      probeFetcher: { name: "fixture-fetch", fetchHtml: async () => PAGE },
     });
     const exp = await orch.createExperiment("https://acme.test", "find the pricing page", {
       viewports: ["desktop"], trajectories: 10, verifyCount: 1, maxStates: 2, maxDepth: 1,

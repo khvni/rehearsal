@@ -24,16 +24,18 @@
    │      │      │      │      └─ mulberry32 seeded sampler, profiles, risk rank
    │      │      │      └─ JevClient (OpenRouter decisions) | FixtureJevClient
    │      │      └─ stateHash dedup, adjacency
-   │      └─ selectRunner(): BrightDataBrowserRunner → StagehandRunner → PlaywrightRunner
-   └─ BrightDataFetcher (Web Unlocker) → BrowserbaseFetcher → PlainFetcher + SSRF guards + politeness
+   │      └─ selectRunner(): local Playwright by default; REHEARSAL_BROWSER opts into Browserbase backends
+   └─ PlainFetcher → FirecrawlClient (hosted scrape/map fallback) → BrowserbaseFetcher + SSRF guards + politeness
 
 telemetry: Sentry (SENTRY_DSN) + data/events/*.jsonl → /api/hooks/sentry → first-responder issue (docs/telemetry.md)
 ```
 
 ## Data flow
 
-1. **discover**: fetch → render → extract actions → `GraphBuilder` dedups by `stateHash`
-   (normalized URL + viewport + action signature + modal flag). Budget: 30 states / depth 3.
+1. **discover**: plain fetch → extract actions (a page that looks like a JS shell retries via
+   Firecrawl `/v1/scrape`; a seed with few links gets one `/v1/map` expansion bounded by
+   `config.firecrawlMapLimit`) → `GraphBuilder` dedups by `stateHash` (normalized URL + viewport
+   + action signature + modal flag). Budget: 30 states / depth 3.
 2. **simulate**: a bounded persona swarm (`maxAgents`/~200, `maxStepsPerAgent`, `maxConcurrentAgents`)
    walks the live site — one `runPersonaJourney` browser invocation per agent. Each step is one
    batched `jev.decide` scoring every candidate action plus a `__leave__` option; a seeded RNG
@@ -61,23 +63,17 @@ telemetry: Sentry (SENTRY_DSN) + data/events/*.jsonl → /api/hooks/sentry → f
 `src/lib/browser/runner.ts#selectRunner` picks a `BrowserRunner` from env (`runner.name` is
 logged as the `browser-runner` telemetry event at the start of discover):
 
-| Priority | Condition | State capture (`openPage`) | Trajectories (`runTrajectory`) |
-|---|---|---|---|
-| 1 | `BRIGHTDATA_BROWSER_WS` or `BRIGHTDATA_BROWSER_USER`+`_PASSWORD` | Bright Data Browser API | Stagehand on Browserbase if `BROWSERBASE_API_KEY`, else Bright Data |
-| 2 | `BROWSERBASE_API_KEY` | Stagehand on Browserbase | Stagehand on Browserbase |
-| 3 | no keys | local Playwright Chromium | local Playwright Chromium |
+| `REHEARSAL_BROWSER` | Backend |
+|---|---|
+| `auto` (default) | local Playwright Chromium (UnavailableRunner on workerd) |
+| `browserbase-function` | published Browserbase Function (`BROWSERBASE_API_KEY` + `BROWSERBASE_FUNCTION_ID`) |
+| `stagehand` | in-process Stagehand on Browserbase (`BROWSERBASE_API_KEY`) |
+| `stagehand-local` | Stagehand on a local Chrome (`STAGEHAND_CHROME_PATH`) |
+| `playwright` | local Playwright Chromium |
 
-`REHEARSAL_BROWSER=brightdata|stagehand|stagehand-local|playwright` forces a backend (falls
-back to local Playwright when its keys are missing). Evals and e2e never touch a vendor.
-
-**Bright Data Browser API** (`brightdata.ts`) — Playwright `connectOverCDP` to
-`wss://<user>:<pass>@brd.superproxy.io:9222`. Session limits: a session is pinned to one
-domain (`navigate_domains_limit`), closes after 5 min idle, and has a hard max length (the
-product docs say 60 min; Bright Data's agent best-practices guide says one initial navigation
-and 30 min). We design for the stricter reading: **every captured state opens a new session
-with exactly one navigation**, and each trajectory gets one session that navigates once and
-then advances by clicking (same-origin `goto` is only a fallback). Navigation timeout is 120 s,
-as Bright Data recommends for unlocking.
+`auto` never spends hosted quota: discovery crawls with the plain fetcher (+ Firecrawl
+fallback) and hosted backends run only when `REHEARSAL_BROWSER` names one. A forced
+backend with missing keys falls back to local Playwright. Evals and e2e never touch a vendor.
 
 **Stagehand v4** (`stagehand.ts`) — `Stagehand.create({ browser: browserbase.launch(...) })`.
 Each step tries a deterministic XPath locator for the action's label/role first; if the label
@@ -85,15 +81,13 @@ no longer matches it falls back to `act()` (natural language, `selfHeal: true`).
 a model: `STAGEHAND_MODEL`, else our `GEMINI_API_KEY` as `google/$GEMINI_MODEL_FAST`, else the
 Browserbase Model Gateway (Browserbase only; it does not serve local browsers). Stagehand can
 also drive a local Chrome (`stagehand-local`), but it is not the zero-key default — local
-Playwright stays the hermetic fallback. Stagehand cannot attach to a Bright Data CDP session
-(its `localBrowser.connect` needs its extension loaded from a shared filesystem), so the two
-vendors are combined by routing, not by sharing a browser.
+Playwright stays the hermetic fallback.
 
 **Agent-driven verify** (`browser/agent.ts`) — `REHEARSAL_VERIFY_AGENT` swaps `runTrajectory`
 for `runAgentTask`: an observe/act/extract loop (Stagehand v4 primitives) where each step
 observes candidate elements in natural language and clicks the first safe one (click only,
 never a form control or submit), instead of pinning to scripted locators. `BrowserRunner.supportsAgent` gates it; without a model (or on the
-Playwright/Bright Data backends) verify falls back to `runTrajectory` — see docs/sandbox.md
+Playwright backend) verify falls back to `runTrajectory` — see docs/sandbox.md
 for why this pattern (Vercel's agent-browser snapshot→refs→act model via Stagehand's API).
 
 **Code sandbox** (`src/lib/sandbox`) — `CodeSandbox.run` executes agent-generated test code
@@ -104,14 +98,15 @@ else an isolated `node:worker_threads`+`vm` worker. Playwright cannot run on
 workerd, so the node adapter is the CI/dev path and the container adapter carries the Workers
 deploy — details and the binding setup in docs/sandbox.md.
 
-**Fetch** (`src/lib/fetch`) — Bright Data Web Unlocker (`POST https://api.brightdata.com/request`
-with `{ zone, url, format: "raw" }`) → Browserbase Fetch (`browserbase.fetch`) → plain `fetch`.
+**Fetch** (`src/lib/fetch`) — plain `fetch` first; Firecrawl (`POST
+https://api.firecrawl.dev/v1/scrape` / `/v1/map`, `Bearer FIRECRAWL_API_KEY`) is the hosted
+fallback for JS-shell pages and seed expansion; Browserbase Fetch (`browserbase.fetch`) remains
+available as a fetcher when keyed. `selectFetcher()` picks Firecrawl → Browserbase → plain.
 Every path runs `assertPublicUrl` + per-host politeness first. Plain fetches re-check every
 redirect hop. Local Chromium sends every request (redirects and subresources too) through a
 loopback egress proxy (`fetch/egress-proxy.ts`) that resolves each host, refuses private,
 link-local and metadata addresses, and connects to the IP it checked; runners also re-check
-`page.url()` after each navigation. Bright Data SERP API and Web
-Scraper API / datasets target search engines and prebuilt site scrapers, so they are not wired.
+`page.url()` after each navigation.
 
 ## Environment variables
 
@@ -126,8 +121,7 @@ a variable that is missing here or in `.env.example`, or if `.env.example` lists
 | `REHEARSAL_GEMINI_MAX_CALLS` | `analysis/gemini.ts` | `6` Gemini calls per run (reset at discover), first come first served; a run makes up to 6 (assertions, goal intent, visitor questions, findings, spec, mockup), and calls past the cap use the deterministic fallback |
 | `JEV_API_KEY` (or `OPENROUTER_API_KEY`) | `decisions/jev.ts` | `FixtureJevClient` |
 | `JEV_BASE_URL` / `JEV_MODEL` | `decisions/jev.ts` | `https://api.typesafe.ai/v1/systemone` / `jev-latest` |
-| `BRIGHTDATA_API_KEY` + `BRIGHTDATA_ZONE` | `fetch/index.ts` | Web Unlocker skipped (both are required) |
-| `BRIGHTDATA_BROWSER_WS`, or `BRIGHTDATA_BROWSER_USER` + `BRIGHTDATA_BROWSER_PASSWORD` | `browser/brightdata.ts` | Bright Data Browser API skipped |
+| `FIRECRAWL_API_KEY` | `fetch/firecrawl.ts`, `orchestrator.ts` | Discovery is plain-fetch only (no hosted fallback, no `/v1/map` expansion) |
 | `BROWSERBASE_API_KEY` / `BROWSERBASE_PROJECT_ID` | `fetch/index.ts`, `browser/runner.ts` | Browserbase Fetch + Stagehand on Browserbase skipped |
 | `STAGEHAND_MODEL` / `STAGEHAND_MODEL_API_KEY` | `browser/stagehand.ts` | `google/$GEMINI_MODEL_FAST` with `GEMINI_API_KEY` |
 | `STAGEHAND_CHROME_PATH` | `browser/runner.ts` | Stagehand's default Chrome lookup (`stagehand-local` only) |

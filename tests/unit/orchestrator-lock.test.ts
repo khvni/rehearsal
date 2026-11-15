@@ -1,5 +1,5 @@
-import { describe, expect, it } from "vitest";
-import { Experiment, type BrowserRunner, type ExperimentStore } from "@/lib/contracts";
+import { afterEach, describe, expect, it } from "vitest";
+import { Experiment, type BrowserRunner, type ExperimentStore, type PageFetcher } from "@/lib/contracts";
 import { FixtureJevClient } from "@/lib/decisions/jev";
 import { FixtureLlmClient } from "@/lib/analysis/gemini";
 import { Orchestrator, StageInProgressError } from "@/lib/orchestrator";
@@ -7,9 +7,16 @@ import { Orchestrator, StageInProgressError } from "@/lib/orchestrator";
 const URL_A = "https://example.com/";
 const PAGE = "<html><head><title>Home</title></head><body><h1>Welcome</h1><p>No links here.</p></body></html>";
 
+afterEach(() => {
+  delete process.env.REHEARSAL_BROWSER;
+});
+
 function setup() {
+  // Opt the crawl into the runner so the gating page load keeps measuring the lock.
+  process.env.REHEARSAL_BROWSER = "playwright";
   const gates: (() => void)[] = [];
   const opened: string[] = [];
+  const probeFetcher: PageFetcher = { name: "stub-fetch", fetchHtml: async () => PAGE };
   const runner: BrowserRunner = {
     name: "slow-stub",
     async openPage(url) {
@@ -35,7 +42,7 @@ function setup() {
     async activity() { return []; },
   };
   const orch = new Orchestrator({
-    runner, store, jev: new FixtureJevClient(), llm: new FixtureLlmClient(),
+    runner, probeFetcher, store, jev: new FixtureJevClient(), llm: new FixtureLlmClient(),
     fetcher: { name: "stub-fetch", fetchHtml: async () => "" },
   });
   const seed = async (id: string) =>

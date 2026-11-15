@@ -68,7 +68,7 @@ export async function assertPublicPage(page: Page): Promise<void> {
   if (/^https?:/i.test(url)) await assertPublicUrl(url);
 }
 
-/** Shared Playwright trajectory loop used by the local and Bright Data runners. */
+/** Shared Playwright trajectory loop used by the local and hosted-browser runners. */
 export async function executeTrajectory(
   page: Page,
   args: TrajectoryArgs,

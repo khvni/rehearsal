@@ -16,8 +16,8 @@ Demo target: https://ai.engineer/code/2026
 |---|---|
 | App | Next.js 16 + React 19 + TypeScript |
 | Graph | @xyflow/react |
-| Browser | Bright Data Browser API (CDP) → Browserbase Stagehand → local Playwright |
-| Page fetch | Bright Data Web Unlocker → Browserbase Fetch → fetch fallback |
+| Browser | local Playwright (Browserbase Stagehand/Function via `REHEARSAL_BROWSER`) |
+| Page fetch | plain fetch → Firecrawl (scrape/map) → Browserbase Fetch |
 | Decisions | Jev System One (`typesafe/jev-1.13` via OpenRouter decisions API) |
 | LLM | Gemini: `gemini-4-hydrogen` (fast) + `gemini-4-argon` (deep) |
 | Persistence | JSON files → Tiger Data (`DATABASE_URL`) |
@@ -54,7 +54,8 @@ and writes `docs/runs/<host>/{spec.md,summary.json}`. `npm run site -- --all` ru
 site in `docs/runs/sites.json` and rebuilds the table in `docs/runs/README.md`.
 Flags: `--max-states 15 --trajectories 300 --verify 4 --max-depth 3 --viewports desktop --timeout-min 5 --agents 20 --agent-steps 8 --agent-concurrency 3` (the persona-swarm flags keep live-site load polite; the app default is 200 agents).
 Sites that block local Playwright (bot wall, captcha, hung renderer) are recorded as
-`blocked`, with the reason. The Bright Data runner is for those.
+`blocked`, with the reason. `FIRECRAWL_API_KEY` adds a hosted fetch fallback for JS-heavy
+pages; `REHEARSAL_BROWSER` opts into the hosted Browserbase backends.
 
 ## API
 

@@ -43,7 +43,7 @@ That run also produced a bad finding. The top "verified failure" was `url-matche
 | snowflake.com | start a free trial | complete | 15 | 143 | 0/2/2/0 | 57 |
 | tigerdata.com | find pricing and sign up | complete | 15 | 136 | 0/2/3/0 | 41 |
 
-9 of 11 sites completed with no keys. The 2 blocked sites need a real browser network, which is what the Bright Data Browser API is for (below). No site had any of its 4 verify runs count as "fully successful". That bar is strict: it also needs zero page and console errors. On live third-party sites, read it as a signal, not a pass rate.
+9 of 11 sites completed with no keys. The 2 blocked sites need a hosted fetch/browser, which is what the Firecrawl and opt-in Browserbase paths are for (below). No site had any of its 4 verify runs count as "fully successful". That bar is strict: it also needs zero page and console errors. On live third-party sites, read it as a signal, not a pass rate.
 
 ## Prize categories
 
@@ -61,12 +61,12 @@ Every module named here exists on `main` unless marked otherwise. Every vendor a
 - `scoreActions()` asks two **typed** questions per state. One is a `choice` keyed by the real `actionId`s, so the model can't pick an action that doesn't exist. The other is a `score` for state ambiguity. The returned distributions become transition weights for the seeded journey simulator.
 - Each discovered state is scored once (`orchestrator.ts`: "Score each state's actions once"). States are already deduped by `stateHash`, so Jev cost grows with unique page states, not with trajectories: 300–1,000 journeys reuse one decision per state. The PRD's `(stateHash, intent, persona)` cross-run cache is specified but not built yet.
 
-### Best Use of Bright Data
+### Hosted fetch/browser fallbacks (Firecrawl + Browserbase)
 
-- `src/lib/fetch/index.ts`: `BrightDataFetcher` uses Web Unlocker (`POST https://api.brightdata.com/request`, `BRIGHTDATA_API_KEY` + `BRIGHTDATA_ZONE`). It is first in `selectFetcher()`, ahead of Browserbase Fetch and plain fetch.
-- `src/lib/browser/brightdata.ts` + `src/lib/browser/runner.ts`: `BrightDataBrowserRunner` uses the Browser API over CDP (`BRIGHTDATA_BROWSER_WS` or `_USER`/`_PASSWORD`) with one fresh session per page. It is first in `selectRunner()`. When Browserbase is also configured, `CompositeRunner` sends state capture to Bright Data and multi-step trajectories to Stagehand.
-- Every outbound URL goes through `assertPublicUrl` (`src/lib/fetch/guards.ts`) before Bright Data sees it.
-- Why it matters: in the keyless sweep, keysight.com hit a Cloudflare challenge and hyperframes.studio hung headless Chromium. Those are the sites the Bright Data path exists for.
+- `src/lib/fetch/firecrawl.ts`: `FirecrawlClient` calls `POST https://api.firecrawl.dev/v1/scrape` and `/v1/map` (`FIRECRAWL_API_KEY`). Discovery crawls with the plain fetcher first; a page that looks like a JS shell retries via scrape, and a seed with few links gets one bounded `/v1/map` expansion (`config.firecrawlMapLimit`). `interact` (scrape + `actions`) is reserved for bounded verify replays. First in `selectFetcher()`, ahead of Browserbase Fetch and plain fetch.
+- `src/lib/browser/runner.ts`: `selectRunner()` defaults to local Playwright — `auto` never spends hosted quota. `REHEARSAL_BROWSER` opts into the Browserbase backends (`browserbase-function`, `stagehand`, `stagehand-local`).
+- Every outbound URL goes through `assertPublicUrl` (`src/lib/fetch/guards.ts`) before a hosted vendor sees it.
+- Why it matters: in the keyless sweep, keysight.com hit a Cloudflare challenge and hyperframes.studio hung headless Chromium. Those are the sites the hosted paths exist for.
 
 ### Sentry
 
@@ -84,7 +84,7 @@ Every module named here exists on `main` unless marked otherwise. Every vendor a
 
 ### DigitalOcean
 
-- `terraform/digitalocean`: a `digitalocean_droplet` with cloud-init (`cloud-init.yaml.tftpl`), plus `digitalocean_firewall` and a `digitalocean_record`. Outputs are `droplet_ip` and `app_url`. App env vars (`GEMINI_API_KEY`, `JEV_API_KEY`, `BRIGHTDATA_*`, `SENTRY_DSN`, `DATABASE_URL`) map from Terraform variables, and `check:facts` checks that mapping. `terraform fmt`/`validate` run in CI (PR #1). There is also a sibling `terraform/cloudflare` Workers stack. `terraform apply` is a human-only step (docs/verification.md, layer 3). It was run by hand for the live demo (see the table below).
+- `terraform/digitalocean`: a `digitalocean_droplet` with cloud-init (`cloud-init.yaml.tftpl`), plus `digitalocean_firewall` and a `digitalocean_record`. Outputs are `droplet_ip` and `app_url`. App env vars (`GEMINI_API_KEY`, `JEV_API_KEY`, `BROWSERBASE_*`, `SENTRY_DSN`, `DATABASE_URL`) map from Terraform variables, and `check:facts` checks that mapping. `terraform fmt`/`validate` run in CI (PR #1). There is also a sibling `terraform/cloudflare` Workers stack. `terraform apply` is a human-only step (docs/verification.md, layer 3). It was run by hand for the live demo (see the table below).
 
 ### HyperFrames
 
@@ -114,7 +114,7 @@ Agents built this repo. The rules they work under are code in the repo too.
 | Intent model, endpoint weighting, page metrics, visitor questions, principle-cited findings | **Proven** in evals and the sweep |
 | Factory (rulesets, review policy, lint rules, check:facts, skill-sync, snapshot health) | **Proven**: running in CI. Applying the ruleset needs repo admin (`factory:sync -- --apply`) |
 | **Gemini** `GEMINI_API_KEY` | **Live-verified** 2026-11-13: `gemini-4-hydrogen` returns findings on the real key. `gemini-4-argon` hits HTTP 429 (quota/billing) on the supplied key; the client falls back to hydrogen and logs the event (PR #24). `REHEARSAL_GEMINI_MAX_CALLS` caps calls per run |
-| **Bright Data** `BRIGHTDATA_API_KEY`, `BRIGHTDATA_ZONE`, `BRIGHTDATA_BROWSER_WS` | **Live-verified**: zones `rehearsal_unlocker` + `rehearsal_browser` created via the Account Management API (admin key). Web Unlocker fetched keysight.com (200, the site local Playwright is blocked on); Browser API CDP session loaded ai.engineer in ~6s and the live AIE run used `brightdata-browser-api` for browser verification |
+| **Firecrawl** `FIRECRAWL_API_KEY` | **Wired, untested**: scrape/map discovery fallback + bounded `interact` replays; no key supplied |
 | **Tiger Data** `TIGERDATA_URL` | **Live-verified**: `TigerDataStore` connects and lists experiments (PostgreSQL 18.6 + TimescaleDB). Requires the `sslmode=require` handling in `src/lib/storage/index.ts` (PRs #26/#28) |
 | **Sentry** `SENTRY_DSN` + `SENTRY_WEBHOOK_SECRET` | **Wired**: SDK `register()` + `onRequestError` in `src/instrumentation.ts`, stage spans, `POST /api/hooks/sentry` → `first-responder` GitHub issue (PR #21). Live telemetry needs the DSN deployed + the Sentry internal integration/alert rule configured (docs/telemetry.md) |
 | **Jev** `JEV_BASE_URL`/`JEV_API_KEY` | **Fixture only**: the supplied key 401s against OpenRouter's decisions endpoint; needs the real Jev endpoint/model. Pipeline falls back to the deterministic fixture scorer |
@@ -141,10 +141,10 @@ Paste `https://ai.engineer/code/2026` and a goal, click **Rehearse**, and open `
 - **Project name:** Rehearsal
 - **short_description:** Tries real visitor journeys on a public site and returns a ranked rebuild spec, with evidence for each change.
 - **description:** Rehearsal sorts visitor goals into Information, Quotation or Proposal, finds and weights the pages that answer them, builds the journey tree, checks it in real browsers, and writes spec.md: fixes citing usability principles plus a rebuild plan. See the README.
-- **technologies:** TypeScript, Next.js 16, Playwright, Zod, Terraform, Gemini API (gemini-4-hydrogen/argon), Bright Data Web Unlocker + Browser API, Browserbase Stagehand, Jev (system-one decision model), Sentry SDK, Tiger Data (Postgres/TimescaleDB), DigitalOcean, HyperFrames.
+- **technologies:** TypeScript, Next.js 16, Playwright, Zod, Terraform, Gemini API (gemini-4-hydrogen/argon), Firecrawl, Browserbase Stagehand, Jev (system-one decision model), Sentry SDK, Tiger Data (Postgres/TimescaleDB), DigitalOcean, HyperFrames.
 - **ai_tools (what built it):** Devin (SWE-2 Lightning subagents + orchestrator) on Cognition's harness.
 - **github link:** https://github.com/khvni/rehearsal
 - **demo video:** `demo/video/out/rehearsal-demo.mp4` (in repo). Attach it in the form.
 - **live demo:** http://146.190.113.82 (DigitalOcean droplet).
 - **extra_links:** "11-site sweep" → docs/runs/README.md · "Factory as code" → docs/factory.md · "Telemetry" → docs/telemetry.md
-- **sponsor_usage:** Gemini API: fast+deep models drive assertion compilation and rubric findings with deterministic fallback and per-run budget (REHEARSAL_GEMINI_MAX_CALLS); DigitalOcean: droplet stack in terraform/digitalocean deployed at the live demo URL; Tiger Data: experiments persist to Postgres/TimescaleDB via TigerDataStore (verified live); Bright Data: Web Unlocker fetches protected pages and Browser API sessions power state capture + verification (zones created via Account Management API); HyperFrames: the demo video is a HyperFrames composition (demo/video) rendered with hyperframes@0.9.42; Sentry: SDK wiring, stage spans, and a signed webhook that files first-responder issues; System One Models: Jev drives per-state action scoring in simulate; Software Factory: factory-as-code in factory/, contracts-first lint, spec-delta CI, hourly snapshot rebuilds, layered verification.
+- **sponsor_usage:** Gemini API: fast+deep models drive assertion compilation and rubric findings with deterministic fallback and per-run budget (REHEARSAL_GEMINI_MAX_CALLS); DigitalOcean: droplet stack in terraform/digitalocean deployed at the live demo URL; Tiger Data: experiments persist to Postgres/TimescaleDB via TigerDataStore (verified live); Firecrawl: scrape/map endpoints back discovery on JS-heavy pages; HyperFrames: the demo video is a HyperFrames composition (demo/video) rendered with hyperframes@0.9.42; Sentry: SDK wiring, stage spans, and a signed webhook that files first-responder issues; System One Models: Jev drives per-state action scoring in simulate; Software Factory: factory-as-code in factory/, contracts-first lint, spec-delta CI, hourly snapshot rebuilds, layered verification.

@@ -151,6 +151,13 @@ describe("eval: orchestrator analyze/spec emit each finding once across states",
     const orch = new Orchestrator({
       runner, store, jev: new FixtureJevClient(), llm: new FixtureLlmClient(),
       fetcher: { name: "fixture-fetch", fetchHtml: async () => "" },
+      probeFetcher: {
+        name: "fixture-fetch",
+        async fetchHtml(url) {
+          if (!url.startsWith("https://ai.engineer/")) throw new Error(`no fixture for ${url}`);
+          return aieHtml;
+        },
+      },
     });
     const exp = await orch.createExperiment(AIE_URL, "find the conference schedule", {
       viewports: ["desktop"], trajectories: 200, verifyCount: 2, maxStates: 4,

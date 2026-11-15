@@ -31,7 +31,7 @@ on the droplet IP.
 | `ssh_key_fingerprints` | yes | — | DO SSH keys; Terraform needs one to write `/etc/rehearsal/env` |
 | `ssh_private_key` | no | `""` (ssh-agent) | private key for one of `ssh_key_fingerprints` |
 | `github_repo` / `git_ref` | no | `khvni/rehearsal` / `main` | |
-| `gemini_api_key`, `jev_api_key`, `brightdata_api_key`, `brightdata_zone`, `sentry_dsn`, `database_url` | no | `""` | written to `/etc/rehearsal/env` (0600) over SSH |
+| `gemini_api_key`, `jev_api_key`, `browserbase_api_key`, `browserbase_project_id`, `browserbase_function_id`, `sentry_dsn`, `database_url` | no | `""` | written to `/etc/rehearsal/env` (0600) over SSH |
 
 ```bash
 cd terraform/digitalocean
@@ -69,7 +69,7 @@ from wrangler are ignored by Terraform. Keep `worker_name` equal to `name` in th
 | `workers_dev_subdomain` | no | `""` | only used to build `app_url` when no `domain` |
 | `worker_name` | no | `rehearsal` | |
 | `rehearsal_access_token` | no | `""` | shared secret for the dashboard + API; empty = public demo |
-| `gemini_api_key`, `jev_api_key`, `brightdata_api_key`, `brightdata_zone`, `sentry_dsn` | no | `""` | empty values are not bound |
+| `gemini_api_key`, `jev_api_key`, `browserbase_api_key`, `browserbase_project_id`, `browserbase_function_id`, `sentry_dsn` | no | `""` | empty values are not bound |
 
 ```bash
 cd terraform/cloudflare
