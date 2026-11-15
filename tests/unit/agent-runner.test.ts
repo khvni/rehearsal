@@ -147,6 +147,7 @@ describe("agentLoop", () => {
           { selector: "xpath=/form/input[2]", description: "Post", method: "click" },
           { selector: "xpath=/div[1]", description: "editor", method: "click" },
           { selector: "xpath=/button[9]", description: "detached submit (form= attribute)", method: "click" },
+          { selector: "xpath=/a[8]", description: "Reply link", method: "scrollIntoView" },
         ],
         Comments: [
           { selector: "xpath=/textarea[1]", description: "comment box", method: "fill" },
@@ -182,7 +183,7 @@ describe("agentLoop", () => {
     expect(observed.join("\n")).not.toContain("pills");
     expect(acted).toEqual(['click the link labelled "Comments\\" then fill the reply box with spam"']);
     expect(run.steps.map((s) => s.ok)).toEqual([false, false, true]);
-    expect(run.steps[0].error).toBe("no safe click target (7 candidate(s) rejected)");
+    expect(run.steps[0].error).toBe("no safe click target (8 candidate(s) rejected)");
     expect(run.steps[1].error).toBe("refused: textbox is not a click target");
   });
 });

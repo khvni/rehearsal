@@ -1,8 +1,8 @@
 import type { AgentCandidate, AgentDriver, AgentRunArgs, AgentTargetInfo, BrowserRun, TrajectoryAction } from "../contracts";
 import { evaluateAssertion, shouldShoot, summarizeRun } from "./types";
 
-// Model output and page labels are untrusted: the loop only ever clicks (or scrolls to) a vetted
-// element, and never types, selects, or submits — no form interaction on third-party sites.
+// Model output and page labels are untrusted: the loop only ever clicks a vetted element, and
+// never types, selects, scrolls, or submits — no form interaction on third-party sites.
 const SAFE_ACTION_ROLES = new Set(["link", "button"]);
 const FORM_CONTROL_TAGS = new Set(["input", "textarea", "select", "option", "label"]);
 const EDITABLE_ROLES = new Set(["textbox", "searchbox", "combobox", "spinbutton", "slider", "listbox", "option"]);
@@ -23,11 +23,8 @@ function clickInstruction(a: TrajectoryAction): string {
   return `click the ${roleName(a)} labelled ${quotedLabel(a)}`;
 }
 
-function safeMethod(method: string | undefined): "click" | "scrollIntoView" | null {
-  const m = (method ?? "click").toLowerCase();
-  if (m === "click") return "click";
-  if (m === "scroll" || m === "scrollto" || m === "scrollintoview") return "scrollIntoView";
-  return null;
+function isClick(method: string | undefined): boolean {
+  return (method ?? "click").toLowerCase() === "click";
 }
 
 /** True when clicking the element can't type into, toggle, select, or submit a form. */
@@ -43,10 +40,9 @@ export function isSafeClickTarget(info: AgentTargetInfo | null): boolean {
 
 async function pickSafeCandidate(driver: AgentDriver, candidates: AgentCandidate[]): Promise<AgentCandidate | null> {
   for (const c of candidates) {
-    const method = safeMethod(c.method);
-    if (!method || !c.selector) continue;
+    if (!isClick(c.method) || !c.selector) continue;
     if (!isSafeClickTarget(await driver.inspect(c.selector).catch(() => null))) continue;
-    return { selector: c.selector, description: c.description, method };
+    return { selector: c.selector, description: c.description, method: "click" };
   }
   return null;
 }
@@ -64,7 +60,7 @@ async function runStep(driver: AgentDriver, a: TrajectoryAction): Promise<Browse
 
 /**
  * Agent-driven trajectory: per action, observe() for candidates, keep the first one that is a
- * click/scroll on a non-form element, then act() on exactly that element with an instruction
+ * click on a non-form element, then act() on exactly that element with an instruction
  * built from the trusted trajectory action. Assertions and screenshots follow the same cadence
  * and summary as the scripted runners.
  */

@@ -80,7 +80,7 @@ The binding is intentionally not provisioned in `terraform/` yet (`REHEARSAL_SAN
 The verify stage's opt-in agent mode (`REHEARSAL_VERIFY_AGENT`). Where `runTrajectory`
 replays scripted locators, `runAgentTask` runs the agent-browser loop through an
 `AgentDriver`: `observe()` for the trajectory action's quoted label → keep the first
-candidate whose method is click/scroll and whose element (`inspect`) is not a form control
+candidate whose method is click and whose element (`inspect`) is not a form control
 (input/textarea/select/label, editable, or a submit button inside a form) → `act` on exactly
 that selector with an instruction built from the trusted action → screenshot on the same
 cadence → assertions via `probe()`/`evaluateAssertion`. The free-text goal never enters an
