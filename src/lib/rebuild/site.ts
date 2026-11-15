@@ -7,7 +7,7 @@ import {
   type LlmClient,
   type RebuildSitePage,
 } from "../contracts";
-import { rollupBrand } from "./brand";
+import { cleanNavLabel, rollupBrand } from "./brand";
 import { escapeHtml as esc, sanitizeRebuildHtml } from "./sanitize";
 import { PLANNER_RULES, IMPLEMENTER_RULES } from "./design-rules";
 import { SITE_CSS, CLASS_VOCABULARY } from "./site-css";
@@ -158,7 +158,17 @@ export function deterministicPlan(exp: Experiment): RebuildSite {
     : pages.slice(0, 7).map((p) => ({ label: p.title, path: p.path }));
   const footerLinks = pages
     .filter((p) => !nav.some((n) => n.path === p.path))
+    .sort((a, b) => {
+      const rank = (path: string) =>
+        /\b(contact|about|team|join|support|resources|projects|docs|privacy|terms|accessibility)\b/i.test(
+          path,
+        )
+          ? 0
+          : path.split("/").length;
+      return rank(a.path) - rank(b.path);
+    })
     .map((p) => ({ label: p.title, href: p.path }));
+  const socialLinks = new Map<string, { label: string; href: string }>();
   for (const state of exp.graph?.states ?? [])
     for (const action of state.actions) {
       if (!action.href || !action.label.trim()) continue;
@@ -174,8 +184,21 @@ export function deterministicPlan(exp: Experiment): RebuildSite {
             /^https?:$/.test(url.protocol) &&
             !sameOrigin(url, new URL(exp.targetUrl)))
         ) {
-          if (!footerLinks.some((l) => l.href === url.href))
-            footerLinks.push({ label: action.label, href: url.href });
+          url.search = "";
+          url.hash = "";
+          const key =
+            url.protocol === "mailto:"
+              ? "mailto:"
+              : url.hostname.replace(/^www\./, "");
+          const existing = socialLinks.get(key);
+          if (
+            !existing ||
+            url.pathname.length < new URL(existing.href).pathname.length
+          )
+            socialLinks.set(key, {
+              label: cleanNavLabel(action.label).slice(0, 100),
+              href: url.href,
+            });
         }
       } catch {
         /* Ignore malformed crawl links. */
@@ -194,7 +217,19 @@ export function deterministicPlan(exp: Experiment): RebuildSite {
     designNotes:
       "Refine the original identity with quiet surfaces, deliberate typography and generous separation.",
     nav,
-    footer: { note: brand.name, links: footerLinks },
+    footer: {
+      note: brand.name,
+      links: [
+        ...[...socialLinks.values()]
+          .sort(
+            (a, b) =>
+              Number(b.href.startsWith("mailto:")) -
+              Number(a.href.startsWith("mailto:")),
+          )
+          .slice(0, 4),
+        ...footerLinks,
+      ].slice(0, 8),
+    },
     pages,
     plannerModel:
       process.env.OPENROUTER_MODEL_REBUILD_PLANNER ||
@@ -264,6 +299,11 @@ export async function planSite(
     return {
       ...planned,
       tokens: repairSiteTokens(planned.tokens),
+      nav: planned.nav
+        .map((n) => ({ ...n, label: cleanNavLabel(n.label) }))
+        .filter(
+          (n, i, all) => all.findIndex((item) => item.path === n.path) === i,
+        ),
       plannerModel: fallback.plannerModel,
       implementerModel: fallback.implementerModel,
       plannerSource: "llm",
@@ -334,6 +374,22 @@ export function lintRebuiltPage(
 ): string[] {
   const doc = fragment(html);
   const issues = new Set<string>();
+  for (const group of [
+    doc.body,
+    ...doc.querySelectorAll("section, ul, ol, nav, footer, .rb-cluster"),
+  ]) {
+    const links = [...group.querySelectorAll("a[href]")].filter((a) => {
+      const item = a.closest(".rb-index-item");
+      return !(
+        item?.closest(".rb-index") && item.querySelector(".rb-index-title")
+      );
+    });
+    if (links.length <= 24) continue;
+    const prose = group.cloneNode(true) as typeof group;
+    for (const a of prose.querySelectorAll("a")) a.remove();
+    if ((prose.textContent ?? "").trim().length < 120)
+      issues.add("oversized link dump");
+  }
   for (const el of doc.querySelectorAll("*")) {
     if (
       /eyebrow|kicker/i.test(el.className ?? "") ||
@@ -608,6 +664,7 @@ export async function buildPage(
       const issues = [
         ...new Set([...rawIssues, ...lintRebuiltPage(html, opts)]),
       ];
+      if (issues.includes("oversized link dump")) continue;
       const built: RebuildSitePage = {
         ...page,
         status: "built",

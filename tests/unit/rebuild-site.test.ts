@@ -13,6 +13,35 @@ function fixture(count = 8): Experiment {
 const fake = (output = ""): LlmClient => ({ name: "openrouter", complete: vi.fn(async () => output) });
 
 describe("whole-site rebuild", () => {
+  it("cleans stored nav labels and prioritizes a bounded footer over crawled article dumps", () => {
+    const exp = fixture(40);
+    const home = exp.graph!.states[0];
+    exp.graph!.states[1].url = "https://example.com/about";
+    exp.graph!.states[15].url = "https://example.com/contact";
+    home.brand = { cssVars: {}, colors: [], fonts: [], navItems: [{ label: "Home", href: "/" }, { label: "About About", href: "/about" }, { label: "About", href: "/about" }] };
+    home.actions = ["https://github.com/acme/project", "https://github.com/acme", "mailto:hi@example.com", "https://x.com/acme", "javascript:bad()"].map((href, i) => ({ actionId: `a${i}`, stateId: home.stateId, label: i < 2 ? "GitHub GitHub" : "Contact", href, type: "click", enabled: true, safeToExecute: true }));
+    const site = deterministicPlan(exp);
+    expect(site.nav).toEqual([{ label: "Home", path: "/" }, { label: "About", path: "/about" }]);
+    expect(site.footer.links).toHaveLength(8);
+    expect(site.footer.links.map(l => l.href)).toEqual(expect.arrayContaining(["mailto:hi@example.com", "https://github.com/acme", "https://x.com/acme", "/contact"]));
+    expect(site.footer.links.some(l => l.href === "/about" || l.href.startsWith("javascript:"))).toBe(false);
+    expect(site.footer.links.find(l => l.href.includes("github"))?.label).toBe("GitHub");
+    expect(deterministicPlan(fixture(0)).footer.links).toEqual([]);
+  });
+  it("rejects bare link dumps, preserves proper indexes and prose, and falls back after a failed retry", async () => {
+    const links = Array.from({ length: 30 }, (_, i) => `<a href="/guide/${i}">Guide ${i}</a>`);
+    const dump = `<section><h2>All links</h2>${links.join(" ")}</section>`;
+    expect(lintRebuiltPage(dump)).toContain("oversized link dump");
+    expect(lintRebuiltPage("<h1>No links</h1>")).not.toContain("oversized link dump");
+    expect(lintRebuiltPage(`<div class="rb-prose">${links.map(l => `<p>${"Detailed article context. ".repeat(5)}${l}</p>`).join("")}</div>`)).not.toContain("oversized link dump");
+    expect(lintRebuiltPage(`<ul class="rb-index">${links.map(l => `<li class="rb-index-item"><h2 class="rb-index-title">${l}</h2></li>`).join("")}</ul>`)).not.toContain("oversized link dump");
+    const exp = fixture(1);
+    const site = deterministicPlan(exp);
+    const llm = fake(dump);
+    const page = await buildPage(exp, site, site.pages[0], llm);
+    expect(llm.complete).toHaveBeenCalledTimes(2);
+    expect(page).toMatchObject({ source: "template", status: "built", issues: [] });
+  });
   it("derives dark-brand surfaces and repairs deterministic and LLM token contrast", async () => {
     const exp = fixture(1);
     exp.graph!.states[0].brand = { cssVars: { "--background": "#24292e", "--foreground": "#e1e4e8", "--primary": "#58b595" }, colors: ["#24292e", "#e1e4e8", "#58b595"], fonts: [], navItems: [] };
