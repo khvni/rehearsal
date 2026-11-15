@@ -15,10 +15,10 @@ const INTERACT_TIMEOUT_MS = 45_000;
 // ── JS-shell heuristic ──────────────────────────────────────────────────────
 
 const JS_REQUIRED_RE = /enable javascript|javascript is required|javascript is disabled|requires javascript|needs javascript to (?:run|work|load)/i;
-/** A single noscript open or close tag. Never spans content, so matching stays linear — unlike
- *  a `<noscript>…*?</noscript>` form, which rescans the tail once per unclosed opener and stalls
- *  the event loop on attacker-controlled HTML. */
-const NOSCRIPT_TAG_RE = /<noscript\b[^>]*>|<\/noscript\s*>/gi;
+/** A single noscript open or close tag. Never spans content, and the attribute run is bounded —
+ *  `[^>]*` or a `…*?</noscript>` form would rescan the tail once per unterminated `<noscript`
+ *  prefix and stall the event loop on attacker-controlled HTML. */
+const NOSCRIPT_TAG_RE = /<noscript\b[^>]{0,256}>|<\/noscript\s{0,8}>/gi;
 
 /**
  * Remove `<noscript>…</noscript>` blocks in one pass — their warnings persist in fully rendered

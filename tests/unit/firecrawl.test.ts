@@ -133,6 +133,9 @@ describe("looksLikeJsShell", () => {
     // event loop via regex backtracking (each opener rescanned the remaining HTML).
     const hostile = `<html><body>${"<noscript>".repeat(5000)}<p>still here</p></body></html>`;
     expect(stripNoscript(hostile)).toBe(hostile); // unclosed tail kept verbatim
+    // unterminated `<noscript ` prefixes (never a `>`) must not rescan the tail either
+    const unterminated = `${"<noscript "}${"x".repeat(70)}`.repeat(4000);
+    expect(stripNoscript(unterminated)).toBe(unterminated);
     expect(stripNoscript(`a<noscript>x</noscript>b<NOSCRIPT y="1">z</NOSCRIPT>c`)).toBe("abc");
     expect(stripNoscript(`a<noscriptx>b</noscript>`)).toBe(`a<noscriptx>b</noscript>`); // `<noscriptx` isn't the tag; the stray closer stays
   });
