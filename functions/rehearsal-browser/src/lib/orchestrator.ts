@@ -25,7 +25,7 @@ import {
 import { FirecrawlClient, PlainFetcher, looksLikeJsShell, selectFetcher } from "./fetch";
 import { assertPublicUrl, robotsAllows } from "./fetch/guards";
 import { agentVerifyEnabled, extractPage, selectRunner } from "./browser/runner";
-import { RehearsalError, classifyError, dominantCode, formatFailure, toFailure } from "./errors";
+import { InvalidTargetError, RehearsalError, classifyError, dominantCode, formatFailure, toFailure } from "./errors";
 import { GraphBuilder, makeState } from "./graph";
 import { selectJev, scoreActions } from "./decisions/jev";
 import { simulateTrajectories, selectTrajectories } from "./simulation";
@@ -190,7 +190,7 @@ export class Orchestrator {
     config?: Partial<ExperimentConfig>,
     opts?: { idempotencyKey?: string },
   ): Promise<Experiment> {
-    const url = await assertPublicUrl(targetUrl);
+    const url = await this.publicTarget(targetUrl);
     const explicit = goal?.trim() || undefined;
     const probed = explicit ? undefined : await this.probe(url.toString());
     const experiment = Experiment.parse({
@@ -291,9 +291,18 @@ export class Orchestrator {
     const all = await this.store.list();
     const keyHit = idempotencyKey ? all.find((e) => e.idempotencyKey === idempotencyKey) : undefined;
     if (keyHit) return { experiment: keyHit, via: "idempotency" };
-    const siteKey = normalizeSiteUrl((await assertPublicUrl(targetUrl)).toString());
+    const siteKey = normalizeSiteUrl((await this.publicTarget(targetUrl)).toString());
     const siteHit = all.find((e) => this.siteKeyOf(e) === siteKey);
     return siteHit ? { experiment: siteHit, via: "site" } : null;
+  }
+
+  /** `assertPublicUrl` for a submitted target: a rejection is rethrown as `InvalidTargetError`. */
+  private async publicTarget(raw: string): Promise<URL> {
+    try {
+      return await assertPublicUrl(raw);
+    } catch (e) {
+      throw new InvalidTargetError(e);
+    }
   }
 
   /** Serializes dedupe+create so two concurrent POSTs can't both pass the dedupe scan. */
