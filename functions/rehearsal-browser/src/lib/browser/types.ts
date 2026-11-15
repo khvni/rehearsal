@@ -23,24 +23,45 @@ export async function evaluateAssertion(probe: AssertionProbe, a: Assertion): Pr
   }
 }
 
+/** Required checks are conjunctive; positive goal alternatives are disjunctive. */
+export function goalSucceeded(
+  assertions: BrowserRun["assertions"] | undefined,
+  alternatives: BrowserRun["assertions"] = [],
+): boolean {
+  return (assertions !== undefined && assertions.every((a) => a.passed))
+    || alternatives.some((a) => a.assertion.kind !== "text-absent" && a.passed);
+}
+
+export function failedGoalAssertions(run: Pick<BrowserRun, "assertions" | "goalAlternatives">): BrowserRun["assertions"] {
+  return goalSucceeded(undefined, run.goalAlternatives) ? [] : run.assertions.filter((a) => !a.passed);
+}
+
+export async function evaluateGoalAlternatives(probe: AssertionProbe, alternatives: Assertion[] = []): Promise<BrowserRun["assertions"]> {
+  return Promise.all(alternatives.map(async (assertion) => ({ assertion, passed: await evaluateAssertion(probe, assertion) })));
+}
+
+export function runSucceeded(run: Pick<BrowserRun, "steps" | "errors" | "assertions" | "goalAlternatives">): boolean {
+  return run.steps.every((s) => s.ok) && !run.errors.some(isRunError) && goalSucceeded(run.assertions, run.goalAlternatives);
+}
+
 export function summarizeRun(args: {
   runId: string;
   viewport: Viewport;
   started: number;
   steps: BrowserRun["steps"];
   assertions: BrowserRun["assertions"];
+  goalAlternatives?: BrowserRun["assertions"];
   errors: string[];
   screenshots: string[];
 }): BrowserRun {
-  const failedAssertions = args.assertions.filter((a) => !a.passed).length;
-  const navigationCompleted = args.steps.every((s) => s.ok) && !args.errors.some(isRunError);
   return {
     runId: args.runId,
     viewport: args.viewport,
     // Real sites always log some console noise; it is reported via consoleErrorCount instead.
-    success: navigationCompleted && failedAssertions === 0,
+    success: runSucceeded(args),
     steps: args.steps,
     assertions: args.assertions,
+    goalAlternatives: args.goalAlternatives,
     errors: args.errors,
     consoleErrorCount: args.errors.filter((e) => !isRunError(e)).length,
     screenshotPaths: args.screenshots,

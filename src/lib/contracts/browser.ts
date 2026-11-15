@@ -26,6 +26,8 @@ export interface TrajectoryArgs {
   viewport: Viewport;
   actions: TrajectoryAction[];
   assertions: Assertion[];
+  /** Reaching any positive alternative satisfies the goal without passing the compiled checks. */
+  goalAlternatives?: Assertion[];
   runId: string;
   patches?: DomPatch[];
   maxSteps?: number;

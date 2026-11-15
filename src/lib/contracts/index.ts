@@ -314,6 +314,8 @@ export const BrowserRun = z.object({
     }),
   ),
   assertions: z.array(z.object({ assertion: Assertion, passed: z.boolean() })),
+  /** Goal evidence, not independent checks whose failures become findings. */
+  goalAlternatives: z.array(z.object({ assertion: Assertion, passed: z.boolean() })).optional(),
   errors: z.array(z.string()),
   /** Page/console errors observed during the run — data for findings, not part of `success`. */
   consoleErrorCount: z.number().int().nonnegative().default(0),

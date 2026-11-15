@@ -10,7 +10,7 @@ import type {
   TrajectoryAction,
 } from "../contracts";
 import { stateHashFor } from "../browser/extract";
-import { evaluateAssertion } from "../browser/types";
+import { evaluateAssertion, goalSucceeded } from "../browser/types";
 import { mulberry32 } from "./index";
 
 /**
@@ -44,11 +44,10 @@ const MAX_CANDIDATES = 24;
  * goalSatisfiedInState, which only honors positive kinds).
  */
 async function goalReached(probe: AssertionProbe, assertions: Assertion[]): Promise<boolean> {
-  for (const a of assertions) {
-    if (a.kind === "text-absent") continue;
-    if (await evaluateAssertion(probe, a)) return true;
-  }
-  return false;
+  const results = await Promise.all(assertions.filter((a) => a.kind !== "text-absent").map(async (assertion) => ({
+    assertion, passed: await evaluateAssertion(probe, assertion),
+  })));
+  return goalSucceeded(undefined, results);
 }
 
 /**
