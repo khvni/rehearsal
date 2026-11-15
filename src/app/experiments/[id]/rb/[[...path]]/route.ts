@@ -1,4 +1,5 @@
 import { isExperimentId } from "@/lib/contracts";
+import { previewOrigin } from "@/lib/link-preview";
 import { Orchestrator } from "@/lib/orchestrator";
 import { normalizeRebuildPath, renderSiteDocument, siteStylesheet } from "@/lib/rebuild/site";
 
@@ -8,7 +9,7 @@ export const dynamic = "force-dynamic";
 const g = globalThis as unknown as { __orchestrator?: Orchestrator };
 
 export async function GET(
-  _req: Request,
+  req: Request,
   { params }: { params: Promise<{ id: string; path?: string[] }> }
 ) {
   const { id, path: segments = [] } = await params;
@@ -36,7 +37,7 @@ export async function GET(
   const page = exp.rebuild.site.pages.find(
     (p) => normalizeRebuildPath(p.path.split("/")) === path && p.status === "built"
   );
-  return new Response(renderSiteDocument(exp, path), {
+  return new Response(renderSiteDocument(exp, path, { origin: previewOrigin(req.headers) }), {
     status: page ? 200 : 404,
     headers: {
       ...headers,

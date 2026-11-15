@@ -13,6 +13,7 @@ import { PLANNER_RULES, IMPLEMENTER_RULES } from "./design-rules";
 import { SITE_CSS, CLASS_VOCABULARY } from "./site-css";
 import { derivedSurfaces, repairSiteTokens } from "./site-tokens";
 import { parsePlannerDesign } from "./planner-parse";
+import { previewImageUrl, rebuildPreview } from "../link-preview";
 
 export const REBUILD_BATCH = 6;
 export const SITE_BYTE_CAP = 700 * 1024;
@@ -800,7 +801,25 @@ export function siteStylesheet(tokens: RebuildSite["tokens"]): string {
   return SITE_CSS + `\n:root{${vars.join(";")}}`;
 }
 
-export function renderSiteDocument(exp: Experiment, path = "/"): string {
+/** Open Graph / Twitter tags so a shared /rb/ link unfurls with its preview card; `origin` makes the URLs absolute. */
+function shareMeta(exp: Experiment, path: string, origin: string): string {
+  const p = rebuildPreview(exp, path);
+  if (!p) return "";
+  const url = `${origin}${baseFor(exp)}${path === "/" ? "" : path}`;
+  const image = previewImageUrl(origin, exp.id, "rebuild", path);
+  return [
+    `<meta name="description" content="${esc(p.description)}">`,
+    '<meta property="og:type" content="website"><meta property="og:site_name" content="Rehearsal">',
+    `<meta property="og:url" content="${esc(url)}"><meta property="og:title" content="${esc(p.title)}">`,
+    `<meta property="og:description" content="${esc(p.description)}">`,
+    `<meta property="og:image" content="${esc(image)}"><meta property="og:image:width" content="1200">`,
+    `<meta property="og:image:height" content="630"><meta property="og:image:alt" content="${esc(p.alt)}">`,
+    `<meta name="twitter:card" content="summary_large_image"><meta name="twitter:title" content="${esc(p.title)}">`,
+    `<meta name="twitter:description" content="${esc(p.description)}"><meta name="twitter:image" content="${esc(image)}">`,
+  ].join("");
+}
+
+export function renderSiteDocument(exp: Experiment, path = "/", share?: { origin: string }): string {
   const site = exp.rebuild?.site;
   if (!site) throw new Error("No rebuilt site");
   const page = site.pages.find(
@@ -844,6 +863,7 @@ export function renderSiteDocument(exp: Experiment, path = "/"): string {
     '<!doctype html><html lang="en"><head><meta charset="utf-8">',
     '<meta name="viewport" content="width=device-width,initial-scale=1">',
     `<title>${esc(page?.title ?? "Not rebuilt yet")} · ${esc(brand.name)}</title>`,
+    share ? shareMeta(exp, path, share.origin) : "",
     `<link rel="stylesheet" href="${esc(base)}/_assets/site.css"></head><body>`,
     '<header class="rb-header"><div class="rb-container rb-cluster">',
     `<a class="rb-brand" href="${esc(base)}/">${logo}</a><nav aria-label="Main">${nav}</nav>`,
