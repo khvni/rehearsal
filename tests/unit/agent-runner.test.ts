@@ -113,6 +113,41 @@ describe("agentLoop", () => {
     expect(run.screenshotPaths).toEqual([]);
     expect(run.success).toBe(true);
   });
+
+  describe("redacts secrets from stored errors", () => {
+    const FAKE_KEY = "bb_live_fake_key_1234567890";
+    const prev = process.env.BROWSERBASE_API_KEY;
+    afterEach(() => {
+      if (prev === undefined) delete process.env.BROWSERBASE_API_KEY;
+      else process.env.BROWSERBASE_API_KEY = prev;
+    });
+
+    it("in step errors from thrown observe() and failed act()", async () => {
+      process.env.BROWSERBASE_API_KEY = FAKE_KEY;
+      const { driver } = fixtureDriver({});
+      driver.observe = async (instruction) => {
+        if (instruction?.includes('"Throw"')) throw new Error(`observe 401 for key ${FAKE_KEY} via wss://user:pw@connect.example/`);
+        return [];
+      };
+      driver.act = async () => ({ ok: false, detail: `bad key ${FAKE_KEY}` });
+      const run = await agentLoop(driver, { ...baseArgs([{ label: "Throw" }, { label: "Fail" }]), assertions: [] }, async () => null);
+      const text = JSON.stringify(run);
+      expect(text).not.toContain(FAKE_KEY);
+      expect(text).not.toContain("user:pw@");
+      expect(run.steps[0].error).toContain("[REDACTED]");
+      expect(run.steps[1].error).toBe("act failed: bad key [REDACTED]");
+    });
+
+    it("in run errors", async () => {
+      process.env.BROWSERBASE_API_KEY = FAKE_KEY;
+      const { driver } = fixtureDriver({});
+      driver.probe = () => {
+        throw new Error(`probe failed with ${FAKE_KEY}`);
+      };
+      const run = await agentLoop(driver, baseArgs([]), async () => null);
+      expect(run.errors).toEqual(["run: Error: probe failed with [REDACTED]"]);
+    });
+  });
 });
 
 describe("agentVerifyEnabled", () => {
