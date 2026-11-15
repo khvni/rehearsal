@@ -12,7 +12,8 @@ import { POST } from "@/app/api/experiments/[id]/[stage]/route";
 
 const allowance = vi.hoisted(() => vi.fn(async () => true));
 vi.mock("@/lib/ratelimit", () => ({ underRunLimit: allowance }));
-vi.mock("@/lib/access", () => ({
+vi.mock("@/lib/access", async (importOriginal) => ({
+  ...await importOriginal<typeof import("@/lib/access")>(),
   presentsAccessToken: () => false,
   maxConcurrentRuns: () => 2,
   withRunSlot: async (fn: () => Promise<unknown>) => ({

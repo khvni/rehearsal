@@ -91,6 +91,7 @@ describe("chunked runs", () => {
     const exp = store.all.get(id)!;
     exp.spec = { targetUrl: URL, goal: "g", generatedAt: exp.createdAt, baselineRunIds: [], summary: "", changes: [], rebuildPhases: [] };
     exp.runCheckpoint = { stage, attempt: 4 };
+    exp.status = "complete";
     exp.createdAt = "2020-01-01T00:00:00.000Z";
     const internal = orch as unknown as { stepBody: () => Promise<void> };
     const work = vi.spyOn(internal, "stepBody");
@@ -117,6 +118,29 @@ describe("chunked runs", () => {
     expect((await orch.resume(id, { inline: true })).resumed).toBe(true);
     expect(work).toHaveBeenCalledOnce();
     expect(exp.runCheckpoint?.stage).toBe("rebuild");
+  });
+
+  it.each(["resume", "runStep"] as const)("%s finishes an interrupted spec stage even when the spec was already saved", async (entry) => {
+    const pages = { [URL]: HOME };
+    const store = memoryStore();
+    const orch = new Orchestrator({ store, fetcher: fetcher(pages), runner: runner(pages) });
+    const { id } = await seededRun(orch);
+    const exp = store.all.get(id)!;
+    exp.spec = { targetUrl: URL, goal: "g", generatedAt: exp.createdAt, baselineRunIds: [], summary: "saved spec", changes: [], rebuildPhases: [] };
+    exp.status = "comparing";
+    exp.runCheckpoint = { stage: "spec", attempt: 4 };
+    exp.createdAt = "2020-01-01T00:00:00.000Z";
+    const internal = orch as unknown as { runSpec: (id: string) => Promise<Experiment>; runCompare: () => Promise<void> };
+    vi.spyOn(internal, "runCompare").mockResolvedValue();
+    const spec = vi.spyOn(internal, "runSpec");
+    if (entry === "resume") expect((await orch.resume(id, { inline: true })).resumed).toBe(true);
+    else await orch.runStep(id);
+    expect(spec).toHaveBeenCalledOnce();
+    const done = store.all.get(id)!;
+    expect(done.status).toBe("complete");
+    expect(done.spec?.summary).toBe("saved spec");
+    expect(done.mockup).toBeDefined();
+    expect(done.runCheckpoint).toBeUndefined();
   });
 
   it("recovers a stalled opt-in rebuild with no site from a stale spec checkpoint", async () => {

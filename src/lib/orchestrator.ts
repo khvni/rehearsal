@@ -126,6 +126,10 @@ const STATUS_STAGE: Record<string, string> = {
   rebuilding: "rebuild",
 };
 
+function pipelineFinished(exp: Experiment): boolean {
+  return !!exp.spec && (exp.status === "complete" || exp.status === "rebuilding" || rebuildPending(exp));
+}
+
 interface OrchestratorDeps {
   fetcher?: PageFetcher;
   /** Plain-HTTP probe fetcher for rescan/signature checks and the default discover crawl — must never be provider-quota-bound. Defaults to PlainFetcher. */
@@ -387,7 +391,7 @@ export class Orchestrator {
     const exp = await this.mustGet(id);
     if (this.activeRun(id)) return { experiment: exp, resumed: false };
     const pendingRebuild = exp.status === "rebuilding" || rebuildPending(exp);
-    if (!pendingRebuild && exp.spec && exp.runCheckpoint && exp.runCheckpoint.stage !== "rebuild") {
+    if (!pendingRebuild && pipelineFinished(exp) && exp.runCheckpoint && exp.runCheckpoint.stage !== "rebuild") {
       exp.runCheckpoint = undefined;
       await this.store.save(Experiment.parse(exp));
       return { experiment: exp, resumed: false };
@@ -473,7 +477,7 @@ export class Orchestrator {
   ): Promise<{ suspended: boolean }> {
     const exp = await this.mustGet(id);
     const cp = exp.runCheckpoint;
-    if (exp.spec && cp && cp.stage !== "rebuild") {
+    if (pipelineFinished(exp) && cp && cp.stage !== "rebuild") {
       exp.runCheckpoint = undefined;
       await this.store.save(Experiment.parse(exp));
       return { suspended: false };
