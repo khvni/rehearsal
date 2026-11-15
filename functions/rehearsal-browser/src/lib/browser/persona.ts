@@ -57,7 +57,29 @@ export class LivePagePersonaDriver implements PersonaDriver {
           action.role === "button"
             ? this.page.getByRole("button", { name: action.label })
             : this.page.getByRole("link", { name: action.label });
-        await loc.first().click({ timeout: 8000 });
+        // Capture submit events before page handlers, independent of accessible-name resolution.
+        await this.page.evaluate(`(() => {
+          window.__rehearsalBlockedSubmit = false;
+          window.__rehearsalSubmitHandler = (event) => {
+            event.preventDefault();
+            event.stopImmediatePropagation();
+            window.__rehearsalBlockedSubmit = true;
+          };
+          window.addEventListener('submit', window.__rehearsalSubmitHandler, true);
+        })()`);
+        let blockedSubmit = false;
+        try {
+          await loc.first().click({ timeout: 8000 });
+        } finally {
+          blockedSubmit = await this.page.evaluate<boolean>(`(() => {
+            const blocked = window.__rehearsalBlockedSubmit === true;
+            window.removeEventListener('submit', window.__rehearsalSubmitHandler, true);
+            delete window.__rehearsalSubmitHandler;
+            delete window.__rehearsalBlockedSubmit;
+            return blocked;
+          })()`).catch(() => false);
+        }
+        if (blockedSubmit) return { ok: false, error: "Refusing to click a form submit button" };
         await this.page
           .waitForLoadState("domcontentloaded", { timeout: this.navTimeoutMs })
           .catch(() => undefined);

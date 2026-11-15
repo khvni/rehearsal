@@ -98,9 +98,10 @@ export function extractPage(rawHtml: string, pageUrl: string): ExtractedPage {
     const resolveLabel = () =>
       normalizeLabel((attribs["aria-labelledby"] ?? "").split(/\s+/).map((id) => idLabels.get(id)?.text ?? "").join(" ")) ||
       normalizeLabel(attribs["aria-label"] ?? "") || text || normalizeLabel(attribs.value ?? "button");
-    // Buttons inside a <form> default to type=submit — never submit third-party forms.
+    // Missing/invalid types default to submit; form owners may be outside the ancestor chain.
     const type = (attribs.type ?? "").toLowerCase();
-    const submits = type === "submit" || (type === "" && stack.some((e) => e.name === "form"));
+    const submits = type === "submit" ||
+      (type !== "button" && type !== "reset" && ("form" in attribs || stack.some((e) => e.name === "form")));
     push({ type: "click", label: "", role: "button", enabled: !("disabled" in attribs), safeToExecute: !submits }, resolveLabel);
   };
 
