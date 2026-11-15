@@ -333,6 +333,33 @@ describe("discover fetch-first + firecrawl fallback", () => {
     expect(fc.calls.scrape).toBe(0);
   });
 
+  it("fetches each URL once per run across viewports and the signature pass", async () => {
+    process.env.REHEARSAL_ALLOW_PRIVATE = "1";
+    const pages: Record<string, string> = { [URL]: PAGE, [`${URL}about`]: PAGE.replace(/Alpha/g, "About") };
+    const fetched: string[] = [];
+    const counting: PageFetcher = {
+      name: "counting-fetch",
+      async fetchHtml(url) {
+        fetched.push(url);
+        return fetcher(pages).fetchHtml(url);
+      },
+    };
+    const orch = new Orchestrator({
+      store: memoryStore(),
+      fetcher: fetcher(pages),
+      probeFetcher: counting,
+      firecrawl: firecrawlStub({}).stub,
+      runner: runner(pages),
+      jev: new FixtureJevClient(),
+      llm: new FixtureLlmClient(),
+    });
+    const exp = await orch.createExperiment(URL, "g", { viewports: ["desktop", "mobile"], maxStates: 6, maxDepth: 1 });
+    const done = await orch.discover(exp.id);
+    expect(done.graph?.states.length).toBe(4);
+    expect(done.siteSignatures?.length).toBe(2);
+    expect(fetched.sort()).toEqual([URL, `${URL}about`]);
+  });
+
   it("uses the injected runner only when REHEARSAL_BROWSER opts in", async () => {
     process.env.REHEARSAL_ALLOW_PRIVATE = "1";
     process.env.REHEARSAL_BROWSER = "playwright";
