@@ -40,6 +40,11 @@ export function withTimeout<T>(work: Promise<T>, ms: number, label: string): Pro
 
 const PAGE_CALL_MS = 15000;
 
+/** Let client-side rendering finish: wait for network idle, at most `capMs`. */
+function settle(page: Page, capMs: number): Promise<void> {
+  return page.waitForLoadState("networkidle", { timeout: capMs }).catch(() => undefined);
+}
+
 /** Headless Chromium with its sandbox on (Playwright passes --no-sandbox unless chromiumSandbox is set). */
 export async function launchChromium(sandbox = chromiumSandboxEnabled(), options: LaunchOptions = {}): Promise<Browser> {
   // Lazy import: playwright can't load on edge runtimes (e.g. Cloudflare Workers);
@@ -82,7 +87,7 @@ export async function executeTrajectory(
   await assertPublicUrl(args.url);
   await page.goto(args.url, { waitUntil: "domcontentloaded", timeout: opts.navTimeoutMs });
   await assertPublicPage(page);
-  await page.waitForTimeout(800);
+  await settle(page, 800);
   await settleInterstitial(page);
   await assertPublicPage(page);
   const shot0 = path.join(evidenceDir, `${args.runId}_0.png`);
@@ -141,7 +146,7 @@ export async function settleInterstitial(page: Page, timeoutMs = 15000): Promise
     .waitForFunction((src) => !new RegExp(src, "i").test(document.title), INTERSTITIAL_TITLE_RE.source, { timeout: timeoutMs })
     .catch(() => undefined);
   await page.waitForLoadState("domcontentloaded").catch(() => undefined);
-  await page.waitForTimeout(1200);
+  await settle(page, 1200);
 }
 
 export function watchPageErrors(page: Page, errors: string[]): void {
@@ -216,7 +221,7 @@ export class PlaywrightRunner implements BrowserRunner {
       await assertPublicPage(page);
       const finalOrigin = new URL(page.url()).origin;
       if (finalOrigin !== target.origin) throw new Error(`Redirected off-origin to ${finalOrigin}`);
-      await page.waitForTimeout(1200);
+      await settle(page, 1200);
       await settleInterstitial(page);
       await assertPublicPage(page);
       const html = await withTimeout(page.content(), PAGE_CALL_MS, "page.content");
@@ -260,7 +265,7 @@ export class PlaywrightRunner implements BrowserRunner {
       const page = await ctx.newPage();
       await page.goto(args.url, { waitUntil: "domcontentloaded", timeout: 30000 });
       await assertPublicPage(page);
-      await page.waitForTimeout(800);
+      await settle(page, 800);
       await settleInterstitial(page);
       await assertPublicPage(page);
       const driver = new LivePagePersonaDriver(page as PersonaPage, args.viewport, this.evidenceDir, 30000);
