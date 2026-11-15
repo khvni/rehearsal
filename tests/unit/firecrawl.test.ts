@@ -229,6 +229,33 @@ describe("FirecrawlClient", () => {
 });
 
 describe("discover fetch-first + firecrawl fallback", () => {
+  it.each(["anchors", "map"])("skips non-HTML resources from %s before fetching", async (source) => {
+    process.env.REHEARSAL_ALLOW_PRIVATE = "1";
+    const resources = ["README.md", "notes.txt", "data.json", "table.csv", "feed.xml", "report.pdf", "photo.PNG?size=2", "icon.svg#logo", "encoded%2Emd", "slides.pptx"];
+    const pages = ["about", "page.html", "index.htm", "document.xhtml", "docs.php", "v1.2/guide", "caf%E9"];
+    const paths = [...resources, ...pages];
+    const html = `<html><body><h1>Home</h1><p>Browse our documentation and resources.</p>${source === "anchors" ? paths.map((p) => `<a href="/${p}">${p}</a>`).join("") : ""}</body></html>`;
+    const fetched: string[] = [];
+    const orch = new Orchestrator({
+      store: memoryStore(),
+      probeFetcher: { name: "counting", async fetchHtml(url) {
+        fetched.push(url);
+        if (url === URL) return html;
+        if (resources.some((p) => url === new globalThis.URL(p, URL).href)) throw new Error("Non-HTML resource fetched");
+        return PAGE;
+      } },
+      firecrawl: firecrawlStub({ mapLinks: async () => [...paths.map((p) => `${URL}${p}`), "not a URL", "https://other.test/page"] }).stub,
+      runner: runner({}),
+      jev: new FixtureJevClient(),
+      llm: new FixtureLlmClient(),
+    });
+    const exp = await orch.createExperiment(URL, "Browse documentation", { viewports: ["desktop"], maxStates: 20, maxDepth: 1 });
+    const done = await orch.discover(exp.id);
+    expect(fetched.sort()).toEqual([URL, ...pages.map((p) => `${URL}${p}`)].sort());
+    expect(done.failures).toEqual([]);
+    if (source === "anchors") expect(done.graph?.states[0].actions.some((a) => a.href === `${URL}README.md`)).toBe(true);
+  });
+
   it("retries a JS shell via firecrawl scrape and maps the rendered page", async () => {
     process.env.REHEARSAL_ALLOW_PRIVATE = "1";
     const fc = firecrawlStub({ scrape: async () => ({ html: RENDERED, links: [] }) });
