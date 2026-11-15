@@ -9,6 +9,21 @@ import { isExperimentId } from "../contracts";
 let sentry: typeof import("@sentry/nextjs") | null = null;
 let sentryTried = false;
 
+// Sentry 11 collects user info, cookies, bodies and DB/GenAI payloads unless told otherwise;
+// pin the v10 (sendDefaultPii off) baseline.
+const PII_HEADER_DENY = { deny: ["forwarded", "-ip", "remote-", "via", "-user"] };
+const V10_DATA_COLLECTION = {
+  userInfo: false,
+  cookies: false,
+  httpHeaders: { request: PII_HEADER_DENY, response: PII_HEADER_DENY },
+  httpBodies: [],
+  urlQueryParams: PII_HEADER_DENY,
+  genAI: { inputs: false, outputs: false },
+  databaseQueryData: false,
+  queues: false,
+  graphQL: { document: false, variables: false },
+} satisfies NonNullable<Parameters<typeof import("@sentry/nextjs").init>[0]>["dataCollection"];
+
 /** Lazily init the server SDK once (instrumentation.ts, API routes, scripts). Null when SENTRY_DSN is unset. */
 export async function getSentry() {
   if (sentryTried) return sentry;
@@ -17,7 +32,11 @@ export async function getSentry() {
   try {
     sentry = await import("@sentry/nextjs");
     if (!sentry.getClient()) {
-      sentry.init({ dsn: process.env.SENTRY_DSN, tracesSampleRate: Number(process.env.SENTRY_TRACES_SAMPLE_RATE ?? 0.2) });
+      sentry.init({
+        dsn: process.env.SENTRY_DSN,
+        tracesSampleRate: Number(process.env.SENTRY_TRACES_SAMPLE_RATE ?? 0.2),
+        dataCollection: V10_DATA_COLLECTION,
+      });
     }
   } catch {
     sentry = null;
