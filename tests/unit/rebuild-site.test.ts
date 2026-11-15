@@ -13,6 +13,25 @@ function fixture(count = 8): Experiment {
 const fake = (output = ""): LlmClient => ({ name: "openrouter", complete: vi.fn(async () => output) });
 
 describe("whole-site rebuild", () => {
+  it.each([
+    ["https://www.youtube.com/watch?v=demo", "https://www.youtube.com/@acme?feature=footer#about"],
+    ["https://www.youtube.com/watch?v=demo", "https://www.youtube.com/channel/UCacme"],
+    ["https://www.youtube.com/shorts/demo", "https://www.youtube.com/channel/UCacme"],
+    ["https://www.youtube.com/embed/demo", "https://www.youtube.com/channel/UCacme"],
+    ["https://www.youtube.com/live/demo", "https://www.youtube.com/channel/UCacme"],
+    ["https://youtu.be/demo", "https://www.youtube.com/channel/UCacme"],
+    ["https://x.com/acme/status/123", "https://twitter.com/acme"],
+    ["https://www.instagram.com/p/demo", "https://www.instagram.com/acme"],
+    ["https://www.instagram.com/reel/demo", "https://www.instagram.com/acme"],
+    ["https://www.linkedin.com/posts/demo", "https://www.linkedin.com/company/acme"],
+  ])("prefers a social profile/channel to content in either crawl order: %s", (content, profile) => {
+    const exp = fixture(1);
+    const home = exp.graph!.states[0];
+    for (const hrefs of [[content, profile], [profile, content]]) {
+      home.actions = ["https://[invalid", ...hrefs].map((href, i) => ({ actionId: `a${i}`, stateId: home.stateId, label: "Follow Acme", href, type: "click", enabled: true, safeToExecute: true }));
+      expect(deterministicPlan(exp).footer.links).toEqual([{ label: "Follow Acme", href: profile }]);
+    }
+  });
   it("keeps an IASER-like footer to social profiles, contact and key pages without duplicate networks or article titles", () => {
     const exp = fixture(6);
     const paths = ["/", "/about", "/join", "/contact", "/articles/ai-impact", "/blog/dispatch"];

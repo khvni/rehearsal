@@ -110,6 +110,14 @@ export function sitemapFromGraph(exp: Experiment): RebuildSitePage[] {
     .slice(0, Number.isFinite(max) && max > 0 ? Math.floor(max) : 40);
 }
 
+function socialLinkRank(href: string) {
+  const url = new URL(href);
+  const content =
+    /(?:^|\/)(?:watch|shorts|embed|live|status|posts?|p|reels?)(?:\/|$)/i.test(url.pathname) ||
+    (/(?:^|\.)youtu\.be$/i.test(url.hostname) && url.pathname !== "/");
+  return [Number(content), url.pathname.split("/").filter(Boolean).length || 10];
+}
+
 export function deterministicPlan(exp: Experiment): RebuildSite {
   const brand = rollupBrand(exp.graph?.states ?? []);
   const primary = /^#([\da-f]{3}|[\da-f]{6})$/i.test(brand.colors.accent ?? "")
@@ -224,9 +232,10 @@ export function deterministicPlan(exp: Experiment): RebuildSite {
                   ? "youtube.com"
                   : social!;
           const existing = socialLinks.get(network);
-          const depth = (href: string) =>
-            new URL(href).pathname.split("/").filter(Boolean).length || 10;
-          if (!existing || depth(url.href) < depth(existing.href))
+          const rank = socialLinkRank(url.href);
+          const previous = existing && socialLinkRank(existing.href);
+          if (!previous || rank[0] < previous[0] ||
+            (rank[0] === previous[0] && rank[1] < previous[1]))
             socialLinks.set(network, {
               label,
               href: url.href,
