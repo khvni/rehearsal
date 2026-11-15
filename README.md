@@ -18,8 +18,8 @@ Demo target: https://ai.engineer/code/2026
 | Graph | @xyflow/react |
 | Browser | local Playwright (Browserbase Stagehand/Function via `REHEARSAL_BROWSER`) |
 | Page fetch | plain fetch → Firecrawl (scrape/map) → Browserbase Fetch |
-| Decisions | Jev System One (`typesafe/jev-1.13` via OpenRouter decisions API) |
-| LLM | Gemini: `gemini-4-hydrogen` (fast) + `gemini-4-argon` (deep) |
+| Decisions | Jev System One via TypeSafe by default (`JEV_API_KEY`); offline fixture without the key |
+| LLM | OpenRouter with `OPENROUTER_API_KEY`; otherwise direct Gemini with `GEMINI_API_KEY`, or the offline fixture without either key |
 | Persistence | JSON files → Tiger Data (`DATABASE_URL`) |
 | KB (optional) | Snowflake Cortex Search |
 | Observability | Sentry (DSN-gated) + JSONL event log |
