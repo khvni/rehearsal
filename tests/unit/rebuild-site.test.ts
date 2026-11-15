@@ -260,15 +260,16 @@ describe("whole-site rebuild", () => {
     expect(deterministicPlan(exp).pages).toEqual([]);
     await expect(planSite(exp, fake())).resolves.toMatchObject({ pages: [] });
   });
-  it("derives a branded footer from non-nav pages and social/contact links", () => {
+  it("derives a branded footer from non-nav key pages and social/contact links", () => {
     const exp = fixture();
+    exp.graph!.states[1].url = "https://example.com/contact";
     exp.graph!.states[0].brand = { cssVars: {}, colors: [], fonts: [], siteName: "Acme", navItems: [{ label: "Home", href: "https://example.com/" }] };
     const state = exp.graph!.states[0];
     state.actions = ["https://www.linkedin.com/company/acme", "mailto:hello@example.com", "https://unrelated.test", "javascript:alert(1)"].map((href, i) => ({ actionId: `a${i}`, stateId: state.stateId, type: "click", label: `Link ${i}`, href, enabled: true, safeToExecute: true }));
     const plan = deterministicPlan(exp);
     expect(plan.footer.note).toBe("Acme");
-    expect(plan.footer.links.map(l => l.href)).toEqual(expect.arrayContaining(["/1", "https://www.linkedin.com/company/acme", "mailto:hello@example.com"]));
-    expect(plan.footer.links.some(l => ["/", "https://unrelated.test", "javascript:alert(1)"].includes(l.href))).toBe(false);
+    expect(plan.footer.links.map(l => l.href)).toEqual(expect.arrayContaining(["/contact", "https://www.linkedin.com/company/acme", "mailto:hello@example.com"]));
+    expect(plan.footer.links.some(l => ["/", "/2", "https://unrelated.test", "javascript:alert(1)"].includes(l.href))).toBe(false);
   });
   it("rewrites same-site links, preserves fragments, leaves mail/external links and is idempotent", () => {
     const opts = { origin: "https://example.com", base: "/experiments/e/rb" };

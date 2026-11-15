@@ -2,7 +2,7 @@ import { parseHTML } from "linkedom";
 import { ZodError } from "zod";
 import {
   BlockType,
-  RebuildSite,
+  type RebuildSite,
   type Experiment,
   type LlmClient,
   type RebuildSitePage,
@@ -695,7 +695,9 @@ export async function buildPage(
     try {
       const raw = await llm.complete(
         prompt +
-          (attempt ? `\nFix these lint issues: ${retryIssues.join(", ")}` : ""),
+          (attempt
+            ? `\nFix these lint issues: ${retryIssues.join(", ")}`
+            : ""),
         { model: "rebuild", timeoutMs: 90000 },
       );
       const rawIssues = lintRebuiltPage(raw).filter(
