@@ -11,7 +11,7 @@ import {
   type TrajectoryArgs,
   type Viewport,
 } from "../contracts";
-import { RehearsalError } from "../errors";
+import { RehearsalError, RemoteTimeoutError } from "../errors";
 import { omit } from "../omit";
 import { assertPublicUrl } from "../fetch/guards";
 import { isQuotaStatus, reportProviderQuota } from "../telemetry";
@@ -129,21 +129,33 @@ export class BrowserbaseFunctionRunner implements BrowserRunner {
     const pollMs = this.opts.pollMs ?? 2_000;
     const deadline = Date.now() + timeoutMs;
     const remaining = () => Math.max(0, deadline - Date.now());
-    // Each API call gets its own deadline so slow responses cannot overrun the operation budget.
-    let inv = await this.api(`/v1/functions/${this.opts.functionId}/invoke`, {
+    const timedOut = (inv?: Invocation) =>
+      new RemoteTimeoutError(
+        inv
+          ? `Browserbase Function ${params.op} still ${inv.status} after ${timeoutMs} ms (invocation ${inv.id})`
+          : `Browserbase Function ${params.op} invoke got no response within ${timeoutMs} ms`,
+      );
+    // Every API call is cut off at the operation deadline, so slow responses cannot overrun the budget.
+    const request = async (path: string, inv?: Invocation, init?: RequestInit) => {
+      const ms = remaining();
+      if (ms <= 0) throw timedOut(inv);
+      const signal = AbortSignal.timeout(ms);
+      try {
+        return await this.api(path, { ...init, signal });
+      } catch (e) {
+        if (signal.aborted) throw timedOut(inv);
+        throw e;
+      }
+    };
+    let inv = await request(`/v1/functions/${this.opts.functionId}/invoke`, undefined, {
       method: "POST",
       body: JSON.stringify({ params }),
-      signal: AbortSignal.timeout(Math.max(remaining(), 5_000)),
     });
     while (!TERMINAL.has(inv.status)) {
       const ms = Math.min(pollMs, remaining());
-      if (ms <= 0) {
-        throw new RehearsalError("BROWSER_REMOTE_FAILED", `Browserbase Function ${params.op} still ${inv.status} after ${timeoutMs} ms (invocation ${inv.id})`);
-      }
+      if (ms <= 0) throw timedOut(inv);
       await this.sleep(ms);
-      inv = await this.api(`/v1/functions/invocations/${inv.id}`, {
-        signal: AbortSignal.timeout(Math.max(remaining(), 5_000)),
-      });
+      inv = await request(`/v1/functions/invocations/${inv.id}`, inv);
     }
     if (inv.status === "FAILED") {
       throw new RehearsalError("BROWSER_REMOTE_FAILED", `Browserbase Function ${params.op} failed (invocation ${inv.id}): ${errorText(JSON.stringify(inv.error ?? inv.results ?? "no details"), 240)}`);
