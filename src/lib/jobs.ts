@@ -1,7 +1,9 @@
 /**
  * Fire-and-forget job scheduling. On Workers the work rides `ctx.waitUntil` so it
- * survives the response; elsewhere it runs as a detached promise in this process
- * (the Node dev/server process persists).
+ * survives the response — but only for a bounded window (empirically ~30s), so
+ * long pipeline runs self-continue via `POST /api/internal/run-step` hops, each
+ * of which gets its own window. Elsewhere work runs as a detached promise in
+ * this process (the Node dev/server process persists) and steps loop in-process.
  */
 export async function runInBackground(work: () => Promise<void>): Promise<void> {
   // navigator.userAgent is the cheapest Workers check — no import cost off-Workers.
@@ -20,4 +22,27 @@ export async function runInBackground(work: () => Promise<void>): Promise<void> 
     /* context unavailable — fall through to detached */
   }
   void work();
+}
+
+export function isWorkersRuntime(): boolean {
+  return typeof navigator !== "undefined" && navigator.userAgent === "Cloudflare-Workers";
+}
+
+/**
+ * Kick the next pipeline slice on Workers. The hop lands as a fresh request with
+ * its own waitUntil window; a dropped hop is covered by the stall watchdog
+ * (resume() / the experiment page's poll). Non-Workers run steps in-process —
+ * nothing to do.
+ */
+export async function continueRun(id: string, opts: { origin?: string; token?: string }): Promise<void> {
+  if (!isWorkersRuntime() || !opts.origin) return;
+  try {
+    await fetch(`${opts.origin}/api/internal/run-step`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ id, token: opts.token }),
+    });
+  } catch {
+    /* the watchdog resume path covers a lost hop */
+  }
 }

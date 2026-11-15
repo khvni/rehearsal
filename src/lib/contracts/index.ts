@@ -690,6 +690,39 @@ const StoredExperimentConfig = z
     viewports: [...new Set(c.viewports)],
   }));
 
+/** Serialized mid-crawl state — enough to rebuild the graph and continue the frontier after a suspended step. */
+export const DiscoverCheckpoint = z.object({
+  /** Index into `configuration.viewports` of the pass in flight. */
+  vpIndex: z.number().int().nonnegative(),
+  frontier: z.array(
+    z.object({
+      url: z.string(),
+      depth: z.number().int().nonnegative(),
+      from: z.object({ stateId: z.string(), actionId: z.string() }).optional(),
+    }),
+  ),
+  attempted: z.array(z.string()),
+  /** url -> canonical stateId */
+  visited: z.array(z.tuple([z.string(), z.string()])),
+  states: z.array(SiteState),
+  edges: z.array(z.object({ fromStateId: z.string(), actionId: z.string(), toStateId: z.string() })),
+  pageFailures: z.array(RunFailure),
+  providerQuotaHit: z.boolean(),
+  /** Crawl finished — still pending signature probes (urls), or the already-computed results. */
+  signaturePending: z.array(z.string()).optional(),
+  signatureDone: z.array(z.object({ url: z.string(), signature: z.string() })).default([]),
+});
+export type DiscoverCheckpoint = z.infer<typeof DiscoverCheckpoint>;
+
+/** Where a chunked run resumes: the stage to (re)start, how many step slices it has consumed, and discover's crawl state when suspended mid-stage. */
+export const RunCheckpoint = z.object({
+  stage: z.string(),
+  /** Slices consumed on `stage` — bounded by MAX_STAGE_SLICES so a stage that can't finish fails instead of looping. */
+  attempt: z.number().int().nonnegative().default(0),
+  discover: DiscoverCheckpoint.optional(),
+});
+export type RunCheckpoint = z.infer<typeof RunCheckpoint>;
+
 export const Experiment = z.object({
   id: z.string(),
   targetUrl: z.string().url(),
@@ -706,6 +739,10 @@ export const Experiment = z.object({
   idempotencyKey: z.string().optional(),
   /** Per-page content signatures captured by discover — rescan re-probes these URLs and compares. */
   siteSignatures: z.array(z.object({ url: z.string(), signature: z.string() })).default([]),
+  /** Per-run token a `POST /api/internal/run-step` call must present — regenerated at each `scheduleRun`. */
+  runToken: z.string().optional(),
+  /** Persisted progress for a suspended background run — run-step continuations and stale-run resume pick up here. */
+  runCheckpoint: RunCheckpoint.optional(),
   configuration: StoredExperimentConfig,
   assertions: z.array(Assertion).default([]),
   graph: StateGraph.optional(),

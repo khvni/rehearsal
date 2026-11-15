@@ -34,9 +34,9 @@ stale key fails the check.
     primary DigitalOcean stack.
 - **Not deployed** (`NOT_DEPLOYED`) — code defaults (`GEMINI_MODEL_*`, `REHEARSAL_GEMINI_MAX_CALLS`, `REHEARSAL_MAX_CONCURRENT_RUNS`, `JEV_BASE_URL`,
   `JEV_MODEL`, `REHEARSAL_BROWSER`, `REHEARSAL_VERIFY_AGENT`, `REHEARSAL_SANDBOX`,
-  `SENTRY_TRACES_SAMPLE_RATE`), aliases (`OPENROUTER_API_KEY`,
+  `SENTRY_TRACES_SAMPLE_RATE`, `REHEARSAL_STEP_BUDGET_MS`, `REHEARSAL_STALL_MS`), aliases (`OPENROUTER_API_KEY`,
   `TIGERDATA_URL`), client-side code defaults (`NEXT_PUBLIC_POSTHOG_*`), optional backends not provisioned yet (`BRIGHTDATA_BROWSER_*`,
-  `BROWSERBASE_*`, `STAGEHAND_MODEL*`, `SNOWFLAKE_*`, `SENTRY_WEBHOOK_SECRET`, `GITHUB_TOKEN`), local-only (`STAGEHAND_CHROME_PATH`).
+  `BROWSERBASE_*`, `STAGEHAND_MODEL*`, `SNOWFLAKE_*`, `SENTRY_WEBHOOK_SECRET`, `GITHUB_TOKEN`), optional run-step auth (`REHEARSAL_RUN_SECRET`), local-only (`STAGEHAND_CHROME_PATH`).
 - **Never deployed** — `REHEARSAL_ALLOW_PRIVATE` (disables the SSRF guard) and
   `REHEARSAL_CHROMIUM_NO_SANDBOX` (disables the Chromium sandbox); fails if any
   stack maps it.

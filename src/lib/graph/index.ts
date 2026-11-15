@@ -68,6 +68,14 @@ export class GraphBuilder {
     return { states: [...this.states.values()], edges: this.edges };
   }
 
+  /** Rebuild a builder from a persisted graph — replay order preserves canonical stateIds. */
+  static restore(graph: StateGraph, maxStates: number, maxDepth: number): GraphBuilder {
+    const b = new GraphBuilder(maxStates, maxDepth);
+    for (const s of graph.states) b.add(s);
+    for (const e of graph.edges) b.link(e.fromStateId, e.actionId, e.toStateId);
+    return b;
+  }
+
   get full(): boolean {
     return this.states.size >= this.maxStates;
   }

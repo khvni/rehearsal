@@ -14,7 +14,10 @@ function orchestrator(): Orchestrator {
 export async function GET(_req: Request, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
   if (!isExperimentId(id)) return NextResponse.json({ error: "not found" }, { status: 404 });
-  const experiment = await orchestrator().get(id);
+  const orch = orchestrator();
+  const experiment = await orch.get(id);
   if (!experiment) return NextResponse.json({ error: "not found" }, { status: 404 });
+  // Self-healing watchdog: a stalled background run resumes on the next poll.
+  void orch.resume(id).catch(() => undefined);
   return NextResponse.json(experiment);
 }
