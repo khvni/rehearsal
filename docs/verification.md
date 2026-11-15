@@ -32,11 +32,11 @@ stale key fails the check.
   `BROWSERBASE_PROJECT_ID`, `BROWSERBASE_FUNCTION_ID`, `SENTRY_DSN`, `DATABASE_URL`.
   - Exemption: `cloudflare` / `DATABASE_URL` — Postgres persistence is provisioned only on the
     primary DigitalOcean stack.
-- **Not deployed** (`NOT_DEPLOYED`) — code defaults (`GEMINI_MODEL_*`, `RAMP_ROUTER_BASE_URL`, `RAMP_ROUTER_MODEL_*`, `REHEARSAL_GEMINI_MAX_CALLS`, `REHEARSAL_MAX_CONCURRENT_RUNS`, `JEV_BASE_URL`,
+- **Not deployed** (`NOT_DEPLOYED`) — code defaults (`GEMINI_MODEL_*`, `OPENROUTER_MODEL_*`, `REHEARSAL_GEMINI_MAX_CALLS`, `REHEARSAL_MAX_CONCURRENT_RUNS`, `JEV_BASE_URL`,
   `JEV_MODEL`, `REHEARSAL_BROWSER`, `REHEARSAL_VERIFY_AGENT`, `REHEARSAL_SANDBOX`,
-  `SENTRY_TRACES_SAMPLE_RATE`, `REHEARSAL_STEP_BUDGET_MS`, `REHEARSAL_STALL_MS`), aliases (`OPENROUTER_API_KEY`,
+  `SENTRY_TRACES_SAMPLE_RATE`, `REHEARSAL_STEP_BUDGET_MS`, `REHEARSAL_STALL_MS`), aliases (
   `TIGERDATA_URL`), client-side code defaults (`NEXT_PUBLIC_POSTHOG_*`), optional backends not provisioned yet (`FIRECRAWL_API_KEY`,
-  `BROWSERBASE_EXTENSION_ID`, `STAGEHAND_MODEL*`, `SNOWFLAKE_*`, `RAMP_ROUTER_API_KEY` (a Worker secret uploaded by `deploy-cloudflare.yml` when the Actions secret exists), `SENTRY_WEBHOOK_SECRET`, `GITHUB_TOKEN`), optional run-step auth (`REHEARSAL_RUN_SECRET`), optional run-step hop pin (`REHEARSAL_ORIGIN`), local-only (`STAGEHAND_CHROME_PATH`).
+  `BROWSERBASE_EXTENSION_ID`, `STAGEHAND_MODEL*`, `SNOWFLAKE_*`, `OPENROUTER_API_KEY` (a Worker secret uploaded by `deploy-cloudflare.yml` when the Actions secret exists), `SENTRY_WEBHOOK_SECRET`, `GITHUB_TOKEN`), optional run-step auth (`REHEARSAL_RUN_SECRET`), optional run-step hop pin (`REHEARSAL_ORIGIN`), local-only (`STAGEHAND_CHROME_PATH`).
 - **Never deployed** — `REHEARSAL_ALLOW_PRIVATE` (disables the SSRF guard) and
   `REHEARSAL_CHROMIUM_NO_SANDBOX` (disables the Chromium sandbox); fails if any
   stack maps it.

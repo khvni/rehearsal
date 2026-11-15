@@ -10,7 +10,7 @@ import type {
   RebuiltPage,
   SiteState,
 } from "../contracts";
-import { llmPageSource } from "../analysis/router";
+import { llmPageSource } from "../analysis/openrouter";
 import { logEvent } from "../telemetry";
 import { uniqueStatesByUrl } from "../graph";
 import { CTA_VERB_RE, rollupBrand } from "./brand";

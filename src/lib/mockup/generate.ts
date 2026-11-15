@@ -11,7 +11,7 @@ import type {
 } from "../contracts";
 import { CTA_VERB_RE, rollupBrand } from "../rebuild/brand";
 import { sanitizeRebuildHtml } from "../rebuild/sanitize";
-import { llmPageSource } from "../analysis/router";
+import { llmPageSource } from "../analysis/openrouter";
 import { logEvent } from "../telemetry";
 import { renderMockupPage, rewriteLinks } from "./render";
 
