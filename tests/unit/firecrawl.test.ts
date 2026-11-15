@@ -360,6 +360,29 @@ describe("discover fetch-first + firecrawl fallback", () => {
     expect(fetched.sort()).toEqual([URL, `${URL}about`]);
   });
 
+  it("keeps URLs that differ only by a trailing slash as separate pages", async () => {
+    process.env.REHEARSAL_ALLOW_PRIVATE = "1";
+    const SEED = `<html><body><h1>Home</h1><a href="/docs">Docs</a><a href="/docs/">Docs index</a></body></html>`;
+    const pages: Record<string, string> = {
+      [URL]: SEED,
+      [`${URL}docs`]: PAGE.replace(/Alpha/g, "Docs"),
+      [`${URL}docs/`]: PAGE.replace(/Alpha/g, "Index").replace("About us", "Contact"),
+    };
+    const orch = new Orchestrator({
+      store: memoryStore(),
+      fetcher: fetcher(pages),
+      probeFetcher: fetcher(pages),
+      firecrawl: firecrawlStub({}).stub,
+      runner: runner(pages),
+      jev: new FixtureJevClient(),
+      llm: new FixtureLlmClient(),
+    });
+    const exp = await orch.createExperiment(URL, "g", { viewports: ["desktop"], maxStates: 6, maxDepth: 1 });
+    const done = await orch.discover(exp.id);
+    const titles = done.graph?.states.map((s) => s.pageTitle) ?? [];
+    expect(titles).toEqual(expect.arrayContaining(["Docs", "Index"]));
+  });
+
   it("uses the injected runner only when REHEARSAL_BROWSER opts in", async () => {
     process.env.REHEARSAL_ALLOW_PRIVATE = "1";
     process.env.REHEARSAL_BROWSER = "playwright";

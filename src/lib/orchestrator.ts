@@ -699,13 +699,13 @@ export class Orchestrator {
       const seedExtras: string[] = resumeData?.seedExtras ? [...resumeData.seedExtras] : [];
       // Plain-fetch html doesn't vary by viewport, so each URL is fetched once per
       // run: later viewports and the signature pass reuse it (each fetch pays politeDelay).
+      // Keyed by the exact URL: `/docs` and `/docs/` may serve different pages.
       const probedHtml = new Map<string, string>();
       const probeHtml = async (url: string) => {
-        const key = normalizeSiteUrl(url);
-        const cached = probedHtml.get(key);
+        const cached = probedHtml.get(url);
         if (cached !== undefined) return cached;
         const html = await this.probeFetcher.fetchHtml(url);
-        probedHtml.set(key, html);
+        probedHtml.set(url, html);
         return html;
       };
       try {
