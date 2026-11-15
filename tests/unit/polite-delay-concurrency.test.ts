@@ -20,7 +20,7 @@ afterEach(() => {
   vi.useRealTimers();
 });
 
-describe("politeDelay", () => {
+describe("politeDelay under concurrency", () => {
   it("spaces concurrent callers to one request per 2s per host", async () => {
     expect(await concurrentReleaseTimes("https://swarm.example.com/", 5)).toEqual([0, 2000, 4000, 6000, 8000]);
   });

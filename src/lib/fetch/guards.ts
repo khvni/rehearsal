@@ -64,12 +64,12 @@ export async function assertPublicUrl(raw: string): Promise<URL> {
 const nextSlotAt = new Map<string, number>();
 const MIN_INTERVAL_MS = 2000;
 
-/** Rate-limit requests to ~1 per 2s per target host.
- *  Each caller reserves its slot before waiting, so concurrent callers are spaced too. */
+/** Rate-limit requests to ~1 per 2s per target host. */
 export async function politeDelay(url: URL): Promise<void> {
   const host = url.hostname;
   const now = Date.now();
   const slot = Math.max(now, nextSlotAt.get(host) ?? 0);
+  // Reserve the slot before waiting so concurrent callers queue behind it instead of firing together.
   nextSlotAt.set(host, slot + MIN_INTERVAL_MS);
   const waitMs = slot - now;
   if (waitMs > 0) await new Promise((r) => setTimeout(r, waitMs));
