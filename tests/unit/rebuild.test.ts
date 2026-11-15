@@ -3,6 +3,7 @@ import path from "node:path";
 import { describe, expect, it } from "vitest";
 import { Experiment, RebuildResult, type LlmClient, type SiteState } from "@/lib/contracts";
 import { FixtureLlmClient } from "@/lib/analysis/gemini";
+import { pageFor } from "@/lib/rebuild/generate";
 import {
   MAX_REBUILD_GOALS,
   brandSignalsFromHtml,
@@ -315,6 +316,15 @@ describe("generateRebuild", () => {
     expect(res.pages.every((p) => p.source === "openrouter")).toBe(true);
     expect(res.pages[1].html).toContain(`Retry ${goals[1].slug}`);
     expect(res.llmError).toBeUndefined();
+  });
+
+  it("matches a re-slugged page only when the loose slug is unambiguous", () => {
+    const page = (slug: string) => ({ slug, hero: { heading: slug } });
+    const reply = new Map([["see-api-v12", page("see-api-v12")], ["Watch_The_Demo", page("Watch_The_Demo")]]);
+    const goalSlugs = ["see-api-v1-2", "see-api-v12", "watch-the-demo"];
+    expect(pageFor(reply, "watch-the-demo", goalSlugs)?.slug).toBe("Watch_The_Demo");
+    expect(pageFor(reply, "see-api-v12", goalSlugs)?.slug).toBe("see-api-v12");
+    expect(pageFor(reply, "see-api-v1-2", goalSlugs)).toBeUndefined();
   });
 
   it("falls back to templates on invalid JSON or a throwing client", async () => {

@@ -316,7 +316,8 @@ async function requestPages(
   try {
     const prompt = buildPrompt(exp, brand, indexes.map((i) => goals[i]), indexes.map((i) => seeds[i]));
     const pages = parsePages(await llm.complete(prompt, { deep: true, json: true, model: "rebuild" }));
-    for (const i of indexes) merged[i] = mergeContent(seeds[i], pageFor(pages, goals[i].slug), urls);
+    const slugs = goals.map((g) => g.slug);
+    for (const i of indexes) merged[i] = mergeContent(seeds[i], pageFor(pages, goals[i].slug, slugs), urls);
     return undefined;
   } catch (err) {
     const error = String(err instanceof Error ? err.message : err).slice(0, 160);
@@ -325,13 +326,18 @@ async function requestPages(
   }
 }
 
-/** Exact slug, else the same slug ignoring case and punctuation (models sometimes re-slug "watch-the-demo" as "watch_the_demo"). */
-function pageFor(pages: Map<string, LlmPage>, slug: string): LlmPage | undefined {
+/**
+ * Exact slug, else the same slug ignoring case and punctuation (models sometimes re-slug "watch-the-demo" as
+ * "watch_the_demo"), but only when that loose key is unambiguous across both the goals and the reply.
+ */
+export function pageFor(pages: Map<string, LlmPage>, slug: string, goalSlugs: string[]): LlmPage | undefined {
   const exact = pages.get(slug);
   if (exact) return exact;
   const key = (s: string) => s.toLowerCase().replace(/[^a-z0-9]/g, "");
-  for (const [k, p] of pages) if (key(k) === key(slug)) return p;
-  return undefined;
+  const k = key(slug);
+  if (goalSlugs.filter((g) => key(g) === k).length !== 1) return undefined;
+  const loose = [...pages].filter(([p]) => key(p) === k && !goalSlugs.includes(p));
+  return loose.length === 1 ? loose[0][1] : undefined;
 }
 
 /** Stage 7 core: rollupBrand → inferGoals → per-goal content → rendered pages. */
