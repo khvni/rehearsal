@@ -5,7 +5,7 @@ import { logEvent } from "../telemetry";
  * OpenRouter client — OpenAI-compatible chat completions at openrouter.ai, used for
  * every LLM stage when OPENROUTER_API_KEY is set. Deep and mockup calls send a
  * `models` fallback list ending in the fast model, so OpenRouter itself retries on
- * 429/5xx. No `response_format`: json_object mode forces a top-level object, but
+ * 429/5xx. Rebuild has its own cheaper model: its pages are a layout POC. No `response_format`: json_object mode forces a top-level object, but
  * several callers expect a JSON array; the prompts ask for JSON and callers strip fences.
  */
 const ENDPOINT = "https://openrouter.ai/api/v1/chat/completions";
@@ -17,6 +17,7 @@ export class OpenRouterClient implements LlmClient {
   private fast: string;
   private deep: string;
   private mockup: string;
+  private rebuild: string;
   private maxCalls: number;
   private calls = 0;
   private usage = { calls: 0, inputTokens: 0, outputTokens: 0, totalTokens: 0 };
@@ -27,6 +28,7 @@ export class OpenRouterClient implements LlmClient {
     this.fast = process.env.OPENROUTER_MODEL_FAST || "google/gemini-4-hydrogen";
     this.deep = process.env.OPENROUTER_MODEL_DEEP || "google/gemini-4-argon";
     this.mockup = process.env.OPENROUTER_MODEL_MOCKUP || this.deep;
+    this.rebuild = process.env.OPENROUTER_MODEL_REBUILD || "google/gemini-3.8-flash";
     const max = Number(process.env.REHEARSAL_GEMINI_MAX_CALLS ?? DEFAULT_MAX_CALLS);
     this.maxCalls = Number.isFinite(max) && max >= 0 ? max : DEFAULT_MAX_CALLS;
     if (!this.apiKey) throw new Error("OpenRouterClient requires OPENROUTER_API_KEY");
@@ -46,7 +48,8 @@ export class OpenRouterClient implements LlmClient {
   async complete(prompt: string, opts?: { deep?: boolean; json?: boolean; model?: string }): Promise<string> {
     if (this.calls >= this.maxCalls) throw new Error(`LLM call budget (${this.maxCalls}/run) exhausted`);
     this.calls++;
-    const primary = opts?.model === "mockup" ? this.mockup : opts?.deep ? this.deep : this.fast;
+    const primary =
+      opts?.model === "mockup" ? this.mockup : opts?.model === "rebuild" ? this.rebuild : opts?.deep ? this.deep : this.fast;
     const models = [...new Set([primary, this.fast])];
     const started = Date.now();
     const res = await fetch(ENDPOINT, {

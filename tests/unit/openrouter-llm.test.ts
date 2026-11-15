@@ -73,6 +73,8 @@ describe("OpenRouterClient", () => {
     expect(lastBody(fetchMock)).not.toHaveProperty("response_format");
     await llm.complete("b", { deep: true, model: "mockup" });
     expect(lastBody(fetchMock)).toMatchObject({ models: ["claude-design", "google/gemini-4-hydrogen"] });
+    await llm.complete("c", { deep: true, json: true, model: "rebuild" });
+    expect(lastBody(fetchMock)).toMatchObject({ models: ["google/gemini-3.8-flash", "google/gemini-4-hydrogen"] });
   });
 
   it("surfaces non-2xx errors so callers fall back", async () => {

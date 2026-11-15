@@ -136,6 +136,7 @@ const NOT_DEPLOYED: Record<string, string> = {
   OPENROUTER_MODEL_FAST: "has a code default",
   OPENROUTER_MODEL_DEEP: "has a code default",
   OPENROUTER_MODEL_MOCKUP: "has a code default (the deep model)",
+  OPENROUTER_MODEL_REBUILD: "has a code default",
   REHEARSAL_MAX_CONCURRENT_RUNS: "has a code default",
   JEV_BASE_URL: "has a code default",
   JEV_MODEL: "has a code default",
