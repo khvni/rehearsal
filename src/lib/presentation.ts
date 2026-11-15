@@ -21,7 +21,7 @@ export function hasUsablePreview(exp: Experiment): boolean {
   const page = exp.mockup?.pages[0];
   if (!page || page.source !== "gemini") return false;
   const heading = /<h1\b[^>]*>([\s\S]*?)<\/h1>/i.exec(page.html)?.[1].replace(/<[^>]*>/g, "").trim();
-  return Boolean(heading && !/^https?:\/\//i.test(heading) && heading !== exp.targetUrl && !/>\s*Continue\s*</i.test(page.html));
+  return Boolean(heading && !/^https?:\/\//i.test(heading) && heading !== exp.targetUrl);
 }
 
 /** Render crawl-backed recommendations without ungrounded LLM brand names or question-bank advice. */

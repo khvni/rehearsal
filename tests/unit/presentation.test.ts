@@ -71,6 +71,8 @@ describe("honest result presentation", () => {
     expect(hasUsablePreview(exp)).toBe(false);
     exp.mockup.pages[0].source = "gemini";
     expect(hasUsablePreview(exp)).toBe(true);
+    exp.mockup.pages[0].html = "<h1>Example application form</h1><label>Name <input name='name'></label><button>Continue</button>";
+    expect(hasUsablePreview(exp)).toBe(true);
     exp.mockup.pages[0].html = `<h1>${exp.targetUrl}</h1><button>Continue</button>`;
     expect(hasUsablePreview(exp)).toBe(false);
   });
