@@ -40,7 +40,16 @@ export async function continueRun(id: string, opts: { origin?: string; token?: s
   if (!isWorkersRuntime() || !opts.origin) return;
   try {
     const target = `${opts.origin}/api/internal/run-step`;
-    await assertPublicUrl(target);
+    const parsed = new URL(target);
+    const loopback = ["localhost", "127.0.0.1", "::1", "[::1]"].includes(parsed.hostname);
+    // Pin the hop to REHEARSAL_ORIGIN when configured: a request whose Host was
+    // spoofed can't carry the per-run token to a foreign origin. Loopback
+    // self-hops skip the SSRF guard — a request that reached this origin is
+    // already trusted, and the guard refuses private addresses like a local
+    // workerd dev server.
+    const pinned = process.env.REHEARSAL_ORIGIN;
+    if (pinned && parsed.origin !== pinned) return;
+    if (!loopback) await assertPublicUrl(target);
     await fetch(target, {
       method: "POST",
       headers: { "content-type": "application/json" },
