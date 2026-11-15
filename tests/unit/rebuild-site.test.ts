@@ -3,6 +3,7 @@ import { Experiment, type ExperimentStore, type LlmClient } from "@/lib/contract
 import { Orchestrator } from "@/lib/orchestrator";
 import { buildPage, deterministicPlan, lintRebuiltPage, planSite, rebuildPending, renderSiteDocument, rewriteSiteLinks, sitemapFromGraph, siteStylesheet } from "@/lib/rebuild/site";
 import { rollupBrand } from "@/lib/rebuild";
+import { parseHTML } from "linkedom";
 
 function fixture(count = 8): Experiment {
   return Experiment.parse({ configuration: {}, id: "exp_site", targetUrl: "https://example.com", goal: "Read resources", createdAt: "2026-01-01T00:00:00Z", status: "complete", graph: { states: Array.from({ length: count }, (_, i) => ({ stateId: `s${i}`, stateHash: `h${i}`, url: `https://example.com/${i || ""}`, pageTitle: `Page ${i}`, visibleText: "Useful information from the audited website for readers.", viewport: { name: "desktop", width: 1280, height: 900 }, actions: [] })), edges: [] }, spec: { targetUrl: "https://example.com", goal: "Read resources", generatedAt: "2026-01-01T00:00:00Z", summary: "Improve navigation", changes: [], rebuildPhases: [] } });
@@ -76,6 +77,59 @@ describe("whole-site rebuild", () => {
     expect(renderSiteDocument(exp, "/missing")).toContain("Not rebuilt yet");
     expect(siteStylesheet({ ...site.tokens, primary: "red;}body{display:none}", fontSans: "url(https://evil.test)" })).not.toContain("evil.test");
     expect(siteStylesheet(site.tokens)).toContain("prefers-reduced-motion");
+  });
+  it("composes fallback sentences, planned actions and titled indexes without chrome duplicates", async () => {
+    const exp = fixture(1);
+    const state = exp.graph!.states[0];
+    state.pageTitle = "Resources";
+    state.visibleText = "Home Resources\nResources\nPractical guides for your next project. Share them with your team.\nMake a clear plan before you start.\nHome Contact\nStart here First guide Second guide Third guide";
+    state.actions = [["Home", "/"], ["Resources", "/resources"], ["Contact", "mailto:hi@example.com"], ["First guide", "/guides/one"], ["Start here", "/start"], ["Second guide", "/guides/two"], ["Third guide", "/guides/three"], ["Second guide again", "/guides/two?ref=nav"]].map(([label, href], i) => ({ actionId: `a${i}`, stateId: state.stateId, label, href, type: "click", enabled: true, safeToExecute: true }));
+    const site = deterministicPlan(exp);
+    site.nav = [{ label: "Home", path: "/" }, { label: "Resources", path: "/resources" }];
+    site.footer.links = [{ label: "Contact", href: "mailto:hi@example.com" }];
+    const page = { ...site.pages[0], primaryAction: { label: "Start here", href: "/start" }, blocks: [{ type: "resource-index" as const, purpose: "Browse guides" }] };
+    const built = await buildPage(exp, site, page, fake());
+    const { document } = parseHTML(`<html><body>${built.html}</body></html>`);
+    expect(document.querySelector(".rb-lede")?.textContent).toBe("Practical guides for your next project.");
+    expect(document.querySelector(".rb-prose")?.textContent).toBe("Share them with your team.Make a clear plan before you start.");
+    expect(document.querySelectorAll(".rb-btn--primary")).toHaveLength(1);
+    expect(document.querySelector(".rb-btn--primary")?.textContent).toBe("Start here");
+    expect(document.querySelectorAll(".rb-btn--secondary")).toHaveLength(1);
+    expect([...document.querySelectorAll(".rb-index-title")].map(el => el.textContent)).toEqual(["Second guide", "Third guide"]);
+    expect(document.querySelectorAll(".rb-index-item")).toHaveLength(2);
+    expect([...document.querySelectorAll("section")].every(el => el.firstElementChild?.classList.contains("rb-container"))).toBe(true);
+    expect(document.querySelector(".rb-prose")?.classList.contains("rb-container")).toBe(false);
+    expect(built.html).not.toContain("mailto:");
+    expect(built.issues).toEqual([]);
+  });
+  it("uses the first same-site non-navigation action when there is no planned CTA", async () => {
+    const exp = fixture(1);
+    const state = exp.graph!.states[0];
+    state.visibleText = "Home Resources Build with clarity\nPractical tools for teams making useful software.\nExplore resources Get in touch GitHub";
+    state.actions = [["Home", "/"], ["GitHub", "https://github.com/acme"], ["Explore resources", "/resources"], ["Get in touch", "mailto:hi@example.com"]].map(([label, href], i) => ({ actionId: `a${i}`, stateId: state.stateId, label, href, type: "click", enabled: true, safeToExecute: true }));
+    const site = deterministicPlan(exp);
+    site.nav = [{ label: "Home", path: "/" }, { label: "Resources", path: "/resources" }];
+    const built = await buildPage(exp, site, site.pages[0], fake());
+    const { document } = parseHTML(`<html><body>${built.html}</body></html>`);
+    expect(document.querySelector(".rb-lede")?.textContent).toBe("Practical tools for teams making useful software.");
+    expect(document.querySelector(".rb-btn--primary")?.getAttribute("href")).toBe("/experiments/exp_site/rb/resources");
+    expect(document.querySelector(".rb-btn--primary")?.textContent).toBe("Explore resources");
+    expect(document.querySelectorAll(".rb-btn--secondary, .rb-index, .rb-prose")).toHaveLength(0);
+    expect(built.html).not.toContain("GitHub");
+    expect(built.html).not.toContain("Get in touch");
+  });
+  it("keeps empty and failed-LLM fallbacks composed and ignores unsafe actions", async () => {
+    const exp = fixture(1);
+    exp.graph!.states[0].visibleText = "";
+    exp.graph!.states[0].actions = ["javascript:alert(1)", "http://[invalid"].map((href, i) => ({ actionId: `a${i}`, stateId: "s0", label: "Bad action", href, type: "click", enabled: true, safeToExecute: true }));
+    const site = deterministicPlan(exp);
+    const page = { ...site.pages[0], primaryAction: { label: "Unsafe", href: "javascript:alert(1)" } };
+    const built = await buildPage(exp, site, page, { name: "fixture", complete: async () => { throw new Error("Unavailable"); } });
+    const { document } = parseHTML(`<html><body>${built.html}</body></html>`);
+    expect(built.source).toBe("template");
+    expect(document.querySelector("h1")?.textContent).toBe("Page 0");
+    expect(document.querySelectorAll(".rb-lede, .rb-prose, .rb-index, .rb-btn")).toHaveLength(0);
+    expect(built.html).not.toMatch(/javascript:|invalid|Unsafe/);
   });
   it("persists a plan, builds six pages per step, completes and restarts explicitly", async () => {
     let saved = fixture();
