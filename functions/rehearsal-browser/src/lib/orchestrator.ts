@@ -1097,6 +1097,8 @@ export class Orchestrator {
             }));
 
       e.failures = e.failures.filter((f) => f.stage !== "verify");
+      // A re-run replaces verify's own baseline runs; compare's variant runs stay behind them.
+      const runs: BrowserRun[] = [];
       try {
         for (const selected of replayables) {
           const actions = selected.actions;
@@ -1126,7 +1128,7 @@ export class Orchestrator {
               await this.emit(id, "verify", "assert", `Assertion failed: ${a.assertion.kind} "${a.assertion.value}"`);
             }
             await this.emit(id, "verify", "browser", `${runId}: ${run.success ? "goal reached" : "goal not reached"} in ${run.durationMs} ms`);
-            e.browserTests.push(run);
+            runs.push(run);
           }
         }
       } catch (err) {
@@ -1140,6 +1142,7 @@ export class Orchestrator {
           `Browser replays skipped (${code}): ${this.runner.name} can't run here — findings come from the crawl and simulation`,
         );
       }
+      e.browserTests = [...runs, ...e.browserTests.filter((r) => r.variantId)];
       await this.update(e, "created");
       return e;
     });
@@ -1153,8 +1156,10 @@ export class Orchestrator {
     await this.update(exp, "analyzing");
     return withTrace("analyze", { experimentId: id, targetUrl: exp.targetUrl }, async () => {
       const states = exp.graph?.states ?? [];
-      const rules = ruleFindings({ states, runs: exp.browserTests, assertions: exp.assertions });
-      const llm = await llmFindings({ llm: this.llm, states, runs: exp.browserTests, goal: exp.goal });
+      // Findings describe the live site: a re-run after compare skips the patched variant runs.
+      const runs = exp.browserTests.filter((r) => !r.variantId);
+      const rules = ruleFindings({ states, runs, assertions: exp.assertions });
+      const llm = await llmFindings({ llm: this.llm, states, runs, goal: exp.goal });
       const endpoints = await this.endpointAnalysis(exp);
       const graph = exp.graph?.states.length ? exp.graph : undefined;
       if (graph) exp.questions = await visitorQuestions(graph, exp.endpoints ?? [], detectSiteType(graph), this.llm);
@@ -1164,7 +1169,7 @@ export class Orchestrator {
         ...metricFindings(states, { homepageUrl: exp.targetUrl }),
         ...questionFindings(exp.questions ?? [], graph),
         ...llm,
-      ], { states, runs: exp.browserTests.length });
+      ], { states, runs: runs.length });
       const verified = exp.findings.filter((f) => f.evidenceType === "verified-failure").length;
       const unanswered = (exp.questions ?? []).filter((q) => !q.answered).length;
       await this.emit(
@@ -1184,6 +1189,11 @@ export class Orchestrator {
     const exp = (await this.mustGet(id))!;
     await this.update(exp, "comparing");
     return withTrace("compare", { experimentId: id, targetUrl: exp.targetUrl }, async () => {
+      // A re-run replaces compare's own variant, variant run, comparison and failure.
+      exp.failures = exp.failures.filter((f) => f.stage !== "compare");
+      exp.variants = [];
+      exp.comparisons = [];
+      exp.browserTests = exp.browserTests.filter((r) => !r.variantId);
       const finding = exp.findings.find((f) => /post-event|stale/i.test(f.title)) ?? exp.findings[0];
       if (!finding) {
         await this.update(exp, "created");
