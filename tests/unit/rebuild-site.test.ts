@@ -191,4 +191,27 @@ describe("whole-site rebuild", () => {
     expect(saved.rebuild!.site!.pages[1].status).toBe("failed");
     expect(saved.rebuild!.site!.completedAt).toBeDefined();
   });
+  it.each([true, false])("accumulates planner and batch usage without double counting (reset=%s)", async (reset) => {
+    let saved = fixture(8);
+    saved.usage = { llm: { calls: 7, inputTokens: 70, outputTokens: 14, totalTokens: 84, estimated: true }, jev: { calls: 3, inputTokens: 9, outputTokens: 3, totalTokens: 12 } };
+    const jevUsage = structuredClone(saved.usage.jev);
+    let calls = 0;
+    const llm: LlmClient = {
+      name: "fixture",
+      complete: async () => { calls++; return ""; },
+      ...(reset ? { resetBudget: () => { calls = 0; } } : {}),
+      usageReport: () => ({ calls, inputTokens: calls * 10, outputTokens: calls * 2, totalTokens: calls * 12 }),
+    };
+    const store = { get: async () => structuredClone(saved), save: async (value: Experiment) => { saved = structuredClone(value); }, appendActivity: async () => {} } as unknown as ExperimentStore;
+    const orch = new Orchestrator({ store, llm });
+    for (const expectedCalls of [8, 14, 16]) {
+      await orch.rebuild(saved.id);
+      expect(saved.usage!.llm).toEqual({ calls: expectedCalls, inputTokens: expectedCalls * 10, outputTokens: expectedCalls * 2, totalTokens: expectedCalls * 12, estimated: true });
+      expect(saved.usage!.jev).toEqual(jevUsage);
+    }
+    await orch.rebuild(saved.id);
+    expect(saved.usage!.llm!.calls).toBe(16);
+    await orch.rebuild(saved.id, { restart: true });
+    expect(saved.usage!.llm!.calls).toBe(17);
+  });
 });

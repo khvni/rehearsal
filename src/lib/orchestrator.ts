@@ -1332,7 +1332,28 @@ export class Orchestrator {
       experimentId: id,
       maxCalls: planning ? 1 : batchSize * 2,
     });
-    await this.update(exp, "rebuilding");
+    const priorUsage = exp.usage?.llm;
+    const baseline = this.llm.usageReport?.();
+    const saveStep = async (status: Experiment["status"]) => {
+      const current = this.llm.usageReport?.();
+      if (current) {
+        const total = (key: "calls" | "inputTokens" | "outputTokens" | "totalTokens") =>
+          (priorUsage?.[key] ?? 0) + Math.max(0, current[key] - (baseline?.[key] ?? 0));
+        exp.usage = {
+          ...exp.usage,
+          llm: {
+            calls: total("calls"),
+            inputTokens: total("inputTokens"),
+            outputTokens: total("outputTokens"),
+            totalTokens: total("totalTokens"),
+            ...((priorUsage?.estimated || current.estimated) ? { estimated: true } : {}),
+          },
+        };
+      }
+      exp.status = status;
+      await this.store.save(Experiment.parse(exp));
+    };
+    await saveStep("rebuilding");
     return withTrace(
       "rebuild",
       { experimentId: id, targetUrl: exp.targetUrl },
@@ -1410,8 +1431,7 @@ export class Orchestrator {
             );
           }
         }
-        await this.update(
-          exp,
+        await saveStep(
           exp.rebuild.site?.completedAt ? "complete" : "rebuilding",
         );
         return exp;
