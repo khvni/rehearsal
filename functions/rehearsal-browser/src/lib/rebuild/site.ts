@@ -260,13 +260,14 @@ export async function planSite(
           .map((h) => h.slice(0, 120)),
         summary: stateFor(exp, p)?.visibleText.slice(0, 800),
         links: linksFor(exp, p)
+          .filter((link) => link.href.length <= 240)
           .filter(
             (link, i, all) => all.findIndex((l) => l.href === link.href) === i,
           )
           .slice(0, 16)
           .map((l) => ({
             label: l.label.slice(0, 80),
-            href: l.href.slice(0, 240),
+            href: l.href,
           })),
       })),
       findings: exp.findings?.slice(0, 30).map((f) => ({

@@ -275,7 +275,7 @@ describe("whole-site rebuild", () => {
   it("persists a plan, builds six pages per step, completes and restarts explicitly", async () => {
     let saved = fixture();
     const events: unknown[] = [];
-    const store = { get: async () => structuredClone(saved), save: async (exp: Experiment) => { saved = structuredClone(exp); }, appendActivity: async (event: unknown) => { events.push(event); } } as unknown as ExperimentStore;
+    const store = { get: async () => structuredClone(saved), save: async (exp: Experiment) => { saved = structuredClone(exp); }, appendActivity: async (...args: unknown[]) => { events.push(args[1]); } } as unknown as ExperimentStore;
     const orch = new Orchestrator({ store, llm: fake(), fetcher: { name: "fixture", fetchHtml: async () => "" } });
     await orch.rebuild(saved.id);
     expect(saved.status).toBe("rebuilding"); expect(rebuildPending(saved)).toBe(true);
