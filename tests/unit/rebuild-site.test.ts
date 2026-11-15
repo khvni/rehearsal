@@ -4,6 +4,8 @@ import { Orchestrator } from "@/lib/orchestrator";
 import { buildPage, deterministicPlan, lintRebuiltPage, planSite, rebuildPending, renderSiteDocument, rewriteSiteLinks, sitemapFromGraph, siteStylesheet } from "@/lib/rebuild/site";
 import { rollupBrand } from "@/lib/rebuild";
 import { parseHTML } from "linkedom";
+import { contrastRatio, parseColor } from "@/lib/rebuild/brand";
+import { repairSiteTokens } from "@/lib/rebuild/site-tokens";
 
 function fixture(count = 8): Experiment {
   return Experiment.parse({ configuration: {}, id: "exp_site", targetUrl: "https://example.com", goal: "Read resources", createdAt: "2026-01-01T00:00:00Z", status: "complete", graph: { states: Array.from({ length: count }, (_, i) => ({ stateId: `s${i}`, stateHash: `h${i}`, url: `https://example.com/${i || ""}`, pageTitle: `Page ${i}`, visibleText: "Useful information from the audited website for readers.", viewport: { name: "desktop", width: 1280, height: 900 }, actions: [] })), edges: [] }, spec: { targetUrl: "https://example.com", goal: "Read resources", generatedAt: "2026-01-01T00:00:00Z", summary: "Improve navigation", changes: [], rebuildPhases: [] } });
@@ -11,6 +13,31 @@ function fixture(count = 8): Experiment {
 const fake = (output = ""): LlmClient => ({ name: "openrouter", complete: vi.fn(async () => output) });
 
 describe("whole-site rebuild", () => {
+  it("derives dark-brand surfaces and repairs deterministic and LLM token contrast", async () => {
+    const exp = fixture(1);
+    exp.graph!.states[0].brand = { cssVars: { "--background": "#24292e", "--foreground": "#e1e4e8", "--primary": "#58b595" }, colors: ["#24292e", "#e1e4e8", "#58b595"], fonts: [], navItems: [] };
+    const dark = deterministicPlan(exp);
+    expect(dark.tokens.background).toBe("#24292e");
+    expect(dark.tokens.muted).not.toBe("#f4f4f5");
+    expect(dark.tokens.border).not.toBe(dark.tokens.background);
+    const check = (tokens: typeof dark.tokens) => {
+      for (const [foreground, background] of [["foreground", "background"], ["foreground", "muted"], ["foreground", "card"], ["mutedForeground", "muted"], ["mutedForeground", "background"], ["primaryForeground", "primary"]] as const)
+        expect(contrastRatio(parseColor(tokens[foreground])!, parseColor(tokens[background])!)).toBeGreaterThanOrEqual(4.5);
+    };
+    check(dark.tokens);
+    const broken = { ...dark.tokens, muted: "#f4f4f5", card: "#ffffff", mutedForeground: "#a3a3a3", primaryForeground: "#ffffff" };
+    const planned = await planSite(exp, fake(JSON.stringify({ ...dark, tokens: broken })));
+    expect(planned.plannerSource).toBe("llm");
+    check(planned.tokens);
+    for (const background of ["#ffffff", "#000000", "#777777", "#ff0000", "rgb(40 48 60)", "transparent", "invalid", "rgba(0,0,0,0.1)"]) {
+      const repaired = repairSiteTokens({ ...broken, background, foreground: background });
+      check(repaired);
+      expect(repairSiteTokens(repaired)).toEqual(repaired);
+    }
+    const css = siteStylesheet(broken);
+    expect(css.slice(css.lastIndexOf(":root"))).not.toContain("--muted:#f4f4f5");
+    expect(css).toContain(".rb-section--muted,.rb-cta-band{color:var(--foreground)}");
+  });
   it("bounds planner facts while keeping the complete page facts for implementation", async () => {
     const exp = fixture(1);
     const state = exp.graph!.states[0];

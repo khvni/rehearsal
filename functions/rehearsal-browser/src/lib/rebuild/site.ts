@@ -11,6 +11,7 @@ import { rollupBrand } from "./brand";
 import { escapeHtml as esc, sanitizeRebuildHtml } from "./sanitize";
 import { PLANNER_RULES, IMPLEMENTER_RULES } from "./design-rules";
 import { SITE_CSS, CLASS_VOCABULARY } from "./site-css";
+import { derivedSurfaces, repairSiteTokens } from "./site-tokens";
 
 export const REBUILD_BATCH = 6;
 export const SITE_BYTE_CAP = 700 * 1024;
@@ -108,23 +109,6 @@ export function sitemapFromGraph(exp: Experiment): RebuildSitePage[] {
     .slice(0, Number.isFinite(max) && max > 0 ? Math.floor(max) : 40);
 }
 
-function primaryForeground(color: string): string {
-  const match = /^#([\da-f]{6}|[\da-f]{3})$/i.exec(color);
-  if (!match) return "#ffffff";
-  const hex =
-    match[1].length === 3
-      ? match[1]
-          .split("")
-          .map((c) => c + c)
-          .join("")
-      : match[1];
-  const [r, g, b] = [0, 2, 4].map((i) => {
-    const c = parseInt(hex.slice(i, i + 2), 16) / 255;
-    return c <= 0.04045 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4;
-  });
-  return 0.2126 * r + 0.7152 * g + 0.0722 * b > 0.179 ? "#000000" : "#ffffff";
-}
-
 export function deterministicPlan(exp: Experiment): RebuildSite {
   const brand = rollupBrand(exp.graph?.states ?? []);
   const primary = /^#([\da-f]{3}|[\da-f]{6})$/i.test(brand.colors.accent ?? "")
@@ -198,19 +182,15 @@ export function deterministicPlan(exp: Experiment): RebuildSite {
       }
     }
   return {
-    tokens: {
-      background: brand.colors.surface,
+    tokens: repairSiteTokens({
+      ...derivedSurfaces(brand.colors.surface),
       foreground: brand.colors.ink,
       primary,
-      primaryForeground: primaryForeground(primary),
-      muted: "#f4f4f5",
-      mutedForeground: brand.colors.muted,
-      border: brand.colors.line,
+      primaryForeground: "#ffffff",
       ring: primary,
-      card: brand.colors.surface,
       radius: "0.875rem",
       fontSans: brand.fonts.sans,
-    },
+    }),
     designNotes:
       "Refine the original identity with quiet surfaces, deliberate typography and generous separation.",
     nav,
@@ -283,6 +263,7 @@ export async function planSite(
     );
     return {
       ...planned,
+      tokens: repairSiteTokens(planned.tokens),
       plannerModel: fallback.plannerModel,
       implementerModel: fallback.implementerModel,
       plannerSource: "llm",
@@ -682,6 +663,7 @@ export function rebuildPending(exp: Experiment): boolean {
 }
 
 export function siteStylesheet(tokens: RebuildSite["tokens"]): string {
+  tokens = repairSiteTokens(tokens);
   const colors = new Set([
     "background",
     "foreground",
