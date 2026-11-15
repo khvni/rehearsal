@@ -64,6 +64,12 @@ describe("extractPage on real-world link shapes", () => {
     expect(extractPage('<svg><title id="icon">Icon</title></svg><title>Real</title>', PAGE).title).toBe("Real");
   });
 
+  it("excludes aria-hidden text only from labels", () => {
+    const page = extractPage('<a href="/docs"><span aria-hidden="true">Icon</span>Docs</a>', PAGE);
+    expect(page.actions[0].label).toBe("Docs");
+    expect(page.visibleText).toContain("Icon");
+  });
+
   it("keeps SVG and script text out of labels and the page title", () => {
     const page = extractPage(
       `<body><a href="/docs"><svg><title>Arrow icon</title></svg>Docs<script>x()</script></a>` +

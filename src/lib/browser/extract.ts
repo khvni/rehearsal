@@ -121,10 +121,11 @@ export function extractPage(rawHtml: string, pageUrl: string): ExtractedPage {
   const stack: OpenElement[] = [];
   const labels: NonNullable<OpenElement["label"]>[] = [];
   let skipDepth = 0;
+  let ariaHiddenDepth = 0;
   let foreignDepth = 0;
 
   const addText = (text: string) => {
-    if (labels.length > 0) {
+    if (labels.length > 0 && ariaHiddenDepth === 0) {
       const collapsed = text.replace(/\s+/g, " ");
       for (let i = labels.length - 1; i >= 0; i--) {
         const label = labels[i];
@@ -140,6 +141,7 @@ export function extractPage(rawHtml: string, pageUrl: string): ExtractedPage {
   };
 
   const closeElement = (el: OpenElement) => {
+    if (el.attribs["aria-hidden"] === "true") ariaHiddenDepth--;
     if (SKIPPED_TEXT_TAGS.has(el.name)) skipDepth--;
     if (FOREIGN_TAGS.has(el.name)) foreignDepth--;
     if (!el.label) return;
@@ -172,6 +174,7 @@ export function extractPage(rawHtml: string, pageUrl: string): ExtractedPage {
     stack.push(el);
     if (attribs.id && el.label && !idLabels.has(attribs.id)) idLabels.set(attribs.id, el.label);
     if (el.label) labels.push(el.label);
+    if (attribs["aria-hidden"] === "true") ariaHiddenDepth++;
     if (SKIPPED_TEXT_TAGS.has(name)) skipDepth++;
     if (FOREIGN_TAGS.has(name)) foreignDepth++;
   };
