@@ -203,17 +203,15 @@ async function readCapped(res: Response, maxBytes: number): Promise<{ text: stri
   const decoder = new TextDecoder();
   let text = "";
   let total = 0;
-  let truncated = false;
-  while (!truncated) {
+  while (total < maxBytes) {
     const { done, value } = await reader.read();
     if (done) break;
     const take = value.subarray(0, maxBytes - total);
-    truncated = take.length < value.length;
     text += decoder.decode(take, { stream: true });
     total += take.length;
   }
   await reader.cancel().catch(() => undefined);
-  return { text: text + decoder.decode(), truncated };
+  return { text: text + decoder.decode(), truncated: total >= maxBytes };
 }
 
 /** True when the target host's robots.txt permits fetching `url` (cached per origin). */
