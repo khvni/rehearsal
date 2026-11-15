@@ -15,7 +15,7 @@ import { Experiment, ExperimentConfig as Config, VIEWPORTS } from "@/lib/contrac
 import { personaJourneyLoop } from "@/lib/simulation/persona";
 import { extractPage } from "@/lib/browser/extract";
 import { journeysToTrajectories, personaWeights, runPersonaSwarm, selectJourneys } from "@/lib/simulation/swarm";
-import { FixtureJevClient } from "@/lib/decisions/jev";
+import { FixtureJevClient, withDecideCache } from "@/lib/decisions/jev";
 
 const CONFIG: ExperimentConfig = Config.parse({
   maxAgents: 24,
@@ -100,7 +100,7 @@ function fixtureDriver(initial: string): { driver: PersonaDriver; snapCalls: num
   return { driver, snapCalls: 0 };
 }
 
-function mockRunner(opts?: { delay?: number; failEvery?: number; onStart?: () => void }) {
+function mockRunner(opts?: { delay?: number; failEvery?: number; onStart?: () => void; useArgsJev?: boolean }) {
   let active = 0;
   let maxActive = 0;
   let calls = 0;
@@ -122,7 +122,8 @@ function mockRunner(opts?: { delay?: number; failEvery?: number; onStart?: () =>
       try {
         if (opts?.failEvery && calls % opts.failEvery === 0) throw new Error("runner exploded");
         const { driver } = fixtureDriver(a.url);
-        return await personaJourneyLoop(driver, new FixtureJevClient(), a);
+        const jev = opts?.useArgsJev && a.jev ? a.jev : new FixtureJevClient();
+        return await personaJourneyLoop(driver, jev, a);
       } finally {
         active--;
       }
@@ -188,6 +189,29 @@ describe("runPersonaSwarm", () => {
     const b = await runPersonaSwarm({ ...args, runner: mockRunner() });
     expect(JSON.stringify(a)).toBe(JSON.stringify(b));
     expect(a.journeys.length).toBe(CONFIG.maxAgents);
+  });
+
+  it("dedupes identical Jev payloads across agents without changing journeys", async () => {
+    const args = {
+      url: BASE,
+      goal: "zzz unreachable goal qqq",
+      assertions: MISSING,
+      config: CONFIG,
+      viewport: VIEWPORTS.desktop,
+    };
+    const uncached = await runPersonaSwarm({ ...args, runner: mockRunner() });
+    const jev = new FixtureJevClient();
+    const payloads: string[] = [];
+    const decide = jev.decide.bind(jev);
+    jev.decide = (state, questions) => {
+      payloads.push(JSON.stringify([state, questions]));
+      return decide(state, questions);
+    };
+    const cached = await runPersonaSwarm({ ...args, runner: mockRunner({ useArgsJev: true }), jev });
+    expect(JSON.stringify(cached)).toBe(JSON.stringify(uncached));
+    const decisionSteps = uncached.journeys.reduce((n, j) => n + j.steps.filter((s) => s.action).length, 0);
+    expect(payloads.length).toBeLessThan(decisionSteps);
+    expect(new Set(payloads).size).toBe(payloads.length);
   });
 
   it("bounds concurrency and covers every agent", async () => {
@@ -298,5 +322,39 @@ describe("contract round-trip", () => {
     });
     expect(exp.swarm?.agents).toBe(CONFIG.maxAgents);
     expect(exp.simulations[0].persona).toBeDefined();
+  });
+});
+
+describe("withDecideCache", () => {
+  const question = { type: "choice" as const, name: "q", instructions: "pick", criteria: { a: "A", b: "B" } };
+
+  it("shares one call for identical in-flight payloads", async () => {
+    const inner = new FixtureJevClient();
+    let calls = 0;
+    const decide = inner.decide.bind(inner);
+    inner.decide = (state, questions) => {
+      calls++;
+      return decide(state, questions);
+    };
+    const jev = withDecideCache(inner);
+    const [a, b] = await Promise.all([jev.decide({ goal: "x" }, [question]), jev.decide({ goal: "x" }, [question])]);
+    await jev.decide({ goal: "y" }, [question]);
+    expect(a).toEqual(b);
+    expect(calls).toBe(2);
+  });
+
+  it("retries a payload whose call failed", async () => {
+    let calls = 0;
+    const jev = withDecideCache({
+      name: "flaky",
+      async decide() {
+        calls++;
+        if (calls === 1) throw new Error("quota");
+        return [];
+      },
+    });
+    await expect(jev.decide({ goal: "x" }, [question])).rejects.toThrow("quota");
+    await expect(jev.decide({ goal: "x" }, [question])).resolves.toEqual([]);
+    expect(calls).toBe(2);
   });
 });

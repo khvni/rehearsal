@@ -47,9 +47,9 @@ export class HttpJevClient implements JevClient {
 
   constructor(env: Record<string, string | undefined> = process.env) {
     this.baseUrl = env.JEV_BASE_URL ?? "https://api.typesafe.ai/v1/systemone";
-    this.apiKey = env.JEV_API_KEY ?? env.OPENROUTER_API_KEY ?? "";
+    this.apiKey = env.JEV_API_KEY ?? "";
     this.model = env.JEV_MODEL ?? "jev-latest";
-    if (!this.apiKey) throw new Error("HttpJevClient requires JEV_API_KEY or OPENROUTER_API_KEY");
+    if (!this.apiKey) throw new Error("HttpJevClient requires JEV_API_KEY");
   }
 
   resetBudget(): void {
@@ -260,7 +260,7 @@ export class FallbackJevClient implements JevClient {
 }
 
 export function selectJev(env: Record<string, string | undefined> = process.env): JevClient {
-  if (env.JEV_API_KEY || env.OPENROUTER_API_KEY) {
+  if (env.JEV_API_KEY) {
     try {
       return new FallbackJevClient(new HttpJevClient(env));
     } catch {
@@ -298,6 +298,32 @@ function scoreSignature(state: SiteState, goal: string, profile: BehavioralProfi
       ]),
     )
     .digest("hex");
+}
+
+/**
+ * Wraps `jev` so identical decide() payloads (state + questions) share one call,
+ * including calls still in flight; a failed call is evicted so a later one retries.
+ * Scope it to one swarm: persona agents revisit the same pages at the same step,
+ * and each agent still samples the shared distribution with its own seeded RNG.
+ */
+export function withDecideCache(jev: JevClient): JevClient {
+  const cache = new Map<string, Promise<DecisionResult[]>>();
+  return {
+    name: jev.name,
+    decide(state, questions, ctx) {
+      const key = JSON.stringify([state, questions]);
+      const cached = cache.get(key);
+      if (cached) return cached;
+      const pending = jev.decide(state, questions, ctx);
+      cache.set(key, pending);
+      pending.catch(() => {
+        if (cache.get(key) === pending) cache.delete(key);
+      });
+      return pending;
+    },
+    resetBudget: jev.resetBudget?.bind(jev),
+    usageReport: jev.usageReport?.bind(jev),
+  };
 }
 
 /**
