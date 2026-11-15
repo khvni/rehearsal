@@ -301,6 +301,32 @@ function scoreSignature(state: SiteState, goal: string, profile: BehavioralProfi
 }
 
 /**
+ * Wraps `jev` so identical decide() payloads (state + questions) share one call,
+ * including calls still in flight; a failed call is evicted so a later one retries.
+ * Scope it to one swarm: persona agents revisit the same pages at the same step,
+ * and each agent still samples the shared distribution with its own seeded RNG.
+ */
+export function withDecideCache(jev: JevClient): JevClient {
+  const cache = new Map<string, Promise<DecisionResult[]>>();
+  return {
+    name: jev.name,
+    decide(state, questions, ctx) {
+      const key = JSON.stringify([state, questions]);
+      const cached = cache.get(key);
+      if (cached) return cached;
+      const pending = jev.decide(state, questions, ctx);
+      cache.set(key, pending);
+      pending.catch(() => {
+        if (cache.get(key) === pending) cache.delete(key);
+      });
+      return pending;
+    },
+    resetBudget: jev.resetBudget?.bind(jev),
+    usageReport: jev.usageReport?.bind(jev),
+  };
+}
+
+/**
  * Score candidate actions in a state via one Jev `choice` question. Ambiguity is
  * derived from the weight spread (no second question — nothing consumed the old
  * model-rated score). `opts.cache` dedupes identical scoring inputs within a run

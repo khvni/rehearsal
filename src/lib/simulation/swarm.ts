@@ -14,6 +14,7 @@ import type {
   Trajectory,
   Viewport,
 } from "../contracts";
+import { withDecideCache } from "../decisions/jev";
 import { CLASS_INTENTS } from "../intents/patterns";
 import { mulberry32 } from "./index";
 
@@ -102,12 +103,13 @@ export async function runPersonaSwarm(args: {
   intents?: IntentProfile[];
   config: ExperimentConfig;
   viewport: Viewport;
-  /** Optional injected decision client (e.g. a fixture in tests); runners select their own when absent. */
+  /** Optional injected decision client (e.g. a fixture in tests), deduped across the swarm; runners select their own when absent. */
   jev?: JevClient;
 }): Promise<PersonaSwarm> {
   const { runner, url, goal, assertions, config, viewport } = args;
   const run = runner.runPersonaJourney;
   if (!run) throw new Error(`${runner.name} does not support persona journeys`);
+  const jev = args.jev && withDecideCache(args.jev);
 
   const weights = personaWeights(args.endpoints, args.intents);
   const kinds = Object.keys(weights) as PersonaKind[];
@@ -150,7 +152,7 @@ export async function runPersonaSwarm(args: {
             assertions,
             seed,
             maxSteps: config.maxStepsPerAgent,
-            jev: args.jev,
+            jev,
           });
         } catch {
           journeys[i] = {
