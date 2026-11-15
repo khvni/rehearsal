@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { withRunSlot } from "@/lib/access";
+import { runSlotTtlMs, withRunSlot } from "@/lib/access";
 import { Experiment, type BrowserRunner, type ExperimentStore, type PageFetcher } from "@/lib/contracts";
 import { DISCOVER_CHECKPOINT_MS, DISCOVER_CHECKPOINT_PAGES, Orchestrator } from "@/lib/orchestrator";
 
@@ -190,6 +190,7 @@ describe("chunked runs", () => {
     const { id } = await seededRun(orch);
     store.all.get(id)!.createdAt = "2020-01-01T00:00:00.000Z";
     const internal = orch as unknown as { exclusive: (id: string, stage: string, fn: () => Promise<void>) => Promise<void>; stepBody: () => Promise<void> };
+    const renewal = vi.spyOn(globalThis, "setInterval").mockImplementation(() => 0 as unknown as ReturnType<typeof setInterval>);
     let oldRelease!: () => void;
     const old = internal.exclusive(id, "rebuild", () => new Promise<void>((r) => { oldRelease = r; }));
     expect((await orch.resume(id, { inline: true })).resumed).toBe(false);
@@ -201,6 +202,7 @@ describe("chunked runs", () => {
     await expect(internal.exclusive(id, "run", async () => {})).rejects.toMatchObject({ runningStage: "spec" });
     expect((await orch.resume(id, { inline: true })).resumed).toBe(false);
     await vi.advanceTimersByTimeAsync(1000);
+    renewal.mockRestore();
     const work = vi.spyOn(internal, "stepBody").mockResolvedValue();
     expect((await orch.resume(id, { inline: true })).resumed).toBe(true);
     expect(work).toHaveBeenCalledOnce();
@@ -362,7 +364,12 @@ describe("chunked runs", () => {
         probeFetcher: fetcher(WIDE_PAGES),
         runner: runner(WIDE_PAGES, () => reopened++),
       });
-      await second.discover(id);
+      const clock = vi.spyOn(Date, "now").mockReturnValue(Date.now() + runSlotTtlMs());
+      try {
+        await second.discover(id);
+      } finally {
+        clock.mockRestore();
+      }
       const stored = (await store.get(id))!;
       expect(reopened).toBe(total - saved);
       expect(stored.runCheckpoint).toBeUndefined();

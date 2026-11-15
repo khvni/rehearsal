@@ -71,6 +71,10 @@ interface TelemetryEvent {
 }
 
 export function logEvent(e: TelemetryEvent): void {
+  if (typeof navigator !== "undefined" && navigator.userAgent === "Cloudflare-Workers") {
+    // eslint-disable-next-line no-console -- Workers Logs is the persistent telemetry sink on workerd.
+    console.log(JSON.stringify({ ...e, at: e.at ?? new Date().toISOString() }));
+  }
   try {
     mkdirSync(LOG_DIR, { recursive: true });
     appendFileSync(

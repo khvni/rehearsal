@@ -1,4 +1,9 @@
-// Shared-secret gate (src/proxy.ts) and the process-wide pipeline concurrency cap (stage route).
+import { randomUUID } from "node:crypto";
+import type { RunLeaseStore } from "../contracts";
+import { selectRunLeaseStore } from "../storage";
+import { logEvent } from "../telemetry";
+
+let isolateId: string | undefined;
 
 function safeEqual(a: string, b: string): boolean {
   let diff = a.length ^ b.length;
@@ -28,21 +33,11 @@ export function presentsAccessToken(req: Request): boolean {
   return Boolean(token) && hasAccess(req.headers.get("authorization"), token!);
 }
 
-const DEFAULT_MAX_CONCURRENT_RUNS = 2;
-const g = globalThis as unknown as { __rehearsalRunLeases?: Map<symbol, number> };
+const DEFAULT_MAX_CONCURRENT_RUNS = 8;
 
 export function runSlotTtlMs(): number {
   const configured = Number(process.env.REHEARSAL_RUN_SLOT_TTL_MS);
-  return Number.isFinite(configured) && configured > 0 ? configured : 330_000;
-}
-
-function activeLeases(now: number): Map<symbol, number> {
-  const leases = g.__rehearsalRunLeases ??= new Map();
-  const ttl = runSlotTtlMs();
-  for (const [key, acquiredAt] of leases) {
-    if (now - acquiredAt >= ttl) leases.delete(key);
-  }
-  return leases;
+  return Number.isFinite(configured) && configured > 0 ? configured : 90_000;
 }
 
 export function maxConcurrentRuns(): number {
@@ -51,19 +46,27 @@ export function maxConcurrentRuns(): number {
 }
 
 /** Run `work` if a pipeline slot is free; resolves `{ busy: true }` without running it when the cap is reached. */
-export async function withRunSlot<T>(work: () => Promise<T>, waitMs = 0, now = Date.now): Promise<{ busy: true } | { busy: false; value: T }> {
+export async function withRunSlot<T>(work: () => Promise<T>, waitMs = 0, now = Date.now, leases: RunLeaseStore = selectRunLeaseStore()): Promise<{ busy: true } | { busy: false; value: T }> {
   const deadline = now() + waitMs;
-  while (activeLeases(now()).size >= maxConcurrentRuns() && now() < deadline) {
-    await new Promise((resolve) => setTimeout(resolve, Math.min(250, deadline - now())));
+  const holder = randomUUID();
+  const limit = maxConcurrentRuns();
+  const ttlMs = runSlotTtlMs();
+  while (!await leases.acquireSlot(holder, limit, ttlMs, now())) {
+    if (now() >= deadline) {
+      logEvent({ stage: "admission", kind: "slot-busy", data: { isolateId: isolateId ??= randomUUID(), limit } });
+      return { busy: true };
+    }
+    await new Promise((resolve) => setTimeout(resolve, Math.min(1000, deadline - now())));
   }
-  const leases = activeLeases(now());
-  if (leases.size >= maxConcurrentRuns()) return { busy: true };
-  const lease = Symbol();
-  leases.set(lease, now());
+  logEvent({ stage: "admission", kind: "slot-acquired", data: { isolateId: isolateId ??= randomUUID(), limit } });
+  const renewal = setInterval(() => {
+    void leases.renew(holder, ttlMs, now()).catch(() => undefined);
+  }, ttlMs / 3);
   try {
     return { busy: false, value: await work() };
   } finally {
-    leases.delete(lease);
+    clearInterval(renewal);
+    await leases.release(holder).catch(() => undefined);
   }
 }
 
@@ -77,16 +80,10 @@ const RUN_QUEUE_RETRY_MS = 5_000;
 export function enqueueRun(work: () => Promise<void>, retryMs = RUN_QUEUE_RETRY_MS): Promise<void> {
   return new Promise<void>((resolve, reject) => {
     const attempt = () => {
-      void withRunSlot(async () => {
-        try {
-          await work();
-          resolve();
-        } catch (e) {
-          reject(e);
-        }
-      }).then((r) => {
+      void withRunSlot(work).then((r) => {
         if (r.busy) setTimeout(attempt, retryMs);
-      });
+        else resolve();
+      }).catch(reject);
     };
     attempt();
   });

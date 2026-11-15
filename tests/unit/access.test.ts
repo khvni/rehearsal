@@ -1,12 +1,14 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { NextRequest } from "next/server";
-import { hasAccess, withRunSlot } from "@/lib/access";
+import { enqueueRun, hasAccess, withRunSlot } from "@/lib/access";
 import { proxy } from "@/proxy";
+import { MemoryRunLeaseStore } from "@/lib/storage";
 
 const TOKEN = "fixture-token-0123456789";
 const basic = (user: string, pass: string) => `Basic ${btoa(`${user}:${pass}`)}`;
 
 afterEach(() => {
+  vi.restoreAllMocks();
   vi.useRealTimers();
   delete process.env.REHEARSAL_ACCESS_TOKEN;
   delete process.env.REHEARSAL_MAX_CONCURRENT_RUNS;
@@ -42,6 +44,87 @@ describe("shared-secret gate", () => {
 });
 
 describe("pipeline concurrency cap", () => {
+  it.each([false, true])("settles queued work only after its slot is released (failure: %s)", async (fails) => {
+    let allowRelease!: () => void;
+    const releaseGate = new Promise<void>((resolve) => { allowRelease = resolve; });
+    let workStarted!: () => void;
+    const started = new Promise<void>((resolve) => { workStarted = resolve; });
+    let released = false;
+    let settled = false;
+    const release = MemoryRunLeaseStore.prototype.release;
+    vi.spyOn(MemoryRunLeaseStore.prototype, "release").mockImplementation(async function (this: MemoryRunLeaseStore, holder) {
+      await releaseGate;
+      await release.call(this, holder);
+      released = true;
+    });
+    const queued = enqueueRun(async () => {
+      workStarted();
+      if (fails) throw new Error("work failed");
+    }).then(() => { settled = true; return "success"; }, () => { settled = true; return "failure"; });
+    await started;
+    await Promise.resolve();
+    expect(settled).toBe(false);
+    allowRelease();
+    expect(await queued).toBe(fails ? "failure" : "success");
+    expect(released).toBe(true);
+  });
+
+  it("renews a held slot past its TTL and stops renewing after work finishes", async () => {
+    vi.useFakeTimers();
+    process.env.REHEARSAL_RUN_SLOT_TTL_MS = "300";
+    const leases = new MemoryRunLeaseStore();
+    const renew = vi.spyOn(leases, "renew");
+    let release!: () => void;
+    const held = withRunSlot(() => new Promise<void>((resolve) => { release = resolve; }), 0, Date.now, leases);
+    await vi.advanceTimersByTimeAsync(1000);
+    expect(renew).toHaveBeenCalledTimes(10);
+    expect(await leases.acquireSlot("blocked", 1, 300, Date.now())).toBe(false);
+    release();
+    await held;
+    await vi.advanceTimersByTimeAsync(1000);
+    expect(renew).toHaveBeenCalledTimes(10);
+    expect(await leases.acquireSlot("free", 1, 300, Date.now())).toBe(true);
+  });
+
+  it("swallows renewal errors and clears the interval when work throws", async () => {
+    vi.useFakeTimers();
+    process.env.REHEARSAL_RUN_SLOT_TTL_MS = "300";
+    const leases = new MemoryRunLeaseStore();
+    const renew = vi.spyOn(leases, "renew").mockRejectedValue(new Error("renew failed"));
+    let fail!: (error: Error) => void;
+    const held = withRunSlot(() => new Promise<void>((_, reject) => { fail = reject; }), 0, Date.now, leases);
+    await vi.advanceTimersByTimeAsync(100);
+    expect(renew).toHaveBeenCalledTimes(1);
+    const rejected = expect(held).rejects.toThrow("work failed");
+    fail(new Error("work failed"));
+    await rejected;
+    await vi.advanceTimersByTimeAsync(1000);
+    expect(renew).toHaveBeenCalledTimes(1);
+  });
+
+  it("runs eight builds concurrently across admission contexts and rejects the ninth", async () => {
+    const leases = new MemoryRunLeaseStore();
+    let release!: () => void;
+    const gate = new Promise<void>((resolve) => { release = resolve; });
+    const started: number[] = [];
+    const runs = Array.from({ length: 8 }, (_, i) => withRunSlot(async () => {
+      started.push(i);
+      await gate;
+    }, 0, () => 0, leases));
+    await expect(withRunSlot(async () => undefined, 0, () => 0, leases)).resolves.toEqual({ busy: true });
+    expect(started).toHaveLength(8);
+    release();
+    expect((await Promise.all(runs)).every((run) => !run.busy)).toBe(true);
+    await expect(withRunSlot(async () => "free", 0, () => 0, leases)).resolves.toEqual({ busy: false, value: "free" });
+  });
+
+  it("propagates admission errors instead of running work", async () => {
+    const leases = new MemoryRunLeaseStore();
+    vi.spyOn(leases, "acquireSlot").mockRejectedValue(new Error("database unavailable"));
+    const work = vi.fn();
+    await expect(withRunSlot(work, 0, () => 0, leases)).rejects.toThrow("database unavailable");
+    expect(work).not.toHaveBeenCalled();
+  });
   it("expires a never-released lease using an injected clock without freeing a newer lease", async () => {
     process.env.REHEARSAL_MAX_CONCURRENT_RUNS = "1";
     process.env.REHEARSAL_RUN_SLOT_TTL_MS = "1000";
@@ -72,7 +155,7 @@ describe("pipeline concurrency cap", () => {
     expect(work).not.toHaveBeenCalled();
     release();
     await held;
-    await vi.advanceTimersByTimeAsync(250);
+    await vi.advanceTimersByTimeAsync(1000);
     expect(await queued).toEqual({ busy: false, value: "queued" });
     await expect(withRunSlot(async () => { throw new Error("queued failure"); }, 20_000)).rejects.toThrow("queued failure");
     expect(await withRunSlot(async () => "free")).toEqual({ busy: false, value: "free" });
