@@ -13,6 +13,7 @@ export function makeState(args: {
   viewport: Viewport;
   title: string;
   visibleText: string;
+  headings?: string[];
   actions: Omit<ActionNode, "actionId" | "stateId">[];
   screenshotPath?: string;
   modalOpen?: boolean;
@@ -29,6 +30,7 @@ export function makeState(args: {
     viewport: args.viewport,
     pageTitle: args.title,
     visibleText: args.visibleText,
+    headings: args.headings,
     actions,
     screenshotPath: args.screenshotPath,
     stateHash: stateHashFor(args.url, args.viewport.name, actions, args.modalOpen ?? false),

@@ -86,14 +86,31 @@ function byFrequency(values: string[], cap: number): string[] {
   return [...count.keys()].sort((a, b) => count.get(b)! - count.get(a)!).slice(0, cap);
 }
 
+export function cleanNavLabel(value: string): string {
+  const words = value.trim().replace(/\s+/g, " ").split(" ");
+  for (let size = 1; size <= Math.floor(words.length / 2); size++) {
+    if (words.length % size === 0 && words.every((word, i) => word.toLowerCase() === words[i % size].toLowerCase()))
+      return words.slice(0, size).join(" ");
+  }
+  return words.join(" ");
+}
+
 function dedupeNav(items: { label: string; href: string }[], cap: number): { label: string; href: string }[] {
   const seen = new Set<string>();
   const out: { label: string; href: string }[] = [];
   for (const it of items) {
-    const key = `${it.label.toLowerCase()}|${it.href.replace(/\/$/, "")}`;
-    if (!it.label || !it.href || seen.has(key)) continue;
+    const label = cleanNavLabel(it.label);
+    const key = it.href.replace(/\/$/, "");
+    if (!label || !it.href) continue;
+    if (seen.has(key)) {
+      const existing = out.find((item) => item.href.replace(/\/$/, "") === key)!;
+      const tail = existing.label.slice(label.length).trim();
+      if (tail.length >= 2 && existing.label.startsWith(label) && label.toLowerCase().startsWith(tail.toLowerCase()))
+        existing.label = label;
+      continue;
+    }
     seen.add(key);
-    out.push(it);
+    out.push({ ...it, label });
     if (out.length >= cap) break;
   }
   return out;
@@ -252,7 +269,10 @@ function navFrom(blocks: string[], pageUrl: string): { label: string; href: stri
       if (!href || originOf(href) !== origin) continue;
       const full = textOf(m[1]);
       const firstChunk = m[1].split(/<[^>]+>/).map((c) => textOf(c)).find(Boolean) ?? "";
-      const label = clip((full.length > 30 && firstChunk.length >= 2 ? firstChunk : full) || attr(m[0], "aria-label") || "", 80);
+      const compact = full.replace(/\s+/g, "").toLowerCase();
+      const first = firstChunk.replace(/\s+/g, "").toLowerCase();
+      const repeated = first.length >= 2 && compact.startsWith(first) && compact.length > first.length && first.startsWith(compact.slice(first.length));
+      const label = clip(cleanNavLabel(((full.length > 30 || repeated) && firstChunk.length >= 2 ? firstChunk : full) || attr(m[0], "aria-label") || ""), 80);
       if (!label || UTILITY_LABEL_RE.test(label)) continue;
       items.push({ label, href });
     }
@@ -410,7 +430,10 @@ export const BRAND_SCRIPT = `(() => {
       let first = "";
       const tw = document.createTreeWalker(a, NodeFilter.SHOW_TEXT);
       for (let n = tw.nextNode(); n && !first; n = tw.nextNode()) first = (n.textContent || "").replace(/\\s+/g, " ").trim();
-      const label = ((full.length > 30 && first.length >= 2 ? first : full) || a.getAttribute("aria-label") || "").slice(0, 80);
+      const compact = full.replace(/\\s+/g, "").toLowerCase();
+      const chunk = first.replace(/\\s+/g, "").toLowerCase();
+      const repeated = chunk.length >= 2 && compact.startsWith(chunk) && compact.length > chunk.length && chunk.startsWith(compact.slice(chunk.length));
+      const label = (((full.length > 30 || repeated) && first.length >= 2 ? first : full) || a.getAttribute("aria-label") || "").slice(0, 80);
       if (!label || UTILITY.test(label)) continue;
       const key = label.toLowerCase() + "|" + href.toString().replace(/\\/$/, "");
       if (navSeen.has(key)) continue;
@@ -438,7 +461,7 @@ export async function captureBrand(page: EvaluatingPage): Promise<BrandSignals |
     const d = parsed.data;
     const colors = d.colors.map(canonicalColor).filter((c): c is string => !!c);
     const fonts = d.fonts.map((f) => normalizeFont(f)).filter((f): f is string => !!f);
-    return { ...d, colors: [...new Set(colors)].slice(0, CAP.colors), fonts: [...new Set(fonts)].slice(0, CAP.fonts) };
+    return { ...d, navItems: dedupeNav(d.navItems, CAP.navItems), colors: [...new Set(colors)].slice(0, CAP.colors), fonts: [...new Set(fonts)].slice(0, CAP.fonts) };
   } catch {
     return undefined;
   }

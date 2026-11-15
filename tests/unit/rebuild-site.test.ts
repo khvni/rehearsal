@@ -4,6 +4,8 @@ import { Orchestrator } from "@/lib/orchestrator";
 import { buildPage, deterministicPlan, lintRebuiltPage, planSite, rebuildPending, renderSiteDocument, rewriteSiteLinks, sitemapFromGraph, siteStylesheet } from "@/lib/rebuild/site";
 import { rollupBrand } from "@/lib/rebuild";
 import { parseHTML } from "linkedom";
+import { contrastRatio, parseColor } from "@/lib/rebuild/brand";
+import { repairSiteTokens } from "@/lib/rebuild/site-tokens";
 
 function fixture(count = 8): Experiment {
   return Experiment.parse({ configuration: {}, id: "exp_site", targetUrl: "https://example.com", goal: "Read resources", createdAt: "2026-01-01T00:00:00Z", status: "complete", graph: { states: Array.from({ length: count }, (_, i) => ({ stateId: `s${i}`, stateHash: `h${i}`, url: `https://example.com/${i || ""}`, pageTitle: `Page ${i}`, visibleText: "Useful information from the audited website for readers.", viewport: { name: "desktop", width: 1280, height: 900 }, actions: [] })), edges: [] }, spec: { targetUrl: "https://example.com", goal: "Read resources", generatedAt: "2026-01-01T00:00:00Z", summary: "Improve navigation", changes: [], rebuildPhases: [] } });
@@ -11,6 +13,102 @@ function fixture(count = 8): Experiment {
 const fake = (output = ""): LlmClient => ({ name: "openrouter", complete: vi.fn(async () => output) });
 
 describe("whole-site rebuild", () => {
+  it("preserves external footer query strings and distinct query targets", () => {
+    const exp = fixture(1);
+    const home = exp.graph!.states[0];
+    const hrefs = ["https://www.youtube.com/watch?v=first#t=20", "https://www.youtube.com/watch?v=second", "https://www.facebook.com/profile.php?id=123", "mailto:hello@example.com?subject=Hello"];
+    home.actions = [...hrefs, hrefs[0]].map((href, i) => ({ actionId: `a${i}`, stateId: home.stateId, label: `Contact ${i}`, href, type: "click", enabled: true, safeToExecute: true }));
+    const links = deterministicPlan(exp).footer.links;
+    expect(links).toHaveLength(4);
+    expect(links.map(l => l.href)).toEqual(expect.arrayContaining(hrefs));
+  });
+  it("cleans stored nav labels and prioritizes a bounded footer over crawled article dumps", () => {
+    const exp = fixture(40);
+    const home = exp.graph!.states[0];
+    exp.graph!.states[1].url = "https://example.com/about";
+    exp.graph!.states[15].url = "https://example.com/contact";
+    home.brand = { cssVars: {}, colors: [], fonts: [], navItems: [{ label: "Home", href: "/" }, { label: "About About", href: "/about" }, { label: "About", href: "/about" }] };
+    home.actions = ["https://github.com/acme/project", "https://github.com/acme", "mailto:hi@example.com", "https://x.com/acme", "javascript:bad()"].map((href, i) => ({ actionId: `a${i}`, stateId: home.stateId, label: i < 2 ? "GitHub GitHub" : "Contact", href, type: "click", enabled: true, safeToExecute: true }));
+    const site = deterministicPlan(exp);
+    expect(site.nav).toEqual([{ label: "Home", path: "/" }, { label: "About", path: "/about" }]);
+    expect(site.footer.links).toHaveLength(8);
+    expect(site.footer.links.map(l => l.href)).toEqual(expect.arrayContaining(["mailto:hi@example.com", "https://github.com/acme", "https://x.com/acme", "/contact"]));
+    expect(site.footer.links.some(l => l.href === "/about" || l.href.startsWith("javascript:"))).toBe(false);
+    expect(site.footer.links.find(l => l.href.includes("github"))?.label).toBe("GitHub");
+    expect(deterministicPlan(fixture(0)).footer.links).toEqual([]);
+  });
+  it("rejects bare link dumps, preserves proper indexes and prose, and falls back after a failed retry", async () => {
+    const links = Array.from({ length: 30 }, (_, i) => `<a href="/guide/${i}">Guide ${i}</a>`);
+    const dump = `<section><h2>All links</h2>${links.join(" ")}</section>`;
+    expect(lintRebuiltPage(dump)).toContain("oversized link dump");
+    expect(lintRebuiltPage("<h1>No links</h1>")).not.toContain("oversized link dump");
+    expect(lintRebuiltPage(`<div class="rb-prose">${links.map(l => `<p>${"Detailed article context. ".repeat(5)}${l}</p>`).join("")}</div>`)).not.toContain("oversized link dump");
+    expect(lintRebuiltPage(`<ul class="rb-index">${links.map(l => `<li class="rb-index-item"><h2 class="rb-index-title">${l}</h2></li>`).join("")}</ul>`)).not.toContain("oversized link dump");
+    const exp = fixture(1);
+    const site = deterministicPlan(exp);
+    const llm = fake(dump);
+    const page = await buildPage(exp, site, site.pages[0], llm);
+    expect(llm.complete).toHaveBeenCalledTimes(2);
+    expect(vi.mocked(llm.complete).mock.calls[1][0]).toContain("Fix these lint issues: oversized link dump");
+    expect(vi.mocked(llm.complete).mock.calls[1][0]).not.toContain("Fix these lint issues: undefined");
+    expect(page).toMatchObject({ source: "template", status: "built", issues: [] });
+  });
+  it("derives dark-brand surfaces and repairs deterministic and LLM token contrast", async () => {
+    const exp = fixture(1);
+    exp.graph!.states[0].brand = { cssVars: { "--background": "#24292e", "--foreground": "#e1e4e8", "--primary": "#58b595" }, colors: ["#24292e", "#e1e4e8", "#58b595"], fonts: [], navItems: [] };
+    const dark = deterministicPlan(exp);
+    expect(dark.tokens.background).toBe("#24292e");
+    expect(dark.tokens.muted).not.toBe("#f4f4f5");
+    expect(dark.tokens.border).not.toBe(dark.tokens.background);
+    const check = (tokens: typeof dark.tokens) => {
+      for (const [foreground, background] of [["foreground", "background"], ["foreground", "muted"], ["foreground", "card"], ["mutedForeground", "muted"], ["mutedForeground", "background"], ["primaryForeground", "primary"]] as const)
+        expect(contrastRatio(parseColor(tokens[foreground])!, parseColor(tokens[background])!)).toBeGreaterThanOrEqual(4.5);
+    };
+    check(dark.tokens);
+    const broken = { ...dark.tokens, muted: "#f4f4f5", card: "#ffffff", mutedForeground: "#a3a3a3", primaryForeground: "#ffffff" };
+    const planned = await planSite(exp, fake(JSON.stringify({ ...dark, tokens: broken })));
+    expect(planned.plannerSource).toBe("llm");
+    check(planned.tokens);
+    for (const background of ["#ffffff", "#000000", "#777777", "#ff0000", "rgb(40 48 60)", "transparent", "invalid", "rgba(0,0,0,0.1)"]) {
+      const repaired = repairSiteTokens({ ...broken, background, foreground: background });
+      check(repaired);
+      expect(repairSiteTokens(repaired)).toEqual(repaired);
+    }
+    const css = siteStylesheet(broken);
+    expect(css.slice(css.lastIndexOf(":root"))).not.toContain("--muted:#f4f4f5");
+    expect(css).toContain(".rb-section--muted,.rb-cta-band{color:var(--foreground)}");
+  });
+  it("bounds planner facts while keeping the complete page facts for implementation", async () => {
+    const exp = fixture(1);
+    const state = exp.graph!.states[0];
+    state.visibleText = "Page facts. ".repeat(1100) + "IMPLEMENTER_ONLY_TAIL";
+    state.headings = ["A real heading"];
+    state.actions = Array.from({ length: 300 }, (_, i) => ({ actionId: `a${i}`, stateId: state.stateId, label: `Link ${i}`, href: `https://example.com/item/${i}`, type: "click" as const, enabled: true, safeToExecute: true }));
+    const llm = fake(JSON.stringify(deterministicPlan(exp)));
+    const site = await planSite(exp, llm);
+    const prompt = vi.mocked(llm.complete).mock.calls[0][0];
+    expect(prompt).toContain("A real heading");
+    expect(prompt).not.toContain("IMPLEMENTER_ONLY_TAIL");
+    expect(prompt).not.toContain('"label":"Link 299"');
+    expect(prompt.length).toBeLessThan(18000);
+    expect(llm.complete).toHaveBeenCalledWith(expect.any(String), expect.objectContaining({ maxTokens: 65536 }));
+    expect(site.plannerError).toBeUndefined();
+    const implementer = fake("<h1>Built</h1>");
+    await buildPage(exp, site, site.pages[0], implementer);
+    expect(vi.mocked(implementer.complete).mock.calls[0][0]).toContain("IMPLEMENTER_ONLY_TAIL");
+  });
+  it("records bounded planner errors for truncated JSON, empty output, schema and provider failures", async () => {
+    const exp = fixture();
+    for (const output of ['{"tokens":', ""]) {
+      const site = await planSite(exp, fake(output));
+      expect(site).toMatchObject({ plannerSource: "template", plannerError: "parse error: invalid planner JSON" });
+    }
+    expect((await planSite(exp, fake("{}"))).plannerError).toMatch(/zod: tokens: invalid_type/);
+    const llm: LlmClient = { name: "fake", complete: async () => { throw new Error("Provider failed".repeat(100)); } };
+    expect((await planSite(exp, llm)).plannerError).toHaveLength(320);
+    const empty = await planSite(fixture(0), fake(JSON.stringify(deterministicPlan(fixture(0)))));
+    expect(empty).toMatchObject({ plannerSource: "llm", pages: [] });
+  });
   it("normalizes/deduplicates same-site paths, orders home first and ignores foreign states", () => {
     const exp = fixture(3);
     exp.graph!.states[0].url = "https://example.com/resources/?q=1#x";
@@ -23,7 +121,7 @@ describe("whole-site rebuild", () => {
   it("falls back deterministically and fills missing planner pages without trusting source URLs", async () => {
     const exp = fixture();
     const plan = deterministicPlan(exp);
-    expect(await planSite(exp, fake("not json"))).toEqual(plan);
+    expect(await planSite(exp, fake("not json"))).toEqual({ ...plan, plannerError: "parse error: invalid planner JSON" });
     const llm = fake(JSON.stringify({ ...plan, pages: [{ ...plan.pages[0], sourceUrl: "https://evil.test" }] }));
     const result = await planSite(exp, llm);
     expect(result.plannerSource).toBe("llm");
@@ -58,7 +156,7 @@ describe("whole-site rebuild", () => {
     exp.graph!.states[0].url = "https://example.com/blog";
     exp.graph!.states[1].url = "not a URL";
     expect(sitemapFromGraph(exp)).toMatchObject([{ path: "/", sourceUrl: "https://example.com/blog" }]);
-    expect(await planSite(exp, fake())).toEqual(deterministicPlan(exp));
+    expect(await planSite(exp, fake())).toMatchObject({ ...deterministicPlan(exp), plannerError: expect.stringContaining("parse error") });
     exp.targetUrl = "not a URL";
     expect(sitemapFromGraph(exp)).toEqual([]);
     expect(deterministicPlan(exp).pages).toEqual([]);
@@ -188,10 +286,11 @@ describe("whole-site rebuild", () => {
   it("persists a plan, builds six pages per step, completes and restarts explicitly", async () => {
     let saved = fixture();
     const events: unknown[] = [];
-    const store = { get: async () => structuredClone(saved), save: async (exp: Experiment) => { saved = structuredClone(exp); }, appendActivity: async (event: unknown) => { events.push(event); } } as unknown as ExperimentStore;
+    const store = { get: async () => structuredClone(saved), save: async (exp: Experiment) => { saved = structuredClone(exp); }, appendActivity: async (...args: unknown[]) => { events.push(args[1]); } } as unknown as ExperimentStore;
     const orch = new Orchestrator({ store, llm: fake(), fetcher: { name: "fixture", fetchHtml: async () => "" } });
     await orch.rebuild(saved.id);
     expect(saved.status).toBe("rebuilding"); expect(rebuildPending(saved)).toBe(true);
+    expect(JSON.stringify(events)).toContain("parse error: invalid planner JSON");
     expect(saved.rebuild!.site!.pages.every(p => p.status === "planned")).toBe(true);
     await orch.rebuild(saved.id);
     expect(saved.rebuild!.site!.pages.filter(p => p.status === "built")).toHaveLength(6);

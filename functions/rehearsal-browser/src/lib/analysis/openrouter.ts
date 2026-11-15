@@ -49,7 +49,7 @@ export class OpenRouterClient implements LlmClient {
   }
 
   /** Over budget throws; every caller already falls back to its deterministic path on error. */
-  async complete(prompt: string, opts?: { deep?: boolean; json?: boolean; model?: string; timeoutMs?: number }): Promise<string> {
+  async complete(prompt: string, opts?: { deep?: boolean; json?: boolean; model?: string; timeoutMs?: number; maxTokens?: number }): Promise<string> {
     const maxCalls = this.stepMaxCalls ?? this.maxCalls;
     if (this.calls >= maxCalls) throw new Error(`LLM call budget (${maxCalls}/run) exhausted`);
     this.calls++;
@@ -68,7 +68,7 @@ export class OpenRouterClient implements LlmClient {
       body: JSON.stringify({
         ...(models.length > 1 ? { models } : { model: models[0] }),
         messages: [{ role: "user", content: prompt }],
-        max_tokens: 16384,
+        max_tokens: opts?.maxTokens ?? 16384,
       }),
       signal: AbortSignal.timeout(opts?.timeoutMs ?? 90000),
     });
@@ -94,6 +94,7 @@ export class OpenRouterClient implements LlmClient {
         model: data.model ?? models[0],
         requested: models[0],
         provider: data.provider,
+        finishReason: data.choices?.[0]?.finish_reason,
         inputTokens,
         outputTokens,
         totalTokens,
@@ -102,14 +103,17 @@ export class OpenRouterClient implements LlmClient {
         estimated: !usage,
       },
     });
-    return data.choices?.[0]?.message?.content ?? "";
+    const choice = data.choices?.[0];
+    if (opts?.json && (choice?.finish_reason === "length" || choice?.finish_reason === "content_filter"))
+      throw new Error(`OpenRouter ${models[0]} finish_reason=${choice.finish_reason}`);
+    return choice?.message?.content ?? "";
   }
 }
 
 interface ChatCompletion {
   model?: string;
   provider?: string;
-  choices?: { message?: { content?: string | null } }[];
+  choices?: { message?: { content?: string | null }; finish_reason?: string | null }[];
   usage?: { prompt_tokens?: number; completion_tokens?: number; total_tokens?: number; cost?: number };
   error?: { code?: number | string; message?: string };
 }

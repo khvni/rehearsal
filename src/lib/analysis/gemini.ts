@@ -46,23 +46,23 @@ export class GeminiClient implements LlmClient {
   }
 
   /** Over budget throws; every caller already falls back to its deterministic path on error. */
-  async complete(prompt: string, opts?: { deep?: boolean; json?: boolean; model?: string }): Promise<string> {
+  async complete(prompt: string, opts?: { deep?: boolean; json?: boolean; model?: string; maxTokens?: number }): Promise<string> {
     const maxCalls = this.stepMaxCalls ?? this.maxCalls;
     if (this.calls >= maxCalls) throw new Error(`Gemini call budget (${maxCalls}/run) exhausted`);
     this.calls++;
     const model = opts?.model === "mockup" ? this.mockup : opts?.deep ? this.deep : this.fast;
     try {
-      return await this.generate(model, prompt, opts?.json ?? false);
+      return await this.generate(model, prompt, opts?.json ?? false, opts?.maxTokens);
     } catch (err) {
       if (model !== this.fast && isRetryableWithFastModel(err)) {
         logEvent({ stage: "analyze", kind: "llm-fallback", data: { from: model, to: this.fast, error: String(err).slice(0, 160) } });
-        return await this.generate(this.fast, prompt, opts?.json ?? false);
+        return await this.generate(this.fast, prompt, opts?.json ?? false, opts?.maxTokens);
       }
       throw err;
     }
   }
 
-  private async generate(model: string, prompt: string, json: boolean): Promise<string> {
+  private async generate(model: string, prompt: string, json: boolean, maxTokens = 8192): Promise<string> {
     const started = Date.now();
     const res = await fetch(
       `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${this.apiKey}`,
@@ -73,7 +73,7 @@ export class GeminiClient implements LlmClient {
           contents: [{ parts: [{ text: prompt }] }],
           generationConfig: {
             ...(json ? { responseMimeType: "application/json" } : {}),
-            maxOutputTokens: 8192,
+            maxOutputTokens: maxTokens,
           },
         }),
         signal: AbortSignal.timeout(60000),
