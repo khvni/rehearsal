@@ -97,7 +97,7 @@ export async function captureError(
   if (s) s.captureException(error, { tags: opts.tags, extra: context, level: opts.level ?? "error" });
 }
 
-type QuotaProvider = "gemini" | "ramp-router" | "browserbase" | "firecrawl" | "jev";
+type QuotaProvider = "gemini" | "openrouter" | "browserbase" | "firecrawl" | "jev";
 
 /** HTTP statuses providers use for "out of credits / over quota". */
 export const isQuotaStatus = (status: number) => status === 402 || status === 429;

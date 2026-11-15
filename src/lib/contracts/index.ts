@@ -579,8 +579,8 @@ export const RebuiltPage = z.object({
   /** One line on what changed vs the audited page. */
   summary: z.string(),
   html: z.string(),
-  /** Who produced the page content: an LLM provider (Gemini, Ramp Router) or the deterministic template. */
-  source: z.enum(["gemini", "router", "template"]),
+  /** Who produced the page content: an LLM provider (Gemini, OpenRouter) or the deterministic template. */
+  source: z.enum(["gemini", "openrouter", "template"]),
   bytes: z.number().int().nonnegative(),
 });
 export type RebuiltPage = z.infer<typeof RebuiltPage>;
@@ -591,7 +591,7 @@ export const RebuildResult = z.object({
   brand: BrandProfile,
   goals: z.array(RebuildGoal),
   pages: z.array(RebuiltPage),
-  /** LLM adapter name actually used ("gemini", "ramp-router", "gemini-fixture"…). */
+  /** LLM adapter name actually used ("gemini", "openrouter", "gemini-fixture"…). */
   llm: z.string(),
   /** Why no page got LLM copy (call budget, HTTP status, unparseable JSON); absent when the LLM was used or not configured. */
   llmError: z.string().optional(),
@@ -628,7 +628,7 @@ export const MockupPage = z.object({
   summary: z.string(),
   /** Full HTML document; already sanitized — no scripts, no external resources. */
   html: z.string(),
-  source: z.enum(["gemini", "router", "template"]),
+  source: z.enum(["gemini", "openrouter", "template"]),
   bytes: z.number().int().nonnegative(),
 });
 export type MockupPage = z.infer<typeof MockupPage>;
@@ -637,7 +637,7 @@ export const MockupResult = z.object({
   generatedAt: z.string(),
   brand: BrandProfile,
   pages: z.array(MockupPage),
-  /** LLM adapter name actually used ("gemini", "ramp-router", "gemini-fixture"…). */
+  /** LLM adapter name actually used ("gemini", "openrouter", "gemini-fixture"…). */
   llm: z.string(),
 });
 export type MockupResult = z.infer<typeof MockupResult>;
