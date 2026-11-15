@@ -13,6 +13,14 @@ export class RehearsalError extends Error {
   }
 }
 
+/** The submitted target URL was rejected (unparseable, blocked, private or unresolvable): the caller's fault, not ours. */
+export class InvalidTargetError extends Error {
+  constructor(cause: unknown) {
+    super(cause instanceof Error ? cause.message : String(cause), { cause });
+    this.name = "InvalidTargetError";
+  }
+}
+
 /** Ordered: first match wins, so specific patterns precede generic ones. */
 const PATTERNS: [ErrorCode, RegExp][] = [
   ["PROVIDER_QUOTA", /\b402\b|payment required|\b429\b|too many requests|rate.?limit|quota (exceeded|exhausted)|insufficient (credits|funds|balance)/i],

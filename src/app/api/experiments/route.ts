@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { ExperimentConfig, ExperimentRequest } from "@/lib/contracts";
+import { InvalidTargetError } from "@/lib/errors";
 import { Orchestrator } from "@/lib/orchestrator";
 import { clientIp, underDailyLimit } from "@/lib/ratelimit";
 import { displayFindings } from "@/lib/presentation";
@@ -22,7 +23,11 @@ function orchestrator(): Orchestrator {
 
 export async function POST(req: Request) {
   try {
-    const body = (await req.json()) as {
+    const json: unknown = await req.json().catch(() => undefined);
+    if (!json || typeof json !== "object" || Array.isArray(json)) {
+      return NextResponse.json({ error: "body must be a JSON object" }, { status: 400 });
+    }
+    const body = json as {
       targetUrl?: string;
       url?: string;
       goal?: string;
@@ -73,7 +78,10 @@ export async function POST(req: Request) {
     const experiment = await orch.scheduleRun(result.experiment.id, { origin: new URL(req.url).origin });
     return NextResponse.json(experiment);
   } catch (e) {
-    return NextResponse.json({ error: String(e).slice(0, 300) }, { status: 400 });
+    if (e instanceof InvalidTargetError) {
+      return NextResponse.json({ error: e.message.slice(0, 300) }, { status: 400 });
+    }
+    return NextResponse.json({ error: String(e).slice(0, 300) }, { status: 500 });
   }
 }
 
