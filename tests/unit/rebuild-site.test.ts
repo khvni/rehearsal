@@ -13,6 +13,15 @@ function fixture(count = 8): Experiment {
 const fake = (output = ""): LlmClient => ({ name: "openrouter", complete: vi.fn(async () => output) });
 
 describe("whole-site rebuild", () => {
+  it("preserves external footer query strings and distinct query targets", () => {
+    const exp = fixture(1);
+    const home = exp.graph!.states[0];
+    const hrefs = ["https://www.youtube.com/watch?v=first#t=20", "https://www.youtube.com/watch?v=second", "https://www.facebook.com/profile.php?id=123", "mailto:hello@example.com?subject=Hello"];
+    home.actions = [...hrefs, hrefs[0]].map((href, i) => ({ actionId: `a${i}`, stateId: home.stateId, label: `Contact ${i}`, href, type: "click", enabled: true, safeToExecute: true }));
+    const links = deterministicPlan(exp).footer.links;
+    expect(links).toHaveLength(4);
+    expect(links.map(l => l.href)).toEqual(expect.arrayContaining(hrefs));
+  });
   it("cleans stored nav labels and prioritizes a bounded footer over crawled article dumps", () => {
     const exp = fixture(40);
     const home = exp.graph!.states[0];

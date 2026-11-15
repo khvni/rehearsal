@@ -184,18 +184,8 @@ export function deterministicPlan(exp: Experiment): RebuildSite {
             /^https?:$/.test(url.protocol) &&
             !sameOrigin(url, new URL(exp.targetUrl)))
         ) {
-          url.search = "";
-          url.hash = "";
-          const key =
-            url.protocol === "mailto:"
-              ? "mailto:"
-              : url.hostname.replace(/^www\./, "");
-          const existing = socialLinks.get(key);
-          if (
-            !existing ||
-            url.pathname.length < new URL(existing.href).pathname.length
-          )
-            socialLinks.set(key, {
+          if (!socialLinks.has(url.href))
+            socialLinks.set(url.href, {
               label: cleanNavLabel(action.label).slice(0, 100),
               href: url.href,
             });
