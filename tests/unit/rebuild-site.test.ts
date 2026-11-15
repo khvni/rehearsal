@@ -49,6 +49,8 @@ describe("whole-site rebuild", () => {
     const llm = fake(dump);
     const page = await buildPage(exp, site, site.pages[0], llm);
     expect(llm.complete).toHaveBeenCalledTimes(2);
+    expect(vi.mocked(llm.complete).mock.calls[1][0]).toContain("Fix these lint issues: oversized link dump");
+    expect(vi.mocked(llm.complete).mock.calls[1][0]).not.toContain("Fix these lint issues: undefined");
     expect(page).toMatchObject({ source: "template", status: "built", issues: [] });
   });
   it("derives dark-brand surfaces and repairs deterministic and LLM token contrast", async () => {

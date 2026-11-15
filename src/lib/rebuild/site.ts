@@ -639,12 +639,13 @@ export async function buildPage(
       sitemap: site.pages.map((p) => p.path),
     }),
   ].join("\n");
+  let retryIssues: string[] = [];
   for (let attempt = 0; attempt < 2; attempt++) {
     try {
       const raw = await llm.complete(
         prompt +
           (attempt
-            ? `\nFix these lint issues: ${best?.issues?.join(", ")}`
+            ? `\nFix these lint issues: ${retryIssues.join(", ")}`
             : ""),
         { model: "rebuild", timeoutMs: 90000 },
       );
@@ -655,6 +656,7 @@ export async function buildPage(
       const issues = [
         ...new Set([...rawIssues, ...lintRebuiltPage(html, opts)]),
       ];
+      retryIssues = issues;
       if (issues.includes("oversized link dump")) continue;
       const built: RebuildSitePage = {
         ...page,
