@@ -711,6 +711,10 @@ export const DiscoverCheckpoint = z.object({
   /** Crawl finished — still pending signature probes (urls), or the already-computed results. */
   signaturePending: z.array(z.string()).optional(),
   signatureDone: z.array(z.object({ url: z.string(), signature: z.string() })).default([]),
+  /** URLs from the one-time seed /v1/map expansion — carried across suspension into later viewport passes. */
+  seedExtras: z.array(z.string()).default([]),
+  /** Whether the seed map expansion already ran this run (it fires once). */
+  mapExpanded: z.boolean().default(false),
 });
 export type DiscoverCheckpoint = z.infer<typeof DiscoverCheckpoint>;
 

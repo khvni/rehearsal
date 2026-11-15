@@ -106,6 +106,67 @@ describe("chunked runs", () => {
     expect(done.status).toBe("created");
   });
 
+  it("carries the seed map expansion across a suspended crawl", async () => {
+    process.env.REHEARSAL_ALLOW_PRIVATE = "1";
+    // One link < MIN_SEED_LINKS on the seed — firecrawl /map supplies m1 + m2.
+    const ONE_LINK = `<html><head><title>Home</title></head><body><h1>Home</h1><a href="/a">A</a></body></html>`;
+    const pages = {
+      [URL]: ONE_LINK,
+      "https://site.test/a": PAGE_A,
+      "https://site.test/m1": `<html><body><h1>M1</h1></body></html>`,
+      "https://site.test/m2": `<html><body><h1>M2</h1></body></html>`,
+    };
+    let t = 0;
+    let mapCalls = 0;
+    const store = memoryStore();
+    const firecrawl = {
+      name: "firecrawl-stub",
+      available: true,
+      async fetchHtml() {
+        return "";
+      },
+      async scrape() {
+        return null;
+      },
+      async mapLinks() {
+        mapCalls += 1;
+        return ["https://site.test/m1", "https://site.test/m2"];
+      },
+      async interact() {
+        return null;
+      },
+    };
+    const tickFetch: PageFetcher = {
+      name: "fixture-fetch",
+      async fetchHtml(u) {
+        t += 30;
+        const html = pages[u as keyof typeof pages];
+        if (html === undefined) throw new Error(`fixture 404: ${u}`);
+        return html;
+      },
+    };
+    const orch = new Orchestrator({ store, probeFetcher: tickFetch, runner: runner(pages), firecrawl });
+    const { id } = await seededRun(orch);
+
+    // Budget for the seed page + its map expansion — /a and the extras stay queued.
+    const afterSlice1 = await orch.runStep(id, { deadlineMs: 50, now: () => t });
+    const cp = (await store.get(id))!.runCheckpoint;
+    expect(afterSlice1.status).toBe("discovering");
+    expect(mapCalls).toBe(1);
+    expect(cp?.discover?.seedExtras).toEqual(["https://site.test/m1", "https://site.test/m2"]);
+    expect(cp?.discover?.mapExpanded).toBe(true);
+
+    const done = await orch.discover(id);
+    const stored = (await store.get(id))!;
+    // Later viewport passes re-seed from the checkpoint — m1/m2 still crawl, /map never refires.
+    expect(mapCalls).toBe(1);
+    expect(new Set(stored.graph?.states.map((s) => s.url))).toEqual(
+      new Set([URL, "https://site.test/a", "https://site.test/m1", "https://site.test/m2"]),
+    );
+    expect(stored.graph?.states).toHaveLength(8);
+    expect(done.status).toBe("created");
+  });
+
   it("fails STAGE_TIMEOUT after a stage exhausts its slice cap", async () => {
     process.env.REHEARSAL_ALLOW_PRIVATE = "1";
     const pages = { [URL]: HOME };

@@ -668,6 +668,8 @@ export class Orchestrator {
           providerQuotaHit,
           signaturePending: parts.signaturePending,
           signatureDone: parts.signatureDone ?? [],
+          seedExtras: [...seedExtras],
+          mapExpanded,
         });
       };
       /** Save + emit + report suspension in one place. */
@@ -693,8 +695,8 @@ export class Orchestrator {
       // the plain fetcher — pages lose screenshots/metrics but still map.
       let providerQuotaHit = resumeData?.providerQuotaHit ?? false;
       // Firecrawl /v1/map runs once per run, on the seed, when it exposes few links.
-      let mapExpanded = false;
-      const seedExtras: string[] = [];
+      let mapExpanded = resumeData?.mapExpanded ?? false;
+      const seedExtras: string[] = resumeData?.seedExtras ? [...resumeData.seedExtras] : [];
       try {
         if (!resumeData?.signaturePending) {
         for (let vi = resumeData?.vpIndex ?? 0; vi < config.viewports.length; vi++) {
