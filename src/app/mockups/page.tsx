@@ -10,7 +10,7 @@ interface MockupSummary {
   targetUrl: string;
   goal: string;
   createdAt: string;
-  mockup: { llm: string; pages: { slug: string; title: string; source: "gemini" | "template" }[] };
+  mockup: { llm: string; pages: { slug: string; title: string; source: "gemini" | "router" | "template" }[] };
 }
 
 function shortDate(iso: string): string {

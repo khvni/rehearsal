@@ -19,7 +19,7 @@ export function hasBrowserEvidence(finding: Finding, exp: Experiment): boolean {
 
 export function hasUsablePreview(exp: Experiment): boolean {
   const page = exp.mockup?.pages[0];
-  if (!page || page.source !== "gemini") return false;
+  if (!page || page.source === "template") return false;
   const heading = /<h1\b[^>]*>([\s\S]*?)<\/h1>/i.exec(page.html)?.[1].replace(/<[^>]*>/g, "").trim();
   return Boolean(heading && !/^https?:\/\//i.test(heading) && heading !== exp.targetUrl);
 }

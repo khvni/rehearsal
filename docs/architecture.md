@@ -118,7 +118,10 @@ a variable that is missing here or in `.env.example`, or if `.env.example` lists
 | `GEMINI_API_KEY` | `analysis/gemini.ts`, `browser/stagehand.ts` | `FixtureLlmClient`; Stagehand falls back to the Browserbase Model Gateway |
 | `GEMINI_MODEL_FAST` / `GEMINI_MODEL_DEEP` | `analysis/gemini.ts` | `gemini-4-hydrogen` / `gemini-4-argon` |
 | `GEMINI_MODEL_MOCKUP` | `analysis/gemini.ts` | `GEMINI_MODEL_DEEP` — the generation model for spec-stage preview pages; retryable errors fall back to `GEMINI_MODEL_FAST` |
-| `REHEARSAL_GEMINI_MAX_CALLS` | `analysis/gemini.ts` | `10` Gemini calls per run (reset at discover and at a standalone rebuild), first come first served; a run makes up to 7 (assertions, goal intent, visitor questions, findings, spec, mockup, rebuild), and calls past the cap use the deterministic fallback |
+| `RAMP_ROUTER_API_KEY` | `analysis/router.ts` | unset: Gemini/fixture as above. Set: every LLM stage calls Ramp Router's OpenAI Responses API (`POST /responses`) instead of Gemini; pages it writes carry `source: "router"`. CI uploads it as a Worker secret from the Actions secret of the same name. Stagehand is unaffected (its model config has no base URL) |
+| `RAMP_ROUTER_BASE_URL` | `analysis/router.ts` | `https://api.router.com/v1` |
+| `RAMP_ROUTER_MODEL_FAST` / `RAMP_ROUTER_MODEL_DEEP` / `RAMP_ROUTER_MODEL_MOCKUP` | `analysis/router.ts` | `gemini-4-hydrogen` / `gemini-4-argon` / the deep model; deep and mockup calls send Router a `models` fallback list ending in the fast model |
+| `REHEARSAL_GEMINI_MAX_CALLS` | `analysis/gemini.ts`, `analysis/router.ts` | `10` LLM calls per run (reset at discover and at a standalone rebuild), first come first served; a run makes up to 7 (assertions, goal intent, visitor questions, findings, spec, mockup, rebuild), and calls past the cap use the deterministic fallback |
 | `JEV_API_KEY` (or `OPENROUTER_API_KEY`) | `decisions/jev.ts` | `FixtureJevClient` |
 | `JEV_BASE_URL` / `JEV_MODEL` | `decisions/jev.ts` | `https://api.typesafe.ai/v1/systemone` / `jev-latest` |
 | `FIRECRAWL_API_KEY` | `fetch/firecrawl.ts`, `orchestrator.ts` | Discovery is plain-fetch only (no hosted fallback, no `/v1/map` expansion) |
