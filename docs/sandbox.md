@@ -96,7 +96,10 @@ is also the path that works from the Workers deploy.
 The Worker cannot run Stagehand v4 in-process (see above), so on workerd the browser
 runner is `BrowserbaseFunctionRunner`: it `POST /v1/functions/{id}/invoke`s the published
 Function and polls `GET /v1/functions/invocations/{id}` until `COMPLETED`/`FAILED`
-(timeout 180 s, poll 2 s). The Function attaches `StagehandRunner` to the invocation's
+(timeout 180 s, poll 2 s; invocation and poll requests share that deadline). On a remote
+timeout during discover, the timed-out page and remaining crawl use the plain probe fetcher
+without screenshots; the fallback survives checkpoint resume. Verify and compare still fail
+on the remote timeout. The Function attaches `StagehandRunner` to the invocation's
 session via `browserbase.connect` and returns `{ok, value | error, sessionId}`.
 
 Publish/ops:

@@ -44,19 +44,36 @@ telemetry: Sentry (SENTRY_DSN) + data/events/*.jsonl → /api/hooks/sentry → f
    the experiment and journeys are also translated to `Trajectory`s for the dashboard heat map.
    Backends without `runPersonaJourney` fall back to the legacy seeded sampler (`scoreActions` →
    `simulateTrajectories`).
+   Persona button labels follow accessible-name order (`aria-labelledby`, `aria-label`, text,
+   then `value`) so role-based clicks target the same name. Form-owned submit buttons,
+   including external `form="…"` controls, are excluded; a capture-phase guard also blocks
+   submit events triggered by persona clicks before page submit handlers run.
 3. **verify**: swarm mode replays `selectJourneys` — most-dropped + most-travelled journeys
    interleaved (≥1 goal-reached kept) — step-by-step through the recorded actions. Legacy mode
    uses `selectTrajectories` on the riskiest ~8 (+always a goal-reached path if any);
    `runTrajectory` executes them in desktop (and mobile for the top path), checking assertions.
+   Verify and compare count goal success when all compiled assertions pass **or** a positive
+   goal-endpoint alternative passes. Failed steps and runtime errors still fail the run;
+   reaching an endpoint suppresses findings for the waived compiled-assertion mismatches.
 4. **analyze**: `ruleFindings` (always-on: stale dates + apply CTA, vague labels, nav density,
    missing identity, failed assertions) + `llmFindings` (gemini-4-argon, rubric-grounded JSON).
+   LLM-only findings are always `unverified`, capped at `reproducible-concern`; a model reply
+   cannot establish a `verified-failure`.
 5. **compare**: variant (DomPatch set) applied via `addInitScript` in a fresh context;
    same assertions re-run; deltas recorded.
 6. **spec**: `generateSpec` merges findings → ordered changes + rebuild phases → `spec.md`.
-7. **rebuild** (opt-in: a full run stops at spec; only `POST /api/experiments/:id/rebuild` runs it): `generateRebuild` rolls crawled brand signals into a `BrandProfile`, infers every
-   plausible visitor goal (`inferGoals`), and renders one branded, script-free page per goal
-   (Gemini content, deterministic template fallback) → `experiment.rebuild`, served at
-   `/experiments/:id/rebuild[/:slug]`.
+   The dashboard and download preserve stored fix steps, order and rationale for surviving
+   findings even without browser runs or after question filtering; only findings without a
+   stored change get a recommendation-based fallback. Displayed ranks are renumbered.
+7. **rebuild** (opt-in: a full run stops at spec; only `POST /api/experiments/:id/rebuild` runs it):
+   plans the crawled pages as one site, then implements pages in durable batches →
+   `experiment.rebuild.site`, served at `/experiments/:id/rebuild[/:slug]`.
+   Planner metadata is server-owned; invalid optional fields do not discard a usable design.
+   Unusable tokens/pages/blocks or a failed planning call fall back to a template plan, with
+   a dashboard warning and the planner error. Page implementation may still use the LLM.
+   Cloudflare-protected email links/text are decoded before rebuilding; undecodable email
+   placeholders lose their href rather than becoming broken internal links. Non-page assets
+   (PDF, Markdown, etc.) keep absolute original URLs instead of being rewritten as rebuilt pages.
 
 ## Browser and fetch vendors
 
@@ -104,8 +121,9 @@ fallback for JS-shell pages and seed expansion; Browserbase Fetch (`browserbase.
 available as a fetcher when keyed. `selectFetcher()` picks Firecrawl → Browserbase → plain.
 Every path runs `assertPublicUrl` + per-host politeness first. Plain fetches re-check every
 redirect hop. Local Chromium sends every request (redirects and subresources too) through a
-loopback egress proxy (`fetch/egress-proxy.ts`) that resolves each host, refuses private,
-link-local and metadata addresses, and connects to the IP it checked; runners also re-check
+loopback egress proxy (`fetch/egress-proxy.ts`) that resolves each host, refuses non-public
+IP ranges (including all IPv6 link-local `fe80::/10`, multicast and reserved ranges), and
+connects to the IP it checked; IPv4-mapped IPv6 addresses are classified as IPv4. Runners also re-check
 `page.url()` after each navigation.
 
 ## Environment variables
