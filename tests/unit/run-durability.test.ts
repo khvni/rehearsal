@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it } from "vitest";
 import { Experiment, type BrowserRunner, type ExperimentStore, type PageFetcher } from "@/lib/contracts";
-import { Orchestrator } from "@/lib/orchestrator";
+import { DISCOVER_CHECKPOINT_MS, DISCOVER_CHECKPOINT_PAGES, Orchestrator } from "@/lib/orchestrator";
 
 const URL = "https://site.test/";
 const HOME = `<html><head><title>Home</title></head><body><h1>Home</h1><a href="/a">A</a> <a href="/b">B</a></body></html>`;
@@ -165,6 +165,83 @@ describe("chunked runs", () => {
     );
     expect(stored.graph?.states).toHaveLength(8);
     expect(done.status).toBe("created");
+  });
+
+  /** Home linking to /p1../p7 — 8 urls × 2 viewports = 16 crawled pages, more than one checkpoint batch. */
+  const WIDE_PAGES: Record<string, string> = {
+    [URL]: `<html><head><title>Home</title></head><body><h1>Home</h1>${[1, 2, 3, 4, 5, 6, 7]
+      .map((n) => `<a href="/p${n}">P${n}</a>`)
+      .join(" ")}</body></html>`,
+    ...Object.fromEntries(
+      [1, 2, 3, 4, 5, 6, 7].map((n) => [`https://site.test/p${n}`, `<html><head><title>P${n}</title></head><body><h1>P${n}</h1></body></html>`]),
+    ),
+  };
+
+  /** Crawls until `killAfter` pages have opened, then hangs the next open forever — a slice the runtime killed mid-crawl. */
+  async function killedCrawl(killAfter: number, tick?: () => void) {
+    let opened = 0;
+    let killed!: () => void;
+    const hung = new Promise<void>((r) => (killed = r));
+    const dying: BrowserRunner = {
+      ...runner(WIDE_PAGES),
+      async openPage(url) {
+        if (opened === killAfter) {
+          killed();
+          return new Promise(() => {});
+        }
+        opened += 1;
+        tick?.();
+        return { html: WIDE_PAGES[url] };
+      },
+    };
+    const store = memoryStore();
+    const first = new Orchestrator({ store, fetcher: fetcher(WIDE_PAGES), probeFetcher: fetcher(WIDE_PAGES), runner: dying });
+    const { id } = await seededRun(first);
+    void first.discover(id);
+    await hung;
+    return { id, store };
+  }
+
+  it("a crawl killed mid-discover resumes from its last checkpoint, redoing fewer than one batch of pages", async () => {
+    process.env.REHEARSAL_ALLOW_PRIVATE = "1";
+    process.env.REHEARSAL_BROWSER = "playwright";
+    const total = 16;
+    for (let killAfter = 1; killAfter < total; killAfter++) {
+      const { id, store } = await killedCrawl(killAfter);
+      const saved = (await store.get(id))!.runCheckpoint?.discover?.states.length ?? 0;
+      expect(killAfter - saved).toBeGreaterThanOrEqual(0);
+      expect(killAfter - saved).toBeLessThan(DISCOVER_CHECKPOINT_PAGES);
+
+      // A fresh process picks the run up from the store: only pages past the checkpoint are re-opened.
+      let reopened = 0;
+      const second = new Orchestrator({
+        store,
+        fetcher: fetcher(WIDE_PAGES),
+        probeFetcher: fetcher(WIDE_PAGES),
+        runner: runner(WIDE_PAGES, () => reopened++),
+      });
+      await second.discover(id);
+      const stored = (await store.get(id))!;
+      expect(reopened).toBe(total - saved);
+      expect(stored.runCheckpoint).toBeUndefined();
+      expect(stored.graph?.states).toHaveLength(total);
+      expect(stored.siteSignatures).toHaveLength(8);
+    }
+  });
+
+  it("checkpoints slow crawls on elapsed time before a full page batch", async () => {
+    process.env.REHEARSAL_ALLOW_PRIVATE = "1";
+    process.env.REHEARSAL_BROWSER = "playwright";
+    let t = 0;
+    const realNow = Date.now;
+    Date.now = () => t;
+    try {
+      // Each page takes half the time cap — every second page is saved, well before a full batch.
+      const { id, store } = await killedCrawl(3, () => (t += DISCOVER_CHECKPOINT_MS / 2));
+      expect((await store.get(id))!.runCheckpoint?.discover?.states).toHaveLength(2);
+    } finally {
+      Date.now = realNow;
+    }
   });
 
   it("fails STAGE_TIMEOUT after a stage exhausts its slice cap", async () => {

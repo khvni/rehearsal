@@ -93,6 +93,15 @@ function stallMs(): number {
 /** Slices a single stage may consume before it fails with STAGE_TIMEOUT — caps retry loops on stages that cannot finish in one step. */
 const MAX_STAGE_SLICES = 10;
 
+/**
+ * Discover checkpoint cadence: the crawl state is saved after this many
+ * crawled pages, or once this much time has passed since the last save,
+ * whichever comes first. A slice killed mid-crawl loses at most that much
+ * work; a step-budget suspend always saves.
+ */
+export const DISCOVER_CHECKPOINT_PAGES = 5;
+export const DISCOVER_CHECKPOINT_MS = 10_000;
+
 /** Statuses a chunked run can be sitting in when the runtime kills it mid-flight. */
 const IN_FLIGHT_STATUSES: readonly string[] = [
   "queued",
@@ -636,7 +645,7 @@ export class Orchestrator {
 
   /** Stage 1 — discover states, build graph. */
   /**
-   * Resumable discover: persists a `runCheckpoint` per crawled page so a
+   * Resumable discover: persists a `runCheckpoint` every few crawled pages so a
    * suspended step (Workers waitUntil window) or a crashed process resumes the
    * frontier instead of restarting the crawl. `deadline` is a wall-clock point
    * (`now()`) at which the stage must checkpoint and suspend; `resume` replays
@@ -660,11 +669,15 @@ export class Orchestrator {
       const attempt = opts?.attempt ?? 0;
       const now = opts?.now ?? Date.now;
       const expired = () => opts?.deadline !== undefined && now() >= opts.deadline;
+      let pagesSinceSave = 0;
+      let lastSaveAt = now();
       /** Write the crawl state so a suspended step or dropped hop resumes where it left off. */
       const persist = async (discover: DiscoverCheckpoint) => {
         const latest = await this.mustGet(id);
         latest.runCheckpoint = { stage: "discover", attempt, discover };
         await this.store.save(Experiment.parse(latest));
+        pagesSinceSave = 0;
+        lastSaveAt = now();
       };
       const snapshot = async (parts: {
         vpIndex: number;
@@ -857,8 +870,11 @@ export class Orchestrator {
                 level: "warning",
               });
             }
-            // Durable per-page checkpoint — a kill mid-crawl resumes the frontier.
-            await snapshot({ vpIndex: vi, frontier, attempted, visited });
+            // Batched durable checkpoint — a kill mid-crawl resumes the frontier, redoing at most one batch.
+            pagesSinceSave += 1;
+            if (pagesSinceSave >= DISCOVER_CHECKPOINT_PAGES || now() - lastSaveAt >= DISCOVER_CHECKPOINT_MS) {
+              await snapshot({ vpIndex: vi, frontier, attempted, visited });
+            }
           }
         }
         }
