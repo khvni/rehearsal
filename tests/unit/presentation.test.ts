@@ -39,7 +39,11 @@ describe("honest result presentation", () => {
       .filter((c) => c.findingId && survivingIds.has(c.findingId))
       .map((change, i) => ({ ...change, rank: i + 1 })));
     expect(displayed.changes.map((c) => c.rank)).toEqual(displayed.changes.map((_, i) => i + 1));
-    expect(displayed.rebuildPhases).toEqual(stored.rebuildPhases);
+    expect(displayed.rebuildPhases).toEqual([{
+      name: "Verify the recommendations",
+      goal: "Check each concern on the original page before implementing it.",
+      items: ["Reproduce the issue in a browser.", "Apply the relevant fix on staging and test the same goal again."],
+    }]);
     expect(exp.spec).toEqual(stored);
     expect(displayed.summary).toContain(scenario === "no browser runs" ? "No browser verification" : "browser runs recorded");
   });

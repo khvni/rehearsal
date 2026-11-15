@@ -42,6 +42,7 @@ export function displaySpec(exp: Experiment): SpecReport | undefined {
       effort: exp.spec?.changes.find((c) => c.findingId === f.findingId)?.effort ?? "M",
       evidencePaths: f.evidencePaths,
     }))].map((change, i) => ({ ...change, rank: i + 1 })),
+    rebuildPhases: [{ name: "Verify the recommendations", goal: "Check each concern on the original page before implementing it.", items: ["Reproduce the issue in a browser.", "Apply the relevant fix on staging and test the same goal again."] }],
   };
 }
 
