@@ -210,7 +210,7 @@ export default function RebuildPage() {
                       <a className="card-heading" href={`/experiments/${id}/rebuild/${p.slug}`} target="_blank" rel="noreferrer">
                         {p.title}
                       </a>
-                      <Badge variant="dot" color={p.source === "gemini" ? "blue" : "gray"}>{p.source}</Badge>
+                      <Badge variant="dot" color={p.source !== "template" ? "blue" : "gray"}>{p.source}</Badge>
                     </div>
                     <p className="card-body">{p.summary}</p>
                     <span className="card-meta tabular">{p.goal} · {(p.bytes / 1024).toFixed(1)} KB</span>
