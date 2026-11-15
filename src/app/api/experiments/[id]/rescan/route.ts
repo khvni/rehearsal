@@ -24,7 +24,13 @@ function orchestrator(): Orchestrator {
 export async function POST(req: Request, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
   if (!isExperimentId(id)) return NextResponse.json({ error: "not found" }, { status: 404 });
-  const body = (await req.json().catch(() => ({}))) as { goal?: unknown };
+  let body: { goal?: unknown };
+  try {
+    const raw = await req.text();
+    body = raw ? JSON.parse(raw) : {};
+  } catch {
+    return NextResponse.json({ error: "invalid JSON" }, { status: 400 });
+  }
   const goal = ExperimentGoal.optional().safeParse(body?.goal ?? undefined);
   if (!goal.success) return NextResponse.json({ error: "invalid goal" }, { status: 400 });
   const orch = orchestrator();

@@ -2,23 +2,36 @@ import { Fragment, type ReactNode } from "react";
 import { PrincipleChip } from "./chips";
 import { findPrinciple } from "./principles";
 
+type ListItem = { text: string; children: ListItem[] };
+
 type Block =
   | { type: "h1" | "h2" | "h3"; text: string }
-  | { type: "ul"; items: string[] }
+  | { type: "ul"; items: ListItem[] }
   | { type: "p"; lines: string[] };
 
 function parse(md: string): Block[] {
   const blocks: Block[] = [];
+  const parents: { indent: number; items: ListItem[] }[] = [];
   for (const raw of md.split("\n")) {
     const line = raw.trimEnd();
     const last = blocks[blocks.length - 1];
     const heading = line.match(/^(#{1,3})\s+(.*)$/);
-    const item = line.match(/^\s*[-*]\s+(.*)$/);
+    const item = line.match(/^(\s*)[-*]\s+(.*)$/);
+    if (!item) parents.length = 0;
     if (heading) {
       blocks.push({ type: `h${heading[1].length}` as "h1" | "h2" | "h3", text: heading[2] });
     } else if (item) {
-      if (last?.type === "ul") last.items.push(item[1]);
-      else blocks.push({ type: "ul", items: [item[1]] });
+      const indent = item[1].replace(/\t/g, "    ").length;
+      while (parents.length > 1 && indent < parents[parents.length - 1].indent) parents.pop();
+      if (last?.type !== "ul") {
+        const items: ListItem[] = [];
+        blocks.push({ type: "ul", items });
+        parents.push({ indent, items });
+      } else if (indent > parents[parents.length - 1].indent) {
+        const siblings = parents[parents.length - 1].items;
+        parents.push({ indent, items: siblings[siblings.length - 1].children });
+      }
+      parents[parents.length - 1].items.push({ text: item[2], children: [] });
     } else if (line.trim() === "") {
       blocks.push({ type: "p", lines: [] });
     } else if (last?.type === "p") {
@@ -68,6 +81,19 @@ function heading(text: string): ReactNode {
   );
 }
 
+function list(items: ListItem[]): ReactNode {
+  return (
+    <ul>
+      {items.map((item, i) => (
+        <li key={i}>
+          {labelled(item.text)}
+          {item.children.length > 0 && list(item.children)}
+        </li>
+      ))}
+    </ul>
+  );
+}
+
 export function Markdown({ source }: { source: string }) {
   return (
     <div className="prose">
@@ -80,13 +106,7 @@ export function Markdown({ source }: { source: string }) {
           case "h3":
             return <h3 key={i}>{heading(b.text)}</h3>;
           case "ul":
-            return (
-              <ul key={i}>
-                {b.items.map((it, j) => (
-                  <li key={j}>{labelled(it)}</li>
-                ))}
-              </ul>
-            );
+            return <Fragment key={i}>{list(b.items)}</Fragment>;
           case "p":
             return (
               <p key={i}>

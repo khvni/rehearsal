@@ -159,6 +159,7 @@ function browserSkipped(e: Experiment): boolean {
 function isCrawlableLink(href: string | undefined, origin: string): boolean {
   if (!isSameOrigin(href, origin)) return false;
   const pathname = new URL(href!).pathname.replace(/%2e/gi, ".");
+  if (pathname.startsWith("/cdn-cgi/")) return false;
   return !/\.(?:md|mdx|markdown|txt|json|jsonl|csv|tsv|xml|ya?ml|pdf|docx?|xlsx?|pptx?|rtf|png|jpe?g|gif|svg|webp|avif|ico|bmp|tiff?|mp[34]|webm|ogg|wav|zip|gz|tar|7z|woff2?|ttf|otf|css|[cm]?js)$/i.test(pathname);
 }
 
