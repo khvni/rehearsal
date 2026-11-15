@@ -37,9 +37,10 @@ Only runs of `main` (schedule or manual dispatch) touch issues; PR and branch ru
 
 Automation **"Rehearsal snapshot-health first responder"** in the Devin org (run as the org service user):
 
-- **Trigger:** `github:issues` on `khvni/rehearsal` where (`action = opened` and the issue has label
-  `first-responder`) or (`action = labeled` and `label.name = first-responder`). The final response is
-  posted back as an issue comment.
+- **Trigger:** `github:issues` on `khvni/rehearsal` where `action = labeled` and
+  `label.name = first-responder`. Creating an issue with a label also sends a `labeled` event, so this
+  covers both new and re-labeled issues; matching `opened` too would start two responders per issue.
+  The final response is posted back as an issue comment.
 - **Concurrency:** 1 run at a time, queue depth 1.
 - **Network:** git-manager.devin.ai, api.github.com, github.com, objects.githubusercontent.com,
   registry.npmjs.org, nodejs.org, cdn.playwright.dev, playwright.download.prss.microsoft.com.
