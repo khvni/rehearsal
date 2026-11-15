@@ -283,8 +283,10 @@ describe("generateRebuild", () => {
       },
     };
     const res = await generateRebuild(exp, llm);
-    expect(calls).toBe(1);
+    // the goals left on templates get one retry
+    expect(calls).toBe(2);
     expect(res.llm).toBe("gemini");
+    expect(res.llmError).toMatch(/after a retry/);
     const page = res.pages[0];
     expect(page.source).toBe("gemini");
     expect(page.html).toContain("See Acme in 20 minutes");
@@ -292,6 +294,27 @@ describe("generateRebuild", () => {
     expect(page.html).toContain('class="cta" href="https://example.com/demo"');
     expect(page.html).not.toContain("invented.example.org");
     expect(res.pages.slice(1).every((p) => p.source === "template")).toBe(true);
+  });
+
+  it("retries only the goals the first reply omitted and fills them in", async () => {
+    const exp = synthExperiment();
+    const goals = inferGoals(exp);
+    const prompts: string[] = [];
+    const page = (slug: string, heading: string) => ({ slug, hero: { heading }, nav: [{ label: "Pricing", url: "https://example.com/pricing" }] });
+    const llm: LlmClient = {
+      name: "openrouter",
+      async complete(prompt) {
+        prompts.push(prompt);
+        if (prompts.length === 1) return JSON.stringify({ pages: [page(goals[0].slug, "First")] });
+        return JSON.stringify({ pages: goals.slice(1).map((g) => page(g.slug.replace(/-/g, "_").toUpperCase(), `Retry ${g.slug}`)) });
+      },
+    };
+    const res = await generateRebuild(exp, llm);
+    expect(prompts).toHaveLength(2);
+    expect(prompts[1]).not.toContain(`"slug":"${goals[0].slug}"`);
+    expect(res.pages.every((p) => p.source === "openrouter")).toBe(true);
+    expect(res.pages[1].html).toContain(`Retry ${goals[1].slug}`);
+    expect(res.llmError).toBeUndefined();
   });
 
   it("falls back to templates on invalid JSON or a throwing client", async () => {

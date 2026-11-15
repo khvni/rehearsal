@@ -55,7 +55,8 @@ telemetry: Sentry (SENTRY_DSN) + data/events/*.jsonl → /api/hooks/sentry → f
 6. **spec**: `generateSpec` merges findings → ordered changes + rebuild phases → `spec.md`.
 7. **rebuild** (opt-in: a full run stops at spec; only `POST /api/experiments/:id/rebuild` runs it): `generateRebuild` rolls crawled brand signals into a `BrandProfile`, infers every
    plausible visitor goal (`inferGoals`), and renders one branded, script-free page per goal
-   (Gemini content, deterministic template fallback) → `experiment.rebuild`, served at
+   (LLM content; goals the first reply leaves without usable copy get one retry, and any still missing
+   fall back to the deterministic template and are named in `rebuild.llmError`) → `experiment.rebuild`, served at
    `/experiments/:id/rebuild[/:slug]`.
 
 ## Browser and fetch vendors

@@ -302,6 +302,38 @@ function pageSummary(goal: RebuildGoal, content: RebuildPageContent, exp: Experi
   return `One primary CTA (“${clip(content.hero.ctaLabel, 40)}”) for “${clip(goal.goal, 80)}”, ${content.nav.length} nav items, ${content.sections.length} sections${spec ? `; applies “${clip(spec, 60)}”` : ""}.`;
 }
 
+/** Asks the LLM for the goals at `indexes` and fills `merged` with the usable pages; returns the error, if the call failed. */
+async function requestPages(
+  exp: Experiment,
+  llm: LlmClient,
+  brand: BrandProfile,
+  goals: RebuildGoal[],
+  seeds: RebuildPageContent[],
+  urls: Set<string>,
+  indexes: number[],
+  merged: (RebuildPageContent | undefined)[],
+): Promise<string | undefined> {
+  try {
+    const prompt = buildPrompt(exp, brand, indexes.map((i) => goals[i]), indexes.map((i) => seeds[i]));
+    const pages = parsePages(await llm.complete(prompt, { deep: true, json: true, model: "rebuild" }));
+    for (const i of indexes) merged[i] = mergeContent(seeds[i], pageFor(pages, goals[i].slug), urls);
+    return undefined;
+  } catch (err) {
+    const error = String(err instanceof Error ? err.message : err).slice(0, 160);
+    logEvent({ experimentId: exp.id, stage: "rebuild", kind: "llm-fallback", data: { llm: llm.name, error, goals: indexes.length } });
+    return error;
+  }
+}
+
+/** Exact slug, else the same slug ignoring case and punctuation (models sometimes re-slug "watch-the-demo" as "watch_the_demo"). */
+function pageFor(pages: Map<string, LlmPage>, slug: string): LlmPage | undefined {
+  const exact = pages.get(slug);
+  if (exact) return exact;
+  const key = (s: string) => s.toLowerCase().replace(/[^a-z0-9]/g, "");
+  for (const [k, p] of pages) if (key(k) === key(slug)) return p;
+  return undefined;
+}
+
 /** Stage 7 core: rollupBrand → inferGoals → per-goal content → rendered pages. */
 export async function generateRebuild(exp: Experiment, llm: LlmClient): Promise<RebuildResult> {
   const states = exp.graph?.states ?? [];
@@ -309,18 +341,20 @@ export async function generateRebuild(exp: Experiment, llm: LlmClient): Promise<
   const goals = inferGoals(exp);
   const seeds = goals.map((g) => seedPageContent(exp, g));
 
-  let llmPages = new Map<string, LlmPage>();
+  const urls = knownUrls(exp, seeds);
+  const merged: (RebuildPageContent | undefined)[] = goals.map(() => undefined);
   let llmError: string | undefined;
   if (llm.name !== "gemini-fixture" && goals.length > 0) {
-    try {
-      llmPages = parsePages(await llm.complete(buildPrompt(exp, brand, goals, seeds), { deep: true, json: true, model: "rebuild" }));
-    } catch (err) {
-      llmPages = new Map();
-      llmError = String(err instanceof Error ? err.message : err).slice(0, 160);
-      logEvent({ experimentId: exp.id, stage: "rebuild", kind: "llm-fallback", data: { llm: llm.name, error: llmError } });
-    }
+    // One call for every goal, then one retry for the goals it left without usable copy
+    // (omitted, renamed, invalid, or the whole reply failed), so a dropped page isn't silently a template.
+    const all = goals.map((_, i) => i);
+    const firstError = await requestPages(exp, llm, brand, goals, seeds, urls, all, merged);
+    const missing = all.filter((i) => !merged[i]);
+    const retryError = missing.length ? await requestPages(exp, llm, brand, goals, seeds, urls, missing, merged) : undefined;
+    const still = all.filter((i) => !merged[i]);
+    if (still.length === goals.length) llmError = firstError ?? retryError ?? "LLM response had no usable page for any goal";
+    else if (still.length) llmError = `LLM gave no usable copy for ${still.map((i) => goals[i].slug).join(", ")} after a retry`;
   }
-  const urls = llmPages.size ? knownUrls(exp, seeds) : new Set<string>();
   let imageOrigin = "";
   try {
     imageOrigin = new URL(exp.targetUrl).origin;
@@ -329,8 +363,7 @@ export async function generateRebuild(exp: Experiment, llm: LlmClient): Promise<
   }
 
   const pages: RebuiltPage[] = goals.map((goal, i) => {
-    const merged = mergeContent(seeds[i], llmPages.get(goal.slug), urls);
-    const content = merged ?? seeds[i];
+    const content = merged[i] ?? seeds[i];
     const html = sanitizeRebuildHtml(renderGoalPage({ brand, goal, experiment: exp, content }), { imageOrigins: imageOrigin ? [imageOrigin] : [] });
     return {
       slug: goal.slug,
@@ -338,13 +371,10 @@ export async function generateRebuild(exp: Experiment, llm: LlmClient): Promise<
       title: `${goal.title} · ${brand.name}`,
       summary: pageSummary(goal, content, exp),
       html,
-      source: merged ? llmPageSource(llm) : "template",
+      source: merged[i] ? llmPageSource(llm) : "template",
       bytes: new TextEncoder().encode(html).length,
     };
   });
 
-  if (!llmError && llm.name !== "gemini-fixture" && goals.length > 0 && pages.every((p) => p.source === "template")) {
-    llmError = "LLM response had no usable page for any goal";
-  }
   return { generatedAt: new Date().toISOString(), brand, goals, pages, llm: llm.name, ...(llmError ? { llmError } : {}) };
 }
