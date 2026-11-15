@@ -220,6 +220,32 @@ export function extractPage(rawHtml: string, pageUrl: string): ExtractedPage {
   return { title: title || pageUrl, visibleText, headings, actions };
 }
 
+const MEMO_MAX_PAGES = 32;
+
+/**
+ * `extractPage` memoized by (url, html) for one run: persona journeys
+ * re-snapshot and re-probe the same pages every step. Results are shared, so
+ * callers must not mutate them. Past `maxPages` the oldest-cached URL is dropped.
+ */
+export function memoizedExtractPage(maxPages = MEMO_MAX_PAGES): typeof extractPage {
+  const byUrl = new Map<string, Map<string, ExtractedPage>>();
+  let size = 0;
+  return (rawHtml, pageUrl) => {
+    let byHtml = byUrl.get(pageUrl);
+    const hit = byHtml?.get(rawHtml);
+    if (hit) return hit;
+    const page = extractPage(rawHtml, pageUrl);
+    if (!byHtml) byUrl.set(pageUrl, (byHtml = new Map()));
+    byHtml.set(rawHtml, page);
+    if (++size > maxPages) {
+      const [oldestUrl, oldest] = byUrl.entries().next().value!;
+      size -= oldest.size;
+      byUrl.delete(oldestUrl);
+    }
+    return page;
+  };
+}
+
 /** True when `href` parses to exactly `origin` (a prefix test would accept https://a.com.evil.com). */
 export function isSameOrigin(href: string | undefined, origin: string): boolean {
   if (!href) return false;
