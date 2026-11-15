@@ -184,6 +184,12 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
     !exp ? <FallbackCard /> : view === "rebuild" && exp.rebuild?.site ? <RebuildCard exp={exp} path={url.searchParams.get("path") ?? "/"} /> : <FindingsCard exp={exp} />;
   return new ImageResponse(body, {
     ...SIZE,
-    headers: { "cache-control": exp ? "public, max-age=300, s-maxage=3600" : "public, max-age=60" },
+    headers: {
+      "cache-control": process.env.REHEARSAL_ACCESS_TOKEN
+        ? "private, no-store"
+        : exp
+          ? "public, max-age=300, s-maxage=3600"
+          : "public, max-age=60",
+    },
   });
 }
