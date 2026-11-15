@@ -65,9 +65,9 @@ function xpathLiteral(s: string): string {
     .join(`, '"', `)})`;
 }
 
-function stableSelector(a: TrajectoryAction): string {
+function stableSelector(a: TrajectoryAction, labelledBy: string[] = []): string {
   const text = xpathLiteral(a.label.trim());
-  const match = `normalize-space(.)=${text} or @aria-label=${text}`;
+  const match = [`normalize-space(.)=${text}`, `@aria-label=${text}`, ...labelledBy.map((ids) => `@aria-labelledby=${xpathLiteral(ids)}`)].join(" or ");
   return a.role === "button"
     ? `xpath=//*[self::button or @role="button" or self::input[@type="submit" or @type="button"]][${match} or @value=${text}]`
     : `xpath=//*[self::a or @role="link"][${match}]`;
@@ -325,7 +325,23 @@ export class StagehandRunner implements BrowserRunner {
       await leaveIfNotPublic(page);
       return;
     }
-    const loc = await firstVisible(page, stableSelector(a));
+    let loc = await firstVisible(page, stableSelector(a));
+    if (!loc) {
+      const labelledBy = await page.evaluate((label) => {
+        const text = (node: Node, referenced = false): string => {
+          if (!referenced && node instanceof Element && node.getAttribute("aria-hidden") === "true") return "";
+          if (node.nodeType === Node.TEXT_NODE) return node.textContent ?? "";
+          return Array.from(node.childNodes, (child) => text(child)).join("");
+        };
+        return Array.from(document.querySelectorAll("[aria-labelledby]"))
+          .map((el) => el.getAttribute("aria-labelledby")!)
+          .filter((ids) => ids.trim().split(/\s+/).map((id) => {
+            const el = document.getElementById(id);
+            return el ? text(el, true) : "";
+          }).join(" ").replace(/\s+/g, " ").trim() === label);
+      }, a.label);
+      if (labelledBy.length) loc = await firstVisible(page, stableSelector(a, labelledBy));
+    }
     if (loc) {
       await loc.click();
     } else if (this.canAct) {

@@ -47,7 +47,7 @@ interface OpenElement {
   name: string;
   attribs: Record<string, string>;
   /** `skipDepth` at open: text nested in a deeper script/style/svg block is not part of the label. */
-  label: { text: string; full: boolean; skipDepth: number } | undefined;
+  label: { text: string; full: boolean; skipDepth: number; ariaHiddenDepth: number } | undefined;
 }
 
 /**
@@ -63,14 +63,17 @@ export function extractPage(rawHtml: string, pageUrl: string): ExtractedPage {
   let title: string | undefined;
   const headings: string[] = [];
   const actions: ExtractedPage["actions"] = [];
+  const idLabels = new Map<string, NonNullable<OpenElement["label"]>>();
+  const pendingActions: (() => void)[] = [];
   const seen = new Set<string>();
-  const push = (a: Omit<ActionNode, "actionId" | "stateId">) => {
+  const push = (a: Omit<ActionNode, "actionId" | "stateId">, resolveLabel?: () => string) => pendingActions.push(() => {
+    if (resolveLabel) a.label = resolveLabel();
     const key = `${a.type}|${a.label.toLowerCase()}|${a.href ?? ""}`;
     if (a.label && !seen.has(key)) {
       seen.add(key);
       actions.push(a);
     }
-  };
+  });
 
   const onAnchor = (attribs: Record<string, string>, text: string) => {
     const href = attribs.href;
@@ -92,12 +95,14 @@ export function extractPage(rawHtml: string, pageUrl: string): ExtractedPage {
   };
 
   const onButton = (attribs: Record<string, string>, text: string) => {
-    const label = text || normalizeLabel(attribs["aria-label"] ?? attribs.value ?? "button");
+    const resolveLabel = () =>
+      normalizeLabel((attribs["aria-labelledby"] ?? "").split(/\s+/).map((id) => idLabels.get(id)?.text ?? "").join(" ")) ||
+      normalizeLabel(attribs["aria-label"] ?? "") || text || normalizeLabel(attribs.value ?? "button");
     // Missing/invalid types default to submit; form owners may be outside the ancestor chain.
     const type = (attribs.type ?? "").toLowerCase();
     const submits = type === "submit" ||
       (type !== "button" && type !== "reset" && ("form" in attribs || stack.some((e) => e.name === "form")));
-    push({ type: "click", label, role: "button", enabled: !("disabled" in attribs), safeToExecute: !submits });
+    push({ type: "click", label: "", role: "button", enabled: !("disabled" in attribs), safeToExecute: !submits }, resolveLabel);
   };
 
   const onInput = (attribs: Record<string, string>) => {
@@ -117,6 +122,7 @@ export function extractPage(rawHtml: string, pageUrl: string): ExtractedPage {
   const stack: OpenElement[] = [];
   const labels: NonNullable<OpenElement["label"]>[] = [];
   let skipDepth = 0;
+  let ariaHiddenDepth = 0;
   let foreignDepth = 0;
 
   const addText = (text: string) => {
@@ -124,7 +130,7 @@ export function extractPage(rawHtml: string, pageUrl: string): ExtractedPage {
       const collapsed = text.replace(/\s+/g, " ");
       for (let i = labels.length - 1; i >= 0; i--) {
         const label = labels[i];
-        if (skipDepth > label.skipDepth) continue;
+        if (skipDepth > label.skipDepth || ariaHiddenDepth > label.ariaHiddenDepth) continue;
         label.text += collapsed.slice(0, MAX_LABEL_CHARS - label.text.length);
         if (label.text.length >= MAX_LABEL_CHARS) {
           label.full = true;
@@ -136,12 +142,15 @@ export function extractPage(rawHtml: string, pageUrl: string): ExtractedPage {
   };
 
   const closeElement = (el: OpenElement) => {
+    if (el.attribs["aria-hidden"] === "true") ariaHiddenDepth--;
     if (SKIPPED_TEXT_TAGS.has(el.name)) skipDepth--;
     if (FOREIGN_TAGS.has(el.name)) foreignDepth--;
     if (!el.label) return;
     if (!el.label.full) labels.splice(labels.lastIndexOf(el.label), 1);
     const text = normalizeLabel(el.label.text);
-    if (el.name === "title") title ??= text;
+    if (el.name === "title") {
+      if (foreignDepth === 0) title ??= text;
+    }
     else if (HEADING_TAGS.has(el.name)) {
       if (text && headings.length < MAX_HEADINGS) headings.push(text);
     } else if (el.name === "a") onAnchor(el.attribs, text);
@@ -160,9 +169,12 @@ export function extractPage(rawHtml: string, pageUrl: string): ExtractedPage {
       (name === "title" && title === undefined && foreignDepth === 0) ||
       (HEADING_TAGS.has(name) && headings.length < MAX_HEADINGS) ||
       name === "a" ||
-      name === "button";
-    const el: OpenElement = { name, attribs, label: collects ? { text: "", full: false, skipDepth } : undefined };
+      name === "button" ||
+      !!attribs.id;
+    if (attribs["aria-hidden"] === "true") ariaHiddenDepth++;
+    const el: OpenElement = { name, attribs, label: collects ? { text: "", full: false, skipDepth, ariaHiddenDepth } : undefined };
     stack.push(el);
+    if (attribs.id && el.label && !idLabels.has(attribs.id)) idLabels.set(attribs.id, el.label);
     if (el.label) labels.push(el.label);
     if (SKIPPED_TEXT_TAGS.has(name)) skipDepth++;
     if (FOREIGN_TAGS.has(name)) foreignDepth++;
@@ -216,6 +228,7 @@ export function extractPage(rawHtml: string, pageUrl: string): ExtractedPage {
   );
   tokenizer.write(html);
   tokenizer.end();
+  for (const pushAction of pendingActions) pushAction();
 
   const visibleText = tidyText(visible.join("")).slice(0, MAX_VISIBLE_TEXT);
   return { title: title || pageUrl, visibleText, headings, actions };
