@@ -859,11 +859,13 @@ export class Orchestrator {
               );
               if (depth < config.maxDepth) {
                 const origin = new URL(experiment.targetUrl).origin;
+                const crawlable = (href: string | undefined) =>
+                  isSameOrigin(href, origin) && !new URL(href!).pathname.startsWith("/cdn-cgi/");
                 const goalWords = experiment.goal.toLowerCase().split(/[^a-z0-9]+/).filter((w) => w.length > 4);
                 const relevant = (label: string, href: string) =>
                   goalWords.some((w) => `${label} ${href}`.toLowerCase().includes(w)) ? 1 : 0;
                 const links = canonical.actions
-                  .filter((a) => a.type === "click" && isSameOrigin(a.href, origin))
+                  .filter((a) => a.type === "click" && crawlable(a.href))
                   .sort((a, b) => relevant(b.label, b.href!) - relevant(a.label, a.href!));
                 for (const a of links) {
                   frontier.push({ url: a.href!, depth: depth + 1, from: { stateId: canonical.stateId, actionId: a.actionId } });
@@ -875,7 +877,7 @@ export class Orchestrator {
                   if (links.length < MIN_SEED_LINKS && this.firecrawl.available) {
                     const seen = new Set([...visited.keys(), ...attempted, ...frontier.map((f) => f.url)]);
                     const extra = (await this.firecrawl.mapLinks(experiment.targetUrl, config.firecrawlMapLimit))
-                      .filter((u) => isSameOrigin(u, origin) && !seen.has(u))
+                      .filter((u) => crawlable(u) && !seen.has(u))
                       .slice(0, config.firecrawlMapLimit);
                     if (extra.length > 0) {
                       seedExtras.push(...extra);
