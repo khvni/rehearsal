@@ -78,6 +78,41 @@ describe("Cloudflare email facts and rebuilt links", () => {
     ])
       expect(decodeCloudflareEmail(value)).toBeUndefined();
   });
+  it.each([
+    "o'connor@example.com",
+    "!#$%&'*+-/=?^_`{|}~@example.com",
+    '"quoted<>&"@example.com',
+    '"quoted@local"@example.com',
+  ])(
+    "preserves RFC local-part characters safely in links and text: %s",
+    (address) => {
+      const hex = encode(address);
+      const href = `/cdn-cgi/l/email-protection#${hex}`;
+      expect(decodeCloudflareEmail(hex)).toBe(address);
+      const extracted = extractPage(
+        `<a href="${href}">[email protected]</a>`,
+        origin,
+      );
+      expect(extracted.actions[0].label).toBe(address);
+      const mailto = extracted.actions[0].href!;
+      expect(decodeURIComponent(mailto.slice(7))).toBe(address);
+      expect(new URL(mailto).search).toBe("");
+      expect(new URL(mailto).hash).toBe("");
+      for (const html of [
+        `<a href="${href}">[email protected]</a>`,
+        `<a href="/cdn-cgi/l/email-protection"><span data-cfemail="${hex}">[email protected]</span></a>`,
+      ]) {
+        const output = rewriteSiteLinks(html, opts);
+        const anchor = links(output)[0];
+        expect(anchor.getAttribute("href")).toBe(mailto);
+        expect(anchor.textContent).toBe(address);
+        expect(anchor.querySelectorAll("*").length).toBe(
+          html.includes("span") ? 1 : 0,
+        );
+        expect(output).not.toContain("quoted<>&");
+      }
+    },
+  );
   it("extracts real mailto actions and readable text from href fragments and data-cfemail spans", () => {
     const result = extractPage(
       `<h1>Contact</h1><p><a href="${protection}">[email&nbsp;protected]</a></p><a href="/cdn-cgi/l/email-protection"><span class="__cf_email__" data-cfemail="${encoded}">[email protected]</span></a><p><span class="__cf_email__" data-cfemail="${encoded}">[email protected]</span></p><a href="${protection}">Contact team</a>`,

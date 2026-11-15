@@ -1,7 +1,7 @@
 import type { ActionNode } from "../contracts";
 import { createHash } from "node:crypto";
 import { Tokenizer } from "htmlparser2";
-import { decodeCloudflareEmail, emailLinkLabel, isCloudflareEmailUrl, isNonPageUrl, normalizeEmailLink } from "../site-links";
+import { decodeCloudflareEmail, emailHref, emailLinkLabel, isCloudflareEmailUrl, isNonPageUrl, normalizeEmailLink } from "../site-links";
 
 interface ExtractedPage {
   title: string;
@@ -208,7 +208,7 @@ export function extractPage(rawHtml: string, pageUrl: string): ExtractedPage {
         const anchor = stack[i];
         if (anchor.name !== "a" || !anchor.attribs.href) continue;
         try {
-          if (isCloudflareEmailUrl(new URL(anchor.attribs.href, pageUrl))) anchor.attribs.href = `mailto:${email}`;
+          if (isCloudflareEmailUrl(new URL(anchor.attribs.href, pageUrl))) anchor.attribs.href = emailHref(email);
         } catch { /* Invalid anchors are ignored by onAnchor. */ }
         break;
       }

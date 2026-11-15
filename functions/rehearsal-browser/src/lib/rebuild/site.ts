@@ -15,6 +15,7 @@ import { derivedSurfaces, repairSiteTokens } from "./site-tokens";
 import { parsePlannerDesign } from "./planner-parse";
 import {
   decodeCloudflareEmail,
+  emailHref,
   emailLinkLabel,
   isCloudflareEmailUrl,
   isNonPageUrl,
@@ -413,7 +414,7 @@ function decodeEmailMarkup(doc: ReturnType<typeof fragment>, origin: string) {
     if (anchor) {
       try {
         if (isCloudflareEmailUrl(new URL(anchor.getAttribute("href")!, origin)))
-          anchor.setAttribute("href", `mailto:${email}`);
+          anchor.setAttribute("href", emailHref(email));
       } catch {
         /* Invalid links are removed by the rewriter. */
       }

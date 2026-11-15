@@ -16,16 +16,33 @@ export function decodeCloudflareEmail(
   );
   try {
     const email = new TextDecoder("utf-8", { fatal: true }).decode(bytes);
+    const at = email.lastIndexOf("@");
+    const local = email.slice(0, at);
+    const domain = email.slice(at + 1);
     if (
       email.length <= 254 &&
-      /^[^\s@<>"'?#\\:;,\u0000-\u001f\u007f]+@[^\s@<>"'?#\\:;,\u0000-\u001f\u007f]+$/.test(
-        email,
+      at > 0 &&
+      !/[\s\p{Cc}]/u.test(email) &&
+      (/^[a-z\d!#$%&'*+/=?^_`{|}~\u0080-\u{10ffff}-]+(?:\.[a-z\d!#$%&'*+/=?^_`{|}~\u0080-\u{10ffff}-]+)*$/iu.test(
+        local,
+      ) ||
+        /^"(?:[^"\\]|\\.)+"$/u.test(local)) &&
+      /^[\p{L}\p{N}](?:[\p{L}\p{N}-]*[\p{L}\p{N}])?(?:\.[\p{L}\p{N}](?:[\p{L}\p{N}-]*[\p{L}\p{N}])?)*$/u.test(
+        domain,
       )
     )
       return email;
   } catch {
     return;
   }
+}
+
+export function emailHref(email: string): string {
+  const at = email.lastIndexOf("@");
+  const local = encodeURIComponent(email.slice(0, at))
+    .replace(/'/g, "%27")
+    .replace(/%2B/gi, "+");
+  return `mailto:${local}@${email.slice(at + 1)}`;
 }
 
 function decodedPath(url: URL): string {
@@ -56,7 +73,7 @@ export function normalizeEmailLink(
       (isCloudflareEmailUrl(url)
         ? decodeCloudflareEmail(url.hash.slice(1))
         : undefined);
-    if (email) return `mailto:${email}`;
+    if (email) return emailHref(email);
     return isCloudflareEmailUrl(url) ? undefined : href;
   } catch {
     return;
@@ -64,11 +81,14 @@ export function normalizeEmailLink(
 }
 
 export function emailLinkLabel(label: string, href: string): string {
+  let email = href.slice(7).split("?")[0];
+  try {
+    email = decodeURIComponent(email);
+  } catch {
+    /* Preserve readable labels for malformed existing mailto links. */
+  }
   return href.startsWith("mailto:")
-    ? label.replace(
-        /\[email\s*protected\]/gi,
-        () => href.slice(7).split("?")[0],
-      )
+    ? label.replace(/\[email\s*protected\]/gi, () => email)
     : label;
 }
 
