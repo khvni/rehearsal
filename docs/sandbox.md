@@ -79,8 +79,12 @@ The binding is intentionally not provisioned in `terraform/` yet (`REHEARSAL_SAN
 
 The verify stage's opt-in agent mode (`REHEARSAL_VERIFY_AGENT`). Where `runTrajectory`
 replays scripted locators, `runAgentTask` runs the agent-browser loop through an
-`AgentDriver`: `observe("the element for '<label>' — goal: <goal>")` → `act` on the best
-candidate → screenshot on the same cadence → assertions via `probe()`/`evaluateAssertion`.
+`AgentDriver`: `observe()` for the trajectory action's quoted label → keep the first
+candidate whose method is click and whose element (`inspect`) is not a form control
+(input/textarea/select/label, editable, or a submit button inside a form) → `act` on exactly
+that selector with an instruction built from the trusted action → screenshot on the same
+cadence → assertions via `probe()`/`evaluateAssertion`. The free-text goal never enters an
+instruction, and a step with no safe candidate fails instead of free-form `act()`.
 `BrowserRunner.supportsAgent` is true only when a model is configured
 (`StagehandRunner.canAct`), so a runner without a model silently keeps `runTrajectory`.
 
