@@ -8,6 +8,13 @@ import type {
 
 // Pluggable service interfaces wired by the Orchestrator; each has a keyless fallback.
 
+export interface RunLeaseStore {
+  acquireSlot(holder: string, limit: number, ttlMs: number, now: number): Promise<boolean>;
+  acquireLock(id: string, holder: string, stage: string, ttlMs: number, now: number): Promise<boolean>;
+  activeLock(id: string, now: number): Promise<{ stage: string } | null>;
+  release(holder: string): Promise<void>;
+}
+
 export interface ExperimentStore {
   readonly name: string;
   save(experiment: Experiment): Promise<void>;

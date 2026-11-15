@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { withRunSlot } from "@/lib/access";
+import { runSlotTtlMs, withRunSlot } from "@/lib/access";
 import { Experiment, type BrowserRunner, type ExperimentStore, type PageFetcher } from "@/lib/contracts";
 import { DISCOVER_CHECKPOINT_MS, DISCOVER_CHECKPOINT_PAGES, Orchestrator } from "@/lib/orchestrator";
 
@@ -362,7 +362,12 @@ describe("chunked runs", () => {
         probeFetcher: fetcher(WIDE_PAGES),
         runner: runner(WIDE_PAGES, () => reopened++),
       });
-      await second.discover(id);
+      const clock = vi.spyOn(Date, "now").mockReturnValue(Date.now() + runSlotTtlMs());
+      try {
+        await second.discover(id);
+      } finally {
+        clock.mockRestore();
+      }
       const stored = (await store.get(id))!;
       expect(reopened).toBe(total - saved);
       expect(stored.runCheckpoint).toBeUndefined();
