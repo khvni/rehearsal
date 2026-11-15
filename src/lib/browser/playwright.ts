@@ -252,7 +252,9 @@ export class PlaywrightRunner implements BrowserRunner {
   }
 
   async runPersonaJourney(args: PersonaJourneyArgs): Promise<AgentJourney> {
-    await assertPublicUrl(args.url);
+    const target = await assertPublicUrl(args.url);
+    if (!(await robotsAllows(target))) throw new Error(`robots.txt disallows ${target.pathname}`);
+    await politeDelay(target);
     const ctx = await this.newContext(args.viewport);
     try {
       const page = await ctx.newPage();

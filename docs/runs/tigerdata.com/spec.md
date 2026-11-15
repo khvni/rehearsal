@@ -1,102 +1,171 @@
 # Rehearsal spec — https://www.tigerdata.com/
 
 Goal: find pricing and sign up
-Generated: 2026-11-13T22:20:48.768Z
+Generated: 2026-11-15T00:45:34.703Z
 
 ## Summary
-Rehearsal verified 5 browser runs against https://www.tigerdata.com/: 1 verified failure(s), 11 reproducible concern(s). 12 total findings mapped to 12 proposed changes.
+Rehearsal ran 5 browser runs on https://www.tigerdata.com/. It found 1 verified failure and 11 reproducible concerns. 12 findings became 12 changes.
 
 ## Changes (by impact)
 
-### 1. Assertion failed in browser: url-matches "pricing" (3 of 4 runs) [M]
-- Change: Inspect the failed assertion against the live page and correct the mismatch.
-- Rationale: Browser run run_t60_desktop (desktop) failed assertion url-matches on value "pricing". Also: Browser run run_t224_desktop (desktop) failed assertion url-matches on value "pricing". Browser run run_t56_desktop (desktop) failed assertion url-matches on value "pricing". [verified-failure; Can the intended outcome be verified?]
+### 1. Browser check failed: the URL "pricing" (3 of 4 runs) [M]
+- Change: Open the live page and fix the mismatch so the check passes for a real visitor.
+- Steps:
+  - Open the live page and fix the mismatch so the check passes for a real visitor.
+- Rationale: In the desktop browser run, the URL didn't match "pricing" — what the check expected isn't what a visitor gets. [verified-failure; Can the intended outcome be verified?]
 - Principle: Test, don't argue
-- Evidence: finding f_d0fe8c8a_69 (data/evidence/run_t60_desktop_0.png, data/evidence/run_t60_desktop_3.png, data/evidence/run_t60_desktop_6.png, data/evidence/run_t60_desktop_8.png, data/evidence/run_t224_desktop_0.png, data/evidence/run_t224_desktop_3.png, data/evidence/run_t224_desktop_5.png, data/evidence/run_t56_desktop_0.png, data/evidence/run_t56_desktop_3.png, data/evidence/run_t56_desktop_4.png)
+- Evidence: finding f_24505f43_90 (data/evidence/run_agent-0006_desktop_0.png, data/evidence/run_agent-0007_desktop_0.png, data/evidence/run_agent-0009_desktop_0.png)
 
-### 2. Post-event page still invites registration [M]
-- Change: Replace the apply/register CTA with a post-event path (recordings, next-year waitlist) or add a visible 'event has ended' notice.
-- Rationale: Page "Privacy Policy | Tiger Data" shows dates in the past (NOVEMBER 6, 2026) alongside active registration/apply language — a stale-content inconsistency. [reproducible-concern; Is text free of needless words, happy talk, stale claims?]
+### 2. The page still invites registration for an event that already happened [M]
+- Change: Swap the apply/register button for a post-event path (recordings, next year's waitlist) or add a clear 'this event has ended' notice.
+- Steps:
+  - Swap the apply/register button for a post-event path (recordings, next year's waitlist) or add a clear 'this event has ended' notice.
+  - Apply on tigerdata.com/legal/privacy
+- Rationale: "Privacy Policy | Tiger Data" shows dates in the past (NOVEMBER 6, 2026) next to apply/register language — visitors are invited to act on something that's over. [reproducible-concern; Is text free of needless words, happy talk, stale claims?]
 - Principle: Cut needless words
-- Evidence: finding f_53b099d9_74 (data/evidence/exp_417abbe5_desktop_d1.png)
+- Evidence: finding f_51566b5c_95 (data/evidence/exp_617130ea_desktop_d1.png)
 
-### 3. Desktop: missing site ID, page name, primary navigation, search, you-are-here indicator (trunk test fails) [M]
-- Change: Add the missing trunk-test signals (site ID, page name, primary navigation, search, you-are-here indicator) to the persistent header on every page.
+### 3. Desktop: a visitor landing here can't find site ID, page name, primary navigation, search, you-are-here indicator [M]
+- Change: Add site ID, page name, primary navigation, search, you-are-here indicator to the persistent header on every page.
+- Steps:
+  - Add site ID, page name, primary navigation, search, you-are-here indicator to the persistent header on every page.
+  - Apply on tigerdata.com/search
+  - Apply on tigerdata.com/data-centers
+  - Apply on tigerdata.com/energy-utilities
+  - Apply on tigerdata.com/smart-manufacturing
+  - Apply on tigerdata.com/crypto
+  - Apply on tigerdata.com/docs
+  - Apply on tigerdata.com/docs/about/latest/changelog
+  - Apply on tigerdata.com/benchmarks
 - Rationale: On 8 page(s) a visitor dropped in cold can't find: site ID, page name, primary navigation, search, you-are-here indicator. Persistent navigation should answer what site this is, what page they're on, the major sections, how to search and where they are. [reproducible-concern; Is the next relevant action discoverable and conventional?]
 - Principle: Always show where you are
-- Evidence: finding f_metric_trunk-test_554d08b1 (data/evidence/exp_417abbe5_desktop_d1.png)
+- Evidence: finding f_metric_trunk-test_554d08b1 (data/evidence/exp_617130ea_desktop_d1.png)
 
-### 4. Dense link surface increases scan cost (7 of 15 pages) [S]
-- Change: Group secondary links; keep the primary path visually dominant.
-- Rationale: 70 distinct links compete for attention on "Time-Series PostgreSQL at Petabyte Scale". Also: 61 distinct links compete for attention on "Tiger Cloud Pricing. Scale Further. Spend Less. | Tiger Data". 62 distinct links compete for attention on "Privacy Policy | Tiger Data". 72 distinct links compete for attention on "Tiger Cloud — Production Postgres at Scale | Tiger Data". 51 distinct links compete for attention on "TimescaleDB Enterprise for Physical-World Operational Data | Tiger Data". 58 distinct links compete for attention on "Postgres Vector and Keyword Search | Tiger Data". 60 distinct links compete for attention on "Postgres for Energy & Utilities | Tiger Data". [reproducible-concern; Are important elements visually and semantically prioritized?]
+### 4. Too many links compete for attention (7 of 15 pages) [S]
+- Change: Group the secondary links under a few sections so the main action stands out.
+- Steps:
+  - Group the secondary links under a few sections so the main action stands out.
+  - Apply on tigerdata.com/
+  - Apply on tigerdata.com/pricing
+  - Apply on tigerdata.com/legal/privacy
+  - Apply on tigerdata.com/cloud
+  - Apply on tigerdata.com/timescaledb-enterprise
+  - Apply on tigerdata.com/timescaledb
+  - Apply on tigerdata.com/oilfield-services
+- Rationale: "Time-Series PostgreSQL at Petabyte Scale" offers 70 different links — too many choices to sort through at a glance. Also: "Tiger Cloud Pricing. Scale Further. Spend Less. | Tiger Data" offers 61 different links — too many choices to sort through at a glance. "Privacy Policy | Tiger Data" offers 62 different links — too many choices to sort through at a glance. "Tiger Cloud — Production Postgres at Scale | Tiger Data" offers 72 different links — too many choices to sort through at a glance. "TimescaleDB Enterprise for Physical-World Operational Data | Tiger Data" offers 53 different links — too many choices to sort through at a glance. "TimescaleDB — The #1 Time-Series Database | Tiger Data" offers 63 different links — too many choices to sort through at a glance. "Postgres for Oilfield services | Tiger Data" offers 58 different links — too many choices to sort through at a glance. [reproducible-concern; Are important elements visually and semantically prioritized?]
 - Principle: People scan, they don't read
-- Evidence: finding f_5e5d7a6a_72
+- Evidence: finding f_4bcbeb05_93
 
-### 5. Ambiguous link labels (1) [S]
-- Change: Rename vague labels to describe their destination explicitly.
-- Rationale: Actions like "here" force users to guess where they lead. [reproducible-concern; How much interpretation does selecting an action require?]
+### 5. 1 link label doesn't say where they go [S]
+- Change: Rename each label so it names its destination ("View pricing", not "Learn more").
+- Steps:
+  - Rename each label so it names its destination ("View pricing", not "Learn more").
+  - Update the "here" link
+  - Apply on tigerdata.com/legal/privacy
+- Rationale: Labels like "here" make visitors guess — they have to click to find out where the link leads. [reproducible-concern; How much interpretation does selecting an action require?]
 - Principle: Don't make users think
-- Evidence: finding f_69b44d66_75 (data/evidence/exp_417abbe5_desktop_d1.png)
+- Evidence: finding f_a1f95f51_96 (data/evidence/exp_617130ea_desktop_d1.png)
 
-### 6. Ambiguous link labels (3) [S]
-- Change: Rename vague labels to describe their destination explicitly.
-- Rationale: Actions like "Learn more", "Learn more", "Learn more" force users to guess where they lead. [reproducible-concern; How much interpretation does selecting an action require?]
+### 6. 3 link labels don't say where they go (2 of 15 pages) [S]
+- Change: Rename each label so it names its destination ("View pricing", not "Learn more").
+- Steps:
+  - Rename each label so it names its destination ("View pricing", not "Learn more").
+  - Update the "Learn more" link
+  - Apply on tigerdata.com/timescaledb
+  - Apply on tigerdata.com/oilfield-services
+- Rationale: Labels like "Learn more", "Learn more", "Learn more" make visitors guess — they have to click to find out where the link leads. [reproducible-concern; How much interpretation does selecting an action require?]
 - Principle: Don't make users think
-- Evidence: finding f_5d87c7a6_80 (data/evidence/exp_417abbe5_desktop_d1.png)
+- Evidence: finding f_2d5f108b_100 (data/evidence/exp_617130ea_desktop_d1.png)
 
 ### 7. Desktop: no single dominant call to action above the fold [S]
 - Change: Make one primary action visibly dominant (size, fill, position) and demote the rest to secondary styling.
-- Rationale: 3 above-the-fold actions are equally prominent by size ("30-day free trial", "30-day free trial", "Have pricing questions? Let’s chat") on "Tiger Cloud Pricing. Scale Further. Spend Less. | Tiger Data", so visitors must stop and compare instead of making a mindless choice. [reproducible-concern; How much interpretation does selecting an action require?]
+- Steps:
+  - Make one primary action visibly dominant (size, fill, position) and demote the rest to secondary styling.
+  - Apply on tigerdata.com/pricing
+- Rationale: 3 above-the-fold actions are equally prominent by size ("30-day free trial", "30-day free trial", "Have pricing questions? Let’s chat") on "Tiger Cloud Pricing. Scale Further. Spend Less. | Tiger Data", so visitors have to stop and compare instead of picking the obvious next step. [reproducible-concern; How much interpretation does selecting an action require?]
 - Principle: Make every choice obvious
-- Evidence: finding f_metric_cta-ambiguity_23955fda (data/evidence/exp_417abbe5_desktop_d1.png)
+- Evidence: finding f_metric_cta-ambiguity_23955fda (data/evidence/exp_617130ea_desktop_d1.png)
 
-### 8. Console errors during browser runs (25) [S]
+### 8. The page threw 5 script errors during desktop runs [S]
 - Change: Fix or silence the failing scripts so the page behaves the same for every visitor.
-- Rationale: console-errors: 25 page/console errors across 4 of 4 desktop runs, e.g. "console: Failed to load resource: the server responded with a status of 429 ()". The goal check is unaffected, but broken scripts are where unconventional, unpredictable behavior starts. [reproducible-concern; Do labels and interactions behave predictably?]
+- Steps:
+  - Fix or silence the failing scripts so the page behaves the same for every visitor.
+  - Apply on tigerdata.com/
+- Rationale: 5 page/console errors across 4 of 4 desktop runs, e.g. "console: Failed to load resource: the server responded with a status of 429 ()". They don't fail the goal check, but scripts that break quietly are how pages start behaving unpredictably. [reproducible-concern; Do labels and interactions behave predictably?]
 - Principle: Test, don't argue
-- Evidence: finding f_console-errors_desktop (data/evidence/run_t60_desktop_0.png, data/evidence/run_t60_desktop_3.png, data/evidence/run_t60_desktop_6.png)
+- Evidence: finding f_console-errors_desktop (data/evidence/run_agent-0006_desktop_0.png, data/evidence/run_agent-0007_desktop_0.png, data/evidence/run_agent-0009_desktop_0.png)
 
-### 9. Desktop: homepage requires 5.7 screens of scrolling [S]
+### 9. Desktop: the homepage takes 5.86 screens of scrolling [S]
 - Change: Pull the primary path and key facts into the first one or two screens; collapse or link out secondary sections.
-- Rationale: The homepage is 5130px tall at a 900px viewport — 5.7 screens, roughly 8.6s of scanning before a visitor has seen everything. Scanners satisfice on what's near the top. [reproducible-concern; Are important elements visually and semantically prioritized?]
+- Steps:
+  - Pull the primary path and key facts into the first one or two screens; collapse or link out secondary sections.
+  - Apply on tigerdata.com/
+- Rationale: The homepage is 5272px tall at a 900px viewport — 5.86 screens, roughly 8.8s before a visitor has seen everything. Visitors mostly see what sits near the top. [reproducible-concern; Are important elements visually and semantically prioritized?]
 - Principle: People scan, they don't read
-- Evidence: finding f_metric_long-scroll_566fbc10 (data/evidence/exp_417abbe5_desktop_d0.png)
+- Evidence: finding f_metric_long-scroll_566fbc10 (data/evidence/exp_617130ea_desktop_d0.png)
 
 ### 10. Desktop: primary navigation has 11 items [S]
 - Change: Group navigation into 7 or fewer top-level sections; move the rest into sub-navigation or the footer.
+- Steps:
+  - Group navigation into 7 or fewer top-level sections; move the rest into sub-navigation or the footer.
+  - Apply on tigerdata.com/
+  - Apply on tigerdata.com/pricing
+  - Apply on tigerdata.com/legal/privacy
+  - Apply on tigerdata.com/cloud
+  - Apply on tigerdata.com/timescaledb-enterprise
+  - Apply on tigerdata.com/timescaledb
+  - Apply on tigerdata.com/oilfield-services
 - Rationale: The top navigation exposes up to 11 visible items (more than 7), which makes the major sections harder to name at a glance. [reproducible-concern; Is the next relevant action discoverable and conventional?]
 - Principle: Always show where you are
-- Evidence: finding f_metric_nav-overload_752dcb69 (data/evidence/exp_417abbe5_desktop_d0.png, data/evidence/exp_417abbe5_desktop_d1.png)
+- Evidence: finding f_metric_nav-overload_752dcb69 (data/evidence/exp_617130ea_desktop_d0.png, data/evidence/exp_617130ea_desktop_d1.png)
 
 ### 11. Heading outline is broken: no h1 [S]
 - Change: Use exactly one h1 naming the page, then nest h2/h3 without skipping levels.
-- Rationale: 8 page(s) have a heading outline with no h1. Headings are the scanning skeleton; gaps and competing h1s blur what matters most. [reproducible-concern; Are important elements visually and semantically prioritized?]
+- Steps:
+  - Use exactly one h1 naming the page, then nest h2/h3 without skipping levels.
+  - Apply on tigerdata.com/search
+  - Apply on tigerdata.com/data-centers
+  - Apply on tigerdata.com/energy-utilities
+  - Apply on tigerdata.com/smart-manufacturing
+  - Apply on tigerdata.com/crypto
+  - Apply on tigerdata.com/docs
+  - Apply on tigerdata.com/docs/about/latest/changelog
+  - Apply on tigerdata.com/benchmarks
+- Rationale: 8 page(s) have a heading outline with no h1. Headings are how scanners build the page's outline; gaps and competing h1s blur what matters most. [reproducible-concern; Are important elements visually and semantically prioritized?]
 - Principle: People scan, they don't read
-- Evidence: finding f_metric_heading-outline_ee185a40 (data/evidence/exp_417abbe5_desktop_d1.png)
+- Evidence: finding f_metric_heading-outline_ee185a40 (data/evidence/exp_617130ea_desktop_d1.png)
 
-### 12. Desktop: missing search (trunk test fails) [S]
-- Change: Add the missing trunk-test signals (search) to the persistent header on every page.
-- Rationale: On 7 page(s) a visitor dropped in cold can't find: search. Persistent navigation should answer what site this is, what page they're on, the major sections, how to search and where they are. [reproducible-concern; Is the next relevant action discoverable and conventional?]
+### 12. Desktop: a visitor landing here can't find search [S]
+- Change: Add search to the persistent header on every page.
+- Steps:
+  - Add search to the persistent header on every page.
+  - Apply on tigerdata.com/pricing
+  - Apply on tigerdata.com/legal/privacy
+  - Apply on tigerdata.com/cloud
+  - Apply on tigerdata.com/timescaledb-enterprise
+  - Apply on tigerdata.com/timescaledb
+  - Apply on tigerdata.com/oilfield-services
+- Rationale: On 6 page(s) a visitor dropped in cold can't find: search. Persistent navigation should answer what site this is, what page they're on, the major sections, how to search and where they are. [reproducible-concern; Is the next relevant action discoverable and conventional?]
 - Principle: Always show where you are
-- Evidence: finding f_metric_trunk-test_6dfb6555 (data/evidence/exp_417abbe5_desktop_d0.png, data/evidence/exp_417abbe5_desktop_d1.png)
+- Evidence: finding f_metric_trunk-test_6dfb6555 (data/evidence/exp_617130ea_desktop_d1.png)
 
 ## Rebuild plan
 
 ### Truth pass
-Goal: Remove anything stale or misleading — copy must match reality.
-- Assertion failed in browser: url-matches "pricing" (3 of 4 runs)
-- Post-event page still invites registration
-- Desktop: missing site ID, page name, primary navigation, search, you-are-here indicator (trunk test fails)
+Goal: Fix anything stale or wrong. The page should say what is true today.
+- Browser check failed: the URL "pricing" (3 of 4 runs)
+- The page still invites registration for an event that already happened
+- Desktop: a visitor landing here can't find site ID, page name, primary navigation, search, you-are-here indicator
 
 ### Hierarchy pass
-Goal: One obvious primary action; scanning-friendly structure.
-- Rebuild nav to ~7 items max
-- Single dominant CTA above the fold
-- Dense link surface increases scan cost (7 of 15 pages)
-- Ambiguous link labels (1)
-- Ambiguous link labels (3)
+Goal: Make one action obvious and the page easy to scan.
+- Cut the main nav to about 7 items
+- Put one main call to action above the fold
+- Too many links compete for attention (7 of 15 pages)
+- 1 link label doesn't say where they go
+- 3 link labels don't say where they go (2 of 15 pages)
 
 ### Verification loop
-Goal: Rehearse the rebuild against the same assertions before shipping.
-- Re-run experiment on staging
-- Compare baseline vs. rebuild deltas
+Goal: Run the same checks on the rebuild before it ships.
+- Rerun the experiment on staging
+- Compare the baseline with the rebuild

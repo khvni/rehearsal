@@ -13,7 +13,10 @@
     "viewports": [
       "desktop"
     ],
-    "seed": 1337
+    "seed": 1337,
+    "maxAgents": 20,
+    "maxStepsPerAgent": 8,
+    "maxConcurrentAgents": 3
   },
   "preflight": {
     "status": 200,
@@ -30,7 +33,7 @@
   ],
   "discover": {
     "states": 15,
-    "edges": 110,
+    "edges": 97,
     "pageFailures": 0,
     "pageFailureSamples": [],
     "urls": [
@@ -45,48 +48,48 @@
       "https://devpost.com/hackathons?themes%5B%5D=Low%2FNo+Code",
       "https://devpost.com/hackathons?themes%5B%5D=Design",
       "https://devpost.com/hackathons?themes%5B%5D=Productivity",
-      "https://devpost.com/hackathons?themes%5B%5D=Gaming",
       "https://devpost.com/hackathons?themes%5B%5D=IoT",
+      "https://devpost.com/hackathons?themes%5B%5D=Gaming",
       "https://devpost.com/hackathons?themes%5B%5D=Health",
-      "https://devpost.com/hackathons?themes%5B%5D=Cybersecurity"
+      "https://devpost.com/hackathons?themes%5B%5D=Enterprise"
     ]
   },
   "simulate": {
-    "trajectories": 300,
-    "goalReachPct": 95.3,
+    "trajectories": 20,
+    "goalReachPct": 80,
     "outcomes": {
-      "goal-reached": 286,
-      "repetition-limit": 14
+      "goal-reached": 16,
+      "dropped-off": 4
     }
   },
   "verify": {
     "runs": 4,
     "passed": 2,
     "failed": 2,
-    "assertionsPassed": 3,
-    "runsWithConsoleErrors": 4,
+    "assertionsPassed": 2,
+    "runsWithConsoleErrors": 2,
     "runErrors": []
   },
   "compare": {
     "goalCompleted": {
-      "baseline": true,
-      "variant": true
+      "baseline": false,
+      "variant": false
     },
     "interactionCount": {
-      "baseline": 2,
-      "variant": 2
+      "baseline": 0,
+      "variant": 0
     },
     "backtracks": {
-      "baseline": 2,
-      "variant": 2
+      "baseline": 0,
+      "variant": 0
     },
     "failedInteractions": {
       "baseline": 0,
       "variant": 0
     },
     "runtimeErrors": {
-      "baseline": 2,
-      "variant": 4
+      "baseline": 0,
+      "variant": 0
     },
     "findingReproduces": true
   },
@@ -126,28 +129,29 @@
       "hypothesis": 4
     },
     "titles": [
-      "[high] Assertion failed in browser: url-matches \"hackathon\"",
-      "[medium] Dense link surface increases scan cost (15 of 15 pages)",
-      "[high] Post-event page still invites registration (6 of 15 pages)",
-      "[low] Console errors during browser runs (7)",
-      "[high] No pricing endpoint found",
+      "[high] Browser check failed: the URL \"hackathon\" (2 of 4 runs)",
+      "[medium] Too many links compete for attention (15 of 15 pages)",
+      "[high] The page still invites registration for an event that already happened (11 of 15 pages)",
+      "[low] The page threw 2 script errors during desktop runs",
+      "[high] No pricing page or link found",
       "[low] Heading outline is broken: skips h1→h3",
       "[low] Heading outline is broken: skips h1→h4",
-      "[low] Desktop: missing you-are-here indicator (trunk test fails)",
-      "[medium] \"Is there a free tier or trial?\" has no answer path",
-      "[medium] \"Can I see it in action?\" has no answer path",
-      "[medium] \"Does it integrate with my tools?\" has no answer path",
-      "[low] 3 of 13 expected visitor questions have no answer path"
+      "[low] Desktop: a visitor landing here can't find you-are-here indicator",
+      "[medium] Visitors can't find an answer to \"Is there a free tier or trial?\"",
+      "[medium] Visitors can't find an answer to \"Can I see it in action?\"",
+      "[medium] Visitors can't find an answer to \"Does it integrate with my tools?\"",
+      "[low] 3 of 14 expected visitor questions go unanswered"
     ]
   },
   "durationsMs": {
-    "discover": 32575,
-    "simulate": 16,
-    "verify": 15563,
-    "analyze": 37,
-    "compare": 1998,
-    "spec": 3,
-    "total": 60474
+    "discover": 58886,
+    "simulate": 26088,
+    "verify": 7842,
+    "analyze": 63,
+    "compare": 2112,
+    "spec": 44,
+    "rebuild": 37,
+    "total": 99781
   },
-  "ranAt": "2026-11-13T22:17:51.762Z"
+  "ranAt": "2026-11-15T00:40:25.176Z"
 }

@@ -13,7 +13,10 @@
     "viewports": [
       "desktop"
     ],
-    "seed": 1337
+    "seed": 1337,
+    "maxAgents": 20,
+    "maxStepsPerAgent": 8,
+    "maxConcurrentAgents": 3
   },
   "preflight": {
     "status": 200,
@@ -57,43 +60,42 @@
     ]
   },
   "simulate": {
-    "trajectories": 300,
-    "goalReachPct": 51.7,
+    "trajectories": 20,
+    "goalReachPct": 100,
     "outcomes": {
-      "goal-reached": 155,
-      "repetition-limit": 145
+      "goal-reached": 20
     }
   },
   "verify": {
     "runs": 4,
-    "passed": 1,
-    "failed": 3,
-    "assertionsPassed": 1,
+    "passed": 4,
+    "failed": 0,
+    "assertionsPassed": 4,
     "runsWithConsoleErrors": 4,
     "runErrors": []
   },
   "compare": {
     "goalCompleted": {
-      "baseline": false,
+      "baseline": true,
       "variant": false
     },
     "interactionCount": {
-      "baseline": 8,
-      "variant": 8
+      "baseline": 3,
+      "variant": 3
     },
     "backtracks": {
-      "baseline": 8,
-      "variant": 8
-    },
-    "failedInteractions": {
       "baseline": 0,
       "variant": 0
     },
-    "runtimeErrors": {
-      "baseline": 2,
-      "variant": 9
+    "failedInteractions": {
+      "baseline": 0,
+      "variant": 2
     },
-    "findingReproduces": true
+    "runtimeErrors": {
+      "baseline": 1,
+      "variant": 3
+    },
+    "findingReproduces": false
   },
   "endpoints": {
     "intent": "quotation",
@@ -126,48 +128,47 @@
     }
   },
   "findings": {
-    "total": 20,
+    "total": 19,
     "bySeverity": {
       "critical": 0,
-      "high": 3,
+      "high": 2,
       "medium": 10,
       "low": 7
     },
     "byEvidence": {
-      "verified-failure": 1,
       "reproducible-concern": 19
     },
     "titles": [
-      "[high] Assertion failed in browser: url-matches \"pricing\" (3 of 4 runs)",
-      "[medium] Dense link surface increases scan cost (15 of 15 pages)",
-      "[medium] Ambiguous link labels (3) (2 of 15 pages)",
-      "[medium] Ambiguous link labels (1)",
-      "[medium] Ambiguous link labels (11)",
-      "[high] Post-event page still invites registration (3 of 15 pages)",
-      "[medium] Ambiguous link labels (63)",
-      "[medium] Ambiguous link labels (6) (2 of 15 pages)",
-      "[medium] Ambiguous link labels (4)",
-      "[medium] Ambiguous link labels (2)",
-      "[low] Console errors during browser runs (14)",
-      "[low] Desktop: homepage requires 6.76 screens of scrolling",
+      "[medium] Too many links compete for attention (15 of 15 pages)",
+      "[medium] 3 link labels don't say where they go (2 of 15 pages)",
+      "[medium] 1 link label doesn't say where they go",
+      "[medium] 11 link labels don't say where they go",
+      "[high] The page still invites registration for an event that already happened (3 of 15 pages)",
+      "[medium] 63 link labels don't say where they go",
+      "[medium] 6 link labels don't say where they go (2 of 15 pages)",
+      "[medium] 4 link labels don't say where they go",
+      "[medium] 2 link labels don't say where they go",
+      "[low] The page threw 6 script errors during desktop runs",
+      "[low] Desktop: the homepage takes 6.76 screens of scrolling",
       "[medium] Desktop: no single dominant call to action above the fold",
       "[medium] Desktop: primary navigation has 17 items",
       "[low] Heading outline is broken: skips h1→h3",
       "[low] Heading outline is broken: no h1",
-      "[low] Desktop: missing search (trunk test fails)",
-      "[low] Desktop: missing search, you-are-here indicator (trunk test fails)",
-      "[high] Desktop: missing page name, search, you-are-here indicator (trunk test fails)",
-      "[low] Desktop: missing you-are-here indicator (trunk test fails)"
+      "[low] Desktop: a visitor landing here can't find search",
+      "[low] Desktop: a visitor landing here can't find search, you-are-here indicator",
+      "[high] Desktop: a visitor landing here can't find page name, search, you-are-here indicator",
+      "[low] Desktop: a visitor landing here can't find you-are-here indicator"
     ]
   },
   "durationsMs": {
-    "discover": 34720,
-    "simulate": 51,
-    "verify": 49443,
-    "analyze": 128,
-    "compare": 3870,
-    "spec": 7,
-    "total": 90451
+    "discover": 60734,
+    "simulate": 28067,
+    "verify": 9110,
+    "analyze": 126,
+    "compare": 17980,
+    "spec": 36,
+    "rebuild": 34,
+    "total": 120184
   },
-  "ranAt": "2026-11-13T22:23:26.038Z"
+  "ranAt": "2026-11-15T00:49:34.667Z"
 }
