@@ -104,7 +104,7 @@ export default function RebuildPage() {
     };
   }, [id, apply]);
 
-  const polling = exp?.status === "rebuilding" && !!exp.rebuild?.site && !pending;
+  const polling = exp?.status === "rebuilding" && !pending;
   useEffect(() => {
     if (!polling) return;
     const t = setInterval(() => void refresh(), 2000);
