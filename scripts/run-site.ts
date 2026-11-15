@@ -3,6 +3,7 @@
  *
  *   npm run site -- <url> --goal "find pricing" [--max-states 15] [--trajectories 300]
  *                  [--verify 4] [--max-depth 3] [--viewports desktop,mobile] [--timeout-min 5]
+ *                  [--agents 20] [--agent-steps 8] [--agent-concurrency 3]
  *   npm run site -- --all            # every entry in docs/runs/sites.json
  *   npm run site -- --table          # rebuild docs/runs/README.md from summaries
  *
@@ -44,6 +45,9 @@ interface Args {
   maxDepth: number;
   viewports: ("desktop" | "mobile")[];
   timeoutMin: number;
+  maxAgents: number;
+  maxStepsPerAgent: number;
+  maxConcurrentAgents: number;
   all: boolean;
   tableOnly: boolean;
 }
@@ -56,6 +60,9 @@ function parseArgs(argv: string[]): Args {
     maxDepth: 3,
     viewports: ["desktop"],
     timeoutMin: 5,
+    maxAgents: 20,
+    maxStepsPerAgent: 8,
+    maxConcurrentAgents: 3,
     all: false,
     tableOnly: false,
   };
@@ -69,6 +76,9 @@ function parseArgs(argv: string[]): Args {
     else if (a === "--max-depth") args.maxDepth = Number(next());
     else if (a === "--viewports") args.viewports = next().split(",") as Args["viewports"];
     else if (a === "--timeout-min") args.timeoutMin = Number(next());
+    else if (a === "--agents") args.maxAgents = Number(next());
+    else if (a === "--agent-steps") args.maxStepsPerAgent = Number(next());
+    else if (a === "--agent-concurrency") args.maxConcurrentAgents = Number(next());
     else if (a === "--all") args.all = true;
     else if (a === "--table") args.tableOnly = true;
     else if (!a.startsWith("--")) args.url = a;
@@ -183,6 +193,9 @@ async function runSite(args: Args & { url: string; goal: string }): Promise<Site
         maxDepth: args.maxDepth,
         viewports: args.viewports,
         seed: 1337,
+        maxAgents: args.maxAgents,
+        maxStepsPerAgent: args.maxStepsPerAgent,
+        maxConcurrentAgents: args.maxConcurrentAgents,
       });
       exp = created;
       let timer: NodeJS.Timeout | undefined;
@@ -269,6 +282,9 @@ async function runSite(args: Args & { url: string; goal: string }): Promise<Site
       maxDepth: args.maxDepth,
       viewports: args.viewports,
       seed: 1337,
+      maxAgents: args.maxAgents,
+      maxStepsPerAgent: args.maxStepsPerAgent,
+      maxConcurrentAgents: args.maxConcurrentAgents,
     },
     preflight: pre,
     robotsAllowsTarget: targetRobotsOk,
@@ -334,7 +350,7 @@ function writeTable(): void {
     "# Multi-site sweep",
     "",
     "Headless `Orchestrator.runAll` against live sites with the keyless stack (local Playwright, fixture Jev/LLM).",
-    "Budget: maxStates 15, trajectories 300, verifyCount 4, desktop viewport, seed 1337.",
+    "Budget: maxStates 15, trajectories 300, verifyCount 4, persona swarm 20 agents × ≤8 steps (3 concurrent), desktop viewport, seed 1337.",
     "Regenerate one site with `npm run site -- <url> --goal \"...\"`, all with `npm run site -- --all`.",
     "",
     "Columns: HTTP = preflight status; goal % = simulated trajectories reaching the compiled assertion;",

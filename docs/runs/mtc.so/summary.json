@@ -13,7 +13,10 @@
     "viewports": [
       "desktop"
     ],
-    "seed": 1337
+    "seed": 1337,
+    "maxAgents": 20,
+    "maxStepsPerAgent": 8,
+    "maxConcurrentAgents": 3
   },
   "preflight": {
     "status": 200,
@@ -30,40 +33,40 @@
   ],
   "discover": {
     "states": 15,
-    "edges": 323,
+    "edges": 308,
     "pageFailures": 0,
     "pageFailureSamples": [],
     "urls": [
       "https://mtc.so/",
       "https://mtc.so/chapters",
       "https://mtc.so/about",
+      "https://mtc.so/studio/labs/project/evi-ai-event-coordinator",
+      "https://mtc.so/studio/labs/project/mtc-studio",
       "https://mtc.so/studio",
       "https://mtc.so/sponsor",
       "https://mtc.so/donate",
       "https://mtc.so/youth",
       "https://mtc.so/university",
       "https://mtc.so/professionals",
+      "https://mtc.so/studio/labs",
       "https://mtc.so/contact",
       "https://mtc.so/privacy",
-      "https://mtc.so/terms",
-      "https://mtc.so/acknowledgements",
-      "https://mtc.so/studio/chapters",
-      "https://mtc.so/regional/seattle"
+      "https://mtc.so/terms"
     ]
   },
   "simulate": {
-    "trajectories": 300,
-    "goalReachPct": 70,
+    "trajectories": 20,
+    "goalReachPct": 5,
     "outcomes": {
-      "goal-reached": 210,
-      "repetition-limit": 90
+      "dropped-off": 19,
+      "goal-reached": 1
     }
   },
   "verify": {
     "runs": 4,
-    "passed": 0,
-    "failed": 4,
-    "assertionsPassed": 0,
+    "passed": 1,
+    "failed": 3,
+    "assertionsPassed": 1,
     "runsWithConsoleErrors": 4,
     "runErrors": []
   },
@@ -73,28 +76,32 @@
       "variant": false
     },
     "interactionCount": {
-      "baseline": 6,
-      "variant": 6
+      "baseline": 4,
+      "variant": 4
     },
     "backtracks": {
-      "baseline": 6,
-      "variant": 6
-    },
-    "failedInteractions": {
       "baseline": 0,
       "variant": 0
     },
+    "failedInteractions": {
+      "baseline": 0,
+      "variant": 1
+    },
     "runtimeErrors": {
-      "baseline": 7,
-      "variant": 14
+      "baseline": 2,
+      "variant": 2
     },
     "findingReproduces": true
   },
   "endpoints": {
     "intent": "proposal",
-    "total": 11,
+    "total": 13,
     "byClass": {
       "signup": {
+        "found": 2,
+        "reached": 2
+      },
+      "schedule-event": {
         "found": 2,
         "reached": 2
       },
@@ -102,63 +109,56 @@
         "found": 5,
         "reached": 5
       },
-      "schedule-event": {
-        "found": 1,
-        "reached": 1
-      },
       "contact-form": {
         "found": 2,
         "reached": 2
       },
       "next-steps": {
-        "found": 1,
+        "found": 2,
         "reached": 1
       }
     }
   },
   "findings": {
-    "total": 19,
+    "total": 15,
     "bySeverity": {
       "critical": 0,
-      "high": 3,
-      "medium": 7,
-      "low": 9
+      "high": 2,
+      "medium": 6,
+      "low": 7
     },
     "byEvidence": {
       "verified-failure": 1,
-      "reproducible-concern": 15,
-      "hypothesis": 3
+      "reproducible-concern": 12,
+      "hypothesis": 2
     },
     "titles": [
-      "[high] Assertion failed in browser: url-matches \"chapter\" (4 of 4 runs)",
-      "[medium] Dense link surface increases scan cost (11 of 15 pages)",
-      "[high] Post-event page still invites registration",
-      "[low] Console errors during browser runs (23)",
-      "[medium] Endpoint buried: docs-answers \"Support\" (3 of 15 pages)",
-      "[medium] Endpoint buried: docs-answers \"Get the guide ↗\"",
-      "[medium] Endpoint buried: schedule-event \"Schedule meeting ↗\"",
-      "[low] Endpoint buried: next-steps \"Schedule a call ↗\"",
-      "[low] Desktop: homepage requires 4.14 screens of scrolling",
+      "[high] Browser check failed: the URL \"chapter\" (3 of 4 runs)",
+      "[medium] Too many links compete for attention (11 of 15 pages)",
+      "[high] The page still invites registration for an event that already happened",
+      "[low] The page threw 8 script errors during desktop runs",
+      "[medium] \"Support\" takes too many clicks to reach (3 of 15 pages)",
+      "[medium] \"Get the guide ↗\" takes too many clicks to reach",
+      "[medium] \"Schedule meeting ↗\" takes too many clicks to reach",
+      "[low] Desktop: the homepage takes 4.14 screens of scrolling",
       "[low] Desktop: primary navigation has 8 items",
       "[low] Heading outline is broken: skips h1→h3, h2→h4",
-      "[low] Heading outline is broken: no h1",
-      "[low] Desktop: missing search (trunk test fails)",
-      "[low] Desktop: missing search, you-are-here indicator (trunk test fails)",
-      "[high] Desktop: missing page name, search, you-are-here indicator (trunk test fails)",
-      "[medium] \"Why should I be here and not somewhere else?\" has no answer path",
-      "[medium] \"How much does it cost?\" has no answer path",
-      "[medium] \"Is it in person or online?\" has no answer path",
-      "[low] 3 of 15 expected visitor questions have no answer path"
+      "[low] Desktop: a visitor landing here can't find search",
+      "[low] Desktop: a visitor landing here can't find search, you-are-here indicator",
+      "[medium] Visitors can't find an answer to \"Why should I be here and not somewhere else?\"",
+      "[medium] Visitors can't find an answer to \"How much does it cost?\"",
+      "[low] 2 of 15 expected visitor questions go unanswered"
     ]
   },
   "durationsMs": {
-    "discover": 46768,
-    "simulate": 16,
-    "verify": 21336,
-    "analyze": 492,
-    "compare": 3619,
-    "spec": 7,
-    "total": 81131
+    "discover": 98540,
+    "simulate": 71558,
+    "verify": 33879,
+    "analyze": 309,
+    "compare": 13004,
+    "spec": 49,
+    "rebuild": 47,
+    "total": 226149
   },
-  "ranAt": "2026-11-13T22:14:41.914Z"
+  "ranAt": "2026-11-15T00:32:21.139Z"
 }

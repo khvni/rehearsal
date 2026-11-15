@@ -13,7 +13,10 @@
     "viewports": [
       "desktop"
     ],
-    "seed": 1337
+    "seed": 1337,
+    "maxAgents": 20,
+    "maxStepsPerAgent": 8,
+    "maxConcurrentAgents": 3
   },
   "preflight": {
     "status": 200,
@@ -30,12 +33,16 @@
   ],
   "discover": {
     "states": 15,
-    "edges": 52,
-    "pageFailures": 1,
+    "edges": 65,
+    "pageFailures": 2,
     "pageFailureSamples": [
       {
         "url": "https://www.keysight.com/us/en/more-countries.html?prev_url=https%3A%2F%2Fwww.keysight.com%2Fus%2Fen%2Fhome.html",
         "error": "Error: robots.txt disallows /us/en/more-countries.html"
+      },
+      {
+        "url": "https://www.keysight.com/tw/zh/home.html",
+        "error": "TimeoutError: page.goto: Timeout 30000ms exceeded.\nCall log:\n  - navigating to \"https://www.keysight.com/tw/zh/home.html\", waiting until \"domcontentloaded\"\n"
       }
     ],
     "urls": [
@@ -49,20 +56,19 @@
       "https://www.keysight.com/us/en/contact.html",
       "https://www.keysight.com/us/en/passive-saml.login.html?env=https%3A%2F%2Fwww.keysight.com%2Fus%2Fen%2Fhome.html",
       "https://www.keysight.com/ssoauth/logout",
-      "https://www.keysight.com.cn/cn/zh/home.html",
       "https://www.keysight.com/jp/ja/home.html",
-      "https://www.keysight.com/tw/zh/home.html",
       "https://www.keysight.com/kr/ko/home.html",
-      "https://www.keysight.com/br/pt/home.html"
+      "https://www.keysight.com/br/pt/home.html",
+      "https://www.keysight.com/ca/en/home.html",
+      "https://www.keysight.com/de/de/home.html"
     ]
   },
   "simulate": {
-    "trajectories": 300,
-    "goalReachPct": 26.3,
+    "trajectories": 20,
+    "goalReachPct": 55,
     "outcomes": {
-      "repetition-limit": 219,
-      "goal-reached": 79,
-      "dead-end": 2
+      "goal-reached": 11,
+      "dropped-off": 9
     }
   },
   "verify": {
@@ -79,46 +85,46 @@
       "variant": false
     },
     "interactionCount": {
-      "baseline": 4,
-      "variant": 4
+      "baseline": 2,
+      "variant": 2
     },
     "backtracks": {
-      "baseline": 4,
-      "variant": 4
-    },
-    "failedInteractions": {
       "baseline": 0,
       "variant": 0
     },
+    "failedInteractions": {
+      "baseline": 0,
+      "variant": 2
+    },
     "runtimeErrors": {
-      "baseline": 12,
-      "variant": 12
+      "baseline": 16,
+      "variant": 19
     },
     "findingReproduces": true
   },
   "endpoints": {
     "intent": "quotation",
-    "total": 26,
+    "total": 30,
     "byClass": {
       "contact-form": {
         "found": 5,
         "reached": 5
       },
-      "signup": {
+      "pricing": {
         "found": 2,
         "reached": 2
       },
-      "pricing": {
-        "found": 1,
-        "reached": 1
+      "signup": {
+        "found": 3,
+        "reached": 3
       },
       "docs-answers": {
         "found": 5,
         "reached": 2
       },
       "demo-video": {
-        "found": 3,
-        "reached": 2
+        "found": 5,
+        "reached": 0
       },
       "download": {
         "found": 5,
@@ -131,42 +137,47 @@
     }
   },
   "findings": {
-    "total": 13,
+    "total": 17,
     "bySeverity": {
       "critical": 0,
-      "high": 2,
-      "medium": 7,
-      "low": 4
+      "high": 3,
+      "medium": 11,
+      "low": 3
     },
     "byEvidence": {
       "verified-failure": 1,
-      "reproducible-concern": 10,
-      "hypothesis": 2
+      "reproducible-concern": 12,
+      "hypothesis": 4
     },
     "titles": [
-      "[high] Assertion failed in browser: url-matches \"oscilloscope\" (3 of 4 runs)",
-      "[medium] Ambiguous link labels (11)",
-      "[medium] Dense link surface increases scan cost (6 of 15 pages)",
-      "[low] Console errors during browser runs (49)",
-      "[medium] Desktop: homepage requires 8.01 screens of scrolling",
+      "[high] Browser check failed: the URL \"oscilloscope\" (3 of 4 runs)",
+      "[medium] 11 link labels don't say where they go",
+      "[medium] Too many links compete for attention (6 of 15 pages)",
+      "[medium] 12 link labels don't say where they go",
+      "[low] The page threw 54 script errors during desktop runs",
+      "[medium] Desktop: the homepage takes 8.01 screens of scrolling",
       "[medium] Desktop: no single dominant call to action above the fold",
       "[low] Desktop: primary navigation has 11 items",
       "[low] Heading outline is broken: no h1",
-      "[medium] Desktop: missing page name (trunk test fails)",
-      "[high] Desktop: missing site ID, page name, primary navigation, search, you-are-here indicator (trunk test fails)",
-      "[medium] Desktop: missing page name, search (trunk test fails)",
-      "[medium] \"Is there a free tier or trial?\" has no answer path",
-      "[low] 1 of 13 expected visitor questions have no answer path"
+      "[medium] Desktop: a visitor landing here can't find page name",
+      "[high] Desktop: a visitor landing here can't find site ID, page name, primary navigation, search, you-are-here indicator",
+      "[high] Desktop: a visitor landing here can't find page name, primary navigation, search, you-are-here indicator",
+      "[medium] Desktop: a visitor landing here can't find page name, search",
+      "[medium] Visitors can't find an answer to \"How much is shipping and how long does it take?\"",
+      "[medium] Visitors can't find an answer to \"Can I return it?\"",
+      "[medium] Visitors can't find an answer to \"What do other customers say?\"",
+      "[medium] 3 of 11 expected visitor questions go unanswered"
     ]
   },
   "durationsMs": {
-    "discover": 192358,
-    "simulate": 49,
-    "verify": 16898,
-    "analyze": 68,
-    "compare": 4240,
-    "spec": 5,
-    "total": 218619
+    "discover": 237302,
+    "simulate": 31294,
+    "verify": 11517,
+    "analyze": 103,
+    "compare": 19160,
+    "spec": 43,
+    "rebuild": 33,
+    "total": 305827
   },
-  "ranAt": "2026-11-13T22:11:03.289Z"
+  "ranAt": "2026-11-15T00:27:15.307Z"
 }
