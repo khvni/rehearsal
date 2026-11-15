@@ -16,6 +16,7 @@ import { Card, CardContent, CardGroup } from "@/components/ui/card";
 import { Tabs, TabsItem } from "@/components/ui/tabs";
 import { ThinkingStep, ThinkingSteps, ThinkingStepsContent, ThinkingStepsHeader } from "@/components/ui/thinking-steps";
 import { AgentActivity } from "@/components/agent-activity";
+import { displayFindings, failureMessage, hasBrowserEvidence, hasUsablePreview } from "@/lib/presentation";
 import { HeatLegend, StateGraph, visitCounts } from "./state-graph";
 
 const STAGES = ["discover", "simulate", "verify", "analyze", "compare", "spec", "rebuild"] as const;
@@ -26,6 +27,7 @@ const STATUS_STAGE: Partial<Record<Experiment["status"], (typeof STAGES)[number]
   verifying: "verify",
   analyzing: "analyze",
   comparing: "compare",
+  rebuilding: "rebuild",
 };
 type Section = "graph" | "evidence" | "findings" | "comparisons" | "spec";
 
@@ -151,10 +153,10 @@ export default function ExperimentPage() {
   const visits = useMemo(() => visitCounts(exp?.simulations ?? []), [exp?.simulations]);
   const findings = useMemo(
     () =>
-      [...(exp?.findings ?? [])].sort(
+      (exp ? displayFindings(exp) : []).sort(
         (a, b) => SEVERITY_ORDER.indexOf(a.severity) - SEVERITY_ORDER.indexOf(b.severity),
       ),
-    [exp?.findings],
+    [exp],
   );
   const findingGroups = useMemo(() => {
     const groups = new Map<UsabilityPrinciple, Finding[]>();
@@ -168,7 +170,8 @@ export default function ExperimentPage() {
         <TopBar />
         <div className="state error page-state" role="alert">
           <p className="state-title">Couldn&apos;t load this experiment</p>
-          <p className="state-text">{loadError}</p>
+          <p className="state-text">{failureMessage(loadError)}</p>
+          <details className="error-details"><summary>Technical details</summary><pre>{loadError}</pre></details>
           <div className="row">
             <button type="button" onClick={() => void refresh()}>Try again</button>
             <Link href="/" className="button-link">New experiment</Link>
@@ -246,6 +249,7 @@ export default function ExperimentPage() {
   };
   // Stages run in order and analyze/compare may legitimately produce nothing, so a later stage implies earlier ones ran.
   for (let i = STAGES.length - 2; i >= 0; i--) stageDone[STAGES[i]] ||= stageDone[STAGES[i + 1]];
+  stageDone.verify = runs.length > 0;
   const nextStage = STAGES.find((s) => !stageDone[s]);
   const runningStage = STATUS_STAGE[exp.status];
   const stageActive = (s: (typeof STAGES)[number]) =>
@@ -293,9 +297,20 @@ export default function ExperimentPage() {
           <span className="tabular">{exp.simulations.length.toLocaleString()} journeys</span>
           <span className="sep" aria-hidden>·</span>
           <span className="tabular">{shortDate(exp.createdAt)}</span>
-          {exp.mockup && <Link className="mono" href={`/experiments/${id}/preview/`}>View preview</Link>}
-          {exp.rebuild && <Link className="mono" href={`/experiments/${id}/rebuild`}>View rebuild</Link>}
         </div>
+        <section className="run-summary" aria-labelledby="summary-title">
+          <h2 id="summary-title">{findings.length ? `${findings.length} usability findings` : live ? "Your rehearsal is in progress" : exp.status === "failed" ? "This rehearsal couldn’t finish" : exp.status === "complete" ? "No usability findings in this run" : "Ready to rehearse"}</h2>
+          <SeverityCounts findings={findings} />
+          <p className="card-body">{runs.length ? `${runs.length} browser checks recorded; ${passed} passed.` : live ? "Browser verification has not completed yet. Any findings so far come from captured page content." : "No browser verification completed. Findings are based on captured page content, not confirmed user failures."}</p>
+          {findings[0] && <p className="summary-fix"><b>Start here: {findings[0].title}.</b> {findings[0].recommendation}</p>}
+          <nav className="summary-links" aria-label="Run results">
+            <a href="#findings">Read findings</a>
+            {exp.spec && <a href="#fix-plan">Read fix plan</a>}
+            {exp.rebuild && <Link href={`/experiments/${id}/rebuild`}>View rebuild</Link>}
+            {hasUsablePreview(exp) && <Link href={`/experiments/${id}/preview/`}>View preview</Link>}
+          </nav>
+          {exp.mockup && !hasUsablePreview(exp) && <p className="card-meta">Preview unavailable: only a template or incomplete mockup was generated.</p>}
+        </section>
         {exp.personas.length > 0 && (
           <ul className="exp-personas" aria-label="Visitor personas">
             {exp.personas.map((p) => (
@@ -310,20 +325,17 @@ export default function ExperimentPage() {
       </header>
 
       <div className="pipeline">
-        <ol className="steps-bar" role="toolbar" aria-label="Pipeline stages">
+        <ol className="steps-bar" aria-label="Pipeline progress">
           {STAGES.map((s, i) => (
             <li key={s}>
-              <button
-                type="button"
+              <span
                 className={`step ${stageDone[s] && !stageErrors[s] ? "done" : ""} ${stageActive(s) ? "active" : ""} ${stageErrors[s] ? "error" : ""}`}
-                disabled={pending !== null}
-                onClick={() => void runStage(s)}
                 aria-current={stageActive(s) ? "step" : undefined}
-                aria-label={`${STAGE_LABEL[s]}: ${stageActive(s) ? "running" : stageErrors[s] ? "failed" : stageDone[s] ? "done" : "not run"}. Run this step.`}
+                aria-label={`${STAGE_LABEL[s]}: ${stageActive(s) ? "running" : stageErrors[s] ? "failed" : stageDone[s] ? "done" : "not run"}`}
               >
                 <span className="step-mark" aria-hidden>{stageErrors[s] ? <CrossIcon size={12} /> : stageDone[s] ? <CheckIcon size={12} /> : i + 1}</span>
                 <span className="step-name">{STAGE_LABEL[s]}</span>
-              </button>
+              </span>
             </li>
           ))}
         </ol>
@@ -359,24 +371,70 @@ export default function ExperimentPage() {
 
       {(stageErrors.run || exp.errors.length > 0) && (
         <Banner status="error" className="run-banner">
-          <BannerTitle>{stageErrors.run ? `The run stopped: ${stageErrors.run}` : "A step reported an error"}</BannerTitle>
-          {exp.errors.length > 0 && (
+          <BannerTitle>Some checks couldn’t finish</BannerTitle>
             <BannerDescription>
-              {exp.errors.map((e, i) => (
-                <span key={i} className="block">{e}</span>
-              ))}
+              {failureMessage(stageErrors.run ?? exp.errors[0] ?? "")}
+              {exp.graph && runs.length === 0 && " Any findings below come from the crawl only."}
             </BannerDescription>
-          )}
+            <details className="error-details">
+              <summary>Technical details</summary>
+              <pre>{[stageErrors.run, ...exp.errors].filter(Boolean).join("\n")}</pre>
+            </details>
         </Banner>
       )}
 
       <div className="grid">
-        <AgentActivity id={id} live={live} />
+        <Panel
+          title="Findings"
+          id="findings"
+          className="span-2"
+          meta={<SeverityCounts findings={findings} />}
+          busy={busy("findings")}
+          enter="none"
+          loadingPreview={<SkeletonRows />}
+          emptyAction={runs.length > 0 ? runButton("analyze") : undefined}
+          state={panelState("findings", findings.length > 0, "Grading…", runs.length > 0 ? "Nothing graded yet." : "Nothing to grade until verify runs.")}
+        >
+          <Accordion type="multiple" className="list w-full" defaultValue={findingGroups.slice(0, 1).map(([p]) => p)}>
+            {findingGroups.map(([principle, group], gi) => (
+              <AccordionItem key={principle} value={principle} index={gi} className="finding-group">
+                <AccordionTrigger>
+                  <span className="group-trigger">
+                    {USABILITY_PRINCIPLES[principle].title}
+                    <span className="group-count tabular">{group.length}</span>
+                  </span>
+                </AccordionTrigger>
+                <AccordionContent>
+                <section className="finding-list stagger" aria-label={`${group.length} findings`}>
+                {group.map((f) => (
+                  <article key={f.findingId} className="finding">
+                    <div className="chips">
+                      <SeverityChip severity={f.severity} />
+                      <PrincipleChip principle={principle} />
+                      <Badge variant="dot" color={hasBrowserEvidence(f, exp) && f.evidenceType === "verified-failure" ? "red" : f.evidenceType === "hypothesis" ? "gray" : "blue"}>{hasBrowserEvidence(f, exp) ? EVIDENCE_LABEL[f.evidenceType] : f.evidenceType === "hypothesis" ? "Hypothesis" : "Crawl concern"}</Badge>
+                      <span className="card-meta">{f.category} · {hasBrowserEvidence(f, exp) ? f.verificationStatus : "Not browser-verified"}</span>
+                    </div>
+                    <h3 className="card-heading">{f.title}</h3>
+                    <p className="card-body">{f.description}</p>
+                    <p className="card-rec"><b>Fix:</b> {f.recommendation}</p>
+                  </article>
+                ))}
+                </section>
+                </AccordionContent>
+              </AccordionItem>
+            ))}
+          </Accordion>
+        </Panel>
+
+        <details className="activity-disclosure span-2">
+          <summary>Agent activity and technical log</summary>
+          <AgentActivity id={id} live={live} />
+        </details>
 
         <Panel
           title="Decision graph"
           className="span-2"
-          meta={<span className="tabular">{viewportStates.length} states · {viewportEdges.length} links</span>}
+          meta={<span className="tabular">{viewportStates.length} states · {viewportEdges.length} links · {exp.simulations.filter((s) => s.outcome === "goal-reached").length.toLocaleString()} simulated goal reaches</span>}
           busy={busy("graph")}
           loadingPreview={<div className="skel-canvas" />}
           state={graphState}
@@ -396,6 +454,7 @@ export default function ExperimentPage() {
           }
         >
           {graph && <StateGraph graph={graph} simulations={exp.simulations} viewport={viewport} />}
+          <p className="card-meta">Simulated visits predict possible paths; reaching a goal here does not prove the site is usable.</p>
           <div className="graph-foot">
             {exp.simulations.length > 0 ? <HeatLegend max={maxVisits} /> : <span>Run simulate to shade the busy states.</span>}
           </div>
@@ -484,46 +543,6 @@ export default function ExperimentPage() {
         </Panel>
 
         <Panel
-          title="Findings"
-          meta={<SeverityCounts findings={findings} />}
-          busy={busy("findings")}
-          enter="none"
-          loadingPreview={<SkeletonRows />}
-          emptyAction={runs.length > 0 ? runButton("analyze") : undefined}
-          state={panelState("findings", findings.length > 0, "Grading…", runs.length > 0 ? "Nothing graded yet." : "Nothing to grade until verify runs.")}
-        >
-          <Accordion type="multiple" className="list w-full" defaultValue={findingGroups.slice(0, 1).map(([p]) => p)}>
-            {findingGroups.map(([principle, group], gi) => (
-              <AccordionItem key={principle} value={principle} index={gi} className="finding-group">
-                <AccordionTrigger>
-                  <span className="group-trigger">
-                    {USABILITY_PRINCIPLES[principle].title}
-                    <span className="group-count tabular">{group.length}</span>
-                  </span>
-                </AccordionTrigger>
-                <AccordionContent>
-                <section className="finding-list stagger" aria-label={`${group.length} findings`}>
-                {group.map((f) => (
-                  <article key={f.findingId} className="finding">
-                    <div className="chips">
-                      <SeverityChip severity={f.severity} />
-                      <PrincipleChip principle={principle} />
-                      <Badge variant="dot" color={f.evidenceType === "verified-failure" ? "red" : f.evidenceType === "hypothesis" ? "gray" : "blue"}>{EVIDENCE_LABEL[f.evidenceType] ?? f.evidenceType}</Badge>
-                      <span className="card-meta">{f.category} · {f.verificationStatus}</span>
-                    </div>
-                    <h3 className="card-heading">{f.title}</h3>
-                    <p className="card-body">{f.description}</p>
-                    <p className="card-rec"><b>Fix:</b> {f.recommendation}</p>
-                  </article>
-                ))}
-                </section>
-                </AccordionContent>
-              </AccordionItem>
-            ))}
-          </Accordion>
-        </Panel>
-
-        <Panel
           title="Baseline vs variant"
           className="span-2"
           meta={exp.variants.length + exp.comparisons.length > 0 && <span className="tabular">{exp.variants.length} variants · {exp.comparisons.length} comparisons</span>}
@@ -572,6 +591,7 @@ export default function ExperimentPage() {
 
       <Panel
         title="spec.md"
+        id="fix-plan"
         className="spec-panel"
         meta={exp.spec && <span className="tabular">{shortDate(exp.spec.generatedAt)}</span>}
         busy={busy("spec")}

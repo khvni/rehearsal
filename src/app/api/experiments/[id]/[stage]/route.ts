@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { isExperimentId } from "@/lib/contracts";
 import { Orchestrator, StageInProgressError } from "@/lib/orchestrator";
 import { specToMarkdown } from "@/lib/analysis/spec";
+import { displaySpec } from "@/lib/presentation";
 import { maxConcurrentRuns, presentsAccessToken, withRunSlot } from "@/lib/access";
 import { underRunLimit } from "@/lib/ratelimit";
 
@@ -88,7 +89,7 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
   if (stage !== "spec") return NextResponse.json({ error: "unsupported" }, { status: 400 });
   const experiment = await orchestrator().get(id);
   if (!experiment?.spec) return NextResponse.json({ error: "no spec yet" }, { status: 404 });
-  return new Response(specToMarkdown(experiment.spec), {
+  return new Response(specToMarkdown(displaySpec(experiment)!), {
     headers: { "content-type": "text/markdown; charset=utf-8" },
   });
 }
