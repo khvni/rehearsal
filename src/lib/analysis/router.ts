@@ -1,10 +1,13 @@
 import type { CallContext, LlmClient, RebuiltPage, TokenUsage } from "../contracts";
+import { assertPublicUrl } from "../fetch/guards";
 import { logEvent } from "../telemetry";
 
 /**
  * Ramp Router client — OpenAI Responses API at api.router.com, used for every LLM
  * stage when RAMP_ROUTER_API_KEY is set. Deep and mockup calls send a `models`
  * fallback list ending in the fast model, so Router itself retries on 429/5xx.
+ * No `text.format`: json_object mode forces a top-level object, but several
+ * callers expect a JSON array; the prompts ask for JSON and callers strip fences.
  */
 const DEFAULT_BASE_URL = "https://api.router.com/v1";
 const DEFAULT_MAX_CALLS = 10;
@@ -48,17 +51,7 @@ export class RampRouterClient implements LlmClient {
     this.calls++;
     const primary = opts?.model === "mockup" ? this.mockup : opts?.deep ? this.deep : this.fast;
     const models = [...new Set([primary, this.fast])];
-    const json = opts?.json ?? false;
-    try {
-      return await this.respond(models, prompt, json);
-    } catch (err) {
-      // 501: a model in the list can't do JSON mode; the prompts already ask for JSON.
-      if (json && /failed: 501/.test(String(err))) return await this.respond(models, prompt, false);
-      throw err;
-    }
-  }
-
-  private async respond(models: string[], prompt: string, json: boolean): Promise<string> {
+    if (this.baseUrl !== DEFAULT_BASE_URL) await assertPublicUrl(this.baseUrl);
     const started = Date.now();
     const res = await fetch(`${this.baseUrl}/responses`, {
       method: "POST",
@@ -67,7 +60,6 @@ export class RampRouterClient implements LlmClient {
         ...(models.length > 1 ? { models } : { model: models[0] }),
         input: prompt,
         max_output_tokens: 8192,
-        ...(json ? { text: { format: { type: "json_object" } } } : {}),
         metadata: { product: "rehearsal", ...(this.experimentId ? { experiment_id: this.experimentId } : {}) },
       }),
       signal: AbortSignal.timeout(90000),

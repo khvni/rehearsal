@@ -52,13 +52,13 @@ describe("RampRouterClient", () => {
     const llm = new RampRouterClient();
     llm.resetBudget({ experimentId: "exp-1" });
     await expect(llm.complete("hi", { json: true })).resolves.toBe('{"ok":true}');
+    expect(lastBody(fetchMock)).not.toHaveProperty("text");
     const [url, init] = fetchMock.mock.calls[0] as unknown as [string, RequestInit];
     expect(url).toBe("https://api.router.com/v1/responses");
     expect((init.headers as Record<string, string>).authorization).toBe("Bearer rk-test");
     expect(lastBody(fetchMock)).toMatchObject({
       model: "gemini-4-hydrogen",
       input: "hi",
-      text: { format: { type: "json_object" } },
       metadata: { product: "rehearsal", experiment_id: "exp-1" },
     });
     expect(llm.usageReport()).toEqual({ calls: 1, inputTokens: 12, outputTokens: 3, totalTokens: 15 });
@@ -78,18 +78,20 @@ describe("RampRouterClient", () => {
     expect(lastBody(fetchMock)).toMatchObject({ models: ["claude-design", "gemini-4-hydrogen"] });
   });
 
-  it("retries JSON calls without JSON mode on 501 and surfaces other errors", async () => {
+  it("surfaces non-2xx errors so callers fall back", async () => {
     vi.stubEnv("RAMP_ROUTER_API_KEY", "rk-test");
-    const fetchMock = vi
-      .fn()
-      .mockResolvedValueOnce(new Response("{}", { status: 501 }))
-      .mockResolvedValueOnce(routerResponse("[]"))
-      .mockResolvedValueOnce(new Response("{}", { status: 429 }));
+    vi.stubGlobal("fetch", vi.fn(async () => new Response("{}", { status: 429 })));
+    await expect(new RampRouterClient().complete("b")).rejects.toThrow(/Router gemini-4-hydrogen failed: 429/);
+  });
+
+  it("guards an overridden RAMP_ROUTER_BASE_URL with assertPublicUrl", async () => {
+    vi.stubEnv("RAMP_ROUTER_API_KEY", "rk-test");
+    vi.stubEnv("REHEARSAL_ALLOW_PRIVATE", "");
+    vi.stubEnv("RAMP_ROUTER_BASE_URL", "http://127.0.0.1:8080/v1");
+    const fetchMock = vi.fn(async () => routerResponse("ok"));
     vi.stubGlobal("fetch", fetchMock);
-    const llm = new RampRouterClient();
-    await expect(llm.complete("a", { json: true })).resolves.toBe("[]");
-    expect(lastBody(fetchMock)).not.toHaveProperty("text");
-    await expect(llm.complete("b")).rejects.toThrow(/Router gemini-4-hydrogen failed: 429/);
+    await expect(new RampRouterClient().complete("a")).rejects.toThrow();
+    expect(fetchMock).not.toHaveBeenCalled();
   });
 
   it("caps calls per run at REHEARSAL_GEMINI_MAX_CALLS and resets per run", async () => {
