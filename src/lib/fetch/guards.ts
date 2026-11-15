@@ -61,7 +61,7 @@ export async function assertPublicUrl(raw: string): Promise<URL> {
 
 // ── Politeness ──────────────────────────────────────────────────────────────
 
-const lastRequestAt = new Map<string, number>();
+const nextSlotAt = new Map<string, number>();
 const MIN_INTERVAL_MS = 2000;
 
 function isLoopbackHost(hostname: string): boolean {
@@ -76,10 +76,11 @@ export async function politeDelay(url: URL): Promise<void> {
   const host = url.hostname;
   if (process.env.REHEARSAL_ALLOW_PRIVATE === "1" && isLoopbackHost(host)) return;
   const now = Date.now();
-  const last = lastRequestAt.get(host) ?? 0;
-  const waitMs = Math.max(0, MIN_INTERVAL_MS - (now - last));
+  const slot = Math.max(now, nextSlotAt.get(host) ?? 0);
+  // Reserve the slot before waiting so concurrent callers queue behind it instead of firing together.
+  nextSlotAt.set(host, slot + MIN_INTERVAL_MS);
+  const waitMs = slot - now;
   if (waitMs > 0) await new Promise((r) => setTimeout(r, waitMs));
-  lastRequestAt.set(host, Date.now());
 }
 
 /** Return disallowed path prefixes for `url` per robots.txt; [] on any failure. */
