@@ -136,6 +136,16 @@ describe("agentLoop", () => {
     expect(run.screenshotPaths).toEqual([]);
   });
 
+  it("asks observe() for the full discovered label, not a truncated prefix", async () => {
+    const label = "Read the full conference schedule for every track, room and speaker across all three days of the event";
+    const { driver, observed, acted } = fixtureDriver({ [label]: [{ selector: "xpath=/a[1]", description: "schedule", method: "click" }] });
+    const run = await agentLoop(driver, { ...baseArgs([{ label, role: "link" }]), assertions: [] }, async () => null);
+    expect(label.length).toBeGreaterThan(80);
+    expect(observed[0]).toContain(JSON.stringify(label));
+    expect(acted).toEqual([`click the link labelled ${JSON.stringify(label)}`]);
+    expect(run.steps[0].ok).toBe(true);
+  });
+
   it("never acts on fill/type/press candidates or form controls, and keeps goal text out of instructions", async () => {
     const { driver, observed, acted, targets } = fixtureDriver(
       {

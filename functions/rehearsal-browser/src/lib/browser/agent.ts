@@ -1,4 +1,5 @@
 import type { AgentCandidate, AgentDriver, AgentRunArgs, AgentTargetInfo, BrowserRun, TrajectoryAction } from "../contracts";
+import { normalizeLabel } from "./extract";
 import { evaluateAssertion, shouldShoot, summarizeRun } from "./types";
 
 // Model output and page labels are untrusted: the loop only ever clicks a vetted element, and
@@ -8,7 +9,7 @@ const FORM_CONTROL_TAGS = new Set(["input", "textarea", "select", "option", "lab
 const EDITABLE_ROLES = new Set(["textbox", "searchbox", "combobox", "spinbutton", "slider", "listbox", "option"]);
 
 function quotedLabel(a: TrajectoryAction): string {
-  return JSON.stringify(a.label.replace(/\s+/g, " ").trim().slice(0, 80));
+  return JSON.stringify(normalizeLabel(a.label));
 }
 
 function roleName(a: TrajectoryAction): string {
