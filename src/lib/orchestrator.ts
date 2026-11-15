@@ -75,6 +75,8 @@ export const PIPELINE_STAGES = [
 /** Hard cap on the probe's page fetch so a hanging request can't stall experiment creation (robots prefetch + host politeness delay may add up to ~12s on top). */
 const PROBE_TIMEOUT_MS = 15_000;
 
+type StartedExperiment = { experiment: Experiment; created: boolean; via: "idempotency" | "site" | "new" };
+
 /** Fewer same-origin links than this on the seed page triggers one Firecrawl /v1/map expansion. */
 const MIN_SEED_LINKS = 3;
 
@@ -276,15 +278,21 @@ export class Orchestrator {
     return e.siteKey || normalizeSiteUrl(e.targetUrl);
   }
 
-  async getByIdempotencyKey(key: string): Promise<Experiment | null> {
-    return (await this.store.list()).find((e) => e.idempotencyKey === key) ?? null;
-  }
-
-  /** The existing experiment for `targetUrl`'s normalized site key, or null. */
-  async findBySite(targetUrl: string): Promise<Experiment | null> {
-    const url = await assertPublicUrl(targetUrl);
-    const key = normalizeSiteUrl(url.toString());
-    return (await this.store.list()).find((e) => this.siteKeyOf(e) === key) ?? null;
+  /**
+   * The stored experiment an idempotency key or `targetUrl`'s normalized site key
+   * already maps to, from one store scan. The key wins and is checked before the
+   * URL guard, so a repeat key returns its record without re-resolving the host.
+   */
+  private async findExisting(
+    targetUrl: string,
+    idempotencyKey?: string,
+  ): Promise<{ experiment: Experiment; via: "idempotency" | "site" } | null> {
+    const all = await this.store.list();
+    const keyHit = idempotencyKey ? all.find((e) => e.idempotencyKey === idempotencyKey) : undefined;
+    if (keyHit) return { experiment: keyHit, via: "idempotency" };
+    const siteKey = normalizeSiteUrl((await assertPublicUrl(targetUrl)).toString());
+    const siteHit = all.find((e) => this.siteKeyOf(e) === siteKey);
+    return siteHit ? { experiment: siteHit, via: "site" } : null;
   }
 
   /** Serializes dedupe+create so two concurrent POSTs can't both pass the dedupe scan. */
@@ -293,22 +301,33 @@ export class Orchestrator {
   /**
    * Dedupe + create, atomic under `createQueue`. A matching `idempotencyKey` or a
    * matching normalized site returns the existing record instead of a new one.
+   * `admit` runs only when a new record would be created (dedupe hits never spend
+   * it); when it answers false nothing is created and the result is null.
    */
   async startExperiment(
     targetUrl: string,
     goal?: string,
     config?: Partial<ExperimentConfig>,
     opts?: { idempotencyKey?: string },
-  ): Promise<{ experiment: Experiment; created: boolean; via: "idempotency" | "site" | "new" }> {
-    const run = this.createQueue.then(async () => {
-      if (opts?.idempotencyKey) {
-        const hit = await this.getByIdempotencyKey(opts.idempotencyKey);
-        if (hit) return { experiment: hit, created: false, via: "idempotency" as const };
-      }
-      const siteHit = await this.findBySite(targetUrl);
-      if (siteHit) return { experiment: siteHit, created: false, via: "site" as const };
-      const experiment = await this.createExperiment(targetUrl, goal, config, opts);
-      return { experiment, created: true, via: "new" as const };
+  ): Promise<StartedExperiment>;
+  async startExperiment(
+    targetUrl: string,
+    goal: string | undefined,
+    config: Partial<ExperimentConfig> | undefined,
+    opts: { idempotencyKey?: string; admit: () => Promise<boolean> },
+  ): Promise<StartedExperiment | null>;
+  async startExperiment(
+    targetUrl: string,
+    goal?: string,
+    config?: Partial<ExperimentConfig>,
+    opts?: { idempotencyKey?: string; admit?: () => Promise<boolean> },
+  ): Promise<StartedExperiment | null> {
+    const run = this.createQueue.then(async (): Promise<StartedExperiment | null> => {
+      const existing = await this.findExisting(targetUrl, opts?.idempotencyKey);
+      if (existing) return { ...existing, created: false };
+      if (opts?.admit && !(await opts.admit())) return null;
+      const experiment = await this.createExperiment(targetUrl, goal, config, { idempotencyKey: opts?.idempotencyKey });
+      return { experiment, created: true, via: "new" };
     });
     this.createQueue = run.then(
       () => undefined,

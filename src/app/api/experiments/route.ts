@@ -51,16 +51,6 @@ export async function POST(req: Request) {
     const rawKey = req.headers.get("idempotency-key") ?? body.idempotencyKey;
     const idempotencyKey = typeof rawKey === "string" && rawKey.trim() ? rawKey.trim().slice(0, 200) : undefined;
     const orch = orchestrator();
-    // Dedupe hits never consume the daily-create budget.
-    if (idempotencyKey) {
-      const hit = await orch.getByIdempotencyKey(idempotencyKey);
-      if (hit) return NextResponse.json({ ...hit, dedupe: "idempotency" });
-    }
-    const siteHit = await orch.findBySite(targetUrl);
-    if (siteHit) return NextResponse.json({ ...siteHit, dedupe: "site" });
-    if (!(await underDailyLimit(`exp-create:${clientIp(req)}`, CREATE_PER_IP_PER_DAY))) {
-      return NextResponse.json({ error: "daily experiment limit reached" }, { status: 429 });
-    }
     const config = {
       ...parsed.data,
       trajectories: Math.min(parsed.data.trajectories, MAX_TRAJECTORIES),
@@ -68,7 +58,14 @@ export async function POST(req: Request) {
       maxAgents: Math.min(parsed.data.maxAgents, MAX_AGENTS),
       maxConcurrentAgents: Math.min(parsed.data.maxConcurrentAgents, 20),
     };
-    const result = await orch.startExperiment(targetUrl, goal, config, { idempotencyKey });
+    // Dedupe hits never consume the daily-create budget: `admit` runs only before a real create.
+    const result = await orch.startExperiment(targetUrl, goal, config, {
+      idempotencyKey,
+      admit: () => underDailyLimit(`exp-create:${clientIp(req)}`, CREATE_PER_IP_PER_DAY),
+    });
+    if (!result) {
+      return NextResponse.json({ error: "daily experiment limit reached" }, { status: 429 });
+    }
     if (!result.created) {
       return NextResponse.json({ ...result.experiment, dedupe: result.via });
     }
