@@ -5,6 +5,8 @@
  * of which gets its own window. Elsewhere work runs as a detached promise in
  * this process (the Node dev/server process persists) and steps loop in-process.
  */
+import { assertPublicUrl } from "./fetch/guards";
+
 export async function runInBackground(work: () => Promise<void>): Promise<void> {
   // navigator.userAgent is the cheapest Workers check — no import cost off-Workers.
   if (navigator.userAgent !== "Cloudflare-Workers") {
@@ -37,7 +39,9 @@ export function isWorkersRuntime(): boolean {
 export async function continueRun(id: string, opts: { origin?: string; token?: string }): Promise<void> {
   if (!isWorkersRuntime() || !opts.origin) return;
   try {
-    await fetch(`${opts.origin}/api/internal/run-step`, {
+    const target = `${opts.origin}/api/internal/run-step`;
+    await assertPublicUrl(target);
+    await fetch(target, {
       method: "POST",
       headers: { "content-type": "application/json" },
       body: JSON.stringify({ id, token: opts.token }),

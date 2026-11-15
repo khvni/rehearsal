@@ -13,12 +13,12 @@ function orchestrator(): Orchestrator {
 }
 
 /** Manual stall watchdog: resume a background run whose heartbeat (last activity event) is older than the stall window. */
-export async function POST(_req: Request, { params }: { params: Promise<{ id: string }> }) {
+export async function POST(req: Request, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
   if (!isExperimentId(id)) return NextResponse.json({ error: "not found" }, { status: 404 });
   const orch = orchestrator();
   const exp = await orch.get(id);
   if (!exp) return NextResponse.json({ error: "not found" }, { status: 404 });
-  const { resumed } = await orch.resume(id);
+  const { resumed } = await orch.resume(id, { origin: new URL(req.url).origin });
   return NextResponse.json({ resumed, status: exp.status });
 }

@@ -37,7 +37,7 @@ export async function POST(req: Request) {
   await runInBackground(() =>
     enqueueRun(async () => {
       try {
-        await orch.runStep(id, { origin });
+        await orch.runContinuation(id, { origin });
       } catch (e) {
         if (!(e instanceof StageInProgressError)) {
           await orch.markFailed(id, e).catch(() => undefined);

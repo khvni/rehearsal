@@ -57,7 +57,7 @@ async function runStage(orch: Orchestrator, id: string, stage: string): Promise<
     case "rebuild":
       return NextResponse.json(await orch.rebuild(id));
     case "run":
-      return NextResponse.json(await orch.runAll(id));
+      return NextResponse.json(await orch.runAll(id, { origin: new URL(req.url).origin }));
     default:
       return NextResponse.json({ error: `unknown stage ${stage}` }, { status: 400 });
   }

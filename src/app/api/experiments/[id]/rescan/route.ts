@@ -27,7 +27,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
   try {
     const { experiment, report } = await orch.rescan(id, { goal: body.goal });
     if (report.restarted) {
-      await orch.scheduleRun(id, { skipDiscover: !report.changed });
+      await orch.scheduleRun(id, { skipDiscover: !report.changed, origin: new URL(req.url).origin });
     }
     return NextResponse.json({ ...experiment, rescan: report }, { status: report.restarted ? 202 : 200 });
   } catch (e) {

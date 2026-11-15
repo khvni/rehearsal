@@ -298,7 +298,7 @@ export class Orchestrator {
    * waits for a pipeline slot and for any in-flight run, and marks the
    * experiment failed on an unhandled stage error — nothing spins forever.
    */
-  async scheduleRun(id: string, opts?: { skipDiscover?: boolean }): Promise<Experiment> {
+  async scheduleRun(id: string, opts?: { skipDiscover?: boolean; origin?: string }): Promise<Experiment> {
     const exp = await this.mustGet(id);
     exp.runToken = randomUUID();
     exp.runCheckpoint = { stage: opts?.skipDiscover ? "simulate" : "discover", attempt: 0 };
@@ -306,7 +306,7 @@ export class Orchestrator {
     await this.emit(id, "run", "info", "Run queued — the pipeline continues in the background");
     const work = async (): Promise<void> => {
       try {
-        await this.exclusiveWhenFree(id, "run", () => this.stepBody(id));
+        await this.exclusiveWhenFree(id, "run", () => this.stepBody(id, { origin: opts?.origin }));
       } catch (e) {
         await this.markFailed(id, e).catch(() => undefined);
       }
@@ -320,7 +320,7 @@ export class Orchestrator {
    * still producing activity inside the stall window. Safe to call from any
    * poll: it is the watchdog that covers a dropped continuation hop.
    */
-  async resume(id: string): Promise<{ experiment: Experiment; resumed: boolean }> {
+  async resume(id: string, opts?: { origin?: string }): Promise<{ experiment: Experiment; resumed: boolean }> {
     const exp = await this.mustGet(id);
     const inFlight = IN_FLIGHT_STATUSES.includes(exp.status) || exp.runCheckpoint !== undefined;
     if (!inFlight) return { experiment: exp, resumed: false };
@@ -330,7 +330,7 @@ export class Orchestrator {
     await this.emit(id, "run", "info", "Run stalled — resuming from the last checkpoint");
     const work = async (): Promise<void> => {
       try {
-        await this.exclusiveWhenFree(id, "run", () => this.stepBody(id));
+        await this.exclusiveWhenFree(id, "run", () => this.stepBody(id, { origin: opts?.origin }));
       } catch (e) {
         await this.markFailed(id, e).catch(() => undefined);
       }
@@ -355,6 +355,11 @@ export class Orchestrator {
       }
       return this.mustGet(id);
     });
+  }
+
+  /** Queued next-slice for the run-step route: waits for the in-flight slice to release the run lock — a same-isolate continuation can land while the caller still holds it. */
+  async runContinuation(id: string, opts?: { origin?: string }): Promise<void> {
+    await this.exclusiveWhenFree(id, "run", () => this.stepBody(id, opts));
   }
 
   /** Runs slices to completion: in-process loop on Node; one slice per run-step hop on Workers. Callers hold the lock. */
@@ -405,8 +410,9 @@ export class Orchestrator {
       await this.store.save(Experiment.parse(latest));
     };
     for (const stage of order) {
+      const carryDiscover = stage === "discover" && cp?.stage === "discover" ? cp.discover : undefined;
       if (deadline !== undefined && now() >= deadline) {
-        await persist({ stage, attempt: cp?.stage === stage ? cp.attempt : 0 });
+        await persist({ stage, attempt: cp?.stage === stage ? cp.attempt : 0, discover: carryDiscover });
         await this.emit(id, "run", "info", `Step budget reached — run continues in the background (next: ${stage})`);
         return { suspended: true };
       }
@@ -417,10 +423,10 @@ export class Orchestrator {
           `Stage ${stage} did not finish within ${MAX_STAGE_SLICES} run steps — the runtime's step budget is too small for it`,
         );
       }
-      await persist({ stage, attempt });
+      await persist({ stage, attempt, discover: carryDiscover });
       const result = (await stageFns[stage](
         deadline,
-        stage === "discover" && cp?.stage === "discover" ? cp.discover : undefined,
+        carryDiscover,
         stage === "discover" ? attempt : undefined,
       )) as { complete?: boolean } | undefined;
       // A stage that suspended mid-flight owns the checkpoint — don't overwrite it.
@@ -1163,9 +1169,9 @@ export class Orchestrator {
   }
 
   /** Full closed loop. */
-  async runAll(id: string): Promise<Experiment> {
+  async runAll(id: string, opts?: { origin?: string }): Promise<Experiment> {
     return this.exclusive(id, "run", async () => {
-      await this.stepBody(id);
+      await this.stepBody(id, opts);
       return this.mustGet(id);
     });
   }

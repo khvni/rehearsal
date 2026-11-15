@@ -2,12 +2,12 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { Experiment } from "@/lib/contracts";
 
 const routeGet = vi.fn();
-const routeRunStep = vi.fn();
+const routeRunContinuation = vi.fn();
 const routeMarkFailed = vi.fn(async () => undefined);
 vi.mock("@/lib/orchestrator", () => ({
   Orchestrator: class {
     get = routeGet;
-    runStep = routeRunStep;
+    runContinuation = routeRunContinuation;
     markFailed = routeMarkFailed;
   },
   StageInProgressError: class extends Error {},
@@ -20,7 +20,7 @@ describe("POST /api/internal/run-step", () => {
     runStepPost(new Request("http://localhost/api/internal/run-step", { method: "POST", body: JSON.stringify(body), headers }));
   const expWithToken = () => ({ id: "exp_a1b2c3d4", status: "discovering", runToken: "tok-1" }) as Experiment;
   const get = routeGet;
-  const runStep = routeRunStep;
+  const runContinuation = routeRunContinuation;
 
   beforeEach(() => vi.clearAllMocks());
 
@@ -46,7 +46,7 @@ describe("POST /api/internal/run-step", () => {
       const viaBearer = await post({ id: "exp_a1b2c3d4" }, { authorization: "Bearer s3cr3t" });
       expect(viaBearer.status).toBe(202);
       await new Promise((r) => setTimeout(r, 20));
-      expect(runStep).toHaveBeenCalledWith("exp_a1b2c3d4", expect.objectContaining({ origin: "http://localhost" }));
+      expect(runContinuation).toHaveBeenCalledWith("exp_a1b2c3d4", expect.objectContaining({ origin: "http://localhost" }));
     } finally {
       delete process.env.REHEARSAL_RUN_SECRET;
     }
