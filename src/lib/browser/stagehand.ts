@@ -97,7 +97,7 @@ function inspectTarget(selector: string): AgentTargetInfo | null {
     tag: el.tagName.toLowerCase(),
     type: (el.getAttribute("type") ?? "").toLowerCase(),
     role: (el.getAttribute("role") ?? "").toLowerCase(),
-    inForm: el.closest("form") !== null,
+    inForm: el.closest("form") !== null || ("form" in el && el.form instanceof HTMLFormElement),
     editable: el instanceof HTMLElement && el.isContentEditable,
   };
 }
