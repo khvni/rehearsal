@@ -59,6 +59,13 @@ for (const surface of ["detail", "rebuild"] as const) {
     const warning = page.getByRole("alert").filter({ hasText: "Couldn't refresh this experiment" });
     await expect(warning).toBeVisible();
     await expect(warning).toContainText("Showing data from the last successful load");
+    const warningBox = await warning.boundingBox();
+    const headingBox = await page.locator(".exp-head").boundingBox();
+    expect(warningBox).not.toBeNull();
+    expect(headingBox).not.toBeNull();
+    expect(warningBox!.x).toBe(headingBox!.x);
+    expect(warningBox!.width).toBe(headingBox!.width);
+    expect(warningBox!.y + warningBox!.height).toBeLessThan(headingBox!.y);
     await expect(heading).toBeVisible();
     await expect(page.getByText("Couldn't load this experiment", { exact: true })).toHaveCount(0);
     const failed = requests;

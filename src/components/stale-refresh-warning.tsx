@@ -1,15 +1,19 @@
 "use client";
 
-import { Banner, BannerAction, BannerActions, BannerDescription, BannerTitle } from "@/components/ui/banner";
+import { TriangleAlert } from "lucide-react";
+import { Button } from "@/components/ui/button";
 
 export function StaleRefreshWarning({ onRetry }: { onRetry: () => void }) {
   return (
-    <Banner status="warning" contrast="high" className="run-banner">
-      <BannerTitle>Couldn&apos;t refresh this experiment</BannerTitle>
-      <BannerDescription>Showing data from the last successful load. It may be out of date.</BannerDescription>
-      <BannerActions>
-        <BannerAction onClick={onRetry}>Retry</BannerAction>
-      </BannerActions>
-    </Banner>
+    <div role="alert" className="run-summary run-banner">
+      <div className="flex items-start gap-3">
+        <TriangleAlert size={20} strokeWidth={1.5} className="shrink-0 text-[var(--warning)]" aria-hidden="true" />
+        <div className="flex min-w-0 flex-col items-start gap-2">
+          <p className="font-medium">Couldn&apos;t refresh this experiment</p>
+          <p className="card-body">Showing data from the last successful load. It may be out of date.</p>
+          <Button variant="secondary" size="compact" onClick={onRetry}>Retry</Button>
+        </div>
+      </div>
+    </div>
   );
 }
