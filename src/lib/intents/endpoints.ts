@@ -79,16 +79,29 @@ interface Candidate {
   order: number;
 }
 
-function endpointKeyUrl(raw: string): string {
+/**
+ * Dedupe key for an endpoint URL. Same-origin URLs drop the origin so endpoint
+ * ids (and the weight tiebreak and journey seeds that follow from them) don't
+ * change with the host or port the site was crawled from.
+ */
+function endpointKeyUrl(raw: string, origin: string): string {
   try {
     const u = new URL(raw.replace(/&amp;/g, "&"));
     u.hash = "";
     u.searchParams.delete("t");
-    let s = u.toString().replace(/\?$/, "");
+    let s = (u.origin === origin ? u.pathname + u.search : u.toString()).replace(/\?$/, "");
     if (u.pathname !== "/" && s.endsWith("/")) s = s.slice(0, -1);
     return s;
   } catch {
     return raw;
+  }
+}
+
+function originOf(raw: string): string {
+  try {
+    return new URL(raw).origin;
+  } catch {
+    return "";
   }
 }
 
@@ -104,7 +117,9 @@ function classifyState(state: SiteState): EndpointClass | null {
 export function discoverEndpoints(graph: StateGraph, opts: { intents?: IntentProfile[] } = {}): Endpoint[] {
   const start = graph.states[0];
   if (!start) return [];
-  const stateByKey = new Map(graph.states.map((s) => [endpointKeyUrl(s.url), s]));
+  const origin = originOf(start.url);
+  const keyUrl = (raw: string) => endpointKeyUrl(raw, origin);
+  const stateByKey = new Map(graph.states.map((s) => [keyUrl(s.url), s]));
   const edgeTo = new Map(graph.edges.map((e) => [`${e.fromStateId}|${e.actionId}`, e.toStateId]));
   const candidates = new Map<string, Candidate>();
   let order = 0;
@@ -129,17 +144,17 @@ export function discoverEndpoints(graph: StateGraph, opts: { intents?: IntentPro
     const isStart = state.stateId === start.stateId;
     const cls = classifyState(state);
     if (cls) {
-      const url = endpointKeyUrl(state.url);
+      const url = keyUrl(state.url);
       upsert({ key: `${cls}|${url}`, cls, url: state.url, label: state.pageTitle, stateId: state.stateId, onStart: isStart });
     }
     for (const action of state.actions) {
       if ((action.type !== "click" && action.type !== "navigate") || !action.enabled) continue;
       const acls = classifyAction(action);
       if (!acls) continue;
-      const href = action.href ? endpointKeyUrl(action.href) : undefined;
+      const href = action.href ? keyUrl(action.href) : undefined;
       const dest = edgeTo.get(`${state.stateId}|${action.actionId}`) ?? (href ? stateByKey.get(href)?.stateId : undefined);
       upsert({
-        key: href ? `${acls}|${href}` : `${acls}|${endpointKeyUrl(state.url)}|${action.label.toLowerCase()}`,
+        key: href ? `${acls}|${href}` : `${acls}|${keyUrl(state.url)}|${action.label.toLowerCase()}`,
         cls: acls,
         url: action.href ? action.href.replace(/&amp;/g, "&").replace(/\?$/, "") : state.url,
         label: action.label,
