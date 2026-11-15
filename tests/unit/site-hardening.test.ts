@@ -92,6 +92,34 @@ Allow: /api/public/
     expect(robotsAllowsPath(rules, "/data.json")).toBe(false);
     expect(robotsAllowsPath(rules, "/data.json.html")).toBe(true);
   });
+
+  it("matches wildcard-heavy rules in linear time", () => {
+    const hostile = parseRobots(`User-agent: *\nDisallow: /${"*a".repeat(30)}*b\n`);
+    const started = performance.now();
+    expect(robotsAllowsPath(hostile, `/${"a".repeat(200)}`)).toBe(true);
+    expect(performance.now() - started).toBeLessThan(50);
+    expect(robotsAllowsPath(hostile, `/${"a".repeat(200)}b`)).toBe(false);
+  });
+
+  it("handles multi-wildcard and anchored edge cases", () => {
+    const edge = parseRobots(`User-agent: *
+Disallow: /a*b*c$
+Disallow: /exact$
+Disallow: /x*
+`);
+    expect(robotsAllowsPath(edge, "/aXbYc")).toBe(false);
+    expect(robotsAllowsPath(edge, "/abc")).toBe(false);
+    expect(robotsAllowsPath(edge, "/aXbYcZ")).toBe(true);
+    expect(robotsAllowsPath(edge, "/acb")).toBe(true);
+    expect(robotsAllowsPath(edge, "/exact")).toBe(false);
+    expect(robotsAllowsPath(edge, "/exactly")).toBe(true);
+    expect(robotsAllowsPath(edge, "/x")).toBe(false);
+  });
+
+  it("drops overlong rule values", () => {
+    const long = parseRobots(`User-agent: *\nDisallow: /${"a".repeat(600)}\n`);
+    expect(long).toHaveLength(0);
+  });
 });
 
 describe("redirect re-validation", () => {
