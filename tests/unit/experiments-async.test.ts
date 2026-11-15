@@ -1,4 +1,4 @@
-import { afterEach, describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { contentSignatureFor, extractPage, normalizeSiteUrl } from "@/lib/browser/extract";
 import { classifyError, RehearsalError } from "@/lib/errors";
 import { enqueueRun } from "@/lib/access";
@@ -60,6 +60,7 @@ function runner(pages: Record<string, string>, failWith?: unknown): BrowserRunne
 afterEach(() => {
   delete process.env.REHEARSAL_ALLOW_PRIVATE;
   delete process.env.REHEARSAL_MAX_CONCURRENT_RUNS;
+  delete process.env.REHEARSAL_BROWSER;
 });
 
 describe("normalizeSiteUrl", () => {
@@ -144,6 +145,11 @@ describe("startExperiment dedupe", () => {
 });
 
 describe("discover quota fallback", () => {
+  beforeEach(() => {
+    // The default crawl is plain-fetch-first; opt the stub runner back in via REHEARSAL_BROWSER.
+    process.env.REHEARSAL_BROWSER = "playwright";
+  });
+
   it("falls back to the fetcher once the runner reports provider quota", async () => {
     process.env.REHEARSAL_ALLOW_PRIVATE = "1";
     const orch = new Orchestrator({

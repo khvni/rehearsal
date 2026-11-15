@@ -9,12 +9,14 @@ describe("selectRunner", () => {
     expect(selectRunner({}, false).name).toBe("local-playwright");
   });
 
-  it("uses Stagehand on Browserbase when only Browserbase keys exist", () => {
-    expect(runnerName({ BROWSERBASE_API_KEY: "bb_test" })).toBe("stagehand-browserbase");
+  it("never auto-picks hosted Browserbase — auto is always local Playwright", () => {
+    expect(runnerName({ BROWSERBASE_API_KEY: "bb_test" })).toBe("local-playwright");
+    expect(runnerName({ BROWSERBASE_API_KEY: "bb", BROWSERBASE_FUNCTION_ID: "fn" })).toBe("local-playwright");
   });
 
-  it("uses the Browserbase Function when its id is configured", () => {
-    expect(runnerName({ BROWSERBASE_API_KEY: "bb", BROWSERBASE_FUNCTION_ID: "fn" })).toBe("browserbase-function");
+  it("opts into hosted backends only via REHEARSAL_BROWSER", () => {
+    expect(runnerName({ REHEARSAL_BROWSER: "stagehand", BROWSERBASE_API_KEY: "bb" })).toBe("stagehand-browserbase");
+    expect(runnerName({ REHEARSAL_BROWSER: "browserbase-function", BROWSERBASE_API_KEY: "bb", BROWSERBASE_FUNCTION_ID: "fn" })).toBe("browserbase-function");
   });
 
   it("honours REHEARSAL_BROWSER and falls back when the forced backend has no keys", () => {
@@ -45,7 +47,7 @@ describe("credential redaction", () => {
   });
 
   it("removes known secret env values even outside URLs, raw or percent-encoded", () => {
-    const env = { BRIGHTDATA_BROWSER_PASSWORD: "p@ss-word", BROWSERBASE_API_KEY: "bb_live_123", BRIGHTDATA_BROWSER_WS: "wss://u:zonepw9@host" };
+    const env = { SNOWFLAKE_TOKEN: "p@ss-word", BROWSERBASE_API_KEY: "bb_live_123", FIRECRAWL_API_KEY: "wss://u:zonepw9@host" };
     const out = redactSecrets("auth p@ss-word / p%40ss-word failed; key=bb_live_123; zonepw9", env);
     for (const leaked of ["p@ss-word", "p%40ss-word", "bb_live_123", "zonepw9"]) expect(out).not.toContain(leaked);
   });

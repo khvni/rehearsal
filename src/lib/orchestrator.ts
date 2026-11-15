@@ -8,6 +8,7 @@ import {
   type BrowserRunner,
   type Comparison,
   type ExperimentStore,
+  type FirecrawlClient as FirecrawlClientPort,
   type JevClient,
   type JevScoreCache,
   type LlmClient,
@@ -18,7 +19,7 @@ import {
   type Variant,
   type VisitorPersona,
 } from "./contracts";
-import { PlainFetcher, selectFetcher } from "./fetch";
+import { FirecrawlClient, PlainFetcher, looksLikeJsShell, selectFetcher } from "./fetch";
 import { assertPublicUrl, robotsAllows } from "./fetch/guards";
 import { agentVerifyEnabled, extractPage, selectRunner } from "./browser/runner";
 import { RehearsalError, classifyError, dominantCode, formatFailure, toFailure } from "./errors";
@@ -71,10 +72,15 @@ export const PIPELINE_STAGES = [
 /** Hard cap on the probe's page fetch so a hanging request can't stall experiment creation (robots prefetch + host politeness delay may add up to ~12s on top). */
 const PROBE_TIMEOUT_MS = 15_000;
 
+/** Fewer same-origin links than this on the seed page triggers one Firecrawl /v1/map expansion. */
+const MIN_SEED_LINKS = 3;
+
 interface OrchestratorDeps {
   fetcher?: PageFetcher;
-  /** Plain-HTTP probe fetcher for rescan/signature checks and the discover quota fallback — must never be provider-quota-bound. Defaults to PlainFetcher. */
+  /** Plain-HTTP probe fetcher for rescan/signature checks and the default discover crawl — must never be provider-quota-bound. Defaults to PlainFetcher. */
   probeFetcher?: PageFetcher;
+  /** Hosted render/map fallback for JS-dependent pages in discover (no-ops without FIRECRAWL_API_KEY). Defaults to FirecrawlClient. */
+  firecrawl?: FirecrawlClientPort;
   jev?: JevClient;
   llm?: LlmClient;
   store?: ExperimentStore;
@@ -97,6 +103,7 @@ export class Orchestrator {
   private running = new Map<string, string>();
   private fetcher: PageFetcher;
   private probeFetcher: PageFetcher;
+  private firecrawl: FirecrawlClientPort;
   private jev: JevClient;
   private llm: LlmClient;
   private store: ExperimentStore;
@@ -105,6 +112,7 @@ export class Orchestrator {
   constructor(deps: OrchestratorDeps = {}) {
     this.fetcher = deps.fetcher ?? selectFetcher();
     this.probeFetcher = deps.probeFetcher ?? new PlainFetcher();
+    this.firecrawl = deps.firecrawl ?? new FirecrawlClient();
     this.jev = deps.jev ?? selectJev();
     this.llm = deps.llm ?? selectLlm();
     this.store = deps.store ?? selectStore();
@@ -433,8 +441,14 @@ export class Orchestrator {
       const config = experiment.configuration;
       const builder = new GraphBuilder(config.maxStates, config.maxDepth);
       const pageFailures: RunFailure[] = [];
-      logEvent({ experimentId: id, stage: "discover", kind: "browser-runner", data: { runner: this.runner.name } });
-      await this.emit(id, "discover", "info", `Mapping ${experiment.targetUrl} with ${this.runner.name}`);
+      // REHEARSAL_BROWSER opts the crawl into the browser runner (screenshots/metrics);
+      // the default is plain fetch → Firecrawl rescue for JS-bound pages.
+      const browserCrawl = (process.env.REHEARSAL_BROWSER ?? "auto") !== "auto";
+      const crawler = browserCrawl
+        ? this.runner.name
+        : `${this.probeFetcher.name}${this.firecrawl.available ? ` + ${this.firecrawl.name}` : ""}`;
+      logEvent({ experimentId: id, stage: "discover", kind: "browser-runner", data: { runner: crawler } });
+      await this.emit(id, "discover", "info", `Mapping ${experiment.targetUrl} with ${crawler}`);
       if (!(await robotsAllows(new URL(experiment.targetUrl)))) {
         await this.emit(id, "discover", "error", "Blocked by robots.txt", experiment.targetUrl);
         throw new RehearsalError("ROBOTS_DISALLOWED", `Target path disallowed by robots.txt: ${experiment.targetUrl}`, experiment.targetUrl);
@@ -443,30 +457,55 @@ export class Orchestrator {
       // Once the browser runner is out of provider quota the crawl continues on
       // the plain fetcher — pages lose screenshots/metrics but still map.
       let providerQuotaHit = false;
+      // Firecrawl /v1/map runs once per run, on the seed, when it exposes few links.
+      let mapExpanded = false;
+      const seedExtras: string[] = [];
       try {
         for (const vpName of config.viewports) {
           const viewport = VIEWPORTS[vpName];
           const openPage = async (url: string, depth: number) => {
-            if (providerQuotaHit) return { html: await this.probeFetcher.fetchHtml(url) };
-            try {
-              return await this.runner.openPage(url, viewport, {
-                shotName: `${id}_${vpName}_d${depth}`,
-                scope: id,
-              });
-            } catch (e) {
-              if (classifyError(e) !== "PROVIDER_QUOTA") throw e;
-              providerQuotaHit = true;
-              await this.emit(
-                id,
-                "discover",
-                "info",
-                `${this.runner.name} is out of provider quota — continuing with ${this.probeFetcher.name} (no screenshots)`,
-              );
-              return { html: await this.probeFetcher.fetchHtml(url) };
+            if (browserCrawl) {
+              if (providerQuotaHit) return { html: await this.probeFetcher.fetchHtml(url) };
+              try {
+                return await this.runner.openPage(url, viewport, {
+                  shotName: `${id}_${vpName}_d${depth}`,
+                  scope: id,
+                });
+              } catch (e) {
+                if (classifyError(e) !== "PROVIDER_QUOTA") throw e;
+                providerQuotaHit = true;
+                await this.emit(
+                  id,
+                  "discover",
+                  "info",
+                  `${this.runner.name} is out of provider quota — continuing with ${this.probeFetcher.name} (no screenshots)`,
+                );
+                return { html: await this.probeFetcher.fetchHtml(url) };
+              }
             }
+            // Default crawl: plain fetch; Firecrawl rescues pages that need a renderer.
+            const isShell = (html: string) => looksLikeJsShell(html, extractPage(html, url));
+            let plainFailure: string;
+            try {
+              const html = await this.probeFetcher.fetchHtml(url);
+              if (!isShell(html)) return { html };
+              plainFailure = "returned a JS app shell";
+            } catch (e) {
+              plainFailure = `failed (${errorText(e, 120)})`;
+            }
+            if (!this.firecrawl.available) {
+              throw new Error(`${this.probeFetcher.name} ${plainFailure}; no hosted fallback configured (set FIRECRAWL_API_KEY, or REHEARSAL_BROWSER for a browser crawl)`);
+            }
+            await this.emit(id, "discover", "fetch", `${pagePath(url)} looks JS-rendered — retrying with ${this.firecrawl.name}`, url);
+            const scraped = await this.firecrawl.scrape(url);
+            if (scraped?.html && !isShell(scraped.html)) return { html: scraped.html };
+            throw new Error(
+              `${this.probeFetcher.name} ${plainFailure}; ${this.firecrawl.name} ${scraped?.html ? "still saw a JS shell" : "returned nothing"}`,
+            );
           };
           const frontier: { url: string; depth: number; from?: { stateId: string; actionId: string } }[] = [
             { url: experiment.targetUrl, depth: 0 },
+            ...seedExtras.map((url) => ({ url, depth: 1 })),
           ];
           const visited = new Map<string, string>(); // url -> canonical stateId
           const attempted = new Set<string>();
@@ -512,6 +551,28 @@ export class Orchestrator {
                   .sort((a, b) => relevant(b.label, b.href!) - relevant(a.label, a.href!));
                 for (const a of links) {
                   frontier.push({ url: a.href!, depth: depth + 1, from: { stateId: canonical.stateId, actionId: a.actionId } });
+                }
+                // Seed page with few crawlable links: ask Firecrawl /v1/map for the
+                // site's URL list once per run, capped by config.firecrawlMapLimit.
+                if (depth === 0 && !mapExpanded) {
+                  mapExpanded = true;
+                  if (links.length < MIN_SEED_LINKS && this.firecrawl.available) {
+                    const seen = new Set([...visited.keys(), ...attempted, ...frontier.map((f) => f.url)]);
+                    const extra = (await this.firecrawl.mapLinks(experiment.targetUrl, config.firecrawlMapLimit))
+                      .filter((u) => isSameOrigin(u, origin) && !seen.has(u))
+                      .slice(0, config.firecrawlMapLimit);
+                    if (extra.length > 0) {
+                      seedExtras.push(...extra);
+                      await this.emit(
+                        id,
+                        "discover",
+                        "map",
+                        `Seed exposed ${links.length} links — ${this.firecrawl.name} map added ${extra.length} URLs`,
+                        experiment.targetUrl,
+                      );
+                      for (const u of extra) frontier.push({ url: u, depth: depth + 1 });
+                    }
+                  }
                 }
               }
             } catch (e) {
@@ -561,13 +622,13 @@ export class Orchestrator {
         if (code === "PROVIDER_QUOTA") {
           throw new RehearsalError(
             "PROVIDER_QUOTA",
-            `Discovery stopped: ${this.runner.name} is out of provider quota${providerQuotaHit ? ` and ${this.fetcher.name} could not cover` : ""}.${cause}`,
+            `Discovery stopped: ${browserCrawl ? this.runner.name : crawler} is out of provider quota${providerQuotaHit ? ` and ${this.probeFetcher.name} could not cover` : ""}.${cause}`,
             experiment.targetUrl,
           );
         }
         throw new RehearsalError(
           "DISCOVERY_EMPTY",
-          `Discovery captured no states: ${pageFailures.length} of ${pageFailures.length} page loads failed with ${providerQuotaHit ? this.fetcher.name : this.runner.name}.${cause}`,
+          `Discovery captured no states: ${pageFailures.length} of ${pageFailures.length} page loads failed with ${providerQuotaHit ? this.probeFetcher.name : crawler}.${cause}`,
           experiment.targetUrl,
         );
       }

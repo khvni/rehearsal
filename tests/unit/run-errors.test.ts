@@ -54,7 +54,11 @@ describe("selectRunner on workerd", () => {
   it("never falls back to local Chromium on Workers", () => {
     expect(selectRunner({}, true).name).toBe("no-browser");
     expect(selectRunner({ BROWSERBASE_API_KEY: "bb" }, true).name).toBe("no-browser");
-    expect(selectRunner({ BROWSERBASE_API_KEY: "bb", BROWSERBASE_FUNCTION_ID: "fn" }, true).name).toBe("browserbase-function");
+    // Hosted backends never run by default on Workers — only via explicit opt-in.
+    expect(selectRunner({ BROWSERBASE_API_KEY: "bb", BROWSERBASE_FUNCTION_ID: "fn" }, true).name).toBe("no-browser");
+    expect(
+      selectRunner({ REHEARSAL_BROWSER: "browserbase-function", BROWSERBASE_API_KEY: "bb", BROWSERBASE_FUNCTION_ID: "fn" }, true).name,
+    ).toBe("browserbase-function");
   });
 
   it("UnavailableRunner fails every page with BROWSER_UNAVAILABLE", async () => {

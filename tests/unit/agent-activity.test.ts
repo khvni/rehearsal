@@ -143,6 +143,7 @@ function setup(feeds = new Map<string, ActivityEvent[]>()) {
     jev: new FixtureJevClient(),
     llm: new FixtureLlmClient(),
     fetcher: { name: "stub-fetch", fetchHtml: async () => "" },
+    probeFetcher: { name: "fixture-fetch", fetchHtml: async () => PAGE },
   });
   const seed = async (id: string) =>
     store.save(

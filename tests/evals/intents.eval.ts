@@ -181,6 +181,14 @@ describe("eval: orchestrator wires intents/endpoints through the pipeline (fixtu
     const orch = new Orchestrator({
       runner, store, jev: new FixtureJevClient(), llm: new FixtureLlmClient(),
       fetcher: { name: "fixture-fetch", fetchHtml: async () => "" },
+      probeFetcher: {
+        name: "fixture-fetch",
+        async fetchHtml(url) {
+          const html = pages[url];
+          if (!html) throw new Error(`no fixture for ${url}`);
+          return html;
+        },
+      },
     });
     const exp = await orch.createExperiment(AIE_URL, "find the conference schedule", {
       viewports: ["desktop"], trajectories: 300, verifyCount: 2, maxStates: 5,

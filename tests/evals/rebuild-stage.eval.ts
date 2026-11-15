@@ -178,6 +178,14 @@ describe("eval: orchestrator wires the rebuild stage (fixture adapters)", () => 
     const orch = new Orchestrator({
       runner, store, jev: new FixtureJevClient(), llm,
       fetcher: { name: "fixture-fetch", fetchHtml: async () => "" },
+      probeFetcher: {
+        name: "fixture-fetch",
+        async fetchHtml(url) {
+          const html = pages[url];
+          if (!html) throw new Error(`no fixture for ${url}`);
+          return html;
+        },
+      },
     });
     try {
       const exp = await orch.createExperiment(AIE_URL, GOAL, {

@@ -1,4 +1,5 @@
 import type { PageFetcher } from "../contracts";
+import { FirecrawlClient } from "./firecrawl";
 import { assertPublicUrl, fetchPublic, politeDelay } from "./guards";
 
 const UA =
@@ -50,9 +51,12 @@ export class BrowserbaseFetcher implements PageFetcher {
   }
 }
 
-/** Priority: Browserbase Fetch (Node hosts only: Stagehand cannot load on workerd) → plain fetch. */
+/** Priority: Firecrawl scrape → Browserbase Fetch (Node hosts only: Stagehand cannot load on workerd) → plain fetch. */
 export function selectFetcher(): PageFetcher {
   const onWorkers = typeof navigator !== "undefined" && navigator.userAgent === "Cloudflare-Workers";
+  if (process.env.FIRECRAWL_API_KEY) return new FirecrawlClient();
   if (process.env.BROWSERBASE_API_KEY && !onWorkers) return new BrowserbaseFetcher();
   return new PlainFetcher();
 }
+
+export { FirecrawlClient, looksLikeJsShell } from "./firecrawl";

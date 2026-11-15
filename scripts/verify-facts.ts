@@ -141,6 +141,7 @@ const NOT_DEPLOYED: Record<string, string> = {
   NEXT_PUBLIC_POSTHOG_KEY: "client-side var with a code default (alikhani.co's key)",
   NEXT_PUBLIC_POSTHOG_HOST: "client-side var with a code default",
   STAGEHAND_MODEL: "optional browser backend, not provisioned yet",
+  FIRECRAWL_API_KEY: "optional hosted discovery fallback (JS-heavy pages), not provisioned yet",
   BROWSERBASE_EXTENSION_ID: "optional pre-uploaded Stagehand extension override",
   STAGEHAND_MODEL_API_KEY: "optional browser backend, not provisioned yet",
   STAGEHAND_CHROME_PATH: "local-only (stagehand-local)",
@@ -388,6 +389,14 @@ async function writeFixtures(): Promise<void> {
         async list() { return [...mem.values()]; },
         async appendActivity() {},
         async activity() { return []; },
+      },
+      probeFetcher: {
+        name: "fixture-fetch",
+        async fetchHtml(url) {
+          const page = pages[url];
+          if (!page) throw new Error(`no fixture for ${url}`);
+          return page;
+        },
       },
       runner: {
         name: "fixture-runner",

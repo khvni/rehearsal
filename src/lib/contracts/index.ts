@@ -818,6 +818,7 @@ export type SiteRunSummary = z.infer<typeof SiteRunSummary>;
 export * from "./bench";
 export * from "./browser";
 export * from "./errors";
+export * from "./fetch";
 export * from "./metrics";
 export * from "./ports";
 export * from "./sandbox";

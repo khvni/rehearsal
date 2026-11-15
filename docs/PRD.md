@@ -225,7 +225,7 @@ Discovery is **endpoint-seeking best-first search**, not breadth-first. Link pri
 
 Budgets: ≤40 states per site (v1: 80), depth ≤4, and ≤6 folds per state.
 
-For each state we use one browser session: navigate once, wait for load, then run a single `page.evaluate` that returns DOM + layout (`LayoutSnapshot`) and a screenshot per fold. This keeps the Bright Data rule "one session, one navigation per captured state." Desktop is the default and mobile is a second pass (Phase 1).
+For each state we use one browser session: navigate once, wait for load, then run a single `page.evaluate` that returns DOM + layout (`LayoutSnapshot`) and a screenshot per fold — one session, one navigation per captured state. Desktop is the default and mobile is a second pass (Phase 1).
 
 **Discovery stops early** once every intent has at least one endpoint at confidence ≥ 0.7, or the budget is hit.
 

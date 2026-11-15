@@ -19,7 +19,7 @@ import { specToMarkdown } from "@/lib/analysis/spec";
 import { PlainFetcher } from "@/lib/fetch";
 import { FixtureJevClient } from "@/lib/decisions/jev";
 import { FixtureLlmClient } from "@/lib/analysis/gemini";
-import { BENCH_DEFAULTS } from "./sites";
+import { BENCH_DEFAULTS, pageFor } from "./sites";
 import type { FixtureSite } from "./sites";
 
 /** Patch node:crypto so randomUUID is a deterministic counter (AGENTS.md rule 3). */
@@ -103,6 +103,19 @@ export async function runBenchSite(
   const store = memoryStore();
   const orch = new Orchestrator({
     fetcher: new PlainFetcher(),
+    // Default crawl is plain-fetch-first: the fixture site's pages for the in-memory
+    // runner, or a real loopback fetch for the hermetic Chromium runner.
+    probeFetcher:
+      runner.name === "fixture-site"
+        ? {
+            name: "fixture-fetch",
+            async fetchHtml(url) {
+              const html = pageFor(site, new URL(url).pathname);
+              if (html === null) throw new Error(`no fixture page for ${url}`);
+              return html;
+            },
+          }
+        : new PlainFetcher(),
     jev: new FixtureJevClient(),
     llm: new FixtureLlmClient(),
     store,

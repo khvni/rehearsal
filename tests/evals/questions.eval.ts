@@ -119,6 +119,13 @@ describe("eval: orchestrator stores visitor questions in analyze (fixture adapte
     const orch = new Orchestrator({
       runner, store, jev: new FixtureJevClient(), llm: new FixtureLlmClient(),
       fetcher: { name: "fixture-fetch", fetchHtml: async () => "" },
+      probeFetcher: {
+        name: "fixture-fetch",
+        async fetchHtml(url) {
+          if (url !== AIE_URL) throw new Error(`no fixture for ${url}`);
+          return aieHtml;
+        },
+      },
     });
     const exp = await orch.createExperiment(AIE_URL, "find ticket prices", {
       viewports: ["desktop"], trajectories: 200, verifyCount: 1, maxStates: 3,

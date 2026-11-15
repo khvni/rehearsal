@@ -410,6 +410,8 @@ async function main(): Promise<void> {
   const started = Date.now();
   mkdirSync(OUT, { recursive: true });
   process.env.REHEARSAL_ALLOW_PRIVATE = "1"; // loopback fixture origin only; all other requests are aborted
+  // Opt the crawl into the browser runner so spec-delta keeps diffing the Chromium path (the golden).
+  process.env.REHEARSAL_BROWSER ??= "playwright";
 
   const [{ Orchestrator }, { FixtureJevClient }, { FixtureLlmClient }, { JsonFileStore }, { specToMarkdown }] = await Promise.all([
     import("../src/lib/orchestrator"),

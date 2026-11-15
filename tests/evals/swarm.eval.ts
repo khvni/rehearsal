@@ -6,13 +6,13 @@
 import { readFileSync } from "node:fs";
 import path from "node:path";
 import { describe, expect, it } from "vitest";
-import type { BrowserRunner, Experiment, ExperimentStore, PersonaJourneyArgs, TrajectoryArgs } from "@/lib/contracts";
+import type { BrowserRunner, Experiment, ExperimentStore, PageFetcher, PersonaJourneyArgs, TrajectoryArgs } from "@/lib/contracts";
 import { Experiment as ExperimentSchema, type FixtureSiteManifest } from "@/lib/contracts";
 import { Orchestrator } from "@/lib/orchestrator";
 import { FixtureJevClient } from "@/lib/decisions/jev";
 import { FixtureLlmClient } from "@/lib/analysis/gemini";
 import { FixtureSiteRunner } from "./bench/runner";
-import { loadSite } from "./bench/sites";
+import { loadSite, pageFor } from "./bench/sites";
 
 const AIE_MANIFEST = path.join(__dirname, "fixtures", "aie-code-2026.manifest.json");
 const MANIFEST = JSON.parse(readFileSync(AIE_MANIFEST, "utf8")) as FixtureSiteManifest;
@@ -25,15 +25,26 @@ const T = {
   swarmJourneys: 30,
 } as const;
 
-function swarmCapableRunner(): BrowserRunner {
+function swarmCapableDeps(): { runner: BrowserRunner; probeFetcher: PageFetcher } {
   const site = loadSite(MANIFEST);
   const inner = new FixtureSiteRunner(site);
   return {
-    name: "fixture-swarm",
-    openPage: (url, viewport) => inner.openPage(url, viewport),
-    runTrajectory: (a: TrajectoryArgs) => inner.runTrajectory(a),
-    runPersonaJourney: (a: PersonaJourneyArgs) => inner.runPersonaJourney(a),
-    close: () => inner.close(),
+    runner: {
+      name: "fixture-swarm",
+      openPage: (url, viewport) => inner.openPage(url, viewport),
+      runTrajectory: (a: TrajectoryArgs) => inner.runTrajectory(a),
+      runPersonaJourney: (a: PersonaJourneyArgs) => inner.runPersonaJourney(a),
+      close: () => inner.close(),
+    },
+    // The default crawl is plain-fetch-first — serve the fixture pages as the probe fetcher.
+    probeFetcher: {
+      name: "fixture-fetch",
+      async fetchHtml(url) {
+        const html = pageFor(site, new URL(url).pathname);
+        if (html === null) throw new Error(`no fixture page for ${url}`);
+        return html;
+      },
+    },
   };
 }
 
@@ -63,7 +74,7 @@ describe("eval: persona swarm over the fixture site", () => {
     process.env.REHEARSAL_ALLOW_PRIVATE = "1";
     const run = async () => {
       const orch = new Orchestrator({
-        runner: swarmCapableRunner(),
+        ...swarmCapableDeps(),
         store: memoryStore(),
         jev: new FixtureJevClient(),
         llm: new FixtureLlmClient(),
@@ -118,7 +129,7 @@ describe("eval: persona swarm over the fixture site", () => {
   it("verify replays most-travelled + most-dropped emergent journeys", async () => {
     process.env.REHEARSAL_ALLOW_PRIVATE = "1";
     const orch = new Orchestrator({
-      runner: swarmCapableRunner(),
+      ...swarmCapableDeps(),
       store: memoryStore(),
       jev: new FixtureJevClient(),
       llm: new FixtureLlmClient(),
