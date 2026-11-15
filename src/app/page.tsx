@@ -9,6 +9,7 @@ import { Field, FieldDescription, FieldError, FieldGroup, FieldLabel } from "@/c
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { ArrowIcon } from "./_components/icons";
+import { statusColor } from "./_components/status-color";
 
 interface ExperimentSummary {
   id: string;
@@ -17,15 +18,6 @@ interface ExperimentSummary {
   status: string;
   createdAt: string;
   exampleEligible?: boolean;
-}
-
-const RUNNING = ["queued", "discovering", "simulating", "verifying", "analyzing", "comparing"];
-
-function statusColor(status: string): "green" | "red" | "blue" | "gray" {
-  if (status === "complete") return "green";
-  if (status === "failed") return "red";
-  if (RUNNING.includes(status)) return "blue";
-  return "gray";
 }
 
 function shortDate(iso: string): string {
