@@ -168,4 +168,27 @@ describe("whole-site rebuild", () => {
     await orch.rebuild(saved.id, { restart: true });
     expect(saved.rebuild!.site!.pages.every(p => p.status === "planned")).toBe(true);
   });
+  it("trims oversized fallback content and fails irreducible pages without rejecting a batch", async () => {
+    const exp = fixture(2);
+    exp.graph!.states[0].pageTitle = "A".repeat(40000);
+    exp.graph!.states[0].visibleText = `${"<&>".repeat(2100)} A useful sentence.\n`.repeat(2);
+    exp.graph!.states[0].actions = Array.from({ length: 30 }, (_, i) => ({ actionId: `a${i}`, stateId: "s0", type: "click", label: `Guide ${i} ${"<&>".repeat(100)}`, href: `/guides/${i}/${"&".repeat(1800)}`, enabled: true, safeToExecute: true }));
+    const site = deterministicPlan(exp);
+    const built = await buildPage(exp, site, site.pages[0], fake());
+    expect(built.status).toBe("built");
+    expect(built.source).toBe("template");
+    expect(built.bytes).toBeLessThanOrEqual(30 * 1024);
+    expect(built.html).toContain("<h1>");
+
+    let saved = fixture(2);
+    const broken = deterministicPlan(saved);
+    broken.pages[0].sourceUrl = "https://example.com/%252f";
+    saved.rebuild = { generatedAt: saved.createdAt, brand: rollupBrand(saved.graph!.states), goals: [], pages: [], llm: "fixture", site: broken };
+    const store = { get: async () => structuredClone(saved), save: async (value: Experiment) => { saved = structuredClone(value); }, appendActivity: async () => {} } as unknown as ExperimentStore;
+    const orch = new Orchestrator({ store, llm: fake() });
+    await expect(orch.rebuild(saved.id)).resolves.toBeDefined();
+    expect(saved.rebuild!.site!.pages[0]).toMatchObject({ status: "failed", issues: ["template fallback failed"] });
+    expect(saved.rebuild!.site!.pages[1].status).toBe("failed");
+    expect(saved.rebuild!.site!.completedAt).toBeDefined();
+  });
 });

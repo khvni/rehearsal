@@ -385,6 +385,8 @@ function templateBody(
   exp: Experiment,
   site: RebuildSite,
   page: RebuildSitePage,
+  textLimit = 6500,
+  linkLimit = 30,
 ): string {
   const normalize = (text: string) =>
     text.trim().replace(/\s+/g, " ").toLowerCase();
@@ -400,19 +402,23 @@ function templateBody(
   };
   const safeAction = (action: { label: string; href: string }) => {
     try {
+      if (action.href.length > 2048) return;
       const url = new URL(action.href, page.sourceUrl);
+      targetKey(url.href);
       return action.label.trim() &&
         /^(https?:|mailto:|tel:)$/.test(url.protocol)
-        ? { label: action.label.trim(), href: url.href }
+        ? { label: action.label.trim().slice(0, 160), href: url.href }
         : undefined;
     } catch {
       return undefined;
     }
   };
-  const actions = linksFor(exp, page).flatMap((action) => {
-    const safe = safeAction(action);
-    return safe ? [safe] : [];
-  });
+  const actions = linksFor(exp, page)
+    .slice(0, linkLimit)
+    .flatMap((action) => {
+      const safe = safeAction(action);
+      return safe ? [safe] : [];
+    });
   const chrome = [
     ...site.nav.map((item) => ({ label: item.label, href: item.path })),
     ...site.footer.links,
@@ -449,7 +455,7 @@ function templateBody(
   const paragraphs = [
     ...new Set(
       (stateFor(exp, page)?.visibleText ?? "")
-        .slice(0, 6500)
+        .slice(0, textLimit)
         .split(/\n+/)
         .map((line) => line.trim())
         .filter(
@@ -508,7 +514,7 @@ function templateBody(
     )
     .join("");
   return [
-    `<section class="rb-section rb-hero"><div class="rb-container rb-stack"><h1>${esc(page.title)}</h1>`,
+    `<section class="rb-section rb-hero"><div class="rb-container rb-stack"><h1>${esc(page.title.slice(0, 200))}</h1>`,
     lede ? `<p class="rb-lede">${esc(lede)}</p>` : "",
     buttons.length ? `<div class="rb-cluster">${buttons.join("")}</div>` : "",
     `</div></section>`,
@@ -584,14 +590,38 @@ export async function buildPage(
     }
   }
   if (best) return best;
-  const html = processHtml(templateBody(exp, site, page), exp, page, site);
+  for (const [textLimit, linkLimit] of [
+    [6500, 30],
+    [3000, 12],
+    [1000, 3],
+    [0, 0],
+  ]) {
+    try {
+      const html = processHtml(
+        templateBody(exp, site, page, textLimit, linkLimit),
+        exp,
+        page,
+        site,
+      );
+      return {
+        ...page,
+        status: "built",
+        html,
+        bytes: bytes(html),
+        source: "template",
+        issues: lintRebuiltPage(html, opts),
+      };
+    } catch {
+      /* Retry with a smaller template before failing this page. */
+    }
+  }
   return {
     ...page,
-    status: "built",
-    html,
-    bytes: bytes(html),
+    status: "failed",
+    html: undefined,
+    bytes: undefined,
     source: "template",
-    issues: lintRebuiltPage(html, opts),
+    issues: ["template fallback failed"],
   };
 }
 
@@ -629,7 +659,10 @@ export function siteStylesheet(tokens: RebuildSite["tokens"]): string {
 export function renderSiteDocument(exp: Experiment, path = "/"): string {
   const site = exp.rebuild?.site;
   if (!site) throw new Error("No rebuilt site");
-  const page = site.pages.find((p) => normalizeRebuildPath(p.path.split("/")) === path && p.status === "built");
+  const page = site.pages.find(
+    (p) =>
+      normalizeRebuildPath(p.path.split("/")) === path && p.status === "built",
+  );
   const base = baseFor(exp);
   const brand = exp.rebuild!.brand;
   const homePath = homePathFor(site);
