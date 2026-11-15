@@ -437,7 +437,9 @@ export class Orchestrator {
     const startAt = cp && (PIPELINE_STAGES as readonly string[]).includes(cp.stage)
       ? cp.stage
       : STATUS_STAGE[exp.status] ?? "discover";
-    const order = PIPELINE_STAGES.slice(PIPELINE_STAGES.indexOf(startAt as (typeof PIPELINE_STAGES)[number]));
+    // Rebuild is opt-in (one more LLM call per goal set): a run stops at spec unless it is resuming a rebuild already asked for.
+    const order = PIPELINE_STAGES.slice(PIPELINE_STAGES.indexOf(startAt as (typeof PIPELINE_STAGES)[number]))
+      .filter((s) => s !== "rebuild" || startAt === "rebuild");
     const now = opts?.now ?? Date.now;
     const deadline = opts?.deadlineMs !== undefined ? now() + opts.deadlineMs : undefined;
     const persist = async (checkpoint: RunCheckpoint) => {
