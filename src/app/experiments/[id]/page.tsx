@@ -16,6 +16,7 @@ import { Card, CardContent, CardGroup } from "@/components/ui/card";
 import { Tabs, TabsItem } from "@/components/ui/tabs";
 import { ThinkingStep, ThinkingSteps, ThinkingStepsContent, ThinkingStepsHeader } from "@/components/ui/thinking-steps";
 import { AgentActivity } from "@/components/agent-activity";
+import { StaleRefreshWarning } from "@/components/stale-refresh-warning";
 import { displayFindings, failureMessage, hasBrowserEvidence, hasUsablePreview } from "@/lib/presentation";
 import { HeatLegend, StateGraph, visitCounts } from "./state-graph";
 
@@ -283,6 +284,7 @@ export default function ExperimentPage() {
   return (
     <div className="page">
       <TopBar />
+      {loadError && <StaleRefreshWarning onRetry={() => void refresh()} />}
       <header className="exp-head">
         <h1>{exp.goal}</h1>
         <div className="exp-meta">
