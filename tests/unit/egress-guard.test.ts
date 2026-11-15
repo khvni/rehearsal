@@ -39,6 +39,22 @@ afterEach(() => {
 });
 
 describe("SSRF guards", () => {
+  it.each([
+    "fe80::1", "fe90::1", "fea0::1", "febf::1", "fec0::1",
+    "::ffff:127.0.0.1", "::ffff:7f00:1", "fc00::1", "fd00::1", "::1", "::", "ff02::1",
+    "2001:db8::1", "0:0:0:0:0:0:0:1", "0:0:0:0:0:0:0:0",
+    "10.0.0.1", "127.0.0.1", "0.0.0.0", "169.254.0.1", "172.16.0.1", "192.168.0.1",
+    "100.64.0.1", "198.18.0.1", "224.0.0.1", "240.0.0.1", "255.255.255.255", "192.0.2.1",
+  ])("blocks non-public literal %s", async (host) => {
+    delete process.env.REHEARSAL_ALLOW_PRIVATE;
+    await expect(resolvePublicHost(host)).rejects.toThrow(/Blocked private IP/);
+  });
+
+  it.each(["fe7f::1", "2606:4700::1", "8.8.8.8", "::ffff:8.8.8.8"])("allows unicast literal %s", async (host) => {
+    delete process.env.REHEARSAL_ALLOW_PRIVATE;
+    await expect(resolvePublicHost(host)).resolves.toBe(host);
+  });
+
   it("rejects private, link-local, metadata and unspecified addresses", async () => {
     for (const host of ["169.254.169.254", "127.0.0.1", "10.0.0.5", "0.0.0.0", "[::1]", "[::ffff:169.254.169.254]", "localhost"]) {
       await expect(resolvePublicHost(host)).rejects.toThrow(/Blocked/);

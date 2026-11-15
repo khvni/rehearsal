@@ -10,6 +10,7 @@
     "@browserbasehq/sdk-functions": "^1.0.3",
     "@browserbasehq/stagehand": "^4.4.0",
     "htmlparser2": "^9.1.0",
+    "ipaddr.js": "^2.5.0",
     "playwright": "^1.65.1",
     "zod": "^4.6.6"
   },
