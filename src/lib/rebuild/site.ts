@@ -469,15 +469,14 @@ function templateBody(
         .slice(0, textLimit)
         .split(/\n+/)
         .map((line) => line.trim())
-        .filter(
-          (line) => !isLabelLine(line) && /[.!?。！？](?:\s|$)/u.test(line),
-        ),
+        .filter((line) => !isLabelLine(line)),
     ),
   ].slice(0, 12);
-  const first = paragraphs.shift() ?? "";
+  const ledeIndex = paragraphs.findIndex((line) => /[.!?。！？](?:\s|$)/u.test(line));
+  const first = paragraphs[ledeIndex] ?? "";
   const lede = first.match(/^.*?[.!?。！？](?=\s|$)/u)?.[0] ?? "";
   const remainder = first.slice(lede.length).trim();
-  if (remainder) paragraphs.unshift(remainder);
+  if (lede) paragraphs.splice(ledeIndex, 1, ...(remainder ? [remainder] : []));
 
   const primary =
     (page.primaryAction && safeAction(page.primaryAction)) ||

@@ -142,6 +142,7 @@ describe("whole-site rebuild", () => {
   it("uses the first same-site non-navigation action when there is no planned CTA", async () => {
     const exp = fixture(1);
     const state = exp.graph!.states[0];
+    state.pageTitle = "Build with clarity";
     state.visibleText = "Home Resources Build with clarity\nPractical tools for teams making useful software.\nExplore resources Get in touch GitHub";
     state.actions = [["Home", "/"], ["GitHub", "https://github.com/acme"], ["Explore resources", "/resources"], ["Get in touch", "mailto:hi@example.com"]].map(([label, href], i) => ({ actionId: `a${i}`, stateId: state.stateId, label, href, type: "click", enabled: true, safeToExecute: true }));
     const site = deterministicPlan(exp);
@@ -167,6 +168,22 @@ describe("whole-site rebuild", () => {
     expect(document.querySelector("h1")?.textContent).toBe("Page 0");
     expect(document.querySelectorAll(".rb-lede, .rb-prose, .rb-index, .rb-btn")).toHaveLength(0);
     expect(built.html).not.toMatch(/javascript:|invalid|Unsafe/);
+  });
+  it.each([false, true])("preserves pricing, schedules and short copy without punctuation (sentence=%s)", async (sentence) => {
+    const exp = fixture(1);
+    const state = exp.graph!.states[0];
+    state.pageTitle = "Plans";
+    state.visibleText = ["Home Plans", "$29 per month", "Monday–Friday 9am–5pm", "Built for small teams", ...(sentence ? ["Choose the plan that fits your team. Start whenever you are ready."] : []), "Home Contact"].join("\n");
+    const site = deterministicPlan(exp);
+    site.nav = [{ label: "Home", path: "/" }, { label: "Plans", path: "/plans" }];
+    site.footer.links = [{ label: "Contact", href: "mailto:hi@example.com" }];
+    const built = await buildPage(exp, site, site.pages[0], fake());
+    const { document } = parseHTML(`<html><body>${built.html}</body></html>`);
+    expect(built.status).toBe("built");
+    expect([...document.querySelectorAll(".rb-prose p")].map(el => el.textContent)).toEqual(["$29 per month", "Monday–Friday 9am–5pm", "Built for small teams", ...(sentence ? ["Start whenever you are ready."] : [])]);
+    expect(document.querySelector(".rb-lede")?.textContent).toBe(sentence ? "Choose the plan that fits your team." : undefined);
+    expect(built.html).not.toContain("Home Contact");
+    expect(built.html).not.toContain("Home Plans");
   });
   it("persists a plan, builds six pages per step, completes and restarts explicitly", async () => {
     let saved = fixture();
