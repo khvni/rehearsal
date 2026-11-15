@@ -54,15 +54,15 @@ describe("D1Store schema setup", () => {
     env.DB = recordingD1();
   });
 
-  it("creates both tables once per binding, not before every op", async () => {
+  it("creates all tables once per binding, not before every op", async () => {
     const db = env.DB!;
     const store = new D1Store();
     await store.save(experiment);
     await store.appendActivity(experiment.id, event);
     await store.get(experiment.id);
     await new D1Store().activity(experiment.id);
-    expect(ddl(db)).toBe(2);
-    expect(db.statements).toHaveLength(2 + 5);
+    expect(ddl(db)).toBe(3);
+    expect(db.statements).toHaveLength(3 + 5);
   });
 
   it("retries the setup after a failed attempt", async () => {
@@ -72,7 +72,7 @@ describe("D1Store schema setup", () => {
     await expect(store.get(experiment.id)).rejects.toThrow(/transient/);
     await store.get(experiment.id);
     await store.get(experiment.id);
-    expect(ddl(db)).toBe(1 + 2);
+    expect(ddl(db)).toBe(1 + 3);
   });
 
   it("sets up each new binding on first use", async () => {
@@ -81,6 +81,6 @@ describe("D1Store schema setup", () => {
     const next = recordingD1();
     env.DB = next;
     await store.get(experiment.id);
-    expect(ddl(next)).toBe(2);
+    expect(ddl(next)).toBe(3);
   });
 });

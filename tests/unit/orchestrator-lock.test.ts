@@ -1,17 +1,20 @@
-import { afterEach, describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import { Experiment, type BrowserRunner, type ExperimentStore, type PageFetcher } from "@/lib/contracts";
 import { FixtureJevClient } from "@/lib/decisions/jev";
 import { FixtureLlmClient } from "@/lib/analysis/gemini";
 import { Orchestrator, StageInProgressError } from "@/lib/orchestrator";
+import { MemoryRunLeaseStore } from "@/lib/storage";
 
 const URL_A = "https://example.com/";
 const PAGE = "<html><head><title>Home</title></head><body><h1>Welcome</h1><p>No links here.</p></body></html>";
 
 afterEach(() => {
+  vi.useRealTimers();
   delete process.env.REHEARSAL_BROWSER;
+  delete process.env.REHEARSAL_RUN_SLOT_TTL_MS;
 });
 
-function setup() {
+function setup(leases = new MemoryRunLeaseStore()) {
   // Opt the crawl into the runner so the gating page load keeps measuring the lock.
   process.env.REHEARSAL_BROWSER = "playwright";
   const gates: (() => void)[] = [];
@@ -42,7 +45,7 @@ function setup() {
     async activity() { return []; },
   };
   const orch = new Orchestrator({
-    runner, probeFetcher, store, jev: new FixtureJevClient(), llm: new FixtureLlmClient(),
+    runner, probeFetcher, store, leases, jev: new FixtureJevClient(), llm: new FixtureLlmClient(),
     fetcher: { name: "stub-fetch", fetchHtml: async () => "" },
   });
   const seed = async (id: string) =>
@@ -64,6 +67,49 @@ function setup() {
 }
 
 describe("orchestrator run lock", () => {
+  it("renews both local and global locks while work is active and clears renewal afterwards", async () => {
+    vi.useFakeTimers({ toFake: ["setInterval", "clearInterval", "Date"] });
+    process.env.REHEARSAL_RUN_SLOT_TTL_MS = "300";
+    const leases = new MemoryRunLeaseStore();
+    const renew = vi.spyOn(leases, "renew");
+    const a = setup(leases);
+    const b = setup(leases);
+    await a.seed("exp_renew");
+    await b.seed("exp_renew");
+    const first = a.orch.discover("exp_renew");
+    await vi.advanceTimersByTimeAsync(1000);
+    expect(renew).toHaveBeenCalledTimes(10);
+    await expect(a.orch.discover("exp_renew")).rejects.toBeInstanceOf(StageInProgressError);
+    await expect(b.orch.discover("exp_renew")).rejects.toBeInstanceOf(StageInProgressError);
+    await a.drain(first);
+    await vi.advanceTimersByTimeAsync(1000);
+    expect(renew).toHaveBeenCalledTimes(10);
+    expect(await leases.activeLock("exp_renew", Date.now())).toBeNull();
+  });
+
+  it("rejects the same experiment on a second isolate sharing the lease store", async () => {
+    const leases = new MemoryRunLeaseStore();
+    const a = setup(leases);
+    const b = setup(leases);
+    await a.seed("exp_shared");
+    await b.seed("exp_shared");
+    const first = a.orch.discover("exp_shared");
+    await expect(b.orch.spec("exp_shared")).rejects.toMatchObject({ runningStage: "discover" });
+    expect(b.opened).toEqual([]);
+    await a.drain(first);
+    await expect(b.drain(b.orch.discover("exp_shared"))).resolves.toMatchObject({ id: "exp_shared" });
+  });
+
+  it("reclaims expired shared locks without an old holder releasing the replacement", async () => {
+    const leases = new MemoryRunLeaseStore();
+    expect(await leases.activeLock("exp_shared", 0)).toBeNull();
+    expect(await leases.acquireLock("exp_shared", "old", "discover", 100, 0)).toBe(true);
+    expect(await leases.acquireLock("exp_shared", "new", "rebuild", 100, 99)).toBe(false);
+    expect(await leases.acquireLock("exp_shared", "new", "rebuild", 100, 100)).toBe(true);
+    await leases.release("old");
+    expect(await leases.activeLock("exp_shared", 199)).toEqual({ stage: "rebuild" });
+    expect(await leases.activeLock("exp_shared", 200)).toBeNull();
+  });
   it("rejects a second concurrent discover() and opens each page once", async () => {
     const { orch, opened, seed, drain } = setup();
     await seed("exp_a");

@@ -1,0 +1,32 @@
+name: OpenRouter usage
+
+on:
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - .github/workflows/openrouter-usage.yml
+
+permissions:
+  contents: read
+
+jobs:
+  usage:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check OpenRouter usage
+        env:
+          OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
+        run: |
+          set -euo pipefail
+          if [ -z "$OPENROUTER_API_KEY" ]; then
+            echo '::error::OPENROUTER_API_KEY secret is empty or unavailable.'
+            exit 1
+          fi
+          usage=$(curl -fsS https://openrouter.ai/api/v1/key \
+            -H "Authorization: Bearer $OPENROUTER_API_KEY" \
+            | jq '.data | {"label": .label, usage, usage_daily, usage_weekly, usage_monthly, limit, limit_remaining, is_free_tier}')
+          printf '%s\n' "$usage"
+          {
+            printf '| Field | Value |\n| --- | --- |\n'
+            printf '%s\n' "$usage" | jq -r 'to_entries[] | "| \(.key) | \(.value | tojson) |"'
+          } >> "$GITHUB_STEP_SUMMARY"

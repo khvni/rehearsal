@@ -6,6 +6,7 @@ import {
   Experiment,
   isExperimentId,
   type ExperimentStore,
+  type RunLeaseStore,
 } from "../contracts";
 import { logEvent } from "../telemetry";
 
@@ -247,6 +248,12 @@ const D1_SCHEMA_SQL = `
     kind TEXT NOT NULL,
     message TEXT NOT NULL,
     url TEXT
+  );
+  CREATE TABLE IF NOT EXISTS run_leases (
+    key TEXT PRIMARY KEY,
+    holder TEXT NOT NULL,
+    stage TEXT NOT NULL,
+    expires_at INTEGER NOT NULL
   );`;
 
 const D1_SCHEMA_STATEMENTS = D1_SCHEMA_SQL.split(";").map((s) => s.trim()).filter(Boolean);
@@ -275,7 +282,7 @@ export class D1Store implements ExperimentStore {
   /** Adapters no-op without keys: a missing DB binding degrades to empty reads / dropped writes. */
   private fallback = new JsonFileStore();
 
-  private async db(): Promise<D1Binding | null> {
+  async db(): Promise<D1Binding | null> {
     const { getCloudflareContext } = await import("@opennextjs/cloudflare");
     const { env } = await getCloudflareContext({ async: true });
     const db = (env as { DB?: D1Binding }).DB;
@@ -404,6 +411,85 @@ function parseListed(doc: unknown, ref: string): Experiment[] {
   if (r.success) return [r.data];
   logEvent({ stage: "storage", kind: "invalid-experiment-skipped", data: { ref, error: r.error.message.slice(0, 160) } });
   return [];
+}
+
+export class MemoryRunLeaseStore implements RunLeaseStore {
+  private leases = new Map<string, { holder: string; stage: string; expiresAt: number }>();
+
+  async acquireSlot(holder: string, limit: number, ttlMs: number, now: number): Promise<boolean> {
+    for (const [key, lease] of this.leases) if (lease.expiresAt <= now) this.leases.delete(key);
+    if ([...this.leases.keys()].filter((key) => key.startsWith("slot:")).length >= limit) return false;
+    this.leases.set(`slot:${holder}`, { holder, stage: "slot", expiresAt: now + ttlMs });
+    return true;
+  }
+
+  async acquireLock(id: string, holder: string, stage: string, ttlMs: number, now: number): Promise<boolean> {
+    const key = `lock:${id}`;
+    if ((this.leases.get(key)?.expiresAt ?? 0) > now) return false;
+    this.leases.set(key, { holder, stage, expiresAt: now + ttlMs });
+    return true;
+  }
+
+  async activeLock(id: string, now: number): Promise<{ stage: string } | null> {
+    const lease = this.leases.get(`lock:${id}`);
+    return lease && lease.expiresAt > now ? { stage: lease.stage } : null;
+  }
+
+  async renew(holder: string, ttlMs: number, now: number): Promise<void> {
+    for (const lease of this.leases.values()) if (lease.holder === holder) lease.expiresAt = now + ttlMs;
+  }
+
+  async release(holder: string): Promise<void> {
+    for (const [key, lease] of this.leases) if (lease.holder === holder) this.leases.delete(key);
+  }
+}
+
+const memoryRunLeases = new MemoryRunLeaseStore();
+
+export class D1RunLeaseStore implements RunLeaseStore {
+  private store = new D1Store();
+
+  async acquireSlot(holder: string, limit: number, ttlMs: number, now: number): Promise<boolean> {
+    const db = await this.store.db();
+    if (!db) return memoryRunLeases.acquireSlot(holder, limit, ttlMs, now);
+    await db.prepare("DELETE FROM run_leases WHERE expires_at <= ?").bind(now).run();
+    const row = await db.prepare(`INSERT INTO run_leases (key, holder, stage, expires_at)
+      SELECT ?, ?, 'slot', ? WHERE (SELECT COUNT(*) FROM run_leases WHERE stage = 'slot' AND key LIKE 'slot:%' AND expires_at > ?) < ? RETURNING holder`)
+      .bind(`slot:${holder}`, holder, now + ttlMs, now, limit).first();
+    return row !== null;
+  }
+
+  async acquireLock(id: string, holder: string, stage: string, ttlMs: number, now: number): Promise<boolean> {
+    const db = await this.store.db();
+    if (!db) return memoryRunLeases.acquireLock(id, holder, stage, ttlMs, now);
+    const row = await db.prepare(`INSERT INTO run_leases (key, holder, stage, expires_at) VALUES (?, ?, ?, ?)
+      ON CONFLICT(key) DO UPDATE SET holder = excluded.holder, stage = excluded.stage, expires_at = excluded.expires_at
+      WHERE run_leases.expires_at <= ? RETURNING holder`).bind(`lock:${id}`, holder, stage, now + ttlMs, now).first();
+    return row !== null;
+  }
+
+  async activeLock(id: string, now: number): Promise<{ stage: string } | null> {
+    const db = await this.store.db();
+    if (!db) return memoryRunLeases.activeLock(id, now);
+    return db.prepare("SELECT stage FROM run_leases WHERE key = ? AND expires_at > ?").bind(`lock:${id}`, now).first<{ stage: string }>();
+  }
+
+  async renew(holder: string, ttlMs: number, now: number): Promise<void> {
+    const db = await this.store.db();
+    if (!db) return memoryRunLeases.renew(holder, ttlMs, now);
+    await db.prepare("UPDATE run_leases SET expires_at = ? WHERE holder = ?").bind(now + ttlMs, holder).run();
+  }
+
+  async release(holder: string): Promise<void> {
+    const db = await this.store.db();
+    if (!db) return memoryRunLeases.release(holder);
+    await db.prepare("DELETE FROM run_leases WHERE holder = ?").bind(holder).run();
+  }
+}
+
+export function selectRunLeaseStore(): RunLeaseStore {
+  return typeof navigator !== "undefined" && navigator.userAgent === "Cloudflare-Workers"
+    ? new D1RunLeaseStore() : memoryRunLeases;
 }
 
 export function selectStore(): ExperimentStore {

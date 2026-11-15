@@ -18,6 +18,7 @@ import {
   type DiscoverCheckpoint,
   type RunCheckpoint,
   type RunFailure,
+  type RunLeaseStore,
   type SimWeights,
   type Variant,
   type VisitorPersona,
@@ -54,7 +55,7 @@ import { generateSpec, specToMarkdown } from "./analysis/spec";
 import { generateMockup } from "./mockup";
 import { brandSignalsFromHtml, inferGoals, rollupBrand, mergeSignals } from "./rebuild";
 import { buildPage, planSite, rebuildPending, REBUILD_BATCH, SITE_BYTE_CAP } from "./rebuild/site";
-import { selectStore } from "./storage";
+import { selectStore, selectRunLeaseStore } from "./storage";
 import { enqueueRun, runSlotTtlMs } from "./access";
 import { continueRun, isWorkersRuntime, runInBackground } from "./jobs";
 import { captureError, logEvent, traceTags, withTrace } from "./telemetry";
@@ -139,6 +140,7 @@ interface OrchestratorDeps {
   jev?: JevClient;
   llm?: LlmClient;
   store?: ExperimentStore;
+  leases?: RunLeaseStore;
   runner?: BrowserRunner;
 }
 
@@ -177,6 +179,7 @@ export class Orchestrator {
   private llm: LlmClient;
   private store: ExperimentStore;
   private runner: BrowserRunner;
+  private leases: RunLeaseStore;
 
   constructor(deps: OrchestratorDeps = {}) {
     this.fetcher = deps.fetcher ?? selectFetcher();
@@ -185,6 +188,7 @@ export class Orchestrator {
     this.jev = deps.jev ?? selectJev();
     this.llm = deps.llm ?? selectLlm();
     this.store = deps.store ?? selectStore();
+    this.leases = deps.leases ?? selectRunLeaseStore();
     this.runner = deps.runner ?? selectRunner();
   }
 
@@ -389,7 +393,7 @@ export class Orchestrator {
    */
   async resume(id: string, opts?: { origin?: string; inline?: boolean }): Promise<{ experiment: Experiment; resumed: boolean }> {
     const exp = await this.mustGet(id);
-    if (this.activeRun(id)) return { experiment: exp, resumed: false };
+    if (this.activeRun(id) || await this.leases.activeLock(id, Date.now())) return { experiment: exp, resumed: false };
     const pendingRebuild = exp.status === "rebuilding" || rebuildPending(exp);
     if (!pendingRebuild && pipelineFinished(exp) && exp.runCheckpoint && exp.runCheckpoint.stage !== "rebuild") {
       exp.runCheckpoint = undefined;
@@ -1610,10 +1614,23 @@ Return ASSERTION_LIST as a JSON array of {kind, value, selector?}.`,
     if (active) throw new StageInProgressError(id, active.stage);
     const lock = { stage, acquiredAt: Date.now() };
     this.running.set(id, lock);
+    const holder = randomUUID();
+    const ttlMs = runSlotTtlMs();
+    let renewal: ReturnType<typeof setInterval> | undefined;
     try {
+      if (!await this.leases.acquireLock(id, holder, stage, ttlMs, Date.now())) {
+        const held = await this.leases.activeLock(id, Date.now());
+        throw new StageInProgressError(id, held?.stage ?? stage);
+      }
+      renewal = setInterval(() => {
+        lock.acquiredAt = Date.now();
+        void this.leases.renew(holder, ttlMs, lock.acquiredAt).catch(() => undefined);
+      }, ttlMs / 3);
       return await fn();
     } finally {
+      clearInterval(renewal);
       if (this.running.get(id) === lock) this.running.delete(id);
+      await this.leases.release(holder).catch(() => undefined);
     }
   }
 
