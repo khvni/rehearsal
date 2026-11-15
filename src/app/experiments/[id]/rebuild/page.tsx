@@ -9,6 +9,7 @@ import { Badge } from "@/components/ui/badge";
 import { Banner, BannerDescription, BannerTitle } from "@/components/ui/banner";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardGroup } from "@/components/ui/card";
+import { StaleRefreshWarning } from "@/components/stale-refresh-warning";
 
 const SOURCE_LABEL: Record<string, string> = {
   "experiment-goal": "Your goal",
@@ -217,6 +218,7 @@ export default function RebuildPage() {
   return (
     <div className="page">
       <TopBar id={id} />
+      {loadError && <StaleRefreshWarning onRetry={() => void refresh()} />}
       <header className="exp-head">
         <h1>{exp.goal}</h1>
         <div className="exp-meta">
