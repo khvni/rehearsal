@@ -4,7 +4,7 @@ import { extractPage, isSameOrigin } from "../../src/lib/browser/extract";
 import { executeTrajectory, withTimeout } from "../../src/lib/browser/playwright";
 import { StagehandRunner } from "../../src/lib/browser/stagehand";
 import { PlainFetcher } from "../../src/lib/fetch";
-import { fetchPublic, parseRobots, robotsAllowsPath } from "../../src/lib/fetch/guards";
+import { fetchPublic, parseRobots, robotsAllows, robotsAllowsPath } from "../../src/lib/fetch/guards";
 
 const PAGE = "https://example.com/pricing";
 
@@ -114,6 +114,18 @@ Disallow: /x*
     expect(robotsAllowsPath(edge, "/exact")).toBe(false);
     expect(robotsAllowsPath(edge, "/exactly")).toBe(true);
     expect(robotsAllowsPath(edge, "/x")).toBe(false);
+  });
+
+  it("ignores a rule cut off by the 500 KiB robots.txt cap", async () => {
+    const head = `User-agent: *\n${"#".repeat(500 * 1024 - 26)}\n`;
+    const body = `${head}Disallow: /private\n`;
+    expect(head.length + "Disallow: /".length).toBe(500 * 1024);
+    const fetchMock = vi.spyOn(globalThis, "fetch").mockResolvedValue(new Response(body));
+    try {
+      expect(await robotsAllows(new URL("http://93.184.216.35/pricing"))).toBe(true);
+    } finally {
+      fetchMock.mockRestore();
+    }
   });
 
   it("drops overlong rule values", () => {

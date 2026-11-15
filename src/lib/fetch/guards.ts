@@ -192,25 +192,28 @@ async function fetchRobots(start: string): Promise<string | undefined> {
     await res.body?.cancel();
     return undefined;
   }
-  return readCapped(res, MAX_ROBOTS_BYTES);
+  const { text, truncated } = await readCapped(res, MAX_ROBOTS_BYTES);
+  return truncated ? text.slice(0, text.lastIndexOf("\n") + 1) : text;
 }
 
 /** Read at most `maxBytes` of a response body as UTF-8, cancelling the rest. */
-async function readCapped(res: Response, maxBytes: number): Promise<string> {
-  if (!res.body) return "";
+async function readCapped(res: Response, maxBytes: number): Promise<{ text: string; truncated: boolean }> {
+  if (!res.body) return { text: "", truncated: false };
   const reader = res.body.getReader();
   const decoder = new TextDecoder();
   let text = "";
   let total = 0;
-  while (total < maxBytes) {
+  let truncated = false;
+  while (!truncated) {
     const { done, value } = await reader.read();
     if (done) break;
     const take = value.subarray(0, maxBytes - total);
+    truncated = take.length < value.length;
     text += decoder.decode(take, { stream: true });
     total += take.length;
   }
   await reader.cancel().catch(() => undefined);
-  return text + decoder.decode();
+  return { text: text + decoder.decode(), truncated };
 }
 
 /** True when the target host's robots.txt permits fetching `url` (cached per origin). */
