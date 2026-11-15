@@ -145,7 +145,9 @@ export function extractPage(rawHtml: string, pageUrl: string): ExtractedPage {
     if (!el.label) return;
     if (!el.label.full) labels.splice(labels.lastIndexOf(el.label), 1);
     const text = normalizeLabel(el.label.text);
-    if (el.name === "title") title ??= text;
+    if (el.name === "title") {
+      if (foreignDepth === 0) title ??= text;
+    }
     else if (HEADING_TAGS.has(el.name)) {
       if (text && headings.length < MAX_HEADINGS) headings.push(text);
     } else if (el.name === "a") onAnchor(el.attribs, text);

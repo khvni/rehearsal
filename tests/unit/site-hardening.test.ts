@@ -59,6 +59,11 @@ describe("extractPage on real-world link shapes", () => {
     expect(page.actions[0]).toMatchObject({ label: "Go", href: "https://example.com/q?a=1&b=2" });
   });
 
+  it("does not use an identified SVG title as the page title", () => {
+    expect(extractPage('<svg><title id="icon">Icon</title></svg>', PAGE).title).toBe(PAGE);
+    expect(extractPage('<svg><title id="icon">Icon</title></svg><title>Real</title>', PAGE).title).toBe("Real");
+  });
+
   it("keeps SVG and script text out of labels and the page title", () => {
     const page = extractPage(
       `<body><a href="/docs"><svg><title>Arrow icon</title></svg>Docs<script>x()</script></a>` +
