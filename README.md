@@ -23,7 +23,7 @@ Demo target: https://ai.engineer/code/2026
 | Persistence | JSON files → Tiger Data (`DATABASE_URL`) |
 | KB (optional) | Snowflake Cortex Search |
 | Observability | Sentry (DSN-gated) + JSONL event log |
-| Deploy | Terraform: `terraform/digitalocean` (demo host) + `terraform/cloudflare` |
+| Deploy | Cloudflare Workers via OpenNext (`rehearsal.alikhani.co`, `deploy-cloudflare.yml`) + `terraform/cloudflare`; `terraform/digitalocean` is an alternate |
 | Evals/CI | Vitest evals with thresholds, skill-sync gate, Playwright e2e, tf validate |
 
 No keys needed. Each integration falls back to a fixture, so the pipeline runs
