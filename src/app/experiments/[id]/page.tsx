@@ -20,7 +20,8 @@ import { StaleRefreshWarning } from "@/components/stale-refresh-warning";
 import { displayFindings, failureMessage, hasBrowserEvidence, hasUsablePreview } from "@/lib/presentation";
 import { HeatLegend, StateGraph, visitCounts } from "./state-graph";
 
-const STAGES = ["discover", "simulate", "verify", "analyze", "compare", "spec", "rebuild"] as const;
+const REQUIRED_STAGES = ["discover", "simulate", "verify", "analyze", "compare", "spec"] as const;
+const STAGES = [...REQUIRED_STAGES, "rebuild"] as const;
 type Stage = (typeof STAGES)[number] | "run";
 const STATUS_STAGE: Partial<Record<Experiment["status"], (typeof STAGES)[number]>> = {
   discovering: "discover",
@@ -261,11 +262,12 @@ export default function ExperimentPage() {
   // Stages run in order and analyze/compare may legitimately produce nothing, so a later stage implies earlier ones ran.
   for (let i = STAGES.length - 2; i >= 0; i--) stageDone[STAGES[i]] ||= stageDone[STAGES[i + 1]];
   stageDone.verify = runs.length > 0;
-  const nextStage = STAGES.find((s) => !stageDone[s]);
+  const nextStage = REQUIRED_STAGES.find((s) => !stageDone[s]);
   const runningStage = STATUS_STAGE[exp.status];
+  const progressStages = pending === "rebuild" || runningStage === "rebuild" ? STAGES : REQUIRED_STAGES;
   const stageActive = (s: (typeof STAGES)[number]) =>
     pending === s || s === runningStage || (pending === "run" && s === nextStage);
-  const doneCount = STAGES.filter((s) => stageDone[s]).length;
+  const doneCount = REQUIRED_STAGES.filter((s) => stageDone[s]).length;
   const stepIndex =
     pending !== null && pending !== "run"
       ? STAGES.indexOf(pending)
@@ -273,7 +275,7 @@ export default function ExperimentPage() {
         ? STAGES.indexOf(runningStage)
         : nextStage !== undefined
           ? STAGES.indexOf(nextStage)
-          : STAGES.length - 1;
+          : progressStages.length - 1;
   const live = pending !== null || RUNNING_STATUSES.includes(exp.status);
   const statusColor = exp.status === "failed" ? "red" : exp.status === "complete" ? "green" : RUNNING_STATUSES.includes(exp.status) ? "blue" : "gray";
   const specState: PanelState = (() => {
@@ -343,38 +345,45 @@ export default function ExperimentPage() {
               <span
                 className={`step ${stageDone[s] && !stageErrors[s] ? "done" : ""} ${stageActive(s) ? "active" : ""} ${stageErrors[s] ? "error" : ""}`}
                 aria-current={stageActive(s) ? "step" : undefined}
-                aria-label={`${STAGE_LABEL[s]}: ${stageActive(s) ? "running" : stageErrors[s] ? "failed" : stageDone[s] ? "done" : "not run"}`}
+                aria-label={`${STAGE_LABEL[s]}${s === "rebuild" ? " (optional)" : ""}: ${stageActive(s) ? "running" : stageErrors[s] ? "failed" : stageDone[s] ? "done" : "not run"}`}
               >
                 <span className="step-mark" aria-hidden>{stageErrors[s] ? <CrossIcon size={12} /> : stageDone[s] ? <CheckIcon size={12} /> : i + 1}</span>
-                <span className="step-name">{STAGE_LABEL[s]}</span>
+                <span className="step-name">{STAGE_LABEL[s]}{s === "rebuild" && " (optional)"}</span>
               </span>
             </li>
           ))}
         </ol>
-        <Button className="pipeline-run" loading={pending === "run"} disabled={pending !== null || rescanBusy} onClick={() => void runStage("run")}>
-          {pending === "run" ? "Running…" : doneCount === STAGES.length ? "Run again" : "Run all steps"}
-        </Button>
-        <Button variant="secondary" loading={rescanBusy} disabled={pending !== null || rescanBusy} onClick={() => void rescan()}>
+        {exp.status !== "complete" && (
+          <Button className="pipeline-run" loading={pending === "run"} disabled={pending !== null || rescanBusy} onClick={() => void runStage("run")}>
+            {pending === "run" ? "Running…" : "Run all steps"}
+          </Button>
+        )}
+        <Button className={exp.status === "complete" ? "pipeline-run" : undefined} variant={exp.status === "complete" ? "primary" : "secondary"} loading={rescanBusy} disabled={pending !== null || rescanBusy} onClick={() => void rescan()}>
           {rescanBusy ? "Checking…" : "Rescan site"}
         </Button>
+        {exp.status === "complete" && exp.spec && (
+          <Button asChild variant="secondary">
+            <Link href={`/experiments/${id}/rebuild`}>{exp.rebuild ? "View rebuilt site" : "Build site"}</Link>
+          </Button>
+        )}
         {(!live || rescanNote) && (
           <p className="pipeline-status tabular">
-            {rescanNote || (doneCount === STAGES.length ? "All steps complete" : `${doneCount} of ${STAGES.length} steps complete`)}
+            {rescanNote || `${doneCount} of ${REQUIRED_STAGES.length} steps complete`}
           </p>
         )}
       </div>
 
       {live && (
         <ThinkingSteps className="live">
-          <ThinkingStepsHeader>{`Rehearsing, step ${stepIndex + 1} of ${STAGES.length}`}</ThinkingStepsHeader>
+          <ThinkingStepsHeader>{`Rehearsing, step ${stepIndex + 1} of ${progressStages.length}`}</ThinkingStepsHeader>
           <ThinkingStepsContent>
-            {STAGES.map((s, i) => (
+            {progressStages.map((s, i) => (
               <ThinkingStep
                 key={s}
                 label={STAGE_LABEL[s]}
                 description={STAGE_LINE[s]}
                 status={stageActive(s) ? "active" : stageDone[s] ? "complete" : "pending"}
-                isLast={i === STAGES.length - 1}
+                isLast={i === progressStages.length - 1}
               />
             ))}
           </ThinkingStepsContent>
