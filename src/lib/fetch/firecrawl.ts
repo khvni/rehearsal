@@ -15,8 +15,35 @@ const INTERACT_TIMEOUT_MS = 45_000;
 // ── JS-shell heuristic ──────────────────────────────────────────────────────
 
 const JS_REQUIRED_RE = /enable javascript|javascript is required|javascript is disabled|requires javascript|needs javascript to (?:run|work|load)/i;
-/** `<noscript>` warnings persist in fully rendered HTML (framework boilerplate) — strip them before matching. */
-const NOSCRIPT_RE = /<noscript\b[^>]*>[\s\S]*?<\/noscript>/gi;
+const NOSCRIPT_OPEN = "<noscript";
+const NOSCRIPT_CLOSE = "</noscript>";
+
+/**
+ * Remove `<noscript>…</noscript>` blocks in a single linear pass — their warnings persist in
+ * fully rendered HTML (framework boilerplate) and must not count toward the JS-shell signals.
+ * A lazy-regex form rescans the tail once per `<noscript` opener: attacker-controlled HTML full
+ * of unclosed tags stalls the event loop for seconds. An unclosed trailing block is kept verbatim.
+ */
+export function stripNoscript(html: string): string {
+  const lower = html.toLowerCase();
+  let out = "";
+  let cursor = 0;
+  for (;;) {
+    const open = lower.indexOf(NOSCRIPT_OPEN, cursor);
+    if (open === -1) break;
+    const boundary = lower.charAt(open + NOSCRIPT_OPEN.length);
+    if (/\w/.test(boundary)) {
+      out += html.slice(cursor, open + NOSCRIPT_OPEN.length); // `<noscriptx` is not the tag — keep it
+      cursor = open + NOSCRIPT_OPEN.length;
+      continue;
+    }
+    const close = lower.indexOf(NOSCRIPT_CLOSE, open + NOSCRIPT_OPEN.length);
+    if (close === -1) break;
+    out += html.slice(cursor, open);
+    cursor = close + NOSCRIPT_CLOSE.length;
+  }
+  return out + html.slice(cursor);
+}
 /** Empty framework mount root: `<div id="root"></div>`, `__next`, `__nuxt`, `__svelte`, `___gatsby`, `app`, `ember-view`. */
 const EMPTY_APP_ROOT_RE = /<div id="(?:root|app|__next|__nuxt|__svelte|___gatsby|ember-view)"[^>]*>\s*<\/div>/i;
 const SCRIPT_TAG_RE = /<script\b/gi;
@@ -27,7 +54,7 @@ const SCRIPT_TAG_RE = /<script\b/gi;
  * pages (a stub, an empty list view) still map instead of spending a Firecrawl credit.
  */
 export function looksLikeJsShell(html: string, extracted: { visibleText: string; actions: unknown[] }): boolean {
-  const body = html.replace(NOSCRIPT_RE, "");
+  const body = stripNoscript(html);
   const scripts = (body.match(SCRIPT_TAG_RE) ?? []).length;
   const actions = extracted.actions.length;
   const text = extracted.visibleText.trim().length;

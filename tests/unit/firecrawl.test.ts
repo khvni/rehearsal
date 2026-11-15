@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it } from "vitest";
-import { FirecrawlClient, looksLikeJsShell } from "@/lib/fetch/firecrawl";
+import { FirecrawlClient, looksLikeJsShell, stripNoscript } from "@/lib/fetch/firecrawl";
 import { FIRECRAWL_MAX_INTERACT_ACTIONS } from "@/lib/contracts";
 import { classifyError } from "@/lib/errors";
 import { extractPage } from "@/lib/browser/extract";
@@ -126,6 +126,15 @@ describe("looksLikeJsShell", () => {
     // CRA/Next-style pages keep the noscript warning verbatim after rendering —
     // a scrape that returns rendered HTML must not be re-judged as a shell.
     expect(judge(`<html><body><noscript>You need to enable JavaScript to run this app.</noscript>${"<p>content</p>".repeat(60)}<a href="/a">A</a><script src="/a.js"></script></body></html>`)).toBe(false);
+  });
+
+  it("strips noscript blocks in one pass even when tags never close", () => {
+    // attacker-controlled pages full of unclosed <noscript> openers used to stall the
+    // event loop via regex backtracking (each opener rescanned the remaining HTML).
+    const hostile = `<html><body>${"<noscript>".repeat(5000)}<p>still here</p></body></html>`;
+    expect(stripNoscript(hostile)).toBe(hostile); // unclosed tail kept verbatim
+    expect(stripNoscript(`a<noscript>x</noscript>b<NOSCRIPT y="1">z</NOSCRIPT>c`)).toBe("abc");
+    expect(stripNoscript(`a<noscriptx>b</noscript>`)).toBe(`a<noscriptx>b</noscript>`); // `<noscriptx` isn't the tag; the stray closer stays
   });
 });
 
