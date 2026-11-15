@@ -1,5 +1,6 @@
 import { promises as dns } from "node:dns";
-import ipaddr from "node:net";
+import { isIP, isIPv4 } from "node:net";
+import ipaddr from "ipaddr.js";
 
 const BLOCKED_HOSTNAMES = new Set([
   "localhost",
@@ -8,23 +9,7 @@ const BLOCKED_HOSTNAMES = new Set([
 ]);
 
 function isPrivateIp(ip: string): boolean {
-  if (ipaddr.isIPv6(ip)) {
-    const lower = ip.toLowerCase();
-    if (lower === "::1" || lower === "::" || lower.startsWith("fe80") || lower.startsWith("fc") || lower.startsWith("fd")) return true;
-    if (lower.startsWith("::ffff:")) return isPrivateIp(lower.slice(7));
-    return false;
-  }
-  const parts = ip.split(".").map(Number);
-  if (parts.length !== 4 || parts.some((p) => Number.isNaN(p))) return true;
-  const [a, b] = parts;
-  if (a === 10 || a === 127 || a === 0) return true;
-  if (a === 169 && b === 254) return true; // link-local + metadata
-  if (a === 172 && b >= 16 && b <= 31) return true;
-  if (a === 192 && b === 168) return true;
-  if (a === 100 && b >= 64 && b <= 127) return true; // CGNAT
-  if (a === 198 && (b === 18 || b === 19)) return true; // benchmarking
-  if (a >= 224) return true; // multicast + reserved + broadcast
-  return false;
+  return ipaddr.process(ip).range() !== "unicast";
 }
 
 /** Resolve `hostname` and return the address to connect to; throws if it is blocked or private.
@@ -32,7 +17,7 @@ function isPrivateIp(ip: string): boolean {
  *  REHEARSAL_ALLOW_PRIVATE=1 permits localhost/private targets (tests only). */
 export async function resolvePublicHost(hostname: string): Promise<string> {
   const host = hostname.toLowerCase().replace(/^\[|\]$/g, "");
-  if (ipaddr.isIP(host)) {
+  if (isIP(host)) {
     if (process.env.REHEARSAL_ALLOW_PRIVATE !== "1" && isPrivateIp(host)) throw new Error(`Blocked private IP: ${host}`);
     return host;
   }
@@ -67,7 +52,7 @@ const MIN_INTERVAL_MS = 2000;
 function isLoopbackHost(hostname: string): boolean {
   const host = hostname.toLowerCase().replace(/^\[|\]$/g, "");
   if (host === "localhost" || host === "::1") return true;
-  return ipaddr.isIPv4(host) && host.startsWith("127.");
+  return isIPv4(host) && host.startsWith("127.");
 }
 
 /** Rate-limit requests to ~1 per 2s per target host.
