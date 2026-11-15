@@ -35,7 +35,7 @@ function shortDate(iso: string): string {
     : d.toLocaleDateString(undefined, { month: "short", day: "numeric" });
 }
 
-function PastExperiments({ experiments }: { experiments: ExperimentSummary[] | null }) {
+function PastExperiments({ experiments, loadError }: { experiments: ExperimentSummary[] | null; loadError: boolean }) {
   return (
     <section className="panel past-experiments">
       <div className="panel-head">
@@ -51,7 +51,13 @@ function PastExperiments({ experiments }: { experiments: ExperimentSummary[] | n
         </div>
       </div>
       <div className="panel-body">
-        {experiments === null && (
+        {loadError && (
+          <div className="state error" role="alert">
+            <p className="state-title">Could not load experiments</p>
+            <p className="state-text">Refresh the page to try again.</p>
+          </div>
+        )}
+        {!loadError && experiments === null && (
           <div className="skel-rows" aria-hidden>
             {[0, 1, 2].map((i) => (
               <div key={i} className="skel-row">
@@ -84,6 +90,7 @@ function PastExperiments({ experiments }: { experiments: ExperimentSummary[] | n
 
 export default function Home() {
   const [experiments, setExperiments] = useState<ExperimentSummary[] | null>(null);
+  const [experimentsLoadError, setExperimentsLoadError] = useState(false);
   const [url, setUrl] = useState("https://ai.engineer/code/2026");
   const [goal, setGoal] = useState("");
   const [busy, setBusy] = useState(false);
@@ -92,9 +99,15 @@ export default function Home() {
 
   useEffect(() => {
     fetch("/api/experiments")
-      .then((r) => (r.ok ? r.json() : []))
-      .then((data) => setExperiments(Array.isArray(data) ? data : []))
-      .catch(() => setExperiments([]));
+      .then((r) => {
+        if (!r.ok) throw new Error("Could not load experiments");
+        return r.json();
+      })
+      .then((data) => {
+        if (!Array.isArray(data)) throw new Error("Invalid experiment list");
+        setExperiments(data);
+      })
+      .catch(() => setExperimentsLoadError(true));
   }, []);
   const example = experiments?.find((e) => e.exampleEligible);
 
@@ -154,7 +167,7 @@ export default function Home() {
           {busy ? "Starting…" : "Start rehearsal"}
         </Button>
       </form>
-      <PastExperiments experiments={experiments} />
+      <PastExperiments experiments={experiments} loadError={experimentsLoadError} />
     </main>
   );
 }
