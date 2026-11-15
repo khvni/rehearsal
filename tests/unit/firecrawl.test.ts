@@ -138,6 +138,10 @@ describe("looksLikeJsShell", () => {
     expect(stripNoscript(unterminated)).toBe(unterminated);
     expect(stripNoscript(`a<noscript>x</noscript>b<NOSCRIPT y="1">z</NOSCRIPT>c`)).toBe("abc");
     expect(stripNoscript(`a<noscriptx>b</noscript>`)).toBe(`a<noscriptx>b</noscript>`); // `<noscriptx` isn't the tag; the stray closer stays
+    // absurdly long attribute lists still strip — the open match scans no attributes
+    expect(stripNoscript(`a<noscript ${"x".repeat(400)}>w</noscript>b`)).toBe("ab");
+    // a giant closer tail can't match `[^>]{0,64}`; the bare prefix still closes the block
+    expect(stripNoscript(`a<noscript>w</noscript ${"y".repeat(200)}>b`)).toBe(`a ${"y".repeat(200)}>b`);
   });
 
   it("keeps slices aligned when the page contains characters whose lowercase expands", () => {

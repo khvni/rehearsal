@@ -15,10 +15,14 @@ const INTERACT_TIMEOUT_MS = 45_000;
 // ── JS-shell heuristic ──────────────────────────────────────────────────────
 
 const JS_REQUIRED_RE = /enable javascript|javascript is required|javascript is disabled|requires javascript|needs javascript to (?:run|work|load)/i;
-/** A single noscript open or close tag. Never spans content, and the attribute run is bounded —
- *  `[^>]*` or a `…*?</noscript>` form would rescan the tail once per unterminated `<noscript`
- *  prefix and stall the event loop on attacker-controlled HTML. */
-const NOSCRIPT_TAG_RE = /<noscript\b[^>]{0,256}>|<\/noscript\s{0,8}>/gi;
+/** A noscript open or close marker. The open side is only `<noscript\b` — no attribute run —
+ *  because a stripped block is removed through its closer's end; the opener's `>` is never used.
+ *  The close side prefers the full `</noscript…>` tag (attributes ignored per HTML spec, bounded
+ *  at 64 chars) and falls back to the bare `</noscript` prefix, which still closes the block —
+ *  any over-long attribute tail just re-emits as text. Scanning unbounded attributes (`[^>]*`)
+ *  would rescan the tail once per unterminated prefix and stall the event loop on
+ *  attacker-controlled HTML. */
+const NOSCRIPT_TAG_RE = /<noscript\b|<\/noscript\b[^>]{0,64}>|<\/noscript\b/gi;
 
 /**
  * Remove `<noscript>…</noscript>` blocks in one pass — their warnings persist in fully rendered
@@ -37,8 +41,8 @@ export function stripNoscript(html: string): string {
     let close = tags.next();
     while (!close.done && !close.value[0].startsWith("</")) close = tags.next(); // nested openers are inside the removed block
     if (close.done) {
-      out += tag[0];
-      cursor = tag.index + tag[0].length; // unclosed tag kept verbatim
+      out += tag[0]; // unclosed `<noscript` prefix kept verbatim — the tail slice re-emits the rest
+      cursor = tag.index + tag[0].length;
       break;
     }
     cursor = close.value.index + close.value[0].length;
