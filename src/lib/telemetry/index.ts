@@ -115,6 +115,7 @@ export function resetProviderQuotaReports(): void {
  * (plain fetch, templates), so this reports it explicitly: one Sentry issue per
  * provider + status, tagged `provider_quota` for the quota alert rule
  * (docs/telemetry.md). At most once per provider + status per 10 minutes per isolate.
+ * `detail` names the call (model, API path), never a response body: bodies can echo inputs.
  */
 export async function reportProviderQuota(
   provider: QuotaProvider,
@@ -128,7 +129,7 @@ export async function reportProviderQuota(
   quotaReportedAt.set(key, Date.now());
   const label = status === 402 ? "402 Payment Required" : status === 429 ? "429 Too Many Requests" : String(status);
   const message = `${provider} quota or billing limit hit: ${label}`;
-  logEvent({ experimentId: ctx.experimentId, stage: ctx.stage ?? "provider", kind: "provider-quota", data: { provider, status, detail: detail.slice(0, 300) } });
+  logEvent({ experimentId: ctx.experimentId, stage: ctx.stage ?? "provider", kind: "provider-quota", data: { provider, status, detail: detail.slice(0, 120) } });
   try {
     const s = await getSentry();
     if (!s) return;
@@ -143,7 +144,7 @@ export async function reportProviderQuota(
         ...(ctx.stage ? { stage: ctx.stage } : {}),
         ...(ctx.experimentId ? { experimentId: ctx.experimentId } : {}),
       },
-      extra: { detail: detail.slice(0, 500) },
+      extra: { detail: detail.slice(0, 120) },
     });
   } catch {
     /* telemetry must never break the pipeline */

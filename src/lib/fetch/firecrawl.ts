@@ -173,7 +173,7 @@ export class FirecrawlClient implements FirecrawlClientPort {
     });
     if (!res.ok) {
       const detail = await res.text().catch(() => "");
-      if (isQuotaStatus(res.status)) await reportProviderQuota("firecrawl", res.status, `${path}: ${detail}`);
+      if (isQuotaStatus(res.status)) await reportProviderQuota("firecrawl", res.status, path);
       const label = res.status === 402 ? " Payment Required" : res.status === 429 ? " Too Many Requests" : "";
       throw new Error(`Firecrawl ${path} failed ${res.status}${label}${detail ? `: ${detail.slice(0, 200)}` : ""}`);
     }

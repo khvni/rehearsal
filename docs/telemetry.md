@@ -26,7 +26,7 @@ Devin Automation (factory/automations.yaml `sentry-first-responder`) ──► P
 | Stage span | `withTrace` around every `PIPELINE_STAGES` stage | span `rehearsal.<stage>`, op `rehearsal.stage`, attributes `stage`, `experimentId`, `targetHost` |
 | Stage exception | `withTrace` catch (incl. robots.txt-blocked targets) | `captureException`, level `error`, tags `stage`, `experimentId`, `targetHost` |
 | Page failure | `discover` per-page catch (timeouts, unlocker/browser blocks) | `captureException`, level `warning`, same tags + `url`/`depth`/`viewport` extras |
-| Provider quota/billing | `reportProviderQuota` on a 402/429 from Gemini, Browserbase (Function + Fetch API), Firecrawl, Jev, even when the caller falls back | `captureException` `ProviderQuotaError`, level `error`, tags `provider_quota` (provider), `http_status`; fingerprint `provider-quota/<provider>/<status>`; at most once per provider + status per 10 min per isolate |
+| Provider quota/billing | `reportProviderQuota` on a 402/429 from Gemini, Browserbase (Function + Fetch API), Firecrawl, Jev, even when the caller falls back | `captureException` `ProviderQuotaError`, level `error`, tags `provider_quota` (provider), `http_status`; fingerprint `provider-quota/<provider>/<status>`; at most once per provider + status per 10 min per isolate; carries the model or API path, never response bodies |
 | Route/server error | `src/instrumentation.ts` `onRequestError` | `captureRequestError` (SDK v10) |
 
 Not captured: SSRF rejections from `assertPublicUrl` at `POST /api/experiments` (input

@@ -111,7 +111,7 @@ export class BrowserbaseFunctionRunner implements BrowserRunner {
     if (!res.ok) {
       const body = errorText(await res.text().catch(() => ""), 200);
       if (isQuotaStatus(res.status)) {
-        await reportProviderQuota("browserbase", res.status, `Function API ${path.split("/").slice(0, 4).join("/")}: ${body}`);
+        await reportProviderQuota("browserbase", res.status, `Function API ${path.split("/").slice(0, 4).join("/")}`);
         throw new RehearsalError(
           "PROVIDER_QUOTA",
           `Browserbase Function API ${res.status === 402 ? "402 Payment Required" : "429 Too Many Requests"} on ${path.split("/").slice(0, 4).join("/")}: provider quota exhausted — ${body}`,

@@ -87,9 +87,7 @@ export class HttpJevClient implements JevClient {
     const responseBytes = Number(res.headers.get("content-length") ?? 0);
     this.usage.calls++;
     if (!res.ok) {
-      if (isQuotaStatus(res.status)) {
-        await reportProviderQuota("jev", res.status, await res.text().catch(() => ""), { experimentId: ctx?.experimentId, stage: "simulate" });
-      }
+      if (isQuotaStatus(res.status)) await reportProviderQuota("jev", res.status, "decide", { experimentId: ctx?.experimentId, stage: "simulate" });
       throw new Error(`Jev request failed: ${res.status}`);
     }
     const text = await res.text();

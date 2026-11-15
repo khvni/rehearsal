@@ -76,10 +76,7 @@ export class GeminiClient implements LlmClient {
       },
     );
     if (!res.ok) {
-      if (isQuotaStatus(res.status)) {
-        const detail = await res.text().catch(() => "");
-        await reportProviderQuota("gemini", res.status, `${model}: ${detail}`, { experimentId: this.experimentId, stage: "llm" });
-      }
+      if (isQuotaStatus(res.status)) await reportProviderQuota("gemini", res.status, model, { experimentId: this.experimentId, stage: "llm" });
       throw new Error(`Gemini ${model} failed: ${res.status}`);
     }
     const data = (await res.json()) as {
