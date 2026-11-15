@@ -249,6 +249,22 @@ const D1_SCHEMA_SQL = `
     url TEXT
   );`;
 
+const D1_SCHEMA_STATEMENTS = D1_SCHEMA_SQL.split(";").map((s) => s.trim()).filter(Boolean);
+
+/**
+ * Bindings whose schema setup already succeeded in this isolate. Only success is recorded, so a
+ * failed setup retries on the next call. Concurrent first calls each run the idempotent DDL
+ * rather than sharing one pending promise across request contexts.
+ */
+const d1SchemaReady = new WeakSet<D1Binding>();
+
+async function ensureD1Schema(db: D1Binding): Promise<void> {
+  if (d1SchemaReady.has(db)) return;
+  // D1 prepare() accepts exactly one statement — run each separately.
+  for (const stmt of D1_SCHEMA_STATEMENTS) await db.prepare(stmt).run();
+  d1SchemaReady.add(db);
+}
+
 /**
  * Cloudflare D1 persistence — the primary store on Workers (pg sockets can't
  * reach Tiger Cloud from workerd). The DB binding lives on the request context
@@ -264,10 +280,7 @@ export class D1Store implements ExperimentStore {
     const { env } = await getCloudflareContext({ async: true });
     const db = (env as { DB?: D1Binding }).DB;
     if (!db) return null;
-    // D1 prepare() accepts exactly one statement — run each separately.
-    for (const stmt of D1_SCHEMA_SQL.split(";").map((s) => s.trim()).filter(Boolean)) {
-      await db.prepare(stmt).run();
-    }
+    await ensureD1Schema(db);
     return db;
   }
 
