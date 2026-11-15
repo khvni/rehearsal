@@ -150,9 +150,8 @@ export default function Home() {
           </Field>
           {error && <FieldError>{error}</FieldError>}
         </FieldGroup>
-        <Button type="submit" className="launch-submit" loading={busy} disabled={busy || !url.trim()}>
+        <Button type="submit" className="launch-submit" trailingIcon={ArrowIcon} loading={busy} disabled={busy || !url.trim()}>
           {busy ? "Starting…" : "Start rehearsal"}
-          {!busy && <ArrowIcon size={14} />}
         </Button>
       </form>
       <PastExperiments experiments={experiments} />
