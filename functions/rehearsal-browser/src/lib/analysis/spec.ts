@@ -1,5 +1,6 @@
 import { SpecChange, SpecReport, USABILITY_PRINCIPLES, type Experiment, type Finding, type LlmClient } from "../contracts";
 import { stripFences } from "./findings";
+import { failedGoalAssertions } from "../browser/types";
 import { RUBRIC } from "./rubric";
 
 /**
@@ -134,7 +135,7 @@ GOAL: ${experiment.goal}
 FINDINGS-DERIVED CHANGES:\n${JSON.stringify(changes)}
 Verified run failures:\n${JSON.stringify(
     experiment.browserTests.flatMap((r) =>
-      r.assertions.filter((a) => !a.passed).map((a) => a.assertion.value),
+      failedGoalAssertions(r).map((a) => a.assertion.value),
     ),
   )}
 Return JSON: {"summary": "<=2 short, plain sentences", "changes": [{"title","change","steps":["ordered concrete edits naming the element and page"],"rationale","effort":"S|M|L","principle"?,"findingId"?}], "rebuildPhases": [{"name","goal","items":[]}]}. Write summary and change text in plain language a site owner can act on.

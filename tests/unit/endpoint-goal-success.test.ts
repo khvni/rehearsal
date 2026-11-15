@@ -7,6 +7,7 @@ import type { ActivityEvent, BrowserRun, ExperimentStore, PageFetcher } from "@/
 import { Experiment, FixtureSiteManifest, VIEWPORTS } from "@/lib/contracts";
 import { evaluateGoalAlternatives, failedGoalAssertions, goalSucceeded, summarizeRun } from "@/lib/browser/types";
 import { ruleFindings } from "@/lib/analysis/findings";
+import { generateSpec } from "@/lib/analysis/spec";
 
 const pages = {
   "/": '<html><title>Home</title><body><h1>Welcome</h1><a href="/pricing">Pricing plans</a></body></html>',
@@ -62,6 +63,22 @@ it("verify accepts a pricing endpoint instead of the compiled cost assertion", a
   expect(activity.some((event) => event.message.includes("Assertion failed"))).toBe(false);
   const analyzed = await orch.analyze(experiment.id);
   expect(analyzed.findings.filter((f) => f.evidenceType === "verified-failure" && f.category === "goal-completion")).toEqual([]);
+  for (const endpointReached of [true, false]) {
+    const prompts: string[] = [];
+    await generateSpec({
+      ...analyzed,
+      browserTests: analyzed.browserTests.map((run) => ({
+        ...run,
+        goalAlternatives: run.goalAlternatives?.map((a) => ({ ...a, passed: endpointReached })),
+      })),
+    }, {
+      name: "spec-evidence-fixture",
+      async complete(prompt) { prompts.push(prompt); return "{}"; },
+    });
+    expect(prompts).toHaveLength(1);
+    const failures = JSON.parse(prompts[0].match(/Verified run failures:\n([^\n]+)/)![1]);
+    expect(failures).toEqual(endpointReached ? [] : analyzed.browserTests.map(() => "cost"));
+  }
   const compared = await orch.compare(experiment.id);
   expect(compared.comparisons[0]?.deltas.goalCompleted).toEqual({ baseline: true, variant: true });
   expect(compared.browserTests.at(-1)?.goalAlternatives?.some((a) => a.passed)).toBe(true);
