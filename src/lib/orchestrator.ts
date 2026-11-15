@@ -715,6 +715,17 @@ export class Orchestrator {
       // Firecrawl /v1/map runs once per run, on the seed, when it exposes few links.
       let mapExpanded = resumeData?.mapExpanded ?? false;
       const seedExtras: string[] = resumeData?.seedExtras ? [...resumeData.seedExtras] : [];
+      // Plain-fetch html doesn't vary by viewport, so each URL is fetched once per
+      // run: later viewports and the signature pass reuse it (each fetch pays politeDelay).
+      // Keyed by the exact URL: `/docs` and `/docs/` may serve different pages.
+      const probedHtml = new Map<string, string>();
+      const probeHtml = async (url: string) => {
+        const cached = probedHtml.get(url);
+        if (cached !== undefined) return cached;
+        const html = await this.probeFetcher.fetchHtml(url);
+        probedHtml.set(url, html);
+        return html;
+      };
       try {
         if (!resumeData?.signaturePending) {
         for (let vi = resumeData?.vpIndex ?? 0; vi < config.viewports.length; vi++) {
@@ -722,7 +733,7 @@ export class Orchestrator {
           const viewport = VIEWPORTS[vpName];
           const openPage = async (url: string, depth: number) => {
             if (browserCrawl) {
-              if (providerQuotaHit) return { html: await this.probeFetcher.fetchHtml(url) };
+              if (providerQuotaHit) return { html: await probeHtml(url) };
               try {
                 return await this.runner.openPage(url, viewport, {
                   shotName: `${id}_${vpName}_d${depth}`,
@@ -737,14 +748,14 @@ export class Orchestrator {
                   "info",
                   `${this.runner.name} is out of provider quota — continuing with ${this.probeFetcher.name} (no screenshots)`,
                 );
-                return { html: await this.probeFetcher.fetchHtml(url) };
+                return { html: await probeHtml(url) };
               }
             }
             // Default crawl: plain fetch; Firecrawl rescues pages that need a renderer.
             const isShell = (html: string) => looksLikeJsShell(html, extractPage(html, url));
             let plainFailure: string;
             try {
-              const html = await this.probeFetcher.fetchHtml(url);
+              const html = await probeHtml(url);
               if (!isShell(html)) return { html };
               plainFailure = "returned a JS app shell";
             } catch (e) {
@@ -885,7 +896,7 @@ export class Orchestrator {
           actions: s?.actions ?? [],
         };
         try {
-          page = extractPage(await this.probeFetcher.fetchHtml(url), url);
+          page = extractPage(await probeHtml(url), url);
         } catch {
           // keep the crawl-extracted signature
         }
