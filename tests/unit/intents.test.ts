@@ -6,6 +6,7 @@ import {
   classifyGoal,
   detectSiteType,
   discoverEndpoints,
+  endpointJourneys,
   goalTargetClasses,
   intentForGoal,
   weightEndpoints,
@@ -140,4 +141,42 @@ describe("discoverEndpoints + weightEndpoints", () => {
     const full = Experiment.parse({ ...base, graph, intents: [intentForGoal("find pricing")], endpoints: discoverEndpoints(graph) });
     expect(full.intents?.[0].category).toBe("quotation");
   });
+});
+
+describe("endpoint ids are origin-independent", () => {
+  /** Event site whose day pages each carry a label-only "APPLY TO ATTEND" CTA — endpoints that tie on weight. */
+  function eventGraph(origin: string): StateGraph {
+    const cta = { type: "click" as const, label: "APPLY TO ATTEND", role: "button", enabled: true, safeToExecute: true };
+    const day = (path: string) =>
+      makeState({ url: `${origin}${path}`, viewport: VIEWPORTS.desktop, title: "Conference schedule", visibleText: "Sessions and speakers", actions: [cta] });
+    const days = ["/code/2026?day=11", "/code/2026?day=12", "/code/2026?view=companies"].map(day);
+    const home = makeState({
+      url: `${origin}/code/2026`,
+      viewport: VIEWPORTS.desktop,
+      title: "AI Engineer Code Summit",
+      visibleText: "Conference schedule, speakers, workshops and tickets.",
+      actions: days.map((d, i) => ({ type: "click" as const, label: `Day ${i}`, role: "link", href: d.url, enabled: true, safeToExecute: true })),
+    });
+    return {
+      states: [home, ...days],
+      edges: days.map((d, i) => ({ fromStateId: home.stateId, actionId: home.actions[i].actionId, toStateId: d.stateId })),
+    };
+  }
+
+  // spec-delta serves the fixture on an ephemeral 127.0.0.1 port; journeys must not depend on it.
+  it.each(["http://127.0.0.1:41001", "http://127.0.0.1:52977", "https://staging.example.com"])(
+    "matches across origins (%s)",
+    (origin) => {
+      const shape = (graph: StateGraph) => {
+        const eps = discoverEndpoints(graph);
+        return {
+          endpoints: eps.map((e) => [e.endpointId, e.class, e.label, e.weight]),
+          journeys: endpointJourneys(graph, eps, { seed: 1337, maxDepth: 3 }),
+        };
+      };
+      const baseline = shape(eventGraph("http://127.0.0.1:3000"));
+      expect(baseline.endpoints.filter(([, cls]) => cls === "signup")).toHaveLength(3);
+      expect(shape(eventGraph(origin))).toEqual(baseline);
+    },
+  );
 });
