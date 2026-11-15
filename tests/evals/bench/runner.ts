@@ -22,15 +22,15 @@ import type {
   TrajectoryArgs,
   Viewport,
 } from "@/lib/contracts";
-import { extractPage } from "@/lib/browser/extract";
+import { type extractPage, memoizedExtractPage } from "@/lib/browser/extract";
 import { evaluateAssertion, summarizeRun } from "@/lib/browser/types";
 import { compilePatches } from "@/lib/variants";
 import { assertPublicUrl } from "@/lib/fetch/guards";
 import { pageFor, type FixtureSite } from "./sites";
 
 /** AssertionProbe over a fixture page's extracted content. Selectors support tag, #id and .class. */
-function fixtureProbe(html: string, url: string): AssertionProbe {
-  const extracted = extractPage(html, url);
+function fixtureProbe(html: string, url: string, extract: typeof extractPage): AssertionProbe {
+  const extracted = extract(html, url);
   const count = (selector: string): number => {
     const s = selector.trim();
     const m = s.match(/^([a-z][a-z0-9]*)?(#[\w-]+|\.[\w-]+)?$/i);
@@ -54,6 +54,7 @@ function fixtureProbe(html: string, url: string): AssertionProbe {
 
 export class FixtureSiteRunner implements BrowserRunner {
   readonly name = "fixture-site";
+  private extract = memoizedExtractPage();
 
   constructor(private site: FixtureSite) {}
 
@@ -98,7 +99,7 @@ export class FixtureSiteRunner implements BrowserRunner {
       current = href;
     }
     const finalHtml = pageFor(this.site, new URL(current).pathname) ?? "";
-    const probe = fixtureProbe(finalHtml, current);
+    const probe = fixtureProbe(finalHtml, current, this.extract);
     const assertions: BrowserRun["assertions"] = [];
     for (const assertion of a.assertions) {
       assertions.push({ assertion, passed: await evaluateAssertion(probe, assertion) });
@@ -122,7 +123,7 @@ export class FixtureSiteRunner implements BrowserRunner {
         if (html === null) {
           return { url: current, title: current, visibleText: "", actions: [], candidates: [] };
         }
-        const extracted = extractPage(html, current);
+        const extracted = this.extract(html, current);
         return {
           url: current,
           title: extracted.title,
@@ -142,7 +143,7 @@ export class FixtureSiteRunner implements BrowserRunner {
         current = action.href;
         return { ok: true };
       },
-      probe: () => fixtureProbe(pageFor(this.site, new URL(current).pathname) ?? "", current),
+      probe: () => fixtureProbe(pageFor(this.site, new URL(current).pathname) ?? "", current, this.extract),
       screenshot: async () => null,
     };
     return personaJourneyLoop(driver, args.jev ?? new FixtureJevClient(), args);
@@ -158,6 +159,7 @@ export class FixtureSiteRunner implements BrowserRunner {
 export class HermeticSiteRunner implements BrowserRunner {
   readonly name = "hermetic-chromium";
   private browser: import("playwright").Browser | null = null;
+  private extract = memoizedExtractPage();
 
   constructor(
     private site: FixtureSite,
@@ -241,7 +243,7 @@ export class HermeticSiteRunner implements BrowserRunner {
       const { LivePagePersonaDriver } = await import("@/lib/browser/persona");
       const { personaJourneyLoop } = await import("@/lib/simulation/persona");
       const { FixtureJevClient } = await import("@/lib/decisions/jev");
-      const driver = new LivePagePersonaDriver(page, args.viewport, this.evidenceDir, 30000);
+      const driver = new LivePagePersonaDriver(page, args.viewport, this.evidenceDir, 30000, this.extract);
       return await personaJourneyLoop(driver, args.jev ?? new FixtureJevClient(), args);
     } finally {
       await ctx.close();
