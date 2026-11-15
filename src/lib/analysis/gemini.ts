@@ -8,6 +8,9 @@ import { logEvent } from "../telemetry";
  * The "mockup" slot (GEMINI_MODEL_MOCKUP) defaults to the deep model so the
  * frontier generation model builds previews; retryable errors fall back to fast.
  */
+/** One per LLM step of a run: assertions, goal intent, visitor questions, findings, spec, mockup, rebuild — plus headroom for a re-entered stage. */
+const DEFAULT_MAX_CALLS = 10;
+
 export class GeminiClient implements LlmClient {
   readonly name = "gemini";
   private apiKey: string;
@@ -24,8 +27,8 @@ export class GeminiClient implements LlmClient {
     this.fast = process.env.GEMINI_MODEL_FAST ?? "gemini-4-hydrogen";
     this.deep = process.env.GEMINI_MODEL_DEEP ?? "gemini-4-argon";
     this.mockup = process.env.GEMINI_MODEL_MOCKUP ?? this.deep;
-    const max = Number(process.env.REHEARSAL_GEMINI_MAX_CALLS ?? 6);
-    this.maxCalls = Number.isFinite(max) && max >= 0 ? max : 6;
+    const max = Number(process.env.REHEARSAL_GEMINI_MAX_CALLS ?? DEFAULT_MAX_CALLS);
+    this.maxCalls = Number.isFinite(max) && max >= 0 ? max : DEFAULT_MAX_CALLS;
     if (!this.apiKey) throw new Error("GeminiClient requires GEMINI_API_KEY");
   }
 

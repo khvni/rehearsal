@@ -593,6 +593,8 @@ export const RebuildResult = z.object({
   pages: z.array(RebuiltPage),
   /** LLM adapter name actually used ("gemini", "gemini-fixture"…). */
   llm: z.string(),
+  /** Why no page got LLM copy (call budget, HTTP status, unparseable JSON); absent when the LLM was used or not configured. */
+  llmError: z.string().optional(),
 });
 export type RebuildResult = z.infer<typeof RebuildResult>;
 

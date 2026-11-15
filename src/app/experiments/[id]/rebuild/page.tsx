@@ -6,6 +6,7 @@ import { useParams } from "next/navigation";
 import type { Experiment, PanelState } from "@/lib/contracts";
 import { Panel } from "../../../_components/panel";
 import { Badge } from "@/components/ui/badge";
+import { Banner, BannerDescription, BannerTitle } from "@/components/ui/banner";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardGroup } from "@/components/ui/card";
 
@@ -186,6 +187,14 @@ export default function RebuildPage() {
         </div>
       ) : (
         <div className="grid">
+          {(runError || rebuild.llmError) && (
+            <div className="span-2">
+              <Banner status={runError ? "error" : "warning"} role={runError ? "alert" : "status"}>
+                <BannerTitle>{runError ? "Rebuild didn't run" : `${rebuild.llm} copy unavailable — pages use templates`}</BannerTitle>
+                <BannerDescription>{runError || rebuild.llmError}</BannerDescription>
+              </Banner>
+            </div>
+          )}
           <Panel
             title="Pages"
             className="span-2"

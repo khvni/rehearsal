@@ -28,8 +28,8 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
     if (!presentsAccessToken(req)) {
       const experiment = await orch.get(id);
       if (!experiment) return NextResponse.json({ error: "not found" }, { status: 404 });
-      // `spec` marks the experiment complete before any rebuild exists, so a first rebuild stays allowed.
-      if (experiment.status === "complete" && (stage !== "rebuild" || experiment.rebuild)) {
+      // `spec` marks the experiment complete, so rebuilds (one LLM call, no crawl or browser) stay allowed; the run limit still caps them.
+      if (experiment.status === "complete" && stage !== "rebuild") {
         return NextResponse.json(
           { error: "experiment already complete — use Rescan site to refresh it" },
           { status: 403 },

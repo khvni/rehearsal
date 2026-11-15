@@ -116,12 +116,13 @@ describe("POST /api/experiments/:id/:stage daily run budget", () => {
     expect((await run(expId(1), undefined, { authorization: `Bearer ${TOKEN}` })).status).toBe(200);
   });
 
-  it("still allows the first rebuild of a completed experiment, then refuses another", async () => {
+  it("allows rebuilding a completed experiment again, within the run limit", async () => {
     experiments.set(expId(4), { id: expId(4), status: "complete" });
     expect((await run(expId(4), undefined, {}, "rebuild")).status).toBe(200);
-    expect(rebuild).toHaveBeenCalledTimes(1);
     experiments.set(expId(4), { id: expId(4), status: "complete", rebuild: {} as Experiment["rebuild"] });
-    expect((await run(expId(4), undefined, {}, "rebuild")).status).toBe(403);
+    expect((await run(expId(4), undefined, {}, "rebuild")).status).toBe(200);
+    expect(rebuild).toHaveBeenCalledTimes(2);
+    expect((await run(expId(4), undefined, {}, "spec")).status).toBe(403);
   });
 
   it("404s unknown experiments before spending budget", async () => {

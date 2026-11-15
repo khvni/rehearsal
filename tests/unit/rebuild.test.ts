@@ -244,6 +244,7 @@ describe("generateRebuild", () => {
     const b = await generateRebuild(synthExperiment(), new FixtureLlmClient());
     expect(RebuildResult.safeParse(a).success).toBe(true);
     expect(a.llm).toBe("gemini-fixture");
+    expect(a.llmError).toBeUndefined();
     expect(a.pages).toHaveLength(a.goals.length);
     expect(a.pages.every((p) => p.source === "template")).toBe(true);
     expect(JSON.stringify(a.pages)).toBe(JSON.stringify(b.pages));
@@ -300,6 +301,7 @@ describe("generateRebuild", () => {
     for (const llm of [bad, throws]) {
       const res = await generateRebuild(synthExperiment(), llm);
       expect(res.pages.every((p) => p.source === "template")).toBe(true);
+      expect(res.llmError).toBeTruthy();
       expect(res.pages.map((p) => p.html)).toEqual(fixture.pages.map((p) => p.html));
     }
   });
