@@ -64,9 +64,17 @@ export async function assertPublicUrl(raw: string): Promise<URL> {
 const lastRequestAt = new Map<string, number>();
 const MIN_INTERVAL_MS = 2000;
 
-/** Rate-limit requests to ~1 per 2s per target host. */
+function isLoopbackHost(hostname: string): boolean {
+  const host = hostname.toLowerCase().replace(/^\[|\]$/g, "");
+  if (host === "localhost" || host === "::1") return true;
+  return ipaddr.isIPv4(host) && host.startsWith("127.");
+}
+
+/** Rate-limit requests to ~1 per 2s per target host.
+ *  REHEARSAL_ALLOW_PRIVATE=1 skips the wait for loopback hosts (hermetic fixture servers only). */
 export async function politeDelay(url: URL): Promise<void> {
   const host = url.hostname;
+  if (process.env.REHEARSAL_ALLOW_PRIVATE === "1" && isLoopbackHost(host)) return;
   const now = Date.now();
   const last = lastRequestAt.get(host) ?? 0;
   const waitMs = Math.max(0, MIN_INTERVAL_MS - (now - last));
