@@ -2,6 +2,7 @@ import { beforeEach, describe, expect, it } from "vitest";
 import { Orchestrator } from "@/lib/orchestrator";
 import { FixtureJevClient } from "@/lib/decisions/jev";
 import { FixtureLlmClient } from "@/lib/analysis/gemini";
+import { generateSpec } from "@/lib/analysis/spec";
 import { RehearsalError } from "@/lib/errors";
 import { Experiment, type BrowserRunner, type ExperimentStore, type PageFetcher } from "@/lib/contracts";
 
@@ -114,6 +115,32 @@ describe("stage re-runs replace that stage's earlier results", () => {
     const again = await orch.verify(id);
     expect(runIds(again)).toEqual(runIds(compared));
     expect(again.browserTests[0].variantId).toBeUndefined();
+  });
+
+  it("spec after compare references only baseline browser runs", async () => {
+    const { orch, id } = await setup();
+    const compared = await orch.compare(id);
+    const baselineIds = compared.browserTests.filter((r) => !r.variantId).map((r) => r.runId);
+    expect(baselineIds.length).toBeGreaterThan(0);
+    expect(compared.browserTests.some((r) => r.variantId)).toBe(true);
+
+    const result = await orch.spec(id);
+    expect(result.spec?.baselineRunIds).toEqual(baselineIds);
+  });
+
+  it.each(["empty", "variant-only", "llm-error"])("spec baseline references handle %s runs", async (scenario) => {
+    const { orch, id } = await setup();
+    const compared = await orch.compare(id);
+    const browserTests = scenario === "empty" ? [] : scenario === "variant-only"
+      ? compared.browserTests.filter((r) => r.variantId)
+      : compared.browserTests;
+    const llm = scenario === "llm-error" ? {
+      name: "unavailable",
+      async complete(): Promise<string> { throw new Error("LLM unavailable"); },
+    } : new FixtureLlmClient();
+
+    const spec = await generateSpec({ ...compared, browserTests }, llm);
+    expect(spec.baselineRunIds).toEqual(browserTests.filter((r) => !r.variantId).map((r) => r.runId));
   });
 
   it("analyze re-run after verify and compare re-runs counts each baseline run once", async () => {

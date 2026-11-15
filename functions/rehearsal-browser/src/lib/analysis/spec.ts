@@ -13,7 +13,7 @@ export async function generateSpec(experiment: Experiment, llm: LlmClient): Prom
     targetUrl: experiment.targetUrl,
     goal: experiment.goal,
     generatedAt: new Date().toISOString(),
-    baselineRunIds: experiment.browserTests.map((r) => r.runId),
+    baselineRunIds: experiment.browserTests.filter((r) => !r.variantId).map((r) => r.runId),
     summary: "",
     changes: [],
     rebuildPhases: [],
