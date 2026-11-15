@@ -8,6 +8,7 @@ import { readFileSync, appendFileSync } from "node:fs";
 import type { AddressInfo } from "node:net";
 import path from "node:path";
 import { Orchestrator, PIPELINE_STAGES } from "../src/lib/orchestrator";
+import { rebuildPending } from "../src/lib/rebuild/site";
 
 process.env.REHEARSAL_ALLOW_PRIVATE = "1";
 process.env.REHEARSAL_BROWSER = "playwright";
@@ -15,6 +16,8 @@ process.env.REHEARSAL_BROWSER = "playwright";
 const html = readFileSync(path.join(process.cwd(), "tests", "evals", "fixtures", "aie-code-2026.html"), "utf8");
 // The fixture references third-party images (YouTube, Sessionize); CSP keeps the browser off the network.
 const CSP = "default-src 'self'; img-src 'self' data:; style-src 'self' 'unsafe-inline'; font-src 'self' data:";
+// rebuild() persists one step (planning, then batches of REBUILD_BATCH pages); bound the loop so a stuck rebuild fails the smoke.
+const MAX_REBUILD_STEPS = 20;
 const server = createServer((req, res) => {
   if (req.url === "/" || req.url === "/code/2026") {
     res.writeHead(200, { "content-type": "text/html", "content-security-policy": CSP });
@@ -42,6 +45,13 @@ async function main(): Promise<void> {
     for (const stage of PIPELINE_STAGES) {
       const t0 = performance.now();
       await orch[stage](exp.id);
+      if (stage === "rebuild") {
+        let steps = 1;
+        while (rebuildPending((await orch.get(exp.id))!)) {
+          if (steps++ >= MAX_REBUILD_STEPS) throw new Error(`rebuild still pending after ${MAX_REBUILD_STEPS} steps`);
+          await orch.rebuild(exp.id);
+        }
+      }
       timings.push({ stage, ms: Math.round(performance.now() - t0) });
       console.log(`smoke ${stage}: ${timings.at(-1)!.ms}ms`);
     }
