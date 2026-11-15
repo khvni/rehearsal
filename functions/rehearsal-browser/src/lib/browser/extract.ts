@@ -47,7 +47,7 @@ interface OpenElement {
   name: string;
   attribs: Record<string, string>;
   /** `skipDepth` at open: text nested in a deeper script/style/svg block is not part of the label. */
-  label: { text: string; full: boolean; skipDepth: number } | undefined;
+  label: { text: string; full: boolean; skipDepth: number; ariaHiddenDepth: number } | undefined;
 }
 
 /**
@@ -125,11 +125,11 @@ export function extractPage(rawHtml: string, pageUrl: string): ExtractedPage {
   let foreignDepth = 0;
 
   const addText = (text: string) => {
-    if (labels.length > 0 && ariaHiddenDepth === 0) {
+    if (labels.length > 0) {
       const collapsed = text.replace(/\s+/g, " ");
       for (let i = labels.length - 1; i >= 0; i--) {
         const label = labels[i];
-        if (skipDepth > label.skipDepth) continue;
+        if (skipDepth > label.skipDepth || ariaHiddenDepth > label.ariaHiddenDepth) continue;
         label.text += collapsed.slice(0, MAX_LABEL_CHARS - label.text.length);
         if (label.text.length >= MAX_LABEL_CHARS) {
           label.full = true;
@@ -170,11 +170,11 @@ export function extractPage(rawHtml: string, pageUrl: string): ExtractedPage {
       name === "a" ||
       name === "button" ||
       !!attribs.id;
-    const el: OpenElement = { name, attribs, label: collects ? { text: "", full: false, skipDepth } : undefined };
+    if (attribs["aria-hidden"] === "true") ariaHiddenDepth++;
+    const el: OpenElement = { name, attribs, label: collects ? { text: "", full: false, skipDepth, ariaHiddenDepth } : undefined };
     stack.push(el);
     if (attribs.id && el.label && !idLabels.has(attribs.id)) idLabels.set(attribs.id, el.label);
     if (el.label) labels.push(el.label);
-    if (attribs["aria-hidden"] === "true") ariaHiddenDepth++;
     if (SKIPPED_TEXT_TAGS.has(name)) skipDepth++;
     if (FOREIGN_TAGS.has(name)) foreignDepth++;
   };

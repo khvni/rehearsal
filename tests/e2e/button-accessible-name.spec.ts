@@ -7,6 +7,7 @@ process.env.REHEARSAL_ALLOW_PRIVATE = "1";
 
 const cases = [
   { name: "plain text", html: "<button>Menu</button>", label: "Menu" },
+  { name: "directly referenced aria-hidden label", html: '<button aria-labelledby="l">Menu</button><span id="l" aria-hidden="true">Toggle navigation</span>', label: "Toggle navigation" },
   { name: "aria-hidden label descendants", html: '<button aria-labelledby="l">Menu</button><span id="l"><span aria-hidden="true">☰</span>Toggle navigation</span>', label: "Toggle navigation" },
   { name: "aria-hidden button descendants", html: '<button><span aria-hidden="true">☰</span>Menu</button>', label: "Menu" },
   { name: "aria-label", html: '<button aria-label="Toggle navigation">Menu</button>', label: "Toggle navigation" },
@@ -29,9 +30,10 @@ for (const { name, html, label } of cases) {
   });
 }
 
-test("Stagehand replay clicks the visible aria-labelledby button without a model", async ({ page }) => {
+for (const hidden of [false, true]) test(`Stagehand replay clicks the visible aria-labelledby button without a model (hidden label: ${hidden})`, async ({ page }) => {
   await page.route("https://fixture.test/", (route) => route.fulfill({ contentType: "text/html", body: '<button hidden aria-labelledby="l">Hidden</button><button aria-labelledby="l">Menu</button><span id="l"><span aria-hidden="true">☰</span>Toggle navigation</span>' }));
   await page.goto("https://fixture.test/");
+  if (hidden) await page.locator("#l").evaluate((label) => label.setAttribute("aria-hidden", "true"));
   await page.locator("button").nth(1).evaluate((button) => button.addEventListener("click", () => button.setAttribute("data-clicked", "true")));
   const runner = new StagehandRunner({ env: "local" });
   const step = (runner as unknown as { step: (sh: unknown, page: unknown, action: unknown) => Promise<void> }).step.bind(runner);
