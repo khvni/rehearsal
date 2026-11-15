@@ -10,7 +10,7 @@ describe("Jev API key", () => {
     const fetchMock = vi.fn(async () => new Response(JSON.stringify({ decisions: {} })));
     vi.stubGlobal("fetch", fetchMock);
     const jev = selectJev({ OPENROUTER_API_KEY: "or-secret" });
-    await jev.decide({}, [{ name: "next", type: "choice", instructions: "pick", criteria: ["a", "b"] }]);
+    await jev.decide({}, [{ name: "next", type: "choice", instructions: "pick", criteria: { a: "first", b: "second" } }]);
     const sent = fetchMock.mock.calls.map((c) => {
       const [url, init] = c as unknown as [string, RequestInit];
       return `${url} ${(init.headers as Record<string, string>).authorization}`;
@@ -24,7 +24,7 @@ describe("Jev API key", () => {
     const fetchMock = vi.fn(async () => new Response(JSON.stringify({ decisions: {} })));
     vi.stubGlobal("fetch", fetchMock);
     const jev = new HttpJevClient({ JEV_API_KEY: "jev-secret", OPENROUTER_API_KEY: "or-secret" });
-    await jev.decide({}, [{ name: "next", type: "choice", instructions: "pick", criteria: ["a", "b"] }]);
+    await jev.decide({}, [{ name: "next", type: "choice", instructions: "pick", criteria: { a: "first", b: "second" } }]);
     const [url, init] = fetchMock.mock.calls[0] as unknown as [string, RequestInit];
     expect(url).toBe("https://api.typesafe.ai/v1/systemone");
     expect((init.headers as Record<string, string>).authorization).toBe("Bearer jev-secret");
