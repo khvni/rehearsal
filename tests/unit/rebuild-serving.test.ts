@@ -154,6 +154,23 @@ describe("rebuilt site route", () => {
     expect(missing.status).toBe(404);
     expect(await missing.text()).toContain("Not rebuilt yet");
   });
+  it("matches raw and encoded punctuation and Unicode paths against the sitemap", async () => {
+    const exp = fixture(4);
+    ["/", "/@alice", "/c++", "/caf%C3%A9"].forEach((path, i) => {
+      exp.graph!.states[i].url = `https://example.com${path}`;
+    });
+    const site = deterministicPlan(exp);
+    expect(site.pages.map(p => p.path)).toEqual(["/", "/@alice", "/c++", "/café"]);
+    site.pages = await Promise.all(site.pages.map(p => buildPage(exp, site, p, { name: "fixture", complete: async () => '<h1>Welcome</h1><a href="/@alice">Alice</a><a href="/c%2B%2B">C++</a>' })));
+    site.pages[3].path = "/caf%C3%A9";
+    exp.rebuild = { generatedAt: exp.createdAt, brand: rollupBrand(exp.graph!.states), goals: [], pages: [], llm: "fixture", site };
+    setup(exp);
+    for (const path of [["@alice"], ["%40alice"], ["c++"], ["c%2B%2B"], ["café"], ["caf%C3%A9"]]) {
+      const res = await get(path);
+      expect(res.status).toBe(200);
+      expect(await res.text()).toContain(`<a href="/experiments/${ID}/rb/c++">C++</a>`);
+    }
+  });
   it("rejects traversal and returns simple 404s for absent experiments/sites", async () => {
     setup(fixture());
     for (const path of [

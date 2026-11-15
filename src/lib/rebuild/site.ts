@@ -13,7 +13,32 @@ import { SITE_CSS, CLASS_VOCABULARY } from "./site-css";
 
 export const REBUILD_BATCH = 6;
 export const SITE_BYTE_CAP = 700 * 1024;
-const pagePath = (url: URL) => url.pathname.replace(/\/+$/, "") || "/";
+export function normalizeRebuildPath(segments: string[]): string | undefined {
+  const decoded: string[] = [];
+  for (const segment of segments) {
+    try {
+      let value = segment;
+      for (let i = 0; i < 4 && /%[\da-f]{2}/i.test(value); i++)
+        value = decodeURIComponent(value);
+      if (
+        value === "." ||
+        value === ".." ||
+        /[%/\\\u0000-\u001f?#]/.test(value)
+      )
+        return;
+      if (value) decoded.push(value);
+    } catch {
+      return;
+    }
+  }
+  return "/" + decoded.join("/");
+}
+
+const pagePath = (url: URL) => {
+  const path = normalizeRebuildPath(url.pathname.split("/"));
+  if (!path) throw new Error("Invalid site path");
+  return path;
+};
 const sameOrigin = (a: URL, b: URL) =>
   /^https?:$/.test(a.protocol) &&
   /^https?:$/.test(b.protocol) &&
@@ -604,7 +629,7 @@ export function siteStylesheet(tokens: RebuildSite["tokens"]): string {
 export function renderSiteDocument(exp: Experiment, path = "/"): string {
   const site = exp.rebuild?.site;
   if (!site) throw new Error("No rebuilt site");
-  const page = site.pages.find((p) => p.path === path && p.status === "built");
+  const page = site.pages.find((p) => normalizeRebuildPath(p.path.split("/")) === path && p.status === "built");
   const base = baseFor(exp);
   const brand = exp.rebuild!.brand;
   const homePath = homePathFor(site);
