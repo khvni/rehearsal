@@ -151,10 +151,10 @@ export default function RebuildPage() {
       ? { kind: "loading", label: "Rebuilding the site…" }
       : runError
         ? { kind: "error", message: runError, onRetry: () => void runRebuild() }
-        : { kind: "empty", message: "No rebuild yet." };
+        : { kind: "empty", message: "Rebuild only runs when you ask: it drafts one branded page per visitor goal with one Gemini call." };
   const runButton = (
     <Button variant="secondary" size="compact" loading={pending} disabled={pending} onClick={() => void runRebuild()}>
-      Run rebuild
+      {rebuild ? "Rebuild again" : "Build pages"}
     </Button>
   );
 
@@ -210,7 +210,7 @@ export default function RebuildPage() {
                       <a className="card-heading" href={`/experiments/${id}/rebuild/${p.slug}`} target="_blank" rel="noreferrer">
                         {p.title}
                       </a>
-                      <Badge variant="dot" color={p.source === "gemini" ? "blue" : "gray"}>{p.source}</Badge>
+                      <Badge variant="dot" color={p.source !== "template" ? "blue" : "gray"}>{p.source}</Badge>
                     </div>
                     <p className="card-body">{p.summary}</p>
                     <span className="card-meta tabular">{p.goal} · {(p.bytes / 1024).toFixed(1)} KB</span>

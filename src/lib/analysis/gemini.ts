@@ -1,5 +1,6 @@
 import type { CallContext, LlmClient, TokenUsage } from "../contracts";
 import { isQuotaStatus, logEvent, reportProviderQuota } from "../telemetry";
+import { RampRouterClient } from "./router";
 
 /**
  * Gemini API client — REST over generativelanguage (stable across SDK churn).
@@ -137,7 +138,15 @@ export class FixtureLlmClient implements LlmClient {
   }
 }
 
+/** Ramp Router when RAMP_ROUTER_API_KEY is set, else Gemini, else the offline fixture. */
 export function selectLlm(): LlmClient {
+  if (process.env.RAMP_ROUTER_API_KEY) {
+    try {
+      return new RampRouterClient();
+    } catch {
+      /* fall through */
+    }
+  }
   if (process.env.GEMINI_API_KEY) {
     try {
       return new GeminiClient();

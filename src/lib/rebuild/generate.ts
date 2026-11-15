@@ -10,6 +10,7 @@ import type {
   RebuiltPage,
   SiteState,
 } from "../contracts";
+import { llmPageSource } from "../analysis/router";
 import { logEvent } from "../telemetry";
 import { uniqueStatesByUrl } from "../graph";
 import { CTA_VERB_RE, rollupBrand } from "./brand";
@@ -337,7 +338,7 @@ export async function generateRebuild(exp: Experiment, llm: LlmClient): Promise<
       title: `${goal.title} · ${brand.name}`,
       summary: pageSummary(goal, content, exp),
       html,
-      source: merged ? "gemini" : "template",
+      source: merged ? llmPageSource(llm) : "template",
       bytes: new TextEncoder().encode(html).length,
     };
   });
