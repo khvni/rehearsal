@@ -140,6 +140,7 @@ const NOT_DEPLOYED: Record<string, string> = {
   OPENROUTER_MODEL_REBUILD_PLANNER: "has a code default",
   REHEARSAL_REBUILD_MAX_PAGES: "has a code default of 40",
   REHEARSAL_MAX_CONCURRENT_RUNS: "has a code default",
+  REHEARSAL_RUN_SLOT_TTL_MS: "has a code default",
   JEV_BASE_URL: "has a code default",
   JEV_MODEL: "has a code default",
   OPENROUTER_API_KEY: "optional LLM provider; deploy-cloudflare.yml uploads it as a Worker secret when the Actions secret exists",

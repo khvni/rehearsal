@@ -369,12 +369,12 @@ export class Orchestrator {
     await this.emit(id, "run", "info", "Run queued — the pipeline continues in the background");
     const work = async (): Promise<void> => {
       try {
-        await this.exclusiveWhenFree(id, "run", () => this.stepBody(id, { origin: opts?.origin }));
+        await this.exclusiveWhenFree(id, "run", () => enqueueRun(() => this.stepBody(id, { origin: opts?.origin })));
       } catch (e) {
         await this.markFailed(id, e).catch(() => undefined);
       }
     };
-    await runInBackground(() => enqueueRun(work));
+    await runInBackground(work);
     return exp;
   }
 
@@ -385,10 +385,21 @@ export class Orchestrator {
    */
   async resume(id: string, opts?: { origin?: string; inline?: boolean }): Promise<{ experiment: Experiment; resumed: boolean }> {
     const exp = await this.mustGet(id);
-    const inFlight = IN_FLIGHT_STATUSES.includes(exp.status) || exp.runCheckpoint !== undefined;
+    if (this.running.has(id)) return { experiment: exp, resumed: false };
+    const pendingRebuild = exp.status === "rebuilding" || rebuildPending(exp);
+    if (!pendingRebuild && exp.spec && exp.runCheckpoint && exp.runCheckpoint.stage !== "rebuild") {
+      exp.runCheckpoint = undefined;
+      await this.store.save(Experiment.parse(exp));
+      return { experiment: exp, resumed: false };
+    }
+    const inFlight = pendingRebuild || IN_FLIGHT_STATUSES.includes(exp.status) || exp.runCheckpoint !== undefined;
     if (!inFlight) return { experiment: exp, resumed: false };
     if (Date.now() - (await this.lastBeat(id, exp)) < stallMs()) {
       return { experiment: exp, resumed: false };
+    }
+    if (pendingRebuild && exp.runCheckpoint?.stage !== "rebuild") {
+      exp.runCheckpoint = { stage: "rebuild", attempt: 0 };
+      await this.store.save(Experiment.parse(exp));
     }
     // Runs queued before per-run tokens existed can't authorize their own
     // continuation hop (run-step answers 401) — give them one on resume.
@@ -400,15 +411,15 @@ export class Orchestrator {
     await this.emit(id, "run", "info", "Run stalled — resuming from the last checkpoint");
     const work = async (): Promise<void> => {
       try {
-        await this.exclusiveWhenFree(id, "run", () => this.stepBody(id, { origin: opts?.origin }));
+        await this.exclusiveWhenFree(id, "run", () => enqueueRun(() => this.stepBody(id, { origin: opts?.origin })));
       } catch (e) {
         await this.markFailed(id, e).catch(() => undefined);
       }
     };
     // `inline` callers are already inside a background task (a GET's waitUntil):
     // the slice and its continuation hop must run in that task, not a nested one.
-    if (opts?.inline) await enqueueRun(work);
-    else await runInBackground(() => enqueueRun(work));
+    if (opts?.inline) await work();
+    else await runInBackground(work);
     return { experiment: exp, resumed: true };
   }
 
@@ -462,6 +473,11 @@ export class Orchestrator {
   ): Promise<{ suspended: boolean }> {
     const exp = await this.mustGet(id);
     const cp = exp.runCheckpoint;
+    if (exp.spec && cp && cp.stage !== "rebuild") {
+      exp.runCheckpoint = undefined;
+      await this.store.save(Experiment.parse(exp));
+      return { suspended: false };
+    }
     const stageFns: Record<string, (deadline?: number, resume?: DiscoverCheckpoint, attempt?: number) => Promise<unknown>> = {
       discover: (d, r, a) => this.runDiscover(id, { deadline: d, now: opts?.now, resume: r, attempt: a }),
       simulate: () => this.runSimulate(id),
@@ -1365,6 +1381,7 @@ export class Orchestrator {
       } catch {
         /* spec.md lives on the experiment payload regardless */
       }
+      if (exp.runCheckpoint?.stage !== "rebuild") exp.runCheckpoint = undefined;
       await this.update(exp, "complete");
       return exp;
     });
@@ -1407,6 +1424,8 @@ export class Orchestrator {
         };
       }
       exp.status = status;
+      if (status === "rebuilding") exp.runCheckpoint = { stage: "rebuild", attempt: 0 };
+      else if (exp.runCheckpoint?.stage === "rebuild") exp.runCheckpoint = undefined;
       await this.store.save(Experiment.parse(exp));
     };
     await saveStep("rebuilding");

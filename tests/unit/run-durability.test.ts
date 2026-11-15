@@ -1,4 +1,5 @@
-import { afterEach, describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { withRunSlot } from "@/lib/access";
 import { Experiment, type BrowserRunner, type ExperimentStore, type PageFetcher } from "@/lib/contracts";
 import { DISCOVER_CHECKPOINT_MS, DISCOVER_CHECKPOINT_PAGES, Orchestrator } from "@/lib/orchestrator";
 
@@ -72,11 +73,100 @@ function memoryStoreRef(orch: Orchestrator): ReturnType<typeof memoryStore> {
 }
 
 afterEach(() => {
+  vi.useRealTimers();
+  vi.restoreAllMocks();
+  delete process.env.REHEARSAL_MAX_CONCURRENT_RUNS;
   delete process.env.REHEARSAL_ALLOW_PRIVATE;
   delete process.env.REHEARSAL_BROWSER;
 });
 
 describe("chunked runs", () => {
+  beforeEach(() => { process.env.REHEARSAL_ALLOW_PRIVATE = "1"; });
+  it.each(["discover", "simulate", "verify", "analyze", "compare", "spec"] as const)("discards a finished pipeline's stale %s checkpoint without resuming", async (stage) => {
+    const pages = { [URL]: HOME };
+    const store = memoryStore();
+    const orch = new Orchestrator({ store, fetcher: fetcher(pages), runner: runner(pages) });
+    const { id } = await seededRun(orch);
+    const exp = store.all.get(id)!;
+    exp.spec = { targetUrl: URL, goal: "g", generatedAt: exp.createdAt, baselineRunIds: [], summary: "", changes: [], rebuildPhases: [] };
+    exp.runCheckpoint = { stage, attempt: 4 };
+    exp.createdAt = "2020-01-01T00:00:00.000Z";
+    const internal = orch as unknown as { stepBody: () => Promise<void> };
+    const work = vi.spyOn(internal, "stepBody");
+    expect((await orch.resume(id, { inline: true })).resumed).toBe(false);
+    expect(store.all.get(id)!.runCheckpoint).toBeUndefined();
+    const persisted = store.all.get(id)!;
+    persisted.runCheckpoint = { stage, attempt: 4 };
+    await store.save(persisted);
+    await orch.runStep(id);
+    expect(store.all.get(id)!.runCheckpoint).toBeUndefined();
+    expect(work).not.toHaveBeenCalled();
+  });
+
+  it("preserves a rebuild checkpoint and resumes it even when spec exists", async () => {
+    const pages = { [URL]: HOME };
+    const store = memoryStore();
+    const orch = new Orchestrator({ store, fetcher: fetcher(pages), runner: runner(pages) });
+    const { id } = await seededRun(orch);
+    const exp = store.all.get(id)!;
+    exp.spec = { targetUrl: URL, goal: "g", generatedAt: exp.createdAt, baselineRunIds: [], summary: "", changes: [], rebuildPhases: [] };
+    exp.runCheckpoint = { stage: "rebuild", attempt: 1 };
+    exp.createdAt = "2020-01-01T00:00:00.000Z";
+    const work = vi.spyOn(orch as unknown as { stepBody: () => Promise<void> }, "stepBody").mockResolvedValue();
+    expect((await orch.resume(id, { inline: true })).resumed).toBe(true);
+    expect(work).toHaveBeenCalledOnce();
+    expect(exp.runCheckpoint?.stage).toBe("rebuild");
+  });
+
+  it("recovers a stalled opt-in rebuild with no site from a stale spec checkpoint", async () => {
+    const pages = { [URL]: HOME };
+    const store = memoryStore();
+    const orch = new Orchestrator({ store, fetcher: fetcher(pages), runner: runner(pages) });
+    const { id } = await seededRun(orch);
+    const exp = store.all.get(id)!;
+    exp.spec = { targetUrl: URL, goal: "g", generatedAt: exp.createdAt, baselineRunIds: [], summary: "", changes: [], rebuildPhases: [] };
+    exp.status = "rebuilding";
+    exp.runCheckpoint = { stage: "spec", attempt: 4 };
+    exp.createdAt = "2020-01-01T00:00:00.000Z";
+    const work = vi.spyOn(orch as unknown as { stepBody: () => Promise<void> }, "stepBody").mockResolvedValue();
+    expect((await orch.resume(id, { inline: true })).resumed).toBe(true);
+    expect(exp.runCheckpoint).toEqual({ stage: "rebuild", attempt: 0 });
+    expect(work).toHaveBeenCalledOnce();
+  });
+
+  it("does not resume a locally locked experiment or consume a slot while a queued run waits for its lock", async () => {
+    vi.useFakeTimers();
+    process.env.REHEARSAL_MAX_CONCURRENT_RUNS = "1";
+    const pages = { [URL]: HOME };
+    const store = memoryStore();
+    const orch = new Orchestrator({ store, fetcher: fetcher(pages), runner: runner(pages) });
+    const { id } = await seededRun(orch);
+    store.all.get(id)!.createdAt = "2020-01-01T00:00:00.000Z";
+    const internal = orch as unknown as { exclusive: (id: string, stage: string, fn: () => Promise<void>) => Promise<void>; stepBody: () => Promise<void> };
+    let release!: () => void;
+    const held = internal.exclusive(id, "rebuild", () => new Promise<void>((r) => { release = r; }));
+    const work = vi.spyOn(internal, "stepBody").mockResolvedValue();
+    expect((await orch.resume(id, { inline: true })).resumed).toBe(false);
+    await orch.scheduleRun(id);
+    expect(await withRunSlot(async () => "free")).toEqual({ busy: false, value: "free" });
+    expect(work).not.toHaveBeenCalled();
+    release();
+    await held;
+    await vi.advanceTimersByTimeAsync(2000);
+    expect(work).toHaveBeenCalledOnce();
+  });
+
+  it("persists spec completion without a checkpoint before the slice finishes", async () => {
+    const pages = { [URL]: HOME };
+    const store = memoryStore();
+    const orch = new Orchestrator({ store, fetcher: fetcher(pages), runner: runner(pages) });
+    const { id } = await seededRun(orch);
+    store.all.get(id)!.runCheckpoint = { stage: "spec", attempt: 0 };
+    vi.spyOn(orch as unknown as { runCompare: () => Promise<void> }, "runCompare").mockResolvedValue();
+    const save = vi.spyOn(store, "save");
+    await orch.runStep(id);
+    expect(save.mock.calls.some(([e]) => e.spec && e.status === "complete" && !e.runCheckpoint)).toBe(true);
+  });
   it("suspends mid-crawl at the step budget and resumes the frontier", async () => {
     process.env.REHEARSAL_ALLOW_PRIVATE = "1";
     // The default crawl is plain-fetch-first; opt the ticking stub runner in via REHEARSAL_BROWSER.

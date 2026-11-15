@@ -29,7 +29,17 @@ export function presentsAccessToken(req: Request): boolean {
 }
 
 const DEFAULT_MAX_CONCURRENT_RUNS = 2;
-const g = globalThis as unknown as { __rehearsalActiveRuns?: number };
+const g = globalThis as unknown as { __rehearsalRunLeases?: Map<symbol, number> };
+
+function activeLeases(now: number): Map<symbol, number> {
+  const leases = g.__rehearsalRunLeases ??= new Map();
+  const configured = Number(process.env.REHEARSAL_RUN_SLOT_TTL_MS);
+  const ttl = Number.isFinite(configured) && configured > 0 ? configured : 330_000;
+  for (const [key, acquiredAt] of leases) {
+    if (now - acquiredAt >= ttl) leases.delete(key);
+  }
+  return leases;
+}
 
 export function maxConcurrentRuns(): number {
   const n = Number(process.env.REHEARSAL_MAX_CONCURRENT_RUNS);
@@ -37,14 +47,19 @@ export function maxConcurrentRuns(): number {
 }
 
 /** Run `work` if a pipeline slot is free; resolves `{ busy: true }` without running it when the cap is reached. */
-export async function withRunSlot<T>(work: () => Promise<T>): Promise<{ busy: true } | { busy: false; value: T }> {
-  const active = g.__rehearsalActiveRuns ?? 0;
-  if (active >= maxConcurrentRuns()) return { busy: true };
-  g.__rehearsalActiveRuns = active + 1;
+export async function withRunSlot<T>(work: () => Promise<T>, waitMs = 0, now = Date.now): Promise<{ busy: true } | { busy: false; value: T }> {
+  const deadline = now() + waitMs;
+  while (activeLeases(now()).size >= maxConcurrentRuns() && now() < deadline) {
+    await new Promise((resolve) => setTimeout(resolve, Math.min(250, deadline - now())));
+  }
+  const leases = activeLeases(now());
+  if (leases.size >= maxConcurrentRuns()) return { busy: true };
+  const lease = Symbol();
+  leases.set(lease, now());
   try {
     return { busy: false, value: await work() };
   } finally {
-    g.__rehearsalActiveRuns = (g.__rehearsalActiveRuns ?? 1) - 1;
+    leases.delete(lease);
   }
 }
 

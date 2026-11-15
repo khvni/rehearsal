@@ -82,7 +82,8 @@ export async function POST(
       }
     }
     const slot = await withRunSlot(() =>
-      runStage(orch, id, stage, new URL(req.url).origin, restart)
+      runStage(orch, id, stage, new URL(req.url).origin, restart),
+      20_000
     );
     if (slot.busy) {
       return NextResponse.json(

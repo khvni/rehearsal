@@ -1,4 +1,4 @@
-import { afterEach, describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import { NextRequest } from "next/server";
 import { hasAccess, withRunSlot } from "@/lib/access";
 import { proxy } from "@/proxy";
@@ -7,8 +7,10 @@ const TOKEN = "fixture-token-0123456789";
 const basic = (user: string, pass: string) => `Basic ${btoa(`${user}:${pass}`)}`;
 
 afterEach(() => {
+  vi.useRealTimers();
   delete process.env.REHEARSAL_ACCESS_TOKEN;
   delete process.env.REHEARSAL_MAX_CONCURRENT_RUNS;
+  delete process.env.REHEARSAL_RUN_SLOT_TTL_MS;
 });
 
 describe("shared-secret gate", () => {
@@ -40,6 +42,55 @@ describe("shared-secret gate", () => {
 });
 
 describe("pipeline concurrency cap", () => {
+  it("expires a never-released lease using an injected clock without freeing a newer lease", async () => {
+    process.env.REHEARSAL_MAX_CONCURRENT_RUNS = "1";
+    process.env.REHEARSAL_RUN_SLOT_TTL_MS = "1000";
+    let time = 0;
+    const now = () => time;
+    let oldRelease!: () => void;
+    const old = withRunSlot(() => new Promise<void>((r) => { oldRelease = r; }), 0, now);
+    time = 999;
+    expect(await withRunSlot(async () => "blocked", 0, now)).toEqual({ busy: true });
+    time = 1000;
+    let newRelease!: () => void;
+    const next = withRunSlot(() => new Promise<void>((r) => { newRelease = r; }), 0, now);
+    oldRelease();
+    await old;
+    expect(await withRunSlot(async () => "still blocked", 0, now)).toEqual({ busy: true });
+    newRelease();
+    await next;
+    expect(await withRunSlot(async () => "free", 0, now)).toEqual({ busy: false, value: "free" });
+  });
+  it("waits for capacity, propagates errors and releases the acquired slot", async () => {
+    vi.useFakeTimers();
+    process.env.REHEARSAL_MAX_CONCURRENT_RUNS = "1";
+    let release!: () => void;
+    const held = withRunSlot(() => new Promise<void>((r) => { release = r; }));
+    const work = vi.fn(async () => "queued");
+    const queued = withRunSlot(work, 20_000);
+    await vi.advanceTimersByTimeAsync(1000);
+    expect(work).not.toHaveBeenCalled();
+    release();
+    await held;
+    await vi.advanceTimersByTimeAsync(250);
+    expect(await queued).toEqual({ busy: false, value: "queued" });
+    await expect(withRunSlot(async () => { throw new Error("queued failure"); }, 20_000)).rejects.toThrow("queued failure");
+    expect(await withRunSlot(async () => "free")).toEqual({ busy: false, value: "free" });
+  });
+
+  it("returns busy after the bounded wait without invoking work", async () => {
+    vi.useFakeTimers();
+    process.env.REHEARSAL_MAX_CONCURRENT_RUNS = "1";
+    let release!: () => void;
+    const held = withRunSlot(() => new Promise<void>((r) => { release = r; }));
+    const work = vi.fn(async () => undefined);
+    const queued = withRunSlot(work, 20_000);
+    await vi.advanceTimersByTimeAsync(20_000);
+    expect(await queued).toEqual({ busy: true });
+    expect(work).not.toHaveBeenCalled();
+    release();
+    await held;
+  });
   it("rejects runs past REHEARSAL_MAX_CONCURRENT_RUNS and frees the slot afterwards", async () => {
     process.env.REHEARSAL_MAX_CONCURRENT_RUNS = "2";
     let release!: () => void;

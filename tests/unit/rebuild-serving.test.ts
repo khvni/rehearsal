@@ -113,6 +113,17 @@ afterEach(() => {
   vi.clearAllMocks();
 });
 
+it("replans a canceled planning request on a non-restart rebuild POST", async () => {
+  const exp = fixture(1);
+  exp.status = "rebuilding";
+  const { saved, llm } = setup(exp);
+  const response = await post();
+  expect(response.status).toBe(200);
+  expect(llm.complete).toHaveBeenCalled();
+  expect(saved().rebuild?.site?.pages.length).toBeGreaterThan(0);
+  expect(saved().runCheckpoint?.stage).toBe("rebuild");
+});
+
 describe("rebuilt site route", () => {
   it("serves home without a trailing slash, nested paths and the shared CSS with strict headers", async () => {
     const exp = fixture(3);
