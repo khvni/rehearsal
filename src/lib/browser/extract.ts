@@ -1,6 +1,7 @@
 import type { ActionNode } from "../contracts";
 import { createHash } from "node:crypto";
 import { Tokenizer } from "htmlparser2";
+import { decodeCloudflareEmail, emailLinkLabel, isCloudflareEmailUrl, isNonPageUrl, normalizeEmailLink } from "../site-links";
 
 interface ExtractedPage {
   title: string;
@@ -41,11 +42,14 @@ const MAX_VISIBLE_TEXT = 12_000;
 const MAX_OPEN_ELEMENTS = 256;
 /** Collected label text per element; labels are cut to 120 chars anyway. */
 const MAX_LABEL_CHARS = 240;
-const NON_HTML_EXT_RE = /\.(pdf|zip|gz|tgz|dmg|exe|msi|pkg|deb|rpm|apk|iso|csv|xlsx?|docx?|pptx?|mp4|mov|webm|mp3|wav|png|jpe?g|gif|webp|svg|ics)$/i;
 
 interface OpenElement {
   name: string;
   attribs: Record<string, string>;
+  email?: string;
+  emailLink?: string;
+  visibleStart?: number;
+  emailLabelStarts?: Map<NonNullable<OpenElement["label"]>, number>;
   /** `skipDepth` at open: text nested in a deeper script/style/svg block is not part of the label. */
   label: { text: string; full: boolean; skipDepth: number; ariaHiddenDepth: number } | undefined;
 }
@@ -76,14 +80,14 @@ export function extractPage(rawHtml: string, pageUrl: string): ExtractedPage {
   });
 
   const onAnchor = (attribs: Record<string, string>, text: string) => {
-    const href = attribs.href;
-    const label = text || normalizeLabel(attribs["aria-label"] ?? "");
+    const href = normalizeEmailLink(attribs.href ?? "", pageUrl, attribs["data-cfemail"]);
+    const label = emailLinkLabel(text || normalizeLabel(attribs["aria-label"] ?? ""), href ?? "");
     if (!href || href.startsWith("#") || href.toLowerCase().startsWith("javascript:")) return;
     const absolute = safeResolve(pageUrl, href);
     if (!absolute) return;
     if (absolute === pageWithoutHash) return; // in-page anchor (/#section on the same page)
     const external = !isSameOrigin(absolute, origin);
-    const download = NON_HTML_EXT_RE.test(new URL(absolute).pathname);
+    const download = isNonPageUrl(new URL(absolute));
     push({
       type: external || download ? "navigate" : "click",
       label,
@@ -123,8 +127,10 @@ export function extractPage(rawHtml: string, pageUrl: string): ExtractedPage {
   let skipDepth = 0;
   let ariaHiddenDepth = 0;
   let foreignDepth = 0;
+  let emailDepth = 0;
 
   const addText = (text: string) => {
+    if (emailDepth > 0) return;
     if (labels.length > 0) {
       const collapsed = text.replace(/\s+/g, " ");
       for (let i = labels.length - 1; i >= 0; i--) {
@@ -141,6 +147,13 @@ export function extractPage(rawHtml: string, pageUrl: string): ExtractedPage {
   };
 
   const closeElement = (el: OpenElement) => {
+    if (el.email) emailDepth--;
+    if (el.emailLink && el.visibleStart !== undefined) {
+      const decoded = emailLinkLabel(visible.slice(el.visibleStart).join(""), el.emailLink);
+      visible.splice(el.visibleStart, visible.length - el.visibleStart, decoded);
+      for (const [label, start] of el.emailLabelStarts ?? [])
+        label.text = label.text.slice(0, start) + emailLinkLabel(label.text.slice(start), el.emailLink);
+    }
     if (el.attribs["aria-hidden"] === "true") ariaHiddenDepth--;
     if (SKIPPED_TEXT_TAGS.has(el.name)) skipDepth--;
     if (FOREIGN_TAGS.has(el.name)) foreignDepth--;
@@ -173,10 +186,33 @@ export function extractPage(rawHtml: string, pageUrl: string): ExtractedPage {
     if (attribs["aria-hidden"] === "true") ariaHiddenDepth++;
     const el: OpenElement = { name, attribs, label: collects ? { text: "", full: false, skipDepth, ariaHiddenDepth } : undefined };
     stack.push(el);
+    if (name === "a" && attribs.href) {
+      try {
+        if (isCloudflareEmailUrl(new URL(attribs.href, pageUrl))) {
+          el.emailLink = normalizeEmailLink(attribs.href, pageUrl, attribs["data-cfemail"]);
+          el.visibleStart = visible.length;
+          el.emailLabelStarts = new Map(labels.map(label => [label, label.text.length]));
+        }
+      } catch { /* Invalid anchors are ignored by onAnchor. */ }
+    }
     if (attribs.id && el.label && !idLabels.has(attribs.id)) idLabels.set(attribs.id, el.label);
     if (el.label) labels.push(el.label);
     if (SKIPPED_TEXT_TAGS.has(name)) skipDepth++;
     if (FOREIGN_TAGS.has(name)) foreignDepth++;
+    const email = decodeCloudflareEmail(attribs["data-cfemail"]);
+    if (email) {
+      addText(email);
+      emailDepth++;
+      el.email = email;
+      for (let i = stack.length - 1; i >= 0; i--) {
+        const anchor = stack[i];
+        if (anchor.name !== "a" || !anchor.attribs.href) continue;
+        try {
+          if (isCloudflareEmailUrl(new URL(anchor.attribs.href, pageUrl))) anchor.attribs.href = `mailto:${email}`;
+        } catch { /* Invalid anchors are ignored by onAnchor. */ }
+        break;
+      }
+    }
   };
 
   const closeTag = (name: string) => {
