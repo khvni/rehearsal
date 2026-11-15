@@ -3,6 +3,7 @@ import { Experiment, ExperimentConfig, type Finding } from "../../src/lib/contra
 import { displayFindings, displaySpec, failureMessage, hasBrowserEvidence, hasUsablePreview } from "../../src/lib/presentation";
 import { makeState } from "../../src/lib/graph";
 import { generateQuestions } from "../../src/lib/intents/questions";
+import storedExperiment from "../fixtures/experiments/aie-code-2026.json";
 
 const finding: Finding = {
   findingId: "f_heading", title: "Missing page heading", category: "hierarchy", severity: "high",
@@ -21,6 +22,57 @@ function experiment() {
 }
 
 describe("honest result presentation", () => {
+  it.each(["no browser runs", "filtered question finding"])("preserves stored fix steps with %s", (scenario) => {
+    const exp = Experiment.parse(storedExperiment);
+    if (scenario === "no browser runs") {
+      exp.browserTests = [];
+      exp.findings = displayFindings(exp);
+    } else {
+      expect(exp.browserTests.length).toBeGreaterThan(0);
+      expect(displayFindings(exp).length).toBeLessThan(exp.findings.length);
+    }
+    const stored = structuredClone(exp.spec!);
+    const survivingIds = new Set(displayFindings(exp).map((f) => f.findingId));
+    const displayed = displaySpec(exp)!;
+    expect(stored.changes[0].steps).toHaveLength(4);
+    expect(displayed.changes).toEqual(stored.changes
+      .filter((c) => c.findingId && survivingIds.has(c.findingId))
+      .map((change, i) => ({ ...change, rank: i + 1 })));
+    expect(displayed.changes.map((c) => c.rank)).toEqual(displayed.changes.map((_, i) => i + 1));
+    expect(displayed.rebuildPhases).toEqual([{
+      name: "Verify the recommendations",
+      goal: "Check each concern on the original page before implementing it.",
+      items: ["Reproduce the issue in a browser.", "Apply the relevant fix on staging and test the same goal again."],
+    }]);
+    expect(exp.spec).toEqual(stored);
+    expect(displayed.summary).toContain(scenario === "no browser runs" ? "No browser verification" : "browser runs recorded");
+  });
+
+  it("ranks fallback changes after surviving stored changes without collisions", () => {
+    const exp = experiment();
+    exp.spec!.changes = [{ ...Experiment.parse(storedExperiment).spec!.changes[0], rank: 2, findingId: undefined }];
+    const displayed = displaySpec(exp)!;
+    expect(displayed.changes.map((c) => c.rank)).toEqual([1, 2]);
+    expect(displayed.changes[1].findingId).toBe(finding.findingId);
+    expect(exp.spec!.changes[0].rank).toBe(2);
+  });
+
+  it("keeps unlinked changes and empty stored steps without inventing replacements", () => {
+    const exp = Experiment.parse(storedExperiment);
+    exp.browserTests = [];
+    exp.spec!.changes[0].steps = [];
+    delete exp.spec!.changes[0].findingId;
+    const storedChange = structuredClone(exp.spec!.changes[0]);
+    expect(displaySpec(exp)!.changes[0]).toEqual(storedChange);
+  });
+
+  it("removes changes when all findings are filtered out", () => {
+    const exp = Experiment.parse(storedExperiment);
+    exp.findings = [{ ...finding, findingId: "f_unanswered-question_latest" }];
+    exp.spec!.changes = [{ ...exp.spec!.changes[0], findingId: exp.findings[0].findingId }];
+    expect(displaySpec(exp)!.changes).toEqual([]);
+  });
+
   it("omits generic question-bank findings and their aggregate while retaining contextual questions", () => {
     const exp = experiment();
     exp.questions = [{ questionId: "contact", question: "How do I contact support?", source: "context", intent: "information", answered: false, importance: 0.5, expectedEndpointClasses: [] }];

@@ -31,15 +31,17 @@ export function displaySpec(exp: Experiment): SpecReport | undefined {
   if (exp.browserTests.length > 0 && findings.length === exp.findings.length) return exp.spec;
   const severity = ["critical", "high", "medium", "low"];
   const sorted = [...findings].sort((a, b) => severity.indexOf(a.severity) - severity.indexOf(b.severity));
+  const findingIds = new Set(findings.map((f) => f.findingId));
+  const changes = exp.spec.changes.filter((c) => !c.findingId || findingIds.has(c.findingId));
   return {
     ...exp.spec,
     summary: `${findings.length} recommendations based on captured page content. ${exp.browserTests.length ? `${exp.browserTests.length} browser runs recorded; review each finding’s evidence before making changes.` : "No browser verification was completed; these are concerns to investigate, not confirmed user failures."}`,
-    changes: sorted.map((f, i) => ({
-      rank: i + 1, title: f.title, findingId: f.findingId, principle: f.principle,
+    changes: [...changes, ...sorted.filter((f) => !changes.some((c) => c.findingId === f.findingId)).map((f, i) => ({
+      rank: changes.length + i + 1, title: f.title, findingId: f.findingId, principle: f.principle,
       change: f.recommendation, steps: [f.recommendation], rationale: f.description,
       effort: exp.spec?.changes.find((c) => c.findingId === f.findingId)?.effort ?? "M",
       evidencePaths: f.evidencePaths,
-    })),
+    }))].map((change, i) => ({ ...change, rank: i + 1 })),
     rebuildPhases: [{ name: "Verify the recommendations", goal: "Check each concern on the original page before implementing it.", items: ["Reproduce the issue in a browser.", "Apply the relevant fix on staging and test the same goal again."] }],
   };
 }
