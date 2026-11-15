@@ -170,6 +170,7 @@ export default function RebuildPage() {
   }
 
   const rebuild = exp.rebuild;
+  const templatePlan = rebuild?.site?.plannerSource === "template";
   const statusColor =
     exp.status === "failed"
       ? "red"
@@ -252,7 +253,7 @@ export default function RebuildPage() {
         </div>
       ) : (
         <div className="grid">
-          {(runError || rebuild.llmError) && (
+          {(runError || templatePlan || rebuild.llmError) && (
             <div className="span-2">
               <Banner
                 status={runError ? "error" : "warning"}
@@ -261,10 +262,16 @@ export default function RebuildPage() {
                 <BannerTitle>
                   {runError
                     ? "Rebuild didn't run"
-                    : `${rebuild.llm} copy unavailable — pages use templates`}
+                    : templatePlan
+                      ? "Site plan uses a template"
+                      : `${rebuild.llm} copy unavailable — pages use templates`}
                 </BannerTitle>
                 <BannerDescription>
-                  {runError || rebuild.llmError}
+                  {runError ||
+                    (templatePlan
+                      ? rebuild.site?.plannerError ||
+                        "The AI planner did not produce a usable site plan. The build uses a deterministic plan from the captured pages."
+                      : rebuild.llmError)}
                 </BannerDescription>
               </Banner>
             </div>
