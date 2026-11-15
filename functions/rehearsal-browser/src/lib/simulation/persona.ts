@@ -1,10 +1,13 @@
 import type {
   AgentJourney,
   AgentStep,
+  Assertion,
+  AssertionProbe,
   DropOffReason,
   JevClient,
   PersonaDriver,
   PersonaJourneyArgs,
+  TrajectoryAction,
 } from "../contracts";
 import { stateHashFor } from "../browser/extract";
 import { evaluateAssertion } from "../browser/types";
@@ -34,6 +37,43 @@ const REASON_COPY: Record<string, string> = {
 const REVISIT_LIMIT = 3;
 const MAX_CONSECUTIVE_FAILURES = 2;
 const MAX_CANDIDATES = 24;
+
+/**
+ * Positive assertions only: `text-absent` passes on any page where the text is
+ * missing, so it can never count as goal evidence on its own (mirrors
+ * goalSatisfiedInState, which only honors positive kinds).
+ */
+async function goalReached(probe: AssertionProbe, assertions: Assertion[]): Promise<boolean> {
+  for (const a of assertions) {
+    if (a.kind === "text-absent") continue;
+    if (await evaluateAssertion(probe, a)) return true;
+  }
+  return false;
+}
+
+/**
+ * When a page offers more than MAX_CANDIDATES actions, prefer candidates whose
+ * label/href shares goal terms (DOM order breaks ties) so a goal CTA past the
+ * cap stays reachable. Deterministic; adds no extra Jev calls.
+ */
+function rankCandidates(candidates: TrajectoryAction[], goal: string): TrajectoryAction[] {
+  if (candidates.length <= MAX_CANDIDATES) return candidates;
+  const terms = goal
+    .toLowerCase()
+    .split(/[^a-z0-9]+/)
+    .filter((t) => t.length > 2);
+  if (terms.length === 0) return candidates.slice(0, MAX_CANDIDATES);
+  return candidates
+    .map((c, idx) => {
+      const hay = `${c.label} ${c.href ?? ""}`.toLowerCase();
+      let score = 0;
+      for (const t of terms) if (hay.includes(t)) score += 1;
+      return { c, idx, score };
+    })
+    .sort((a, b) => b.score - a.score || a.idx - b.idx)
+    .slice(0, MAX_CANDIDATES)
+    .map((x) => x.c);
+}
 
 function sample(distribution: Record<string, number>, rng: () => number, keys: string[]): string {
   const order = keys.filter((k) => k in distribution);
@@ -88,13 +128,11 @@ export async function personaJourneyLoop(
     if (i > 0 && count > 1) backtracks += 1;
 
     const probe = driver.probe();
-    for (const assertion of args.assertions) {
-      if (await evaluateAssertion(probe, assertion)) return journey("goal-reached");
-    }
+    if (await goalReached(probe, args.assertions)) return journey("goal-reached");
 
     if (count >= REVISIT_LIMIT) return journey("dropped-off", "going-in-circles");
 
-    const candidates = snap.candidates.slice(0, MAX_CANDIDATES);
+    const candidates = rankCandidates(snap.candidates, args.goal);
     if (candidates.length === 0) return journey("dropped-off", "dead-end");
 
     const criteria: Record<string, string> = Object.fromEntries(
@@ -163,6 +201,17 @@ export async function personaJourneyLoop(
     } else {
       failures = 0;
     }
+  }
+  // The final allowed action may have navigated to the goal — the loop ends
+  // before checking that destination, so check it once more before max-steps.
+  if (steps.at(-1)?.ok === true) {
+    const snap = await driver.snapshot();
+    steps.push({
+      stateHash: stateHashFor(snap.url, args.viewport.name, snap.actions, false),
+      url: snap.url,
+      title: snap.title,
+    });
+    if (await goalReached(driver.probe(), args.assertions)) return journey("goal-reached");
   }
   return journey("dropped-off", "max-steps");
 }

@@ -102,6 +102,9 @@ session via `browserbase.connect` and returns `{ok, value | error, sessionId}`.
 Publish/ops:
 - `npm run functions:publish` — builds + uploads the bundle (self-contained project in
   `functions/rehearsal-browser/` with its own lockfile; `src/lib` is vendored in).
+- `npm run functions:sync` — mirrors `src/lib` into `functions/rehearsal-browser/src/lib`;
+  run it and commit whenever `src/lib` changes. `npm run check:function-lib` (part of
+  `npm run check` and CI) fails while the copy has drifted.
 - The Stagehand extension is uploaded once
   (`browse cloud extensions upload stagehand-extension.zip`) and its id is pinned in
   `index.ts` (`BROWSERBASE_EXTENSION_ID` overrides).

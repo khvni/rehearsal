@@ -34,7 +34,7 @@ function tidyText(text: string): string {
 }
 
 /** Extract links, buttons, inputs, headings, and readable text from HTML. */
-const MAX_HTML_CHARS = 2_000_000;
+export const MAX_HTML_CHARS = 2_000_000;
 const MAX_HEADINGS = 20;
 const MAX_VISIBLE_TEXT = 12_000;
 /** Open-element stack bound: keeps close-tag matching O(1) per tag on hostile nesting. */
@@ -93,7 +93,10 @@ export function extractPage(rawHtml: string, pageUrl: string): ExtractedPage {
 
   const onButton = (attribs: Record<string, string>, text: string) => {
     const label = text || normalizeLabel(attribs["aria-label"] ?? attribs.value ?? "button");
-    push({ type: "click", label, role: "button", enabled: !("disabled" in attribs), safeToExecute: true });
+    // Buttons inside a <form> default to type=submit — never submit third-party forms.
+    const type = (attribs.type ?? "").toLowerCase();
+    const submits = type === "submit" || (type === "" && stack.some((e) => e.name === "form"));
+    push({ type: "click", label, role: "button", enabled: !("disabled" in attribs), safeToExecute: !submits });
   };
 
   const onInput = (attribs: Record<string, string>) => {
@@ -217,6 +220,34 @@ export function extractPage(rawHtml: string, pageUrl: string): ExtractedPage {
   return { title: title || pageUrl, visibleText, headings, actions };
 }
 
+const MEMO_MAX_PAGES = 32;
+
+/**
+ * `extractPage` memoized by (url, html) for one run: persona journeys
+ * re-snapshot and re-probe the same pages every step. Results are shared, so
+ * callers must not mutate them. Past `maxPages` the oldest-cached URL is dropped;
+ * pages over MAX_HTML_CHARS are not cached, so keys stay bounded.
+ */
+export function memoizedExtractPage(maxPages = MEMO_MAX_PAGES): typeof extractPage {
+  const byUrl = new Map<string, Map<string, ExtractedPage>>();
+  let size = 0;
+  return (rawHtml, pageUrl) => {
+    if (rawHtml.length > MAX_HTML_CHARS) return extractPage(rawHtml, pageUrl);
+    let byHtml = byUrl.get(pageUrl);
+    const hit = byHtml?.get(rawHtml);
+    if (hit) return hit;
+    const page = extractPage(rawHtml, pageUrl);
+    if (!byHtml) byUrl.set(pageUrl, (byHtml = new Map()));
+    byHtml.set(rawHtml, page);
+    if (++size > maxPages) {
+      const [oldestUrl, oldest] = byUrl.entries().next().value!;
+      size -= oldest.size;
+      byUrl.delete(oldestUrl);
+    }
+    return page;
+  };
+}
+
 /** True when `href` parses to exactly `origin` (a prefix test would accept https://a.com.evil.com). */
 export function isSameOrigin(href: string | undefined, origin: string): boolean {
   if (!href) return false;
@@ -274,6 +305,52 @@ export function normalizeUrl(url: string): string {
   } catch {
     return url;
   }
+}
+
+/** Params that never change the page served — dropped for site-level dedupe. */
+const TRACKING_PARAMS = /^utm_|^(fbclid|gclid|gclsrc|dclid|mc_cid|mc_eid|igshid|msclkid|_ga|ref_src)$/i;
+
+/**
+ * Site-level dedupe key: hash dropped, host lowercased (URL does that), tracking
+ * params dropped, trailing slashes folded. Real query params stay — `?page=2`
+ * is a different page.
+ */
+export function normalizeSiteUrl(raw: string): string {
+  try {
+    const u = new URL(raw);
+    u.hash = "";
+    for (const key of [...u.searchParams.keys()]) {
+      if (TRACKING_PARAMS.test(key)) u.searchParams.delete(key);
+    }
+    const path = u.pathname.replace(/\/+$/, "") || "/";
+    return `${u.protocol}//${u.host}${path === "/" && !u.search ? "" : path}${u.search}`;
+  } catch {
+    return raw.trim();
+  }
+}
+
+/**
+ * Per-page content signature for rescan's "did the site actually change" check:
+ * normalized URL + title + visible text + sorted action label/destination pairs
+ * — inputs a plain fetch can reproduce (no screenshot, metrics, or viewport).
+ * NFKC + whitespace folding smooths serialization-only diffs; `href` is in the
+ * signature so a link whose destination changed still counts as a change. Both
+ * sides must come from the same decode path — discover stores signatures from a
+ * plain-fetch probe and rescan re-fetches with the same fetcher.
+ */
+export function contentSignatureFor(
+  url: string,
+  page: { title: string; visibleText: string; actions: { label: string; role?: string; href?: string }[] },
+): string {
+  const fold = (s: string) => s.normalize("NFKC").replace(/\s+/g, " ").trim();
+  const actionSig = page.actions
+    .map((a) => `${a.role ?? "link"}:${a.label.toLowerCase()}:${a.href ?? ""}`)
+    .sort()
+    .join("|");
+  return createHash("sha1")
+    .update(`${normalizeSiteUrl(url)}|${fold(page.title)}|${fold(page.visibleText)}|${actionSig}`)
+    .digest("hex")
+    .slice(0, 16);
 }
 
 export function isVagueLabel(label: string): boolean {

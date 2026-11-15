@@ -579,8 +579,8 @@ export const RebuiltPage = z.object({
   /** One line on what changed vs the audited page. */
   summary: z.string(),
   html: z.string(),
-  /** Who produced the page content: Gemini or the deterministic template. */
-  source: z.enum(["gemini", "template"]),
+  /** Who produced the page content: an LLM provider (Gemini, OpenRouter) or the deterministic template. */
+  source: z.enum(["gemini", "openrouter", "template"]),
   bytes: z.number().int().nonnegative(),
 });
 export type RebuiltPage = z.infer<typeof RebuiltPage>;
@@ -591,8 +591,10 @@ export const RebuildResult = z.object({
   brand: BrandProfile,
   goals: z.array(RebuildGoal),
   pages: z.array(RebuiltPage),
-  /** LLM adapter name actually used ("gemini", "gemini-fixture"…). */
+  /** LLM adapter name actually used ("gemini", "openrouter", "gemini-fixture"…). */
   llm: z.string(),
+  /** Why no page got LLM copy (call budget, HTTP status, unparseable JSON); absent when the LLM was used or not configured. */
+  llmError: z.string().optional(),
 });
 export type RebuildResult = z.infer<typeof RebuildResult>;
 
@@ -626,7 +628,7 @@ export const MockupPage = z.object({
   summary: z.string(),
   /** Full HTML document; already sanitized — no scripts, no external resources. */
   html: z.string(),
-  source: z.enum(["gemini", "template"]),
+  source: z.enum(["gemini", "openrouter", "template"]),
   bytes: z.number().int().nonnegative(),
 });
 export type MockupPage = z.infer<typeof MockupPage>;
@@ -635,7 +637,7 @@ export const MockupResult = z.object({
   generatedAt: z.string(),
   brand: BrandProfile,
   pages: z.array(MockupPage),
-  /** LLM adapter name actually used ("gemini", "gemini-fixture"…). */
+  /** LLM adapter name actually used ("gemini", "openrouter", "gemini-fixture"…). */
   llm: z.string(),
 });
 export type MockupResult = z.infer<typeof MockupResult>;
@@ -644,6 +646,8 @@ export type MockupResult = z.infer<typeof MockupResult>;
 
 export const ExperimentStatus = z.enum([
   "created",
+  /** Run accepted; waiting for a pipeline slot or just kicked off as a background job. */
+  "queued",
   "discovering",
   "simulating",
   "verifying",
@@ -688,6 +692,43 @@ const StoredExperimentConfig = z
     viewports: [...new Set(c.viewports)],
   }));
 
+/** Serialized mid-crawl state — enough to rebuild the graph and continue the frontier after a suspended step. */
+export const DiscoverCheckpoint = z.object({
+  /** Index into `configuration.viewports` of the pass in flight. */
+  vpIndex: z.number().int().nonnegative(),
+  frontier: z.array(
+    z.object({
+      url: z.string(),
+      depth: z.number().int().nonnegative(),
+      from: z.object({ stateId: z.string(), actionId: z.string() }).optional(),
+    }),
+  ),
+  attempted: z.array(z.string()),
+  /** url -> canonical stateId */
+  visited: z.array(z.tuple([z.string(), z.string()])),
+  states: z.array(SiteState),
+  edges: z.array(z.object({ fromStateId: z.string(), actionId: z.string(), toStateId: z.string() })),
+  pageFailures: z.array(RunFailure),
+  providerQuotaHit: z.boolean(),
+  /** Crawl finished — still pending signature probes (urls), or the already-computed results. */
+  signaturePending: z.array(z.string()).optional(),
+  signatureDone: z.array(z.object({ url: z.string(), signature: z.string() })).default([]),
+  /** URLs from the one-time seed /v1/map expansion — carried across suspension into later viewport passes. */
+  seedExtras: z.array(z.string()).default([]),
+  /** Whether the seed map expansion already ran this run (it fires once). */
+  mapExpanded: z.boolean().default(false),
+});
+export type DiscoverCheckpoint = z.infer<typeof DiscoverCheckpoint>;
+
+/** Where a chunked run resumes: the stage to (re)start, how many step slices it has consumed, and discover's crawl state when suspended mid-stage. */
+export const RunCheckpoint = z.object({
+  stage: z.string(),
+  /** Slices consumed on `stage` — bounded by MAX_STAGE_SLICES so a stage that can't finish fails instead of looping. */
+  attempt: z.number().int().nonnegative().default(0),
+  discover: DiscoverCheckpoint.optional(),
+});
+export type RunCheckpoint = z.infer<typeof RunCheckpoint>;
+
 export const Experiment = z.object({
   id: z.string(),
   targetUrl: z.string().url(),
@@ -698,6 +739,18 @@ export const Experiment = z.object({
   personas: z.array(VisitorPersona).default([]),
   status: ExperimentStatus,
   createdAt: z.string(),
+  /** Dedupe key of `targetUrl`: lowercase host, no hash, no tracking params (utm_ and click ids), no trailing slash. */
+  siteKey: z.string().default(""),
+  /** Client-supplied dedupe key (Idempotency-Key header or `idempotencyKey` body field); a repeat returns this record. */
+  idempotencyKey: z.string().optional(),
+  /** Per-page content signatures captured by discover — rescan re-probes these URLs and compares. */
+  siteSignatures: z.array(z.object({ url: z.string(), signature: z.string() })).default([]),
+  /** Per-run token a `POST /api/internal/run-step` call must present — regenerated at each `scheduleRun`. */
+  runToken: z.string().optional(),
+  /** Origin the run was scheduled from — run-step hops target it (or `REHEARSAL_ORIGIN` when pinned), never the current request's Host. */
+  runOrigin: z.string().optional(),
+  /** Persisted progress for a suspended background run — run-step continuations and stale-run resume pick up here. */
+  runCheckpoint: RunCheckpoint.optional(),
   configuration: StoredExperimentConfig,
   assertions: z.array(Assertion).default([]),
   graph: StateGraph.optional(),
@@ -721,6 +774,22 @@ export const Experiment = z.object({
   failures: z.array(RunFailure).default([]),
 });
 export type Experiment = z.infer<typeof Experiment>;
+
+/** Result of POST /api/experiments/:id/rescan — what the content check found and whether a re-run kicked. */
+export const RescanReport = z.object({
+  /** At least one probed page's signature differs from the stored one, or a page no longer loads. */
+  changed: z.boolean(),
+  /** Pages compared (fresh probe vs stored signature). */
+  checked: z.number().int().nonnegative(),
+  /** Probed URLs whose signature changed or that no longer load. */
+  mismatches: z.array(z.string()),
+  /** A different goal was supplied — goal-derived artifacts regenerate on the kept graph. */
+  goalChanged: z.boolean(),
+  /** A background run was kicked (changed || goalChanged). */
+  restarted: z.boolean(),
+  note: z.string().optional(),
+});
+export type RescanReport = z.infer<typeof RescanReport>;
 
 /** Headless live-site run digest written by scripts/run-site.ts to docs/runs/<host>/summary.json. */
 export const SitePreflight = z.object({
@@ -749,6 +818,9 @@ export const SiteRunSummary = z.object({
     maxDepth: z.number().int(),
     viewports: z.array(Viewport.shape.name),
     seed: z.number().int(),
+    maxAgents: z.number().int().optional(),
+    maxStepsPerAgent: z.number().int().optional(),
+    maxConcurrentAgents: z.number().int().optional(),
   }),
   preflight: SitePreflight,
   robotsAllowsTarget: z.boolean(),
@@ -794,6 +866,7 @@ export type SiteRunSummary = z.infer<typeof SiteRunSummary>;
 export * from "./bench";
 export * from "./browser";
 export * from "./errors";
+export * from "./fetch";
 export * from "./metrics";
 export * from "./ports";
 export * from "./sandbox";

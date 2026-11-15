@@ -22,6 +22,12 @@ export function hasAccess(authorization: string | null, token: string): boolean 
   return colon >= 0 && safeEqual(decoded.slice(colon + 1), token);
 }
 
+/** True when REHEARSAL_ACCESS_TOKEN is configured and `req` presents it (operator access, past public-demo caps). */
+export function presentsAccessToken(req: Request): boolean {
+  const token = process.env.REHEARSAL_ACCESS_TOKEN;
+  return Boolean(token) && hasAccess(req.headers.get("authorization"), token!);
+}
+
 const DEFAULT_MAX_CONCURRENT_RUNS = 2;
 const g = globalThis as unknown as { __rehearsalActiveRuns?: number };
 
@@ -40,4 +46,29 @@ export async function withRunSlot<T>(work: () => Promise<T>): Promise<{ busy: tr
   } finally {
     g.__rehearsalActiveRuns = (g.__rehearsalActiveRuns ?? 1) - 1;
   }
+}
+
+const RUN_QUEUE_RETRY_MS = 5_000;
+
+/**
+ * `withRunSlot` for background jobs: instead of resolving busy, retries until a
+ * slot frees so an accepted run can outlive its request. The returned promise
+ * resolves when `work` finishes — on Workers it goes to `ctx.waitUntil`.
+ */
+export function enqueueRun(work: () => Promise<void>, retryMs = RUN_QUEUE_RETRY_MS): Promise<void> {
+  return new Promise<void>((resolve, reject) => {
+    const attempt = () => {
+      void withRunSlot(async () => {
+        try {
+          await work();
+          resolve();
+        } catch (e) {
+          reject(e);
+        }
+      }).then((r) => {
+        if (r.busy) setTimeout(attempt, retryMs);
+      });
+    };
+    attempt();
+  });
 }

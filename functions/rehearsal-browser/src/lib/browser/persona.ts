@@ -8,7 +8,7 @@ import type {
   TrajectoryAction,
   Viewport,
 } from "../contracts";
-import { extractPage, isSameOrigin } from "./extract";
+import { type extractPage, isSameOrigin, memoizedExtractPage } from "./extract";
 import { assertPublicUrl } from "../fetch/guards";
 
 /**
@@ -24,6 +24,7 @@ export class LivePagePersonaDriver implements PersonaDriver {
     private viewport: Viewport,
     private evidenceDir: string | undefined,
     private navTimeoutMs = 15000,
+    private extract: typeof extractPage = memoizedExtractPage(),
   ) {}
 
   private async currentUrl(): Promise<string> {
@@ -35,7 +36,7 @@ export class LivePagePersonaDriver implements PersonaDriver {
     const html = await this.page.evaluate<string>(
       "document.documentElement ? document.documentElement.outerHTML : ''",
     );
-    const extracted = extractPage(html ?? "", url);
+    const extracted = this.extract(html ?? "", url);
     const actions = extracted.actions.map((a) => ({ label: a.label, role: a.role }));
     const candidates: TrajectoryAction[] = extracted.actions
       .map((a, i) => ({ a, actionId: `act_${i}` }))

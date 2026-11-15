@@ -10,6 +10,7 @@ import type {
   RebuiltPage,
   SiteState,
 } from "../contracts";
+import { llmPageSource } from "../analysis/openrouter";
 import { logEvent } from "../telemetry";
 import { uniqueStatesByUrl } from "../graph";
 import { CTA_VERB_RE, rollupBrand } from "./brand";
@@ -309,12 +310,14 @@ export async function generateRebuild(exp: Experiment, llm: LlmClient): Promise<
   const seeds = goals.map((g) => seedPageContent(exp, g));
 
   let llmPages = new Map<string, LlmPage>();
+  let llmError: string | undefined;
   if (llm.name !== "gemini-fixture" && goals.length > 0) {
     try {
-      llmPages = parsePages(await llm.complete(buildPrompt(exp, brand, goals, seeds), { deep: true, json: true }));
+      llmPages = parsePages(await llm.complete(buildPrompt(exp, brand, goals, seeds), { deep: true, json: true, model: "rebuild" }));
     } catch (err) {
       llmPages = new Map();
-      logEvent({ experimentId: exp.id, stage: "rebuild", kind: "llm-fallback", data: { llm: llm.name, error: String(err).slice(0, 160) } });
+      llmError = String(err instanceof Error ? err.message : err).slice(0, 160);
+      logEvent({ experimentId: exp.id, stage: "rebuild", kind: "llm-fallback", data: { llm: llm.name, error: llmError } });
     }
   }
   const urls = llmPages.size ? knownUrls(exp, seeds) : new Set<string>();
@@ -335,10 +338,13 @@ export async function generateRebuild(exp: Experiment, llm: LlmClient): Promise<
       title: `${goal.title} · ${brand.name}`,
       summary: pageSummary(goal, content, exp),
       html,
-      source: merged ? "gemini" : "template",
+      source: merged ? llmPageSource(llm) : "template",
       bytes: new TextEncoder().encode(html).length,
     };
   });
 
-  return { generatedAt: new Date().toISOString(), brand, goals, pages, llm: llm.name };
+  if (!llmError && llm.name !== "gemini-fixture" && goals.length > 0 && pages.every((p) => p.source === "template")) {
+    llmError = "LLM response had no usable page for any goal";
+  }
+  return { generatedAt: new Date().toISOString(), brand, goals, pages, llm: llm.name, ...(llmError ? { llmError } : {}) };
 }
