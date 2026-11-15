@@ -630,8 +630,12 @@ export class Orchestrator {
     return this.exclusive(id, "spec", () => this.runSpec(id));
   }
 
+  /** A standalone rebuild gets a fresh call budget: the per-run budget resets only at discover, so a finished run has spent it. */
   async rebuild(id: string): Promise<Experiment> {
-    return this.exclusive(id, "rebuild", () => this.runRebuild(id));
+    return this.exclusive(id, "rebuild", async () => {
+      this.llm.resetBudget?.({ experimentId: id });
+      return this.runRebuild(id);
+    });
   }
 
   /** Stage 1 — discover states, build graph. */
@@ -1294,6 +1298,10 @@ export class Orchestrator {
     await this.update(exp, "rebuilding");
     return withTrace("rebuild", { experimentId: id, targetUrl: exp.targetUrl }, async () => {
       exp.rebuild = await generateRebuild(exp, this.llm);
+      const { pages, goals, llm, llmError } = exp.rebuild;
+      const fromLlm = pages.filter((p) => p.source !== "template").length;
+      await this.emit(id, "rebuild", "info", `Rebuilt ${pages.length} page(s) for ${goals.length} goal(s) — ${fromLlm} written by ${llm}, ${pages.length - fromLlm} from templates`);
+      if (llmError) await this.emit(id, "rebuild", "error", `Rebuild copy fell back to templates: ${llmError}`);
       await this.update(exp, "complete");
       return exp;
     });

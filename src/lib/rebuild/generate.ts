@@ -309,12 +309,14 @@ export async function generateRebuild(exp: Experiment, llm: LlmClient): Promise<
   const seeds = goals.map((g) => seedPageContent(exp, g));
 
   let llmPages = new Map<string, LlmPage>();
+  let llmError: string | undefined;
   if (llm.name !== "gemini-fixture" && goals.length > 0) {
     try {
       llmPages = parsePages(await llm.complete(buildPrompt(exp, brand, goals, seeds), { deep: true, json: true }));
     } catch (err) {
       llmPages = new Map();
-      logEvent({ experimentId: exp.id, stage: "rebuild", kind: "llm-fallback", data: { llm: llm.name, error: String(err).slice(0, 160) } });
+      llmError = String(err instanceof Error ? err.message : err).slice(0, 160);
+      logEvent({ experimentId: exp.id, stage: "rebuild", kind: "llm-fallback", data: { llm: llm.name, error: llmError } });
     }
   }
   const urls = llmPages.size ? knownUrls(exp, seeds) : new Set<string>();
@@ -340,5 +342,8 @@ export async function generateRebuild(exp: Experiment, llm: LlmClient): Promise<
     };
   });
 
-  return { generatedAt: new Date().toISOString(), brand, goals, pages, llm: llm.name };
+  if (!llmError && llm.name !== "gemini-fixture" && goals.length > 0 && pages.every((p) => p.source === "template")) {
+    llmError = "LLM response had no usable page for any goal";
+  }
+  return { generatedAt: new Date().toISOString(), brand, goals, pages, llm: llm.name, ...(llmError ? { llmError } : {}) };
 }
