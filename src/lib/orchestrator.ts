@@ -25,7 +25,7 @@ import {
 import { FirecrawlClient, PlainFetcher, looksLikeJsShell, selectFetcher } from "./fetch";
 import { assertPublicUrl, robotsAllows } from "./fetch/guards";
 import { agentVerifyEnabled, extractPage, selectRunner } from "./browser/runner";
-import { InvalidTargetError, RehearsalError, classifyError, dominantCode, formatFailure, toFailure } from "./errors";
+import { InvalidTargetError, RehearsalError, RemoteTimeoutError, classifyError, dominantCode, formatFailure, toFailure } from "./errors";
 import { GraphBuilder, makeState } from "./graph";
 import { selectJev, scoreActions } from "./decisions/jev";
 import { simulateTrajectories, selectTrajectories } from "./simulation";
@@ -744,6 +744,7 @@ export class Orchestrator {
           edges: built.edges,
           pageFailures,
           providerQuotaHit,
+          remoteTimedOut,
           signaturePending: parts.signaturePending,
           signatureDone: parts.signatureDone ?? [],
           seedExtras: [...seedExtras],
@@ -769,9 +770,11 @@ export class Orchestrator {
         throw new RehearsalError("ROBOTS_DISALLOWED", `Target path disallowed by robots.txt: ${experiment.targetUrl}`, experiment.targetUrl);
       }
 
-      // Once the browser runner is out of provider quota the crawl continues on
-      // the plain fetcher — pages lose screenshots/metrics but still map.
+      // Once the browser runner is out of provider quota, or its hosted backend
+      // timed out, the crawl continues on the plain fetcher — pages lose
+      // screenshots/metrics but still map.
       let providerQuotaHit = resumeData?.providerQuotaHit ?? false;
+      let remoteTimedOut = resumeData?.remoteTimedOut ?? false;
       // Firecrawl /v1/map runs once per run, on the seed, when it exposes few links.
       let mapExpanded = resumeData?.mapExpanded ?? false;
       const seedExtras: string[] = resumeData?.seedExtras ? [...resumeData.seedExtras] : [];
@@ -793,20 +796,22 @@ export class Orchestrator {
           const viewport = VIEWPORTS[vpName];
           const openPage = async (url: string, depth: number) => {
             if (browserCrawl) {
-              if (providerQuotaHit) return { html: await probeHtml(url) };
+              if (providerQuotaHit || remoteTimedOut) return { html: await probeHtml(url) };
               try {
                 return await this.runner.openPage(url, viewport, {
                   shotName: `${id}_${vpName}_d${depth}`,
                   scope: id,
                 });
               } catch (e) {
-                if (classifyError(e) !== "PROVIDER_QUOTA") throw e;
-                providerQuotaHit = true;
+                if (classifyError(e) === "PROVIDER_QUOTA") providerQuotaHit = true;
+                else if (e instanceof RemoteTimeoutError) remoteTimedOut = true;
+                else throw e;
+                const reason = providerQuotaHit ? "is out of provider quota" : `timed out (${errorText(e, 120)})`;
                 await this.emit(
                   id,
                   "discover",
                   "info",
-                  `${this.runner.name} is out of provider quota — continuing with ${this.probeFetcher.name} (no screenshots)`,
+                  `${this.runner.name} ${reason} — continuing with ${this.probeFetcher.name} (no screenshots)`,
                 );
                 return { html: await probeHtml(url) };
               }
@@ -981,7 +986,7 @@ export class Orchestrator {
         }
         throw new RehearsalError(
           "DISCOVERY_EMPTY",
-          `Discovery captured no states: ${pageFailures.length} of ${pageFailures.length} page loads failed with ${providerQuotaHit ? this.probeFetcher.name : crawler}.${cause}`,
+          `Discovery captured no states: ${pageFailures.length} of ${pageFailures.length} page loads failed with ${providerQuotaHit || remoteTimedOut ? this.probeFetcher.name : crawler}.${cause}`,
           experiment.targetUrl,
         );
       }

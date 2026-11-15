@@ -13,6 +13,14 @@ export class RehearsalError extends Error {
   }
 }
 
+/** The hosted browser did not finish an operation within its budget: the backend is stuck, so later calls would wait just as long. */
+export class RemoteTimeoutError extends RehearsalError {
+  constructor(message: string) {
+    super("BROWSER_REMOTE_FAILED", message);
+    this.name = "RemoteTimeoutError";
+  }
+}
+
 /** The submitted target URL was rejected (unparseable, blocked, private or unresolvable): the caller's fault, not ours. */
 export class InvalidTargetError extends Error {
   constructor(cause: unknown) {

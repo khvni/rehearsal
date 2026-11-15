@@ -729,6 +729,8 @@ export const DiscoverCheckpoint = z.object({
   edges: z.array(z.object({ fromStateId: z.string(), actionId: z.string(), toStateId: z.string() })),
   pageFailures: z.array(RunFailure),
   providerQuotaHit: z.boolean(),
+  /** The hosted browser timed out on a page, so the rest of the crawl plain-fetches instead of waiting on it again. */
+  remoteTimedOut: z.boolean().default(false),
   /** Crawl finished — still pending signature probes (urls), or the already-computed results. */
   signaturePending: z.array(z.string()).optional(),
   signatureDone: z.array(z.object({ url: z.string(), signature: z.string() })).default([]),
