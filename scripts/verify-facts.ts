@@ -140,7 +140,7 @@ const NOT_DEPLOYED: Record<string, string> = {
   REHEARSAL_MAX_CONCURRENT_RUNS: "has a code default",
   JEV_BASE_URL: "has a code default",
   JEV_MODEL: "has a code default",
-  OPENROUTER_API_KEY: "optional LLM provider (and alias of JEV_API_KEY); deploy-cloudflare.yml uploads it as a Worker secret when the Actions secret exists",
+  OPENROUTER_API_KEY: "optional LLM provider; deploy-cloudflare.yml uploads it as a Worker secret when the Actions secret exists",
   TIGERDATA_URL: "alias of DATABASE_URL",
   NEXT_PUBLIC_POSTHOG_KEY: "client-side var with a code default (alikhani.co's key)",
   NEXT_PUBLIC_POSTHOG_HOST: "client-side var with a code default",

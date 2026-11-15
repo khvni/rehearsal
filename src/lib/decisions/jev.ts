@@ -47,9 +47,9 @@ export class HttpJevClient implements JevClient {
 
   constructor(env: Record<string, string | undefined> = process.env) {
     this.baseUrl = env.JEV_BASE_URL ?? "https://api.typesafe.ai/v1/systemone";
-    this.apiKey = env.JEV_API_KEY ?? env.OPENROUTER_API_KEY ?? "";
+    this.apiKey = env.JEV_API_KEY ?? "";
     this.model = env.JEV_MODEL ?? "jev-latest";
-    if (!this.apiKey) throw new Error("HttpJevClient requires JEV_API_KEY or OPENROUTER_API_KEY");
+    if (!this.apiKey) throw new Error("HttpJevClient requires JEV_API_KEY");
   }
 
   resetBudget(): void {
@@ -260,7 +260,7 @@ export class FallbackJevClient implements JevClient {
 }
 
 export function selectJev(env: Record<string, string | undefined> = process.env): JevClient {
-  if (env.JEV_API_KEY || env.OPENROUTER_API_KEY) {
+  if (env.JEV_API_KEY) {
     try {
       return new FallbackJevClient(new HttpJevClient(env));
     } catch {
