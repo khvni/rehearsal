@@ -3,7 +3,7 @@ import { Orchestrator } from "@/lib/orchestrator";
 import { FixtureJevClient } from "@/lib/decisions/jev";
 import { FixtureLlmClient } from "@/lib/analysis/gemini";
 import { RehearsalError } from "@/lib/errors";
-import { Experiment, type BrowserRunner, type ExperimentStore, type PageFetcher } from "@/lib/contracts";
+import { Experiment, VIEWPORTS, type BrowserRunner, type ExperimentConfig, type ExperimentStore, type PageFetcher } from "@/lib/contracts";
 
 const URL = "https://site.test/";
 const PAGES: Record<string, string> = {
@@ -70,7 +70,7 @@ describe("stage re-runs replace that stage's earlier results", () => {
     process.env.REHEARSAL_ALLOW_PRIVATE = "1";
   });
 
-  async function setup() {
+  async function setup(config: Partial<ExperimentConfig> = {}) {
     const orch = new Orchestrator({
       store: memoryStore(),
       fetcher,
@@ -79,7 +79,7 @@ describe("stage re-runs replace that stage's earlier results", () => {
       jev: new FixtureJevClient(),
       llm: new FixtureLlmClient(),
     });
-    const { experiment } = await orch.startExperiment(URL, "find pricing");
+    const { experiment } = await orch.startExperiment(URL, "find pricing", config);
     return { orch, id: experiment.id };
   }
 
@@ -106,6 +106,20 @@ describe("stage re-runs replace that stage's earlier results", () => {
     expect(runIds(again).filter((r) => !r.startsWith("run_variant_"))).toEqual(
       runIds(first).filter((r) => !r.startsWith("run_variant_")),
     );
+  });
+
+  it.each(["mobile", "desktop"] as const)("compare and its re-run preserve the %s baseline viewport", async (viewport) => {
+    const { orch, id } = await setup({ viewports: [viewport] });
+    for (let attempt = 0; attempt < 2; attempt++) {
+      const compared = await orch.compare(id);
+      expect(compared.comparisons).toHaveLength(1);
+      const comparison = compared.comparisons[0];
+      const baseline = compared.browserTests.find((r) => r.runId === comparison.baselineRunId)!;
+      const variant = compared.browserTests.find((r) => r.runId === comparison.variantRunId)!;
+      expect(baseline.viewport).toEqual(VIEWPORTS[viewport]);
+      expect(variant.viewport).toEqual(baseline.viewport);
+      expect(variant.variantId).toBe(compared.variants[0].variantId);
+    }
   });
 
   it("re-running verify after compare keeps the variant run behind the fresh baseline", async () => {
