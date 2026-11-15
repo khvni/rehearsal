@@ -491,6 +491,10 @@ export class Orchestrator {
               if (!isShell(html)) return { html };
               plainFailure = "returned a JS app shell";
             } catch (e) {
+              // Structural failures (robots, egress, off-origin redirect, non-HTML) are
+              // not renderer problems — a hosted scrape must not bypass them.
+              const code = classifyError(e);
+              if (code === "ROBOTS_DISALLOWED" || code === "EGRESS_BLOCKED" || code === "REDIRECT_OFF_ORIGIN" || code === "NON_HTML") throw e;
               plainFailure = `failed (${errorText(e, 120)})`;
             }
             if (!this.firecrawl.available) {

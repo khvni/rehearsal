@@ -149,9 +149,12 @@ export function robotsAllowsPath(rules: RobotsRule[], pathAndQuery: string): boo
 
 const MAX_REDIRECTS = 3;
 
-/** `fetch` that follows at most 3 redirects itself, re-validating every hop with `assertPublicUrl`. */
-export async function fetchPublic(start: string, init: RequestInit = {}): Promise<Response> {
+/** `fetch` that follows at most 3 redirects itself, re-validating every hop with `assertPublicUrl`.
+ *  `requireSameOrigin` rejects a hop that leaves the start origin (matches the runner's
+ *  `Redirected off-origin` check). */
+export async function fetchPublic(start: string, init: RequestInit = {}, opts?: { requireSameOrigin?: boolean }): Promise<Response> {
   let target = await assertPublicUrl(start);
+  const startOrigin = target.origin;
   for (let hop = 0; ; hop++) {
     await politeDelay(target);
     const res = await fetch(target, { ...init, redirect: "manual" });
@@ -160,6 +163,9 @@ export async function fetchPublic(start: string, init: RequestInit = {}): Promis
     await res.body?.cancel();
     if (hop >= MAX_REDIRECTS) throw new Error(`Too many redirects for ${start}`);
     target = await assertPublicUrl(new URL(location, target).toString());
+    if (opts?.requireSameOrigin && target.origin !== startOrigin) {
+      throw new Error(`Redirected off-origin to ${target.origin}`);
+    }
   }
 }
 

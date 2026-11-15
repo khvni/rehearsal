@@ -102,8 +102,33 @@ describe("redirect re-validation", () => {
   it("PlainFetcher refuses a redirect to a private address without fetching it", async () => {
     const fetchMock = vi.spyOn(globalThis, "fetch").mockResolvedValue(redirectTo("http://127.0.0.1/"));
     await expect(new PlainFetcher().fetchHtml("http://93.184.216.34/robots.txt")).rejects.toThrow(/private IP/);
-    expect(fetchMock).toHaveBeenCalledTimes(1);
-    expect(fetchMock.mock.calls[0][1]?.redirect).toBe("manual");
+    // robots.txt probe + the page fetch; the private target itself is never fetched
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+    expect(fetchMock.mock.calls[1][1]?.redirect).toBe("manual");
+  });
+
+  it("PlainFetcher refuses a robots-disallowed path before fetching the page", async () => {
+    const fetchMock = vi.spyOn(globalThis, "fetch").mockImplementation(async (input) => {
+      const u = String(input);
+      if (u.endsWith("/robots.txt")) return new Response("User-agent: *\nDisallow: /admin", { status: 200 });
+      return new Response("<html></html>", { status: 200, headers: { "content-type": "text/html" } });
+    });
+    await expect(new PlainFetcher().fetchHtml("http://93.184.216.99/admin")).rejects.toThrow(/robots\.txt disallows/);
+    expect(fetchMock).toHaveBeenCalledTimes(1); // only the robots probe
+  });
+
+  it("PlainFetcher rejects off-origin redirects and non-HTML bodies", async () => {
+    vi.spyOn(globalThis, "fetch").mockImplementation(async (input) => {
+      const u = String(input);
+      if (u.endsWith("/robots.txt")) return new Response("", { status: 200 });
+      if (u.endsWith("/jump")) return redirectTo("http://93.184.216.36/admin");
+      if (u.endsWith("/data")) return new Response("{}", { status: 200, headers: { "content-type": "application/json" } });
+      return new Response("<html>ok</html>", { status: 200, headers: { "content-type": "text/html" } });
+    });
+    const f = new PlainFetcher();
+    await expect(f.fetchHtml("http://93.184.216.34/jump")).rejects.toThrow(/off-origin/);
+    await expect(f.fetchHtml("http://93.184.216.34/data")).rejects.toThrow(/Non-HTML/);
+    expect(await f.fetchHtml("http://93.184.216.34/page")).toContain("ok");
   });
 
   it("follows public redirects and caps the hop count", async () => {
