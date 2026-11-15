@@ -1,4 +1,5 @@
 import { BrandSignals, type BrandProfile, type EvaluatingPage, type SiteState } from "../contracts";
+import { Parser } from "htmlparser2";
 
 const MAX_HTML_CHARS = 2_000_000;
 const CAP = { cssVars: 64, colors: 24, fonts: 12, navItems: 20 } as const;
@@ -12,22 +13,16 @@ export const CTA_VERB_RE =
   /\b(apply|register|sign ?up|buy|book|subscribe|join|contact|demo|pricing|get started|try|download|schedule|rsvp|donate|enroll|order|watch|learn|find)\b/i;
 const UTILITY_LABEL_RE = /^\s*(search|open menu|close|menu|toggle|skip to)\b/i;
 
-// ── small parsing helpers (regex-only, like src/lib/browser/extract.ts) ─────
+// ── small parsing helpers ─────────────────────────────────────────────────
 
-function decodeEntities(s: string): string {
-  return s
-    .replace(/&nbsp;/g, " ")
-    .replace(/&lt;/g, "<")
-    .replace(/&gt;/g, ">")
-    .replace(/&quot;/g, '"')
-    .replace(/&#39;|&apos;/g, "'")
-    .replace(/&#x([0-9a-f]+);/gi, (_, h: string) => safeCodePoint(parseInt(h, 16)))
-    .replace(/&#(\d+);/g, (_, d: string) => safeCodePoint(Number(d)))
-    .replace(/&amp;/g, "&");
-}
-
-function safeCodePoint(n: number): string {
-  return Number.isFinite(n) && n > 0 && n < 0x110000 ? String.fromCodePoint(n) : "";
+function decodeEntities(s: string, attribute = false): string {
+  let text = "";
+  const parser = new Parser({
+    ontext: (chunk) => { text += chunk; },
+    onattribute: (_name, value) => { text = value; },
+  }, { decodeEntities: true });
+  parser.end(attribute ? `<span value="${s.replace(/"/g, "&quot;")}">` : s.replace(/</g, "&lt;"));
+  return text;
 }
 
 function textOf(html: string): string {
@@ -39,7 +34,7 @@ function textOf(html: string): string {
 function attr(tag: string, name: string): string | undefined {
   const m = tag.match(new RegExp(`\\s${name}\\s*=\\s*("([^"]*)"|'([^']*)'|([^\\s>]+))`, "i"));
   const v = m?.[2] ?? m?.[3] ?? m?.[4];
-  return v === undefined ? undefined : decodeEntities(v).trim();
+  return v === undefined ? undefined : decodeEntities(v, true).trim();
 }
 
 function resolveHttp(href: string | undefined, base: string): string | undefined {
@@ -316,7 +311,7 @@ export function brandSignalsFromHtml(html: string, pageUrl: string): BrandSignal
       return tag ? attr(tag, "content") || undefined : undefined;
     };
     const themeColor = metaContent("name", "theme-color");
-    const titleText = doc.match(/<title[^>]*>([\s\S]*?)<\/title>/i)?.[1]?.replace(/<[^>]*>/g, "") ?? "";
+    const titleText = textOf(doc.match(/<title[^>]*>([\s\S]*?)<\/title>/i)?.[1] ?? "");
     const siteName =
       metaContent("property", "og:site_name") ??
       metaContent("name", "og:site_name") ??

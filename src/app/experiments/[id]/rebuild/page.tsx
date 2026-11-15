@@ -82,6 +82,7 @@ export default function RebuildPage() {
   const [loadError, setLoadError] = useState("");
   const [pending, setPending] = useState(false);
   const [runError, setRunError] = useState("");
+  const [waitingForSlot, setWaitingForSlot] = useState(false);
 
   const apply = useCallback((loaded: Loaded) => {
     if (loaded.exp) setExp(loaded.exp);
@@ -120,12 +121,29 @@ export default function RebuildPage() {
         !!exp.rebuild.site?.completedAt;
       if (exp?.rebuild && !exp.rebuild.site) restart = true;
       let more = true;
+      let busyRetries = 0;
+      let waitedMs = 0;
       while (more) {
         const res = await fetch(
           `/api/experiments/${id}/rebuild${restart ? "?restart=1" : ""}`,
           { method: "POST" }
         );
-        if (!res.ok) throw new Error(await readError(res));
+        if (!res.ok) {
+          const error = await readError(res);
+          if (res.status === 429 && error.startsWith("busy:") && busyRetries < 4) {
+            const retryAfter = Number(res.headers.get("retry-after") ?? "30");
+            const delay = Number.isFinite(retryAfter) ? Math.max(1000, retryAfter * 1000) : 30_000;
+            if (waitedMs + delay <= 120_000) {
+              busyRetries++;
+              waitedMs += delay;
+              setWaitingForSlot(true);
+              await new Promise((resolve) => setTimeout(resolve, delay));
+              continue;
+            }
+          }
+          throw new Error(error);
+        }
+        setWaitingForSlot(false);
         const next = (await res.json()) as Experiment;
         setExp(next);
         more = !!next.rebuild?.site && !next.rebuild.site.completedAt;
@@ -134,6 +152,7 @@ export default function RebuildPage() {
     } catch (e) {
       setRunError(e instanceof Error ? e.message : String(e));
     } finally {
+      setWaitingForSlot(false);
       setPending(false);
       await refresh();
     }
@@ -181,7 +200,7 @@ export default function RebuildPage() {
           : "blue";
   const rebuildState: PanelState = rebuild
     ? { kind: "ready" }
-    : pending || exp.status === "rebuilding"
+    : pending
       ? { kind: "loading", label: "Rebuilding the site…" }
       : runError
         ? { kind: "error", message: runError, onRetry: () => void runRebuild() }
@@ -220,6 +239,7 @@ export default function RebuildPage() {
     <div className="page">
       <TopBar id={id} />
       {loadError && <StaleRefreshWarning onRetry={() => void refresh()} />}
+      {waitingForSlot && <p role="status">Waiting for a free build slot…</p>}
       <header className="exp-head">
         <h1>{exp.goal}</h1>
         <div className="exp-meta">

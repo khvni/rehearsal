@@ -89,6 +89,23 @@ function synthExperiment(): Experiment {
 }
 
 describe("brandSignalsFromHtml", () => {
+  it("decodes the raw title fallback before deriving the site name", () => {
+    expect(brandSignalsFromHtml("<title>Hikmah School &#8211; Islamic School</title>", URL0).siteName).toBe("Islamic School");
+    expect(brandSignalsFromHtml("<title>School &amp; Friends &rsquo; &#x1f4da;</title>", URL0).siteName).toBe("School & Friends ’ 📚");
+  });
+
+  it("decodes named and numeric entities once in meta and navigation attributes and text", () => {
+    const s = brandSignalsFromHtml(`<meta property="og:site_name" content="School &rsquo; &amp; &#8211; &amp;#8211;">
+      <header><img src="/logo.png" alt="School &rsquo; &amp; &#8211; &amp;#8211;">
+      <nav><a href="/about?a=1&amp;b=2&not=3">School &rsquo; &amp; &#8211; &amp;#8211;</a>
+      <a href="/contact" aria-label="Contact &rsquo; &amp; &#8211;"></a></nav></header>`, URL0);
+    expect(s.siteName).toBe("School ’ & – &#8211;");
+    expect(s.logoAlt).toBe("School ’ & – &#8211;");
+    expect(s.navItems[0]).toEqual({ label: "School ’ & – &#8211;", href: "https://example.com/about?a=1&b=2&not=3" });
+    expect(s.navItems[1].label).toBe("Contact ’ & –");
+    expect(brandSignalsFromHtml("", URL0).siteName).toBeUndefined();
+    expect(() => brandSignalsFromHtml("<title>&#x110000; &unknown;</title>", URL0)).not.toThrow();
+  });
   it("extracts one label from responsive duplicates and deduplicates destinations", async () => {
     const html = '<nav><a href="/about"><span>About</span><span>About</span></a><a href="/projects">Projects Projects Projects</a><a href="/articles">Articles Articles</a><a href="/talks"><span>Talks &amp; Seminars</span><span>Talks</span></a><a href="/about/">About us</a></nav>';
     const signals = brandSignalsFromHtml(html, URL0);
