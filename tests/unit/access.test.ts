@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { NextRequest } from "next/server";
-import { hasAccess, withRunSlot } from "@/lib/access";
+import { enqueueRun, hasAccess, withRunSlot } from "@/lib/access";
 import { proxy } from "@/proxy";
 import { MemoryRunLeaseStore } from "@/lib/storage";
 
@@ -8,6 +8,7 @@ const TOKEN = "fixture-token-0123456789";
 const basic = (user: string, pass: string) => `Basic ${btoa(`${user}:${pass}`)}`;
 
 afterEach(() => {
+  vi.restoreAllMocks();
   vi.useRealTimers();
   delete process.env.REHEARSAL_ACCESS_TOKEN;
   delete process.env.REHEARSAL_MAX_CONCURRENT_RUNS;
@@ -43,6 +44,31 @@ describe("shared-secret gate", () => {
 });
 
 describe("pipeline concurrency cap", () => {
+  it.each([false, true])("settles queued work only after its slot is released (failure: %s)", async (fails) => {
+    let allowRelease!: () => void;
+    const releaseGate = new Promise<void>((resolve) => { allowRelease = resolve; });
+    let workStarted!: () => void;
+    const started = new Promise<void>((resolve) => { workStarted = resolve; });
+    let released = false;
+    let settled = false;
+    const release = MemoryRunLeaseStore.prototype.release;
+    vi.spyOn(MemoryRunLeaseStore.prototype, "release").mockImplementation(async function (this: MemoryRunLeaseStore, holder) {
+      await releaseGate;
+      await release.call(this, holder);
+      released = true;
+    });
+    const queued = enqueueRun(async () => {
+      workStarted();
+      if (fails) throw new Error("work failed");
+    }).then(() => { settled = true; return "success"; }, () => { settled = true; return "failure"; });
+    await started;
+    await Promise.resolve();
+    expect(settled).toBe(false);
+    allowRelease();
+    expect(await queued).toBe(fails ? "failure" : "success");
+    expect(released).toBe(true);
+  });
+
   it("renews a held slot past its TTL and stops renewing after work finishes", async () => {
     vi.useFakeTimers();
     process.env.REHEARSAL_RUN_SLOT_TTL_MS = "300";

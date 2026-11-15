@@ -80,15 +80,9 @@ const RUN_QUEUE_RETRY_MS = 5_000;
 export function enqueueRun(work: () => Promise<void>, retryMs = RUN_QUEUE_RETRY_MS): Promise<void> {
   return new Promise<void>((resolve, reject) => {
     const attempt = () => {
-      void withRunSlot(async () => {
-        try {
-          await work();
-          resolve();
-        } catch (e) {
-          reject(e);
-        }
-      }).then((r) => {
+      void withRunSlot(work).then((r) => {
         if (r.busy) setTimeout(attempt, retryMs);
+        else resolve();
       }).catch(reject);
     };
     attempt();
