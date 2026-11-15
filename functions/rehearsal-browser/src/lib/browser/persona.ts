@@ -53,31 +53,33 @@ export class LivePagePersonaDriver implements PersonaDriver {
         await assertPublicUrl(href);
         await this.page.goto(href, { waitUntil: "domcontentloaded", timeout: this.navTimeoutMs });
       } else {
-        const submits = await this.page.evaluate<boolean>(`(() => {
-          const normalize = (text) => (text || '').replace(/\\s+/g, ' ').trim().toLowerCase();
-          const label = normalize(${JSON.stringify(action.label)});
-          const role = ${JSON.stringify(action.role === "button" ? "button" : "link")};
-          const selector = role === 'button'
-            ? 'button, input[type="button"], input[type="submit"], [role="button"]'
-            : 'a[href], [role="link"]';
-          const target = Array.from(document.querySelectorAll(selector)).find((el) => {
-            if (el.getAttribute('role') && el.getAttribute('role') !== role) return false;
-            if (el.closest('[aria-hidden="true"]') || !el.getClientRects().length ||
-                getComputedStyle(el).visibility !== 'visible') return false;
-            const labelledBy = (el.getAttribute('aria-labelledby') || '').split(/\\s+/)
-              .map((id) => document.getElementById(id)?.textContent || '').join(' ');
-            const name = labelledBy || el.getAttribute('aria-label') ||
-              (el instanceof HTMLInputElement ? el.value : el.innerText) || el.getAttribute('title');
-            return normalize(name).includes(label);
-          });
-          return target instanceof HTMLButtonElement && target.form !== null && target.type === 'submit';
-        })()`);
-        if (submits) return { ok: false, error: "Refusing to click a form submit button" };
         const loc =
           action.role === "button"
             ? this.page.getByRole("button", { name: action.label })
             : this.page.getByRole("link", { name: action.label });
-        await loc.first().click({ timeout: 8000 });
+        // Capture submit events before page handlers, independent of accessible-name resolution.
+        await this.page.evaluate(`(() => {
+          window.__rehearsalBlockedSubmit = false;
+          window.__rehearsalSubmitHandler = (event) => {
+            event.preventDefault();
+            event.stopImmediatePropagation();
+            window.__rehearsalBlockedSubmit = true;
+          };
+          window.addEventListener('submit', window.__rehearsalSubmitHandler, true);
+        })()`);
+        let blockedSubmit = false;
+        try {
+          await loc.first().click({ timeout: 8000 });
+        } finally {
+          blockedSubmit = await this.page.evaluate<boolean>(`(() => {
+            const blocked = window.__rehearsalBlockedSubmit === true;
+            window.removeEventListener('submit', window.__rehearsalSubmitHandler, true);
+            delete window.__rehearsalSubmitHandler;
+            delete window.__rehearsalBlockedSubmit;
+            return blocked;
+          })()`).catch(() => false);
+        }
+        if (blockedSubmit) return { ok: false, error: "Refusing to click a form submit button" };
         await this.page
           .waitForLoadState("domcontentloaded", { timeout: this.navTimeoutMs })
           .catch(() => undefined);

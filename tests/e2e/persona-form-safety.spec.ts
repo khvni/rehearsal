@@ -48,3 +48,25 @@ for (const hidden of [false, true]) {
     expect(page.url()).toBe("http://127.0.0.1:32123/");
   });
 }
+
+test("blocks submit after ownership changes with an indirect accessible name", async ({ page }) => {
+  const html = `${form}<span id="name" aria-label="Confirm purchase">Different text</span>
+    <button aria-labelledby="name">Confirm purchase</button>`;
+  await page.route("http://127.0.0.1:32123/**", (route) => route.fulfill({ contentType: "text/html", body: html }));
+  await page.goto("http://127.0.0.1:32123/");
+  const driver = new LivePagePersonaDriver(page, viewport, undefined);
+  const { candidates } = await driver.snapshot();
+  await page.locator("button").evaluate((el) => el.setAttribute("form", "checkout"));
+  expect(await driver.act(candidates[0])).toEqual({ ok: false, error: "Refusing to click a form submit button" });
+  expect(page.url()).toBe("http://127.0.0.1:32123/");
+});
+
+test("blocks requestSubmit before page submit handlers can navigate", async ({ page }) => {
+  const html = `<form id="checkout" onsubmit="location.href='/submitted'; return false"></form>
+    <button type="button" onclick="document.getElementById('checkout').requestSubmit()">Continue</button>`;
+  await page.route("http://127.0.0.1:32123/**", (route) => route.fulfill({ contentType: "text/html", body: html }));
+  await page.goto("http://127.0.0.1:32123/");
+  const driver = new LivePagePersonaDriver(page, viewport, undefined);
+  expect(await driver.act({ actionId: "act_0", label: "Continue", role: "button" })).toEqual({ ok: false, error: "Refusing to click a form submit button" });
+  expect(page.url()).toBe("http://127.0.0.1:32123/");
+});
