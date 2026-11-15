@@ -38,7 +38,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
         return NextResponse.json({ error: "daily run limit reached" }, { status: 429 });
       }
     }
-    const slot = await withRunSlot(() => runStage(orch, id, stage));
+    const slot = await withRunSlot(() => runStage(orch, id, stage, new URL(req.url).origin));
     if (slot.busy) {
       return NextResponse.json(
         { error: `busy: ${maxConcurrentRuns()} pipeline stages already running, retry shortly` },
@@ -59,7 +59,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
   }
 }
 
-async function runStage(orch: Orchestrator, id: string, stage: string): Promise<NextResponse> {
+async function runStage(orch: Orchestrator, id: string, stage: string, origin: string): Promise<NextResponse> {
   switch (stage) {
     case "discover":
       return NextResponse.json(await orch.discover(id));
@@ -76,7 +76,7 @@ async function runStage(orch: Orchestrator, id: string, stage: string): Promise<
     case "rebuild":
       return NextResponse.json(await orch.rebuild(id));
     case "run":
-      return NextResponse.json(await orch.runAll(id));
+      return NextResponse.json(await orch.runAll(id, { origin }));
     default:
       return NextResponse.json({ error: `unknown stage ${stage}` }, { status: 400 });
   }

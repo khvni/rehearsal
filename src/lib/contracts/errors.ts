@@ -22,6 +22,8 @@ export const ErrorCode = z.enum([
   "DISCOVERY_EMPTY",
   /** A provider (Browserbase Function/fetch, LLM, Jev) is out of quota or rate-limited — 402/429 patterns. */
   "PROVIDER_QUOTA",
+  /** A stage consumed its per-step budget cap — the runtime (e.g. Workers waitUntil) cannot finish it and retrying cannot help. */
+  "STAGE_TIMEOUT",
   "UNKNOWN",
 ]);
 export type ErrorCode = z.infer<typeof ErrorCode>;
