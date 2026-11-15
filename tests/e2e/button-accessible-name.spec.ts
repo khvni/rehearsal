@@ -1,6 +1,7 @@
 import { test, expect } from "@playwright/test";
 import { extractPage } from "../../src/lib/browser/extract";
 import { LivePagePersonaDriver } from "../../src/lib/browser/persona";
+import { StagehandRunner } from "../../src/lib/browser/stagehand";
 
 process.env.REHEARSAL_ALLOW_PRIVATE = "1";
 
@@ -27,3 +28,13 @@ for (const { name, html, label } of cases) {
     await expect(page.locator("button")).toHaveAttribute("data-clicked", "true");
   });
 }
+
+test("Stagehand replay clicks the visible aria-labelledby button without a model", async ({ page }) => {
+  await page.route("https://fixture.test/", (route) => route.fulfill({ contentType: "text/html", body: '<button hidden aria-labelledby="l">Hidden</button><button aria-labelledby="l">Menu</button><span id="l"><span aria-hidden="true">☰</span>Toggle navigation</span>' }));
+  await page.goto("https://fixture.test/");
+  await page.locator("button").nth(1).evaluate((button) => button.addEventListener("click", () => button.setAttribute("data-clicked", "true")));
+  const runner = new StagehandRunner({ env: "local" });
+  const step = (runner as unknown as { step: (sh: unknown, page: unknown, action: unknown) => Promise<void> }).step.bind(runner);
+  await step({}, page, { actionId: "a1", label: "Toggle navigation", role: "button" });
+  await expect(page.locator("button").nth(1)).toHaveAttribute("data-clicked", "true");
+});
