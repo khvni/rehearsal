@@ -615,6 +615,8 @@ export class Orchestrator {
       exp.mockup = undefined;
       exp.rebuild = undefined;
       exp.usage = undefined;
+      exp.errors = [];
+      exp.failures = [];
       await this.update(exp, "queued");
       await this.emit(
         id,
