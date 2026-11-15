@@ -158,7 +158,7 @@ export class TigerDataStore implements ExperimentStore {
   private client: import("pg").Client | null = null;
 
   constructor() {
-    this.url = process.env.TIGERDATA_URL ?? process.env.DATABASE_URL ?? "";
+    this.url = process.env.TIGERDATA_URL?.trim() || process.env.DATABASE_URL?.trim() || "";
     if (!this.url) throw new Error("TigerDataStore requires TIGERDATA_URL or DATABASE_URL");
   }
 
@@ -410,7 +410,7 @@ export function selectStore(): ExperimentStore {
   if (typeof navigator !== "undefined" && navigator.userAgent === "Cloudflare-Workers") {
     return new D1Store();
   }
-  if (process.env.TIGERDATA_URL || process.env.DATABASE_URL) {
+  if (process.env.TIGERDATA_URL?.trim() || process.env.DATABASE_URL?.trim()) {
     try {
       return new TigerDataStore();
     } catch {
