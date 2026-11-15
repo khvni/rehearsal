@@ -5,5 +5,5 @@ output "droplet_ip" {
 
 output "app_url" {
   description = "URL of the Rehearsal dashboard (allow ~10 min after apply for cloud-init to build)."
-  value       = local.fqdn == "" ? "http://${digitalocean_droplet.rehearsal.ipv4_address}" : "https://${local.fqdn}"
+  value       = "https://${local.fqdn}"
 }

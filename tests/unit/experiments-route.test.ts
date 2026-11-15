@@ -87,6 +87,17 @@ describe("POST /api/experiments", () => {
     expect(scheduleRun).not.toHaveBeenCalled();
   });
 
+  it.each([
+    { targetUrl: "https://example.com/", goal: "x".repeat(10_000) },
+    { targetUrl: `https://example.com/${"a".repeat(3000)}` },
+    { targetUrl: "https://example.com/", goal: 42 },
+  ])("returns 400 for an over-long or non-string goal/targetUrl", async (body) => {
+    const res = await post(body);
+    expect(res.status).toBe(400);
+    expect((await res.json()).error).toBe("invalid request");
+    expect(startExperiment).not.toHaveBeenCalled();
+  });
+
   it("requires targetUrl only — goal is optional and forwarded undefined", async () => {
     startExperiment.mockClear();
     const res = await post({ goal: "x" });

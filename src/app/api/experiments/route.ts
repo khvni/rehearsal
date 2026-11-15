@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { ExperimentConfig } from "@/lib/contracts";
+import { ExperimentConfig, ExperimentRequest } from "@/lib/contracts";
 import { Orchestrator } from "@/lib/orchestrator";
 import { clientIp, underDailyLimit } from "@/lib/ratelimit";
 
@@ -32,6 +32,14 @@ export async function POST(req: Request) {
     if (!body.targetUrl) {
       return NextResponse.json({ error: "targetUrl is required" }, { status: 400 });
     }
+    const request = ExperimentRequest.safeParse({ targetUrl: body.targetUrl, goal: body.goal ?? undefined });
+    if (!request.success) {
+      return NextResponse.json(
+        { error: "invalid request", issues: request.error.issues.map((i) => `${i.path.join(".")}: ${i.message}`) },
+        { status: 400 },
+      );
+    }
+    const { targetUrl, goal } = request.data;
     const parsed = ExperimentConfig.safeParse(body.config ?? {});
     if (!parsed.success) {
       return NextResponse.json(
@@ -47,7 +55,7 @@ export async function POST(req: Request) {
       const hit = await orch.getByIdempotencyKey(idempotencyKey);
       if (hit) return NextResponse.json({ ...hit, dedupe: "idempotency" });
     }
-    const siteHit = await orch.findBySite(body.targetUrl);
+    const siteHit = await orch.findBySite(targetUrl);
     if (siteHit) return NextResponse.json({ ...siteHit, dedupe: "site" });
     if (!(await underDailyLimit(`exp-create:${clientIp(req)}`, CREATE_PER_IP_PER_DAY))) {
       return NextResponse.json({ error: "daily experiment limit reached" }, { status: 429 });
@@ -59,7 +67,7 @@ export async function POST(req: Request) {
       maxAgents: Math.min(parsed.data.maxAgents, MAX_AGENTS),
       maxConcurrentAgents: Math.min(parsed.data.maxConcurrentAgents, 20),
     };
-    const result = await orch.startExperiment(body.targetUrl, body.goal, config, { idempotencyKey });
+    const result = await orch.startExperiment(targetUrl, goal, config, { idempotencyKey });
     if (!result.created) {
       return NextResponse.json({ ...result.experiment, dedupe: result.via });
     }

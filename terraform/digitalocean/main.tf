@@ -1,5 +1,5 @@
 locals {
-  fqdn = var.domain == "" ? "" : (var.subdomain == "@" ? var.domain : "${var.subdomain}.${var.domain}")
+  fqdn = var.subdomain == "@" ? var.domain : "${var.subdomain}.${var.domain}"
 
   # Only non-empty values are written to the droplet's env file.
   app_env = {
@@ -27,12 +27,13 @@ resource "digitalocean_droplet" "rehearsal" {
   tags       = ["rehearsal"]
 
   # Installs Node 22 + Chromium, builds the app, runs `next start` under systemd on
-  # 127.0.0.1:3000, and fronts it with Caddy (auto-HTTPS when a domain is set).
+  # 127.0.0.1:3000, and fronts it with Caddy (automatic HTTPS for local.fqdn; port 80 only
+  # answers ACME challenges and redirects to HTTPS).
   # No secrets here: user_data is readable from the droplet's metadata service.
   user_data = templatefile("${path.module}/cloud-init.yaml.tftpl", {
     github_repo = var.github_repo
     git_ref     = var.git_ref
-    site        = local.fqdn == "" ? ":80" : local.fqdn
+    site        = local.fqdn
   })
 }
 
@@ -111,8 +112,6 @@ resource "digitalocean_firewall" "rehearsal" {
 }
 
 resource "digitalocean_record" "rehearsal" {
-  count = var.domain == "" ? 0 : 1
-
   domain = var.domain
   type   = "A"
   name   = var.subdomain

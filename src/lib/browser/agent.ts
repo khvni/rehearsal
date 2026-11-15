@@ -1,5 +1,5 @@
 import type { AgentCandidate, AgentDriver, AgentRunArgs, BrowserRun, TrajectoryAction } from "../contracts";
-import { evaluateAssertion, shouldShoot, summarizeRun } from "./types";
+import { errorText, evaluateAssertion, shouldShoot, summarizeRun } from "./types";
 
 function observeInstruction(a: TrajectoryAction, goal: string): string {
   return `Find the ${a.role ?? "element"} labelled "${a.label}" — the next step toward: ${goal}`;
@@ -35,10 +35,10 @@ export async function agentLoop(
         steps.push(
           res.ok
             ? { actionId: a.actionId, label: a.label, ok: true }
-            : { actionId: a.actionId, label: a.label, ok: false, error: `act failed: ${res.detail ?? ""}`.slice(0, 160) },
+            : { actionId: a.actionId, label: a.label, ok: false, error: errorText(`act failed: ${res.detail ?? ""}`, 160) },
         );
       } catch (e) {
-        steps.push({ actionId: a.actionId, label: a.label, ok: false, error: String(e).slice(0, 160) });
+        steps.push({ actionId: a.actionId, label: a.label, ok: false, error: errorText(e, 160) });
       }
       if (shouldShoot(i, total)) {
         const shot = await shoot(`${args.runId}_${i + 1}`).catch(() => null);
@@ -50,7 +50,7 @@ export async function agentLoop(
       assertions.push({ assertion, passed: await evaluateAssertion(probe, assertion) });
     }
   } catch (e) {
-    errors.push(`run: ${String(e).slice(0, 200)}`);
+    errors.push(`run: ${errorText(e)}`);
   }
   return summarizeRun({ runId: args.runId, viewport: args.viewport, started, steps, assertions, errors, screenshots });
 }

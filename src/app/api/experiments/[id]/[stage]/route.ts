@@ -2,7 +2,8 @@ import { NextResponse } from "next/server";
 import { isExperimentId } from "@/lib/contracts";
 import { Orchestrator, StageInProgressError } from "@/lib/orchestrator";
 import { specToMarkdown } from "@/lib/analysis/spec";
-import { maxConcurrentRuns, withRunSlot } from "@/lib/access";
+import { maxConcurrentRuns, presentsAccessToken, withRunSlot } from "@/lib/access";
+import { underRunLimit } from "@/lib/ratelimit";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -14,11 +15,29 @@ function orchestrator(): Orchestrator {
   return g.__orchestrator;
 }
 
+const STAGES = new Set(["discover", "simulate", "verify", "analyze", "compare", "spec", "rebuild", "run"]);
+
 export async function POST(req: Request, { params }: { params: Promise<{ id: string; stage: string }> }) {
   const { id, stage } = await params;
   if (!isExperimentId(id)) return NextResponse.json({ error: "not found" }, { status: 404 });
+  if (!STAGES.has(stage)) return NextResponse.json({ error: `unknown stage ${stage}` }, { status: 400 });
   const orch = orchestrator();
   try {
+    // Public demo: every stage spends crawl/browser/LLM budget, so reruns are capped per caller and per experiment.
+    if (!presentsAccessToken(req)) {
+      const experiment = await orch.get(id);
+      if (!experiment) return NextResponse.json({ error: "not found" }, { status: 404 });
+      // `spec` marks the experiment complete before any rebuild exists, so a first rebuild stays allowed.
+      if (experiment.status === "complete" && (stage !== "rebuild" || experiment.rebuild)) {
+        return NextResponse.json(
+          { error: "experiment already complete — use Rescan site to refresh it" },
+          { status: 403 },
+        );
+      }
+      if (!(await underRunLimit(req, id))) {
+        return NextResponse.json({ error: "daily run limit reached" }, { status: 429 });
+      }
+    }
     const slot = await withRunSlot(() => runStage(orch, id, stage, new URL(req.url).origin));
     if (slot.busy) {
       return NextResponse.json(
