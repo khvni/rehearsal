@@ -30,6 +30,16 @@ describe("whole-site rebuild", () => {
     expect(result.pages[0].sourceUrl).toBe(exp.graph!.states[0].url);
     expect(llm.complete).toHaveBeenCalledWith(expect.any(String), expect.objectContaining({ model: "rebuild-planner", timeoutMs: 180000 }));
   });
+  it("derives a branded footer from non-nav pages and social/contact links", () => {
+    const exp = fixture();
+    exp.graph!.states[0].brand = { cssVars: {}, colors: [], fonts: [], siteName: "Acme", navItems: [{ label: "Home", href: "https://example.com/" }] };
+    const state = exp.graph!.states[0];
+    state.actions = ["https://www.linkedin.com/company/acme", "mailto:hello@example.com", "https://unrelated.test", "javascript:alert(1)"].map((href, i) => ({ actionId: `a${i}`, stateId: state.stateId, type: "click", label: `Link ${i}`, href, enabled: true, safeToExecute: true }));
+    const plan = deterministicPlan(exp);
+    expect(plan.footer.note).toBe("Acme");
+    expect(plan.footer.links.map(l => l.href)).toEqual(expect.arrayContaining(["/1", "https://www.linkedin.com/company/acme", "mailto:hello@example.com"]));
+    expect(plan.footer.links.some(l => ["/", "https://unrelated.test", "javascript:alert(1)"].includes(l.href))).toBe(false);
+  });
   it("rewrites same-site links, preserves fragments, leaves mail/external links and is idempotent", () => {
     const opts = { origin: "https://example.com", base: "/experiments/e/rb" };
     const html = rewriteSiteLinks('<a href="https://www.example.com/docs/?q=1#part">Docs</a><a href="/">Home</a><a href="mailto:a@b.co">Mail</a><a href="https://external.test">Out</a>', opts);

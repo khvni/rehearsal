@@ -43,6 +43,18 @@ describe("selectLlm provider order", () => {
 });
 
 describe("OpenRouterClient", () => {
+  it("uses a rebuild-only step budget and restores the configured budget on normal reset", async () => {
+    vi.stubEnv("OPENROUTER_API_KEY", "or-test");
+    vi.stubEnv("REHEARSAL_GEMINI_MAX_CALLS", "1");
+    vi.stubGlobal("fetch", vi.fn(async () => orResponse("ok")));
+    const llm = new OpenRouterClient();
+    llm.resetBudget({ maxCalls: 12 });
+    for (let i = 0; i < 12; i++) await llm.complete("page");
+    await expect(llm.complete("over")).rejects.toThrow(/budget/);
+    llm.resetBudget();
+    await llm.complete("normal");
+    await expect(llm.complete("over")).rejects.toThrow(/budget/);
+  });
   it("posts a chat completion with bearer auth and returns the message text", async () => {
     vi.stubEnv("OPENROUTER_API_KEY", "or-test");
     const fetchMock = vi.fn(async () => orResponse('{"ok":true}'));

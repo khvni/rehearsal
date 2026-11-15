@@ -651,7 +651,6 @@ export class Orchestrator {
   /** A standalone rebuild gets a fresh call budget: the per-run budget resets only at discover, so a finished run has spent it. */
   async rebuild(id: string, opts?: { restart?: boolean }): Promise<Experiment> {
     return this.exclusive(id, "rebuild", async () => {
-      this.llm.resetBudget?.({ experimentId: id });
       return this.runRebuild(id, opts);
     });
   }
@@ -1316,45 +1315,108 @@ export class Orchestrator {
   }
 
   /** Stage 7 — one durable site planning or page-building step. */
-  private async runRebuild(id: string, opts?: { restart?: boolean }): Promise<Experiment> {
+  private async runRebuild(
+    id: string,
+    opts?: { restart?: boolean },
+  ): Promise<Experiment> {
     const e = await this.mustGet(id);
     if (!e.spec) await this.runSpec(id);
     const exp = await this.mustGet(id);
     if (exp.rebuild?.site?.completedAt && !opts?.restart) return exp;
-    this.llm.resetBudget?.({ experimentId: id });
+    const planning = !exp.rebuild?.site || opts?.restart;
+    const batchSize =
+      exp.rebuild?.site?.pages
+        .filter((p) => p.status === "planned")
+        .slice(0, REBUILD_BATCH).length ?? 0;
+    this.llm.resetBudget?.({
+      experimentId: id,
+      maxCalls: planning ? 1 : batchSize * 2,
+    });
     await this.update(exp, "rebuilding");
-    return withTrace("rebuild", { experimentId: id, targetUrl: exp.targetUrl }, async () => {
-      if (!exp.rebuild?.site || opts?.restart) {
-        const site = await planSite(exp, this.llm);
-        exp.rebuild = { generatedAt: new Date().toISOString(), brand: rollupBrand(exp.graph?.states ?? []), goals: inferGoals(exp), pages: [], llm: this.llm.name, site };
-        await this.emit(id, "rebuild", "info", `Planned ${site.pages.length} site pages (${site.plannerSource})`);
-      } else {
-        const site = exp.rebuild.site;
-        const batch = site.pages.filter(p => p.status === "planned").slice(0, REBUILD_BATCH);
-        const built = await Promise.all(batch.map(p => buildPage(exp, site, p, this.llm)));
-        let total = site.pages.reduce((n, p) => n + (p.bytes ?? 0), 0);
-        let capped = total >= SITE_BYTE_CAP;
-        for (const page of built) {
-          if (capped || total + (page.bytes ?? 0) > SITE_BYTE_CAP) {
-            capped = true;
-            Object.assign(site.pages.find(p => p.path === page.path)!, { status: "failed", issues: ["size cap"] });
-          } else {
-            total += page.bytes ?? 0;
-            site.pages[site.pages.findIndex(p => p.path === page.path)] = page;
+    return withTrace(
+      "rebuild",
+      { experimentId: id, targetUrl: exp.targetUrl },
+      async () => {
+        if (!exp.rebuild?.site || opts?.restart) {
+          const site = await planSite(exp, this.llm);
+          exp.rebuild = {
+            generatedAt: new Date().toISOString(),
+            brand: rollupBrand(exp.graph?.states ?? []),
+            goals: inferGoals(exp),
+            pages: [],
+            llm: this.llm.name,
+            site,
+          };
+          await this.emit(
+            id,
+            "rebuild",
+            "info",
+            `Planned ${site.pages.length} site pages (${site.plannerSource})`,
+          );
+        } else {
+          const site = exp.rebuild.site;
+          const batch = site.pages
+            .filter((p) => p.status === "planned")
+            .slice(0, REBUILD_BATCH);
+          const built = await Promise.all(
+            batch.map((p) => buildPage(exp, site, p, this.llm)),
+          );
+          let total = site.pages.reduce((n, p) => n + (p.bytes ?? 0), 0);
+          let capped = total >= SITE_BYTE_CAP;
+          for (const page of built) {
+            if (capped || total + (page.bytes ?? 0) > SITE_BYTE_CAP) {
+              capped = true;
+              Object.assign(
+                site.pages.find((p) => p.path === page.path)!,
+                { status: "failed", issues: ["size cap"] },
+              );
+            } else {
+              total += page.bytes ?? 0;
+              site.pages[site.pages.findIndex((p) => p.path === page.path)] =
+                page;
+            }
+          }
+          if (capped)
+            for (const page of site.pages)
+              if (page.status === "planned") {
+                page.status = "failed";
+                page.issues = ["size cap"];
+              }
+          await this.emit(
+            id,
+            "rebuild",
+            "info",
+            `Built ${site.pages.filter((p) => p.status === "built").length} of ${site.pages.length} site pages`,
+          );
+          if (!site.pages.some((p) => p.status === "planned")) {
+            site.completedAt = new Date().toISOString();
+            const counts = {
+              openrouter: 0,
+              gemini: 0,
+              template: 0,
+              failed: 0,
+              issues: 0,
+            };
+            for (const p of site.pages) {
+              if (p.source) counts[p.source]++;
+              if (p.status === "failed") counts.failed++;
+              counts.issues += p.issues?.length ?? 0;
+            }
+            await this.emit(
+              id,
+              "rebuild",
+              "info",
+              `Site rebuild complete: ${JSON.stringify(counts)}`,
+            );
           }
         }
-        if (capped) for (const page of site.pages) if (page.status === "planned") { page.status = "failed"; page.issues = ["size cap"]; }
-        await this.emit(id, "rebuild", "info", `Built ${site.pages.filter(p => p.status === "built").length} of ${site.pages.length} site pages`);
-        if (!site.pages.some(p => p.status === "planned")) {
-          site.completedAt = new Date().toISOString();
-          const counts = { openrouter: 0, gemini: 0, template: 0, failed: 0, issues: 0 };
-          for (const p of site.pages) { if (p.source) counts[p.source]++; if (p.status === "failed") counts.failed++; counts.issues += p.issues?.length ?? 0; }
-          await this.emit(id, "rebuild", "info", `Site rebuild complete: ${JSON.stringify(counts)}`);
-        }
-      }
-      await this.update(exp, exp.rebuild.site?.completedAt ? "complete" : "rebuilding");
-      return exp;
-    });
+        await this.update(
+          exp,
+          exp.rebuild.site?.completedAt ? "complete" : "rebuilding",
+        );
+        return exp;
+      },
+    );
   }
 
   /** Full closed loop. */

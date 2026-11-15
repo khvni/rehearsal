@@ -22,6 +22,7 @@ export interface ExperimentStore {
 /** Optional telemetry context attached to model calls, used for per-call usage logging. */
 export interface CallContext {
   experimentId?: string;
+  maxCalls?: number;
 }
 
 /** Jev / System One decisions client (src/lib/decisions/jev.ts). */
