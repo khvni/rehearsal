@@ -1,4 +1,6 @@
+import { Tokenizer } from "htmlparser2";
 import { PageMetrics, type EvaluatingPage, type Viewport } from "../contracts";
+import { MAX_HTML_CHARS } from "./extract";
 
 /** Seconds a visitor spends per screen of scrolling while scanning (a rough glance budget). */
 export const SCROLL_SEC_PER_SCREEN = 1.5;
@@ -152,61 +154,187 @@ export async function measurePage(page: EvaluatingPage): Promise<PageMetrics | u
 
 // ── HTML-only fallback ──────────────────────────────────────────────────────
 
-const DROP_RE = /<(script|style|noscript|template|svg)\b[\s\S]*?<\/\1>/gi;
-const plain = (s: string) => s.replace(/<[^>]+>/g, " ").replace(/&nbsp;/g, " ").replace(/\s+/g, " ").trim();
-const attrOf = (tag: string, name: string) =>
-  tag.match(new RegExp(`\\b${name}\\s*=\\s*("([^"]*)"|'([^']*)'|([^\\s>]+))`, "i"))?.slice(2).find((v) => v !== undefined);
+/** Elements whose contents are not page text or controls (and are never measured). */
+const DROPPED_TAGS = new Set(["script", "style", "noscript", "template", "svg"]);
+const HEADING_LEVEL: Record<string, number> = { h1: 1, h2: 2, h3: 3, h4: 4, h5: 5, h6: 6 };
+const MAX_COLLECTED_TEXT = 240;
+const LINK_BUTTON_CLASS = /\b(btn|button|cta)\b/i;
+const BRAND_CLASS = /\b(logo|brand)/i;
+const ROLE_SEARCH_ATTRS = ["name", "placeholder", "aria-label"];
 
-function firstBlock(html: string, tag: string): string | null {
-  return html.match(new RegExp(`<${tag}\\b[^>]*>[\\s\\S]*?<\\/${tag}>`, "i"))?.[0] ?? null;
+const collapse = (s: string) => s.replace(/\s+/g, " ").trim();
+
+interface NavBlockStats {
+  state: "pending" | "open" | "done";
+  depth: number;
+  links: number;
+  hasRootLink: boolean;
+  hasBrand: boolean;
+  hasMenuToggle: boolean;
+}
+
+interface OpenAnchor {
+  text: string;
+  ariaLabel: boolean;
+  blocks: NavBlockStats[];
 }
 
 /**
  * Best-effort metrics from raw HTML when no live page is available. Layout-dependent
  * fields (height, fold, prominence, font sizes, density) are null; nav and trunk-test
  * signals come from markup conventions (header/nav, logo links, aria-current, search inputs).
+ *
+ * One linear pass with htmlparser2's Tokenizer over capped input: open-tag…close-tag
+ * regexes are quadratic on unclosed openers, which a hostile page controls.
  */
-export function metricsFromHtml(html: string, pageUrl: string, viewport: Viewport): PageMetrics {
-  const doc = html.replace(DROP_RE, " ");
+export function metricsFromHtml(rawHtml: string, pageUrl: string, viewport: Viewport): PageMetrics {
+  const html = rawHtml.length > MAX_HTML_CHARS ? rawHtml.slice(0, MAX_HTML_CHARS) : rawHtml;
   let origin = "";
   try {
     origin = new URL(pageUrl).origin;
   } catch {
     /* keep empty */
   }
+  const rootHrefs = new Set(["/", origin, `${origin}/`]);
 
-  const levels = [...doc.matchAll(/<h([1-6])\b[^>]*>([\s\S]*?)<\/h\1>/gi)].map((m) => ({ level: Number(m[1]), text: plain(m[2]) }));
+  const newBlock = (): NavBlockStats => ({ state: "pending", depth: 0, links: 0, hasRootLink: false, hasBrand: false, hasMenuToggle: false });
+  const header = newBlock();
+  const nav = newBlock();
+  const openBlocks = () => [header, nav].filter((b) => b.state === "open");
+
+  const levels: { level: number; text: string }[] = [];
+  let heading: { level: number; text: string } | undefined;
+  let anchor: OpenAnchor | undefined;
+  let dropDepth = 0;
+  let ctas = 0;
+  let hasSearch = false;
+  let hasYouAreHere = false;
+
+  const finishHeading = () => {
+    if (heading) levels.push({ level: heading.level, text: collapse(heading.text) });
+    heading = undefined;
+  };
+  const finishAnchor = () => {
+    if (!anchor) return;
+    if (collapse(anchor.text) || anchor.ariaLabel) for (const b of anchor.blocks) b.links++;
+    anchor = undefined;
+  };
+  const addText = (text: string) => {
+    if (dropDepth > 0) return;
+    if (heading && heading.text.length < MAX_COLLECTED_TEXT) heading.text += text.slice(0, MAX_COLLECTED_TEXT - heading.text.length);
+    if (anchor && anchor.text.length < MAX_COLLECTED_TEXT) anchor.text += text.slice(0, MAX_COLLECTED_TEXT - anchor.text.length);
+  };
+
+  const isUtility = (a: Record<string, string>) =>
+    "aria-expanded" in a || "aria-controls" in a || "aria-haspopup" in a ||
+    UTILITY_CONTROL_LABEL.test(`${a["aria-label"] ?? ""} ${a.title ?? ""}`);
+
+  const openTag = (name: string, a: Record<string, string>, selfClosing: boolean) => {
+    if (DROPPED_TAGS.has(name)) {
+      if (!selfClosing) dropDepth++;
+      return;
+    }
+    if (dropDepth > 0) return;
+    addText(" ");
+
+    if ((name === "header" || name === "nav")) {
+      const block = name === "header" ? header : nav;
+      if (block.state === "pending") block.state = "open";
+      if (block.state === "open") block.depth++;
+    }
+    const blocks = openBlocks();
+    if (a.class !== undefined && BRAND_CLASS.test(a.class)) for (const b of blocks) b.hasBrand = true;
+
+    const level = HEADING_LEVEL[name];
+    if (level) {
+      finishHeading();
+      heading = { level, text: "" };
+    }
+    if (name === "button") {
+      if (!isUtility(a)) ctas++;
+      const toggle = "aria-expanded" in a || "aria-controls" in a || Object.entries(a).some(([k, v]) => /menu/i.test(`${k}=${v}`));
+      if (toggle) for (const b of blocks) b.hasMenuToggle = true;
+    }
+    if (name === "input") {
+      const type = (a.type ?? "").trim().toLowerCase();
+      if (type === "submit" || type === "button") ctas++;
+      if (type === "search" || ROLE_SEARCH_ATTRS.some((k) => /search/i.test(a[k] ?? ""))) hasSearch = true;
+    }
+    if (name === "img" && (a.alt ?? "").trim()) for (const b of blocks) b.hasBrand = true;
+    if (name === "a") {
+      finishAnchor();
+      if (a.role === "button" || LINK_BUTTON_CLASS.test(a.class ?? "")) ctas++;
+      if (rootHrefs.has(a.href ?? "")) for (const b of blocks) b.hasRootLink = true;
+      if (a.href !== undefined) anchor = { text: "", ariaLabel: !!a["aria-label"], blocks };
+    }
+    if ((a.role ?? "").trim().toLowerCase() === "search") hasSearch = true;
+    if (a["aria-current"] !== undefined && a["aria-current"].trim().toLowerCase() !== "false") hasYouAreHere = true;
+    if (Object.entries(a).some(([k, v]) => /breadcrumb/i.test(k) || /breadcrumb/i.test(v))) hasYouAreHere = true;
+  };
+
+  const closeTag = (name: string) => {
+    if (DROPPED_TAGS.has(name)) {
+      if (dropDepth > 0) dropDepth--;
+      return;
+    }
+    if (dropDepth > 0) return;
+    addText(" ");
+    if (HEADING_LEVEL[name]) finishHeading();
+    if (name === "a") finishAnchor();
+    if (name === "header" || name === "nav") {
+      const block = name === "header" ? header : nav;
+      if (block.state === "open" && --block.depth === 0) block.state = "done";
+    }
+  };
+
+  let tagName = "";
+  let attribs: Record<string, string> = {};
+  let attribName = "";
+  let attribValue = "";
+  const tokenizer = new Tokenizer(
+    { xmlMode: false, decodeEntities: true },
+    {
+      ontext: (start, end) => addText(html.slice(start, end)),
+      ontextentity: (cp) => addText(String.fromCodePoint(cp)),
+      onopentagname: (start, end) => {
+        tagName = html.slice(start, end).toLowerCase();
+        attribs = {};
+      },
+      onattribname: (start, end) => {
+        attribName = html.slice(start, end).toLowerCase();
+      },
+      onattribdata: (start, end) => {
+        if (attribValue.length < MAX_COLLECTED_TEXT) attribValue += html.slice(start, Math.min(end, start + MAX_COLLECTED_TEXT));
+      },
+      onattribentity: (cp) => {
+        if (attribValue.length < MAX_COLLECTED_TEXT) attribValue += String.fromCodePoint(cp);
+      },
+      onattribend: () => {
+        if (!Object.prototype.hasOwnProperty.call(attribs, attribName)) attribs[attribName] = attribValue;
+        attribValue = "";
+      },
+      onopentagend: () => openTag(tagName, attribs, false),
+      onselfclosingtag: () => openTag(tagName, attribs, true),
+      onclosetag: (start, end) => closeTag(html.slice(start, end).toLowerCase()),
+      oncomment: () => {},
+      oncdata: () => {},
+      ondeclaration: () => {},
+      onprocessinginstruction: () => {},
+      onend: () => {
+        finishHeading();
+        finishAnchor();
+      },
+    },
+  );
+  tokenizer.write(html);
+  tokenizer.end();
+
   const skipped = new Set<string>();
   for (let i = 1; i < levels.length; i++) {
     if (levels[i].level > levels[i - 1].level + 1) skipped.add(`h${levels[i - 1].level}→h${levels[i].level}`);
   }
   const h1s = levels.filter((h) => h.level === 1);
-
-  const isUtility = (tag: string) =>
-    /aria-(expanded|controls|haspopup)/i.test(tag) ||
-    UTILITY_CONTROL_LABEL.test(`${attrOf(tag, "aria-label") ?? ""} ${attrOf(tag, "title") ?? ""}`);
-  const buttons =
-    [...doc.matchAll(/<button\b[^>]*>/gi)].filter((m) => !isUtility(m[0])).length +
-    [...doc.matchAll(/<input\b[^>]*type\s*=\s*["']?(submit|button)/gi)].length;
-  const linkButtons = [...doc.matchAll(/<a\b[^>]*>/gi)].filter((m) => {
-    const tag = m[0];
-    return attrOf(tag, "role") === "button" || /\b(btn|button|cta)\b/i.test(attrOf(tag, "class") ?? "");
-  }).length;
-
-  const linkCount = (block: string) =>
-    [...block.matchAll(/<a\b[^>]*href[^>]*>([\s\S]*?)<\/a>/gi)].filter((m) => plain(m[1]) || attrOf(m[0], "aria-label")).length;
-  const navBlock = [firstBlock(doc, "header"), firstBlock(doc, "nav")]
-    .filter((b): b is string => !!b)
-    .reduce((best, b) => (linkCount(b) > linkCount(best) ? b : best), firstBlock(doc, "header") ?? "");
-  const navItemCount = linkCount(navBlock);
-  const navButtons = [...navBlock.matchAll(/<button\b[^>]*>/gi)];
-
-  const rootHrefs = new Set(["/", origin, `${origin}/`]);
-  const hasSiteName =
-    [...navBlock.matchAll(/<a\b[^>]*>/gi)].some((m) => rootHrefs.has(attrOf(m[0], "href") ?? "")) ||
-    /class\s*=\s*["'][^"']*\b(logo|brand)/i.test(navBlock) ||
-    /<img\b[^>]*alt\s*=\s*["'][^"']+["']/i.test(navBlock);
-  const hasMenuToggle = navButtons.some((m) => /aria-(expanded|controls)|menu/i.test(m[0]));
+  const navBlock = nav.links > header.links ? nav : header;
 
   return {
     source: "html",
@@ -215,21 +343,20 @@ export function metricsFromHtml(html: string, pageUrl: string, viewport: Viewpor
     foldRatio: null,
     estimatedScrollTimeSec: null,
     aboveFoldCtaCount: null,
-    totalCtaCount: buttons + linkButtons,
+    totalCtaCount: ctas,
     primaryCtaAmbiguity: null,
     primaryCtaLabels: [],
     headingOutline: { h1Count: h1s.length, h1Text: h1s.map((h) => h.text.slice(0, 120)).filter(Boolean).slice(0, 5), skippedLevels: [...skipped] },
-    navItemCount,
+    navItemCount: navBlock.links,
     fontSizeBuckets: null,
     textDensity: null,
     largestTextIsH1: null,
     trunkTest: {
-      hasSiteName,
+      hasSiteName: navBlock.hasRootLink || navBlock.hasBrand,
       hasPageName: h1s.some((h) => h.text.length > 0),
-      hasPrimaryNav: navItemCount >= 3 || hasMenuToggle,
-      hasSearch:
-        /<input\b[^>]*(type\s*=\s*["']?search|(name|placeholder|aria-label)\s*=\s*["'][^"']*search)/i.test(doc) || /role\s*=\s*["']search/i.test(doc),
-      hasYouAreHere: /aria-current\s*=\s*(?!["']?false\b)/i.test(doc) || /breadcrumb/i.test(doc),
+      hasPrimaryNav: navBlock.links >= 3 || navBlock.hasMenuToggle,
+      hasSearch,
+      hasYouAreHere,
     },
   };
 }

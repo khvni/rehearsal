@@ -111,6 +111,27 @@ describe("metricsFromHtml (HTML-only fallback)", () => {
     expect(m.trunkTest.hasYouAreHere).toBe(false);
     expect(m.totalCtaCount).toBe(1);
   });
+
+  it("stays linear on unclosed openers (no regex backtracking)", () => {
+    for (const opener of ["<svg", "<h1", "<header", "<nav", "<a href", "<script"]) {
+      const html = `<!--${opener.repeat(250_000)}-->` + `${opener}>`.repeat(50_000);
+      const t0 = performance.now();
+      metricsFromHtml(html, "https://acme.example/", VIEWPORTS.desktop);
+      expect(performance.now() - t0, opener).toBeLessThan(500);
+    }
+  });
+
+  it("follows browser heading/anchor recovery and caps oversized input", () => {
+    const m = metricsFromHtml(
+      `<header><a href=/>Home</a><a href=/a>A<a href=/b>B</header><h1>Title<h2>Sub</h2><h4>Deep`,
+      "https://acme.example/",
+      VIEWPORTS.desktop,
+    );
+    expect(m.navItemCount).toBe(3);
+    expect(m.headingOutline).toEqual({ h1Count: 1, h1Text: ["Title"], skippedLevels: ["h2→h4"] });
+    const huge = metricsFromHtml(`<h1>Top</h1>${" ".repeat(2_100_000)}<h1>Past the cap</h1>`, "https://acme.example/", VIEWPORTS.desktop);
+    expect(huge.headingOutline.h1Text).toEqual(["Top"]);
+  });
 });
 
 describe("metricFindings rules", () => {
