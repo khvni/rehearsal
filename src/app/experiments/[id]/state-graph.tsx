@@ -187,6 +187,7 @@ export function StateGraph({
   const [hoveredEdge, setHoveredEdge] = useState<string | null>(null);
   const [expanded, setExpanded] = useState(false);
   const rf = useRef<ReactFlowInstance | null>(null);
+  const wrapper = useRef<HTMLDivElement | null>(null);
   // Layout cells and node objects persist across polls: React Flow keys its
   // measurements by node-object identity, so pooled nodes never re-measure
   // (they'd flash hidden otherwise) and existing states never move. They live
@@ -343,6 +344,29 @@ export function StateGraph({
     if (changed) pendingFit.current = true;
   }, [structureSig]);
 
+  useEffect(() => {
+    const element = wrapper.current;
+    if (!element) return;
+    let width: number | null = null;
+    let frame = 0;
+    const observer = new ResizeObserver(([entry]) => {
+      const nextWidth = entry.contentRect.width;
+      if (nextWidth <= 0 || (width !== null && Math.abs(nextWidth - width) < 1)) return;
+      const previousWidth = width;
+      width = nextWidth;
+      if (previousWidth === null) return;
+      cancelAnimationFrame(frame);
+      frame = requestAnimationFrame(() => {
+        void rf.current?.fitView({ padding: 0.1, duration: 200 });
+      });
+    });
+    observer.observe(element);
+    return () => {
+      observer.disconnect();
+      cancelAnimationFrame(frame);
+    };
+  }, []);
+
   // Fullscreen: hold the page still, let Esc leave, and reframe once the
   // wrapper has resized — two frames is enough for the ResizeObserver pass.
   useEffect(() => {
@@ -445,7 +469,7 @@ export function StateGraph({
   }, [edgeData, hovered, hoveredEdge, simulations, states]);
 
   return (
-    <div className={`graph-wrap ${viewport} ${expanded ? "expanded" : ""}`}>
+    <div ref={wrapper} className={`graph-wrap ${viewport} ${expanded ? "expanded" : ""}`}>
       <style>{liveCss}</style>
       <button
         type="button"
