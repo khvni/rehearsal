@@ -49,7 +49,7 @@ describe("POST /api/experiments", () => {
       expect.objectContaining({ trajectories: 1000, verifyCount: 8, maxStates: 50, viewports: ["desktop", "mobile"] }),
       { idempotencyKey: undefined },
     );
-    expect(scheduleRun).toHaveBeenCalledWith("exp_t");
+    expect(scheduleRun).toHaveBeenCalledWith("exp_t", { origin: "http://localhost" });
   });
 
   it("returns the existing record on a repeat Idempotency-Key without creating or scheduling", async () => {
@@ -85,6 +85,17 @@ describe("POST /api/experiments", () => {
     const data = await res.json();
     expect(data.dedupe).toBe("site");
     expect(scheduleRun).not.toHaveBeenCalled();
+  });
+
+  it.each([
+    { targetUrl: "https://example.com/", goal: "x".repeat(10_000) },
+    { targetUrl: `https://example.com/${"a".repeat(3000)}` },
+    { targetUrl: "https://example.com/", goal: 42 },
+  ])("returns 400 for an over-long or non-string goal/targetUrl", async (body) => {
+    const res = await post(body);
+    expect(res.status).toBe(400);
+    expect((await res.json()).error).toBe("invalid request");
+    expect(startExperiment).not.toHaveBeenCalled();
   });
 
   it("requires targetUrl only — goal is optional and forwarded undefined", async () => {

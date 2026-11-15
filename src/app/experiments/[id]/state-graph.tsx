@@ -16,8 +16,8 @@ import {
   type ReactFlowInstance,
 } from "@xyflow/react";
 import "@xyflow/react/dist/style.css";
-import type { StateGraph as Graph, Trajectory, Viewport } from "@/lib/contracts";
-import { CompressIcon, ExpandIcon } from "../../_components/icons";
+import type { ActionNode, StateGraph as Graph, Trajectory, Viewport } from "@/lib/contracts";
+import { ArrowIcon, CompressIcon, DocIcon, ExpandIcon, FormIcon } from "../../_components/icons";
 
 export function visitCounts(simulations: Trajectory[]): Map<string, number> {
   const counts = new Map<string, number>();
@@ -45,17 +45,48 @@ function heat(visits: number, max: number): number {
 
 const HEAT_STEPS = [0, 0.25, 0.5, 0.75, 1];
 const NODE_HEIGHT = 68;
-/** Flow dots animate only on the busiest taken edges so large graphs stay light. */
-const DOT_CAP = 60;
 /** Virtualize node/edge rendering once the graph outgrows casual browsing. */
 const VIRTUALIZE_AT = 60;
 
+/** Visited nodes run pale→saturated blue; unvisited read as plain grey. */
 function heatFill(t: number): string {
-  return `color-mix(in oklab, var(--flow-500) ${Math.round(t * 30)}%, var(--panel))`;
+  if (t <= 0) return "var(--raised)";
+  return `color-mix(in oklab, var(--flow-600) ${Math.round(12 + t * 70)}%, var(--panel))`;
 }
 
 function heatBorder(t: number): string {
-  return `color-mix(in oklab, var(--flow-700) ${Math.round(26 + t * 58)}%, var(--border))`;
+  if (t <= 0) return "var(--border)";
+  return `color-mix(in oklab, var(--flow-700) ${Math.round(35 + t * 60)}%, var(--border))`;
+}
+
+type NodeKind = "form" | "nav" | "info";
+const KIND_LABEL: Record<NodeKind, string> = {
+  form: "Form",
+  nav: "Nav",
+  info: "Info",
+};
+const KIND_HINT: Record<NodeKind, string> = {
+  form: "Requires input to proceed",
+  nav: "Links or buttons lead onward",
+  info: "Nothing onward — journeys end here",
+};
+
+/**
+ * What a state asks of a visitor: fill a field, click through, or just read.
+ * `hasOut` covers crawls that captured no controls on a state but still show
+ * journeys leaving it — that is navigational, never a dead end.
+ */
+function kindOf(actions: ActionNode[], hasOut: boolean): NodeKind {
+  const enabled = actions.filter((a) => a.enabled);
+  if (enabled.some((a) => a.type === "fill" || a.type === "select")) return "form";
+  if (enabled.some((a) => a.type === "click" || a.type === "navigate") || hasOut) return "nav";
+  return "info";
+}
+
+function KindGlyph({ kind }: { kind: NodeKind }) {
+  if (kind === "form") return <FormIcon size={11} />;
+  if (kind === "nav") return <ArrowIcon size={11} />;
+  return <DocIcon size={11} />;
 }
 
 function shortPath(url: string): string {
@@ -176,9 +207,11 @@ export function StateGraph({
     const transitions = transitionCounts(simulations);
     const ids = new Set(states.map((s) => s.stateId));
     const pairs = new Map<string, [string, string]>();
+    const outCount = new Map<string, number>();
     for (const e of graph.edges) {
       if (e.fromStateId === e.toStateId || !ids.has(e.fromStateId) || !ids.has(e.toStateId)) continue;
       pairs.set(`${e.fromStateId}>${e.toStateId}`, [e.fromStateId, e.toStateId]);
+      outCount.set(e.fromStateId, (outCount.get(e.fromStateId) ?? 0) + 1);
     }
     const maxFlow = Math.max(0, ...[...pairs.keys()].map((k) => transitions.get(k) ?? 0));
     const perRow = viewport === "mobile" ? 3 : 5;
@@ -210,7 +243,8 @@ export function StateGraph({
     const nextPool = new Map<string, Node>();
     const nodes = states.map((s) => {
       const cell = cellFor.get(s.stateId)!;
-      const key = `${viewport}|${s.stateId}|${s.url}|${s.pageTitle}|${s.stateId === rootId}|${cell.col}:${cell.row}`;
+      const kind = kindOf(s.actions, (outCount.get(s.stateId) ?? 0) > 0);
+      const key = `${viewport}|${s.stateId}|${s.url}|${s.pageTitle}|${kind}|${s.stateId === rootId}|${cell.col}:${cell.row}`;
       const kept = pool.get(key);
       if (kept) {
         nextPool.set(key, kept);
@@ -223,7 +257,7 @@ export function StateGraph({
         initialHeight: NODE_HEIGHT,
         // Stable nodes keep their measurements; a baked-in visit count would
         // go stale on the next poll, so the label stays static.
-        ariaLabel: `${shortPath(s.url)}, ${s.pageTitle}`,
+        ariaLabel: `${shortPath(s.url)}, ${s.pageTitle} — ${KIND_HINT[kind]}`,
         data: {
           label: (
             <div className="node">
@@ -231,7 +265,13 @@ export function StateGraph({
               <div className="node-title">{s.pageTitle}</div>
               <div className="node-foot">
                 <span className="node-visits" />
-                {s.stateId === rootId && <span className="node-start">Start</span>}
+                <span className="node-side">
+                  <span className={`node-kind ${kind}`} title={KIND_HINT[kind]}>
+                    <KindGlyph kind={kind} />
+                    {KIND_LABEL[kind]}
+                  </span>
+                  {s.stateId === rootId && <span className="node-start">Start</span>}
+                </span>
               </div>
             </div>
           ),
@@ -240,7 +280,11 @@ export function StateGraph({
           width,
           padding: "8px 10px",
           borderRadius: 8,
-          border: "1px solid var(--border)",
+          // Longhands, not `border` shorthand: any inline border-color —
+          // even the shorthand's implicit one — would override the
+          // per-node heat tint emitted in liveCss.
+          borderWidth: 1,
+          borderStyle: "solid" as const,
           color: "var(--text)",
           textAlign: "left" as const,
           boxShadow: "none",
@@ -252,25 +296,37 @@ export function StateGraph({
     pool.clear();
     for (const [k, v] of nextPool) pool.set(k, v);
 
-    const raw = [...pairs].map(([key, [source, target]]) => {
+    const actionById = new Map<string, ActionNode>();
+    for (const s of states) for (const a of s.actions) actionById.set(a.actionId, a);
+    // One rendered edge per state pair: several controls can share a route, so
+    // the pair gathers every actionId and leads with the first one's label.
+    const actionsByPair = new Map<string, ActionNode[]>();
+    for (const e of graph.edges) {
+      const key = `${e.fromStateId}>${e.toStateId}`;
+      const a = actionById.get(e.actionId);
+      if (a) actionsByPair.set(key, [...(actionsByPair.get(key) ?? []), a]);
+    }
+    const raw = [...pairs.keys()].map((key) => {
+      const [source, target] = pairs.get(key)!;
       const flow = transitions.get(key) ?? 0;
       const w = maxFlow > 0 && flow > 0 ? Math.log1p(flow) / Math.log1p(maxFlow) : 0;
-      return { id: key, source, target, flow, w };
+      const acts = actionsByPair.get(key) ?? [];
+      const labels = [...new Set(acts.map((a) => a.label.replace(/\s+/g, " ").trim()))];
+      return {
+        id: key,
+        source,
+        target,
+        flow,
+        w,
+        needsInput: acts.some((a) => a.type === "fill" || a.type === "select"),
+        actionLabel: labels.join(" · "),
+      };
     });
     // Both directions travelled: bow each curve to its own side of the line.
     const keySet = new Set(raw.map((e) => e.id));
-    const dotRank = new Map(
-      raw
-        .filter((e) => e.flow > 0)
-        .sort((a, b) => b.flow - a.flow || a.id.localeCompare(b.id))
-        .slice(0, DOT_CAP)
-        .map((e) => [e.id, e.w] as const),
-    );
     const edgeData = raw.map((e) => ({
       ...e,
       bidirectional: keySet.has(`${e.target}>${e.source}`),
-      dot: dotRank.has(e.id),
-      dotW: dotRank.get(e.id) ?? 0,
     }));
 
     return { nodes, edgeData };
@@ -324,30 +380,38 @@ export function StateGraph({
       const incident =
         e.id === hoveredEdge || (hovered !== null && (e.source === hovered || e.target === hovered));
       const taken = e.flow > 0;
+      // Taken edges run blue — deeper where crossing one requires input — and
+      // untaken ones stay a dashed grey, so "where can I go" vs "where do
+      // journeys actually go" stays legible at a glance.
       const stroke = incident
         ? "var(--flow-800)"
         : taken
-          ? "var(--flow-500)"
+          ? e.needsInput
+            ? "var(--flow-700)"
+            : "var(--flow-500)"
           : "var(--border-strong)";
       const opacity = hovered ? (incident ? 1 : 0.05) : taken ? 0.32 + e.w * 0.6 : 0.5;
+      const via = e.actionLabel ? `${e.actionLabel.slice(0, 28)} · ` : "";
       return {
         id: e.id,
         source: e.source,
         target: e.target,
         type: "flow" as const,
         zIndex: incident ? 1 : 0,
-        label: incident && taken ? `${e.flow.toLocaleString()} ${e.flow === 1 ? "journey" : "journeys"}` : undefined,
+        label: incident
+          ? `${via}${e.flow.toLocaleString()} ${e.flow === 1 ? "journey" : "journeys"}`
+          : undefined,
         labelStyle: { fontSize: 11, fontWeight: 500, fill: "var(--flow-800)" },
         labelShowBg: true,
         labelBgStyle: { fill: "var(--panel)", stroke: "var(--border-strong)", strokeWidth: 0.5 },
         labelBgPadding: [5, 2] as [number, number],
         labelBgBorderRadius: 4,
-        ariaLabel: `${e.source} to ${e.target}, ${e.flow} journeys`,
+        ariaLabel: `${e.actionLabel ?? "link"} from ${e.source} to ${e.target}, ${e.flow} journeys`,
         interactionWidth: 16,
-        markerEnd: { type: MarkerType.ArrowClosed, width: 13, height: 13, color: stroke },
+        markerEnd: { type: MarkerType.Arrow, width: 10, height: 10, color: stroke },
         data: {
-          dot: e.dot,
-          dotDur: Math.max(1.4, 3.4 - e.dotW * 2),
+          dot: incident && taken,
+          dotDur: Math.max(1.4, 3.4 - e.w * 2),
           curvature: e.bidirectional ? 0.34 : 0.16,
         },
         style: {
@@ -455,8 +519,19 @@ export function HeatLegend({ max }: { max: number }) {
       </span>
       <span className="sep" aria-hidden>·</span>
       <span className="legend-edge">
+        <span className="legend-line deep" aria-hidden />
+        Via form input
+      </span>
+      <span className="sep" aria-hidden>·</span>
+      <span className="legend-edge">
         <span className="legend-line" style={{ borderTopStyle: "dashed" }} aria-hidden />
         Never taken
+      </span>
+      <span className="sep" aria-hidden>·</span>
+      <span className="legend-edge">
+        <span className="node-kind form"><KindGlyph kind="form" />Form</span>
+        <span className="node-kind nav"><KindGlyph kind="nav" />Nav</span>
+        <span className="node-kind info"><KindGlyph kind="info" />Info</span>
       </span>
     </div>
   );

@@ -22,6 +22,12 @@ export function hasAccess(authorization: string | null, token: string): boolean 
   return colon >= 0 && safeEqual(decoded.slice(colon + 1), token);
 }
 
+/** True when REHEARSAL_ACCESS_TOKEN is configured and `req` presents it (operator access, past public-demo caps). */
+export function presentsAccessToken(req: Request): boolean {
+  const token = process.env.REHEARSAL_ACCESS_TOKEN;
+  return Boolean(token) && hasAccess(req.headers.get("authorization"), token!);
+}
+
 const DEFAULT_MAX_CONCURRENT_RUNS = 2;
 const g = globalThis as unknown as { __rehearsalActiveRuns?: number };
 

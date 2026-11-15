@@ -34,7 +34,7 @@ function tidyText(text: string): string {
 }
 
 /** Extract links, buttons, inputs, headings, and readable text from HTML. */
-const MAX_HTML_CHARS = 2_000_000;
+export const MAX_HTML_CHARS = 2_000_000;
 const MAX_HEADINGS = 20;
 const MAX_VISIBLE_TEXT = 12_000;
 /** Open-element stack bound: keeps close-tag matching O(1) per tag on hostile nesting. */
