@@ -13,12 +13,14 @@ describe("provider quota reporting", () => {
   afterEach(() => {
     vi.unstubAllEnvs();
     vi.unstubAllGlobals();
+    vi.restoreAllMocks();
   });
 
   it("reports a Gemini 429 to Sentry with the provider_quota tag, once per provider + status", async () => {
     vi.stubEnv("GEMINI_API_KEY", "test");
     vi.stubGlobal("fetch", vi.fn(async () => new Response('{"error":{"status":"RESOURCE_EXHAUSTED"}}', { status: 429 })));
     const { GeminiClient } = await import("@/lib/analysis/gemini");
+    vi.spyOn(Date, "now").mockReturnValue(1_700_000_000_000);
     const llm = new GeminiClient();
     llm.resetBudget({ experimentId: "exp_1" });
     await expect(llm.complete("a")).rejects.toThrow(/failed: 429/);
@@ -32,6 +34,7 @@ describe("provider quota reporting", () => {
       tags: { provider_quota: "gemini", http_status: "429", experimentId: "exp_1" },
     });
     expect(JSON.stringify(hint)).not.toContain("key=test");
+    expect(JSON.stringify(hint)).not.toContain("RESOURCE_EXHAUSTED");
   });
 
   it("reports a Browserbase Function 402 and still throws PROVIDER_QUOTA", async () => {
