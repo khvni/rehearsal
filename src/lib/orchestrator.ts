@@ -344,6 +344,13 @@ export class Orchestrator {
     if (Date.now() - (await this.lastBeat(id, exp)) < stallMs()) {
       return { experiment: exp, resumed: false };
     }
+    // Runs queued before per-run tokens existed can't authorize their own
+    // continuation hop (run-step answers 401) — give them one on resume.
+    if (!exp.runToken) {
+      exp.runToken = randomUUID();
+      exp.runOrigin ??= opts?.origin;
+      await this.store.save(Experiment.parse(exp));
+    }
     await this.emit(id, "run", "info", "Run stalled — resuming from the last checkpoint");
     const work = async (): Promise<void> => {
       try {

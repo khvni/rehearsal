@@ -218,4 +218,22 @@ describe("chunked runs", () => {
     expect((await orch.resume(id, { inline: true })).resumed).toBe(true);
     expect(calls).toBeGreaterThan(0);
   });
+
+  it("resume() mints a run token for a run queued before tokens existed, so its continuation hop is authorized", async () => {
+    process.env.REHEARSAL_ALLOW_PRIVATE = "1";
+    const pages = { [URL]: HOME };
+    const store = memoryStore();
+    const orch = new Orchestrator({ store, fetcher: fetcher(pages), runner: runner(pages) });
+    const { id } = await seededRun(orch);
+    const legacy = (await store.get(id))!;
+    legacy.runToken = undefined;
+    legacy.runOrigin = undefined;
+    legacy.createdAt = new Date(Date.now() - 10 * 60 * 1000).toISOString();
+    await store.save(legacy);
+
+    expect((await orch.resume(id, { origin: "https://rehearsal.example.com", inline: true })).resumed).toBe(true);
+    const after = (await store.get(id))!;
+    expect(after.runToken).toEqual(expect.any(String));
+    expect(after.runOrigin).toBe("https://rehearsal.example.com");
+  });
 });
