@@ -12,7 +12,8 @@ import { POST } from "@/app/api/experiments/[id]/[stage]/route";
 
 const allowance = vi.hoisted(() => vi.fn(async () => true));
 vi.mock("@/lib/ratelimit", () => ({ underRunLimit: allowance }));
-vi.mock("@/lib/access", () => ({
+vi.mock("@/lib/access", async (importOriginal) => ({
+  ...await importOriginal<typeof import("@/lib/access")>(),
   presentsAccessToken: () => false,
   maxConcurrentRuns: () => 2,
   withRunSlot: async (fn: () => Promise<unknown>) => ({
@@ -111,6 +112,17 @@ const post = (restart = false, body = false) =>
 afterEach(() => {
   delete g.__orchestrator;
   vi.clearAllMocks();
+});
+
+it("replans a canceled planning request on a non-restart rebuild POST", async () => {
+  const exp = fixture(1);
+  exp.status = "rebuilding";
+  const { saved, llm } = setup(exp);
+  const response = await post();
+  expect(response.status).toBe(200);
+  expect(llm.complete).toHaveBeenCalled();
+  expect(saved().rebuild?.site?.pages.length).toBeGreaterThan(0);
+  expect(saved().runCheckpoint?.stage).toBe("rebuild");
 });
 
 describe("rebuilt site route", () => {

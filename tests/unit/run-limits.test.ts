@@ -1,5 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { Experiment } from "@/lib/contracts";
+import { withRunSlot } from "@/lib/access";
 
 // In-memory D1 stand-in for the `rate_limits` upsert in src/lib/ratelimit.ts.
 const counts = new Map<string, number>();
@@ -77,6 +78,8 @@ beforeEach(() => {
   for (let n = 0; n < 20; n++) experiments.set(expId(n), { id: expId(n), status: "failed" });
 });
 afterEach(() => {
+  vi.useRealTimers();
+  delete process.env.REHEARSAL_MAX_CONCURRENT_RUNS;
   delete process.env.REHEARSAL_ACCESS_TOKEN;
 });
 
@@ -93,6 +96,29 @@ describe("ipBucket", () => {
 });
 
 describe("POST /api/experiments/:id/:stage daily run budget", () => {
+  it.each([true, false])("waits up to twenty seconds before a busy 429 (released: %s)", async (released) => {
+    vi.useFakeTimers();
+    process.env.REHEARSAL_MAX_CONCURRENT_RUNS = "1";
+    let release!: () => void;
+    const held = withRunSlot(() => new Promise<void>((r) => { release = r; }));
+    const response = run(expId(0));
+    await vi.advanceTimersByTimeAsync(19_000);
+    expect(runAll).not.toHaveBeenCalled();
+    if (released) {
+      release();
+      await held;
+    }
+    await vi.advanceTimersByTimeAsync(1000);
+    const res = await response;
+    expect(res.status).toBe(released ? 200 : 429);
+    if (!released) {
+      expect(res.headers.get("retry-after")).toBe("30");
+      expect((await res.json()).error).toMatch(/^busy:/);
+      expect(runAll).not.toHaveBeenCalled();
+      release();
+      await held;
+    }
+  });
   it("returns 429 once an experiment's daily run budget is spent", async () => {
     for (let i = 0; i < RUN_PER_EXPERIMENT_PER_DAY; i++) expect((await run(expId(0))).status).toBe(200);
     expect((await run(expId(0))).status).toBe(429);

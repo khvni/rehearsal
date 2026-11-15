@@ -55,7 +55,7 @@ import { generateMockup } from "./mockup";
 import { brandSignalsFromHtml, inferGoals, rollupBrand, mergeSignals } from "./rebuild";
 import { buildPage, planSite, rebuildPending, REBUILD_BATCH, SITE_BYTE_CAP } from "./rebuild/site";
 import { selectStore } from "./storage";
-import { enqueueRun } from "./access";
+import { enqueueRun, runSlotTtlMs } from "./access";
 import { continueRun, isWorkersRuntime, runInBackground } from "./jobs";
 import { captureError, logEvent, traceTags, withTrace } from "./telemetry";
 import { writeFileSync, mkdirSync } from "node:fs";
@@ -126,6 +126,10 @@ const STATUS_STAGE: Record<string, string> = {
   rebuilding: "rebuild",
 };
 
+function pipelineFinished(exp: Experiment): boolean {
+  return !!exp.spec && (exp.status === "complete" || exp.status === "rebuilding" || rebuildPending(exp));
+}
+
 interface OrchestratorDeps {
   fetcher?: PageFetcher;
   /** Plain-HTTP probe fetcher for rescan/signature checks and the default discover crawl — must never be provider-quota-bound. Defaults to PlainFetcher. */
@@ -165,7 +169,7 @@ function isCrawlableLink(href: string | undefined, origin: string): boolean {
 
 export class Orchestrator {
   /** Experiment id -> stage currently running. One run per experiment at a time. */
-  private running = new Map<string, string>();
+  private running = new Map<string, { stage: string; acquiredAt: number }>();
   private fetcher: PageFetcher;
   private probeFetcher: PageFetcher;
   private firecrawl: FirecrawlClientPort;
@@ -369,12 +373,12 @@ export class Orchestrator {
     await this.emit(id, "run", "info", "Run queued — the pipeline continues in the background");
     const work = async (): Promise<void> => {
       try {
-        await this.exclusiveWhenFree(id, "run", () => this.stepBody(id, { origin: opts?.origin }));
+        await this.exclusiveWhenFree(id, "run", () => enqueueRun(() => this.stepBody(id, { origin: opts?.origin })));
       } catch (e) {
         await this.markFailed(id, e).catch(() => undefined);
       }
     };
-    await runInBackground(() => enqueueRun(work));
+    await runInBackground(work);
     return exp;
   }
 
@@ -385,10 +389,21 @@ export class Orchestrator {
    */
   async resume(id: string, opts?: { origin?: string; inline?: boolean }): Promise<{ experiment: Experiment; resumed: boolean }> {
     const exp = await this.mustGet(id);
-    const inFlight = IN_FLIGHT_STATUSES.includes(exp.status) || exp.runCheckpoint !== undefined;
+    if (this.activeRun(id)) return { experiment: exp, resumed: false };
+    const pendingRebuild = exp.status === "rebuilding" || rebuildPending(exp);
+    if (!pendingRebuild && pipelineFinished(exp) && exp.runCheckpoint && exp.runCheckpoint.stage !== "rebuild") {
+      exp.runCheckpoint = undefined;
+      await this.store.save(Experiment.parse(exp));
+      return { experiment: exp, resumed: false };
+    }
+    const inFlight = pendingRebuild || IN_FLIGHT_STATUSES.includes(exp.status) || exp.runCheckpoint !== undefined;
     if (!inFlight) return { experiment: exp, resumed: false };
     if (Date.now() - (await this.lastBeat(id, exp)) < stallMs()) {
       return { experiment: exp, resumed: false };
+    }
+    if (pendingRebuild && exp.runCheckpoint?.stage !== "rebuild") {
+      exp.runCheckpoint = { stage: "rebuild", attempt: 0 };
+      await this.store.save(Experiment.parse(exp));
     }
     // Runs queued before per-run tokens existed can't authorize their own
     // continuation hop (run-step answers 401) — give them one on resume.
@@ -400,15 +415,15 @@ export class Orchestrator {
     await this.emit(id, "run", "info", "Run stalled — resuming from the last checkpoint");
     const work = async (): Promise<void> => {
       try {
-        await this.exclusiveWhenFree(id, "run", () => this.stepBody(id, { origin: opts?.origin }));
+        await this.exclusiveWhenFree(id, "run", () => enqueueRun(() => this.stepBody(id, { origin: opts?.origin })));
       } catch (e) {
         await this.markFailed(id, e).catch(() => undefined);
       }
     };
     // `inline` callers are already inside a background task (a GET's waitUntil):
     // the slice and its continuation hop must run in that task, not a nested one.
-    if (opts?.inline) await enqueueRun(work);
-    else await runInBackground(() => enqueueRun(work));
+    if (opts?.inline) await work();
+    else await runInBackground(work);
     return { experiment: exp, resumed: true };
   }
 
@@ -462,6 +477,11 @@ export class Orchestrator {
   ): Promise<{ suspended: boolean }> {
     const exp = await this.mustGet(id);
     const cp = exp.runCheckpoint;
+    if (pipelineFinished(exp) && cp && cp.stage !== "rebuild") {
+      exp.runCheckpoint = undefined;
+      await this.store.save(Experiment.parse(exp));
+      return { suspended: false };
+    }
     const stageFns: Record<string, (deadline?: number, resume?: DiscoverCheckpoint, attempt?: number) => Promise<unknown>> = {
       discover: (d, r, a) => this.runDiscover(id, { deadline: d, now: opts?.now, resume: r, attempt: a }),
       simulate: () => this.runSimulate(id),
@@ -1365,6 +1385,7 @@ export class Orchestrator {
       } catch {
         /* spec.md lives on the experiment payload regardless */
       }
+      if (exp.runCheckpoint?.stage !== "rebuild") exp.runCheckpoint = undefined;
       await this.update(exp, "complete");
       return exp;
     });
@@ -1407,6 +1428,8 @@ export class Orchestrator {
         };
       }
       exp.status = status;
+      if (status === "rebuilding") exp.runCheckpoint = { stage: "rebuild", attempt: 0 };
+      else if (exp.runCheckpoint?.stage === "rebuild") exp.runCheckpoint = undefined;
       await this.store.save(Experiment.parse(exp));
     };
     await saveStep("rebuilding");
@@ -1583,14 +1606,24 @@ Return ASSERTION_LIST as a JSON array of {kind, value, selector?}.`,
 
   /** Claim the run lock synchronously (before any await) so two concurrent calls can't both pass. */
   private async exclusive<T>(id: string, stage: string, fn: () => Promise<T>): Promise<T> {
-    const active = this.running.get(id);
-    if (active) throw new StageInProgressError(id, active);
-    this.running.set(id, stage);
+    const active = this.activeRun(id);
+    if (active) throw new StageInProgressError(id, active.stage);
+    const lock = { stage, acquiredAt: Date.now() };
+    this.running.set(id, lock);
     try {
       return await fn();
     } finally {
-      this.running.delete(id);
+      if (this.running.get(id) === lock) this.running.delete(id);
     }
+  }
+
+  private activeRun(id: string) {
+    const active = this.running.get(id);
+    if (active && Date.now() - active.acquiredAt >= runSlotTtlMs()) {
+      this.running.delete(id);
+      return undefined;
+    }
+    return active;
   }
 
   /** `exclusive` for background jobs: waits for the in-flight run to finish instead of throwing 409-style. */
