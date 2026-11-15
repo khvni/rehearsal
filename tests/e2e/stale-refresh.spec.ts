@@ -54,7 +54,7 @@ for (const surface of ["detail", "rebuild"] as const) {
     // Wait for the intercepted response to be applied before capturing evidence.
     await page.clock.runFor(100);
     if (process.env.REFRESH_SHOTS) {
-      await page.screenshot({ path: `${process.env.REFRESH_SHOTS}/${surface}-${process.env.REFRESH_BEFORE ? "before" : "after"}.png`, animations: "disabled" });
+      await page.screenshot({ path: `${process.env.REFRESH_SHOTS}/${surface}-${process.env.REFRESH_BEFORE ? "before" : "after"}.png`, animations: "disabled", style: "nextjs-portal { display: none !important; }" });
     }
     const warning = page.getByRole("alert").filter({ hasText: "Couldn't refresh this experiment" });
     await expect(warning).toBeVisible();
@@ -68,6 +68,9 @@ for (const surface of ["detail", "rebuild"] as const) {
     offline = false;
     await warning.getByRole("button", { name: "Retry", exact: true }).click();
     await expect(warning).toHaveCount(0);
+    if (process.env.REFRESH_SHOTS && surface === "detail") {
+      await page.screenshot({ path: `${process.env.REFRESH_SHOTS}/detail-recovered.png`, animations: "disabled", style: "nextjs-portal { display: none !important; }" });
+    }
     offline = true;
     await page.clock.fastForward(2000);
     await expect(warning).toBeVisible();

@@ -4,7 +4,7 @@ import { Banner, BannerAction, BannerActions, BannerDescription, BannerTitle } f
 
 export function StaleRefreshWarning({ onRetry }: { onRetry: () => void }) {
   return (
-    <Banner status="warning" contrast="high">
+    <Banner status="warning" contrast="high" className="run-banner">
       <BannerTitle>Couldn&apos;t refresh this experiment</BannerTitle>
       <BannerDescription>Showing data from the last successful load. It may be out of date.</BannerDescription>
       <BannerActions>
