@@ -339,13 +339,15 @@ Return FINDINGS_JSON: {"findings": [{"title","category"(rubric key),"severity","
         title: String(f.title),
         category: pick(RubricDimension, f.category, "clarity"),
         severity: pick(Severity, f.severity, "medium"),
-        evidenceType: pick(EvidenceType, f.evidenceType, "hypothesis"),
+        evidenceType: f.evidenceType === "verified-failure"
+          ? "reproducible-concern"
+          : pick(EvidenceType, f.evidenceType, "hypothesis"),
         description: String(f.description),
         affectedStates: states.slice(0, 3).map((s) => s.stateId),
         affectedActions: [],
         evidencePaths: [],
         recommendation: typeof f.recommendation === "string" ? f.recommendation : "",
-        verificationStatus: f.evidenceType === "verified-failure" ? "verified" : "unverified",
+        verificationStatus: "unverified",
         principle: pick(
           UsabilityPrinciple,
           typeof f.principle === "string" ? (LEGACY_PRINCIPLES[f.principle] ?? f.principle) : f.principle,
