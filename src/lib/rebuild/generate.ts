@@ -10,7 +10,7 @@ import type {
   RebuiltPage,
   SiteState,
 } from "../contracts";
-import { llmPageSource } from "../analysis/router";
+import { llmPageSource } from "../analysis/openrouter";
 import { logEvent } from "../telemetry";
 import { uniqueStatesByUrl } from "../graph";
 import { CTA_VERB_RE, rollupBrand } from "./brand";
@@ -313,7 +313,7 @@ export async function generateRebuild(exp: Experiment, llm: LlmClient): Promise<
   let llmError: string | undefined;
   if (llm.name !== "gemini-fixture" && goals.length > 0) {
     try {
-      llmPages = parsePages(await llm.complete(buildPrompt(exp, brand, goals, seeds), { deep: true, json: true }));
+      llmPages = parsePages(await llm.complete(buildPrompt(exp, brand, goals, seeds), { deep: true, json: true, model: "rebuild" }));
     } catch (err) {
       llmPages = new Map();
       llmError = String(err instanceof Error ? err.message : err).slice(0, 160);
