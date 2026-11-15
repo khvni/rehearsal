@@ -1248,20 +1248,21 @@ export class Orchestrator {
         await this.update(exp, "created");
         return exp;
       };
-      if (!exp.browserTests.some((r) => !r.variantId)) return notReplayed("no baseline browser run to compare against");
+      const baseline = exp.browserTests.find((r) => !r.variantId);
+      if (!baseline) return notReplayed("no baseline browser run to compare against");
       await this.emit(id, "compare", "browser", `Applied variant ${variant.variantId}: ${variant.patches.length} patch(es)`);
 
       const actionById = new Map((exp.graph?.states ?? []).flatMap((st) => st.actions.map((a) => [a.actionId, a] as const)));
       const baselineActions =
-        exp.browserTests[0]?.steps.map((s) => {
+        baseline.steps.map((s) => {
           const a = s.actionId ? actionById.get(s.actionId) : undefined;
           return { actionId: s.actionId, label: s.label, href: a?.href, role: a?.role };
-        }) ?? [];
+        });
       let run: BrowserRun;
       try {
         run = await this.runner.runTrajectory({
           url: exp.targetUrl,
-          viewport: VIEWPORTS.desktop,
+          viewport: baseline.viewport,
           actions: baselineActions,
           assertions: exp.assertions,
           runId: `run_variant_${variant.variantId}`,
@@ -1276,7 +1277,6 @@ export class Orchestrator {
       run.variantId = variant.variantId;
       exp.browserTests.push(run);
 
-      const baseline = exp.browserTests.find((r) => !r.variantId) ?? exp.browserTests[0];
       // Backtracks = successful steps that revisit a URL (query kept, hash dropped) already seen, incl. the start page.
       const backtracksOf = (r: typeof run) => {
         const pageKey = (u: string) => u.split("#")[0].replace(/\/$/, "");
