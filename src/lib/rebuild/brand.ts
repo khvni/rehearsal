@@ -101,7 +101,14 @@ function dedupeNav(items: { label: string; href: string }[], cap: number): { lab
   for (const it of items) {
     const label = cleanNavLabel(it.label);
     const key = it.href.replace(/\/$/, "");
-    if (!label || !it.href || seen.has(key)) continue;
+    if (!label || !it.href) continue;
+    if (seen.has(key)) {
+      const existing = out.find((item) => item.href.replace(/\/$/, "") === key)!;
+      const tail = existing.label.slice(label.length).trim();
+      if (tail.length >= 2 && existing.label.startsWith(label) && label.toLowerCase().startsWith(tail.toLowerCase()))
+        existing.label = label;
+      continue;
+    }
     seen.add(key);
     out.push({ ...it, label });
     if (out.length >= cap) break;

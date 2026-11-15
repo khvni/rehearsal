@@ -93,8 +93,8 @@ describe("brandSignalsFromHtml", () => {
     const html = '<nav><a href="/about"><span>About</span><span>About</span></a><a href="/projects">Projects Projects Projects</a><a href="/articles">Articles Articles</a><a href="/talks"><span>Talks &amp; Seminars</span><span>Talks</span></a><a href="/about/">About us</a></nav>';
     const signals = brandSignalsFromHtml(html, URL0);
     expect(signals.navItems.map(n => n.label)).toEqual(["About", "Projects", "Articles", "Talks & Seminars"]);
-    const captured = await captureBrand({ evaluate: async () => ({ cssVars: {}, colors: [], fonts: [], navItems: [{ label: "About About", href: URL0 + "about" }, { label: "About", href: URL0 + "about/" }] }) });
-    expect(captured?.navItems).toEqual([{ label: "About", href: URL0 + "about" }]);
+    const captured = await captureBrand({ evaluate: async () => ({ cssVars: {}, colors: [], fonts: [], navItems: [{ label: "About About", href: URL0 + "about" }, { label: "About", href: URL0 + "about/" }, { label: "Talks & Seminars Talks", href: URL0 + "talks" }, { label: "Talks & Seminars", href: URL0 + "talks/" }] }) });
+    expect(captured?.navItems).toEqual([{ label: "About", href: URL0 + "about" }, { label: "Talks & Seminars", href: URL0 + "talks" }]);
   });
   it("parses declared signals from a small page", () => {
     const s = brandSignalsFromHtml(SYNTH_HTML, URL0);
