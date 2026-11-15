@@ -13,6 +13,7 @@ import {
 } from "../contracts";
 import { RehearsalError } from "../errors";
 import { assertPublicUrl } from "../fetch/guards";
+import { isQuotaStatus, reportProviderQuota } from "../telemetry";
 import { errorText } from "./types";
 import { mkdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
@@ -109,7 +110,8 @@ export class BrowserbaseFunctionRunner implements BrowserRunner {
     }
     if (!res.ok) {
       const body = errorText(await res.text().catch(() => ""), 200);
-      if (res.status === 402 || res.status === 429) {
+      if (isQuotaStatus(res.status)) {
+        await reportProviderQuota("browserbase", res.status, `Function API ${path.split("/").slice(0, 4).join("/")}`);
         throw new RehearsalError(
           "PROVIDER_QUOTA",
           `Browserbase Function API ${res.status === 402 ? "402 Payment Required" : "429 Too Many Requests"} on ${path.split("/").slice(0, 4).join("/")}: provider quota exhausted — ${body}`,

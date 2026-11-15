@@ -1,5 +1,5 @@
 import type { CallContext, LlmClient, RebuiltPage, TokenUsage } from "../contracts";
-import { logEvent } from "../telemetry";
+import { isQuotaStatus, logEvent, reportProviderQuota } from "../telemetry";
 
 /**
  * OpenRouter client — OpenAI-compatible chat completions at openrouter.ai, used for
@@ -67,7 +67,10 @@ export class OpenRouterClient implements LlmClient {
       }),
       signal: AbortSignal.timeout(90000),
     });
-    if (!res.ok) throw new Error(`OpenRouter ${models[0]} failed: ${res.status}`);
+    if (!res.ok) {
+      if (isQuotaStatus(res.status)) await reportProviderQuota("openrouter", res.status, models[0], { experimentId: this.experimentId, stage: "llm" });
+      throw new Error(`OpenRouter ${models[0]} failed: ${res.status}`);
+    }
     const data = (await res.json()) as ChatCompletion;
     if (data.error) throw new Error(`OpenRouter ${models[0]} failed: ${data.error.code ?? "error"}`);
     const usage = data.usage;

@@ -26,6 +26,7 @@ Devin Automation (factory/automations.yaml `sentry-first-responder`) ──► P
 | Stage span | `withTrace` around every `PIPELINE_STAGES` stage | span `rehearsal.<stage>`, op `rehearsal.stage`, attributes `stage`, `experimentId`, `targetHost` |
 | Stage exception | `withTrace` catch (incl. robots.txt-blocked targets) | `captureException`, level `error`, tags `stage`, `experimentId`, `targetHost` |
 | Page failure | `discover` per-page catch (timeouts, unlocker/browser blocks) | `captureException`, level `warning`, same tags + `url`/`depth`/`viewport` extras |
+| Provider quota/billing | `reportProviderQuota` on a 402/429 from Gemini, OpenRouter, Browserbase (Function + Fetch API), Firecrawl, Jev, even when the caller falls back | `captureException` `ProviderQuotaError`, level `error`, tags `provider_quota` (provider), `http_status`; fingerprint `provider-quota/<provider>/<status>`; at most once per provider + status per 10 min per isolate; carries the model or API path, never response bodies |
 | Route/server error | `src/instrumentation.ts` `onRequestError` | `captureRequestError` (SDK v10) |
 
 Not captured: SSRF rejections from `assertPublicUrl` at `POST /api/experiments` (input
@@ -65,6 +66,12 @@ breaches; alert only on level `error`.
    the `first-responder` label with the snapshot-health responder (docs/snapshot-health.md); require
    the `sentry` label too so each Automation gets its own issues. Give it the Sentry MCP
    (`https://mcp.sentry.dev/mcp`) so it can pull the event, stack trace, and tags.
+
+### Provider quota alert
+
+Sentry alert "Provider quota or billing error (Gemini, Browserbase, Firecrawl, Jev)": every event in
+`rehearsal` that carries the `provider_quota` tag emails the owner, at most once an hour. Fallbacks
+(plain fetch, template Rebuild) keep runs alive, so without it an exhausted plan stays silent.
 
 ### Issue lifecycle
 

@@ -1,5 +1,5 @@
 import type { CallContext, LlmClient, TokenUsage } from "../contracts";
-import { logEvent } from "../telemetry";
+import { isQuotaStatus, logEvent, reportProviderQuota } from "../telemetry";
 import { OpenRouterClient } from "./openrouter";
 
 /**
@@ -76,7 +76,10 @@ export class GeminiClient implements LlmClient {
         signal: AbortSignal.timeout(60000),
       },
     );
-    if (!res.ok) throw new Error(`Gemini ${model} failed: ${res.status}`);
+    if (!res.ok) {
+      if (isQuotaStatus(res.status)) await reportProviderQuota("gemini", res.status, model, { experimentId: this.experimentId, stage: "llm" });
+      throw new Error(`Gemini ${model} failed: ${res.status}`);
+    }
     const data = (await res.json()) as {
       candidates?: { content?: { parts?: { text?: string }[] } }[];
       usageMetadata?: { promptTokenCount?: number; candidatesTokenCount?: number; totalTokenCount?: number };
