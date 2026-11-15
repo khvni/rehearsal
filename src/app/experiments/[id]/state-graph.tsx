@@ -280,7 +280,11 @@ export function StateGraph({
           width,
           padding: "8px 10px",
           borderRadius: 8,
-          border: "1px solid var(--border)",
+          // Longhands, not `border` shorthand: any inline border-color —
+          // even the shorthand's implicit one — would override the
+          // per-node heat tint emitted in liveCss.
+          borderWidth: 1,
+          borderStyle: "solid" as const,
           color: "var(--text)",
           textAlign: "left" as const,
           boxShadow: "none",
