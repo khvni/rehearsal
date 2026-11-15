@@ -1229,15 +1229,22 @@ export class Orchestrator {
     if (e.comparisons.length === 0 && e.variants.length === 0) await this.runCompare(id);
     const exp = (await this.mustGet(id))!;
     return withTrace("spec", { experimentId: id, targetUrl: exp.targetUrl }, async () => {
-      exp.spec = await generateSpec(exp, this.llm);
-      await this.emit(id, "spec", "info", `Spec written: ${exp.spec.changes.length} changes across ${exp.spec.rebuildPhases.length} phases`);
-      const usage = this.collectUsage();
-      if (usage) {
-        const fmt = (u: { calls: number; totalTokens: number; estimated?: boolean }) =>
-          `${u.calls} calls · ~${(u.totalTokens / 1000).toFixed(1)}k tokens${u.estimated ? " (est)" : ""}`;
-        const parts = [usage.llm && `llm ${fmt(usage.llm)}`, usage.jev && `jev ${fmt(usage.jev)}`].filter(Boolean);
-        await this.emit(id, "spec", "info", `Model usage this run: ${parts.join(" · ")}`);
+      // Spec + mockup are two model calls that can outlast one Workers slice: the
+      // spec is saved as soon as it exists, and a re-entered slice reuses it.
+      const retried = exp.runCheckpoint?.stage === "spec" && exp.runCheckpoint.attempt > 1;
+      if (!(retried && exp.spec)) {
+        exp.spec = await generateSpec(exp, this.llm);
+        await this.emit(id, "spec", "info", `Spec written: ${exp.spec.changes.length} changes across ${exp.spec.rebuildPhases.length} phases`);
+        const usage = this.collectUsage();
+        if (usage) {
+          const fmt = (u: { calls: number; totalTokens: number; estimated?: boolean }) =>
+            `${u.calls} calls · ~${(u.totalTokens / 1000).toFixed(1)}k tokens${u.estimated ? " (est)" : ""}`;
+          const parts = [usage.llm && `llm ${fmt(usage.llm)}`, usage.jev && `jev ${fmt(usage.jev)}`].filter(Boolean);
+          await this.emit(id, "spec", "info", `Model usage this run: ${parts.join(" · ")}`);
+        }
+        await this.store.save(Experiment.parse(exp));
       }
+      const spec = exp.spec;
       // Mockup is a bonus deliverable: a spec failure can't lose it, and vice versa.
       try {
         exp.mockup = await generateMockup(exp, this.llm);
@@ -1249,7 +1256,7 @@ export class Orchestrator {
       try {
         const dir = path.join(process.cwd(), "data", "experiments", exp.id);
         mkdirSync(dir, { recursive: true });
-        writeFileSync(path.join(dir, "spec.md"), specToMarkdown(exp.spec));
+        writeFileSync(path.join(dir, "spec.md"), specToMarkdown(spec));
       } catch {
         /* spec.md lives on the experiment payload regardless */
       }
