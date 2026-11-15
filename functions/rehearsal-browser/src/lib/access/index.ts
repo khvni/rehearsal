@@ -37,7 +37,7 @@ const DEFAULT_MAX_CONCURRENT_RUNS = 8;
 
 export function runSlotTtlMs(): number {
   const configured = Number(process.env.REHEARSAL_RUN_SLOT_TTL_MS);
-  return Number.isFinite(configured) && configured > 0 ? configured : 330_000;
+  return Number.isFinite(configured) && configured > 0 ? configured : 90_000;
 }
 
 export function maxConcurrentRuns(): number {
@@ -50,17 +50,22 @@ export async function withRunSlot<T>(work: () => Promise<T>, waitMs = 0, now = D
   const deadline = now() + waitMs;
   const holder = randomUUID();
   const limit = maxConcurrentRuns();
-  while (!await leases.acquireSlot(holder, limit, runSlotTtlMs(), now())) {
+  const ttlMs = runSlotTtlMs();
+  while (!await leases.acquireSlot(holder, limit, ttlMs, now())) {
     if (now() >= deadline) {
       logEvent({ stage: "admission", kind: "slot-busy", data: { isolateId: isolateId ??= randomUUID(), limit } });
       return { busy: true };
     }
-    await new Promise((resolve) => setTimeout(resolve, Math.min(250, deadline - now())));
+    await new Promise((resolve) => setTimeout(resolve, Math.min(1000, deadline - now())));
   }
   logEvent({ stage: "admission", kind: "slot-acquired", data: { isolateId: isolateId ??= randomUUID(), limit } });
+  const renewal = setInterval(() => {
+    void leases.renew(holder, ttlMs, now()).catch(() => undefined);
+  }, ttlMs / 3);
   try {
     return { busy: false, value: await work() };
   } finally {
+    clearInterval(renewal);
     await leases.release(holder).catch(() => undefined);
   }
 }

@@ -435,6 +435,10 @@ export class MemoryRunLeaseStore implements RunLeaseStore {
     return lease && lease.expiresAt > now ? { stage: lease.stage } : null;
   }
 
+  async renew(holder: string, ttlMs: number, now: number): Promise<void> {
+    for (const lease of this.leases.values()) if (lease.holder === holder) lease.expiresAt = now + ttlMs;
+  }
+
   async release(holder: string): Promise<void> {
     for (const [key, lease] of this.leases) if (lease.holder === holder) this.leases.delete(key);
   }
@@ -468,6 +472,12 @@ export class D1RunLeaseStore implements RunLeaseStore {
     const db = await this.store.db();
     if (!db) return memoryRunLeases.activeLock(id, now);
     return db.prepare("SELECT stage FROM run_leases WHERE key = ? AND expires_at > ?").bind(`lock:${id}`, now).first<{ stage: string }>();
+  }
+
+  async renew(holder: string, ttlMs: number, now: number): Promise<void> {
+    const db = await this.store.db();
+    if (!db) return memoryRunLeases.renew(holder, ttlMs, now);
+    await db.prepare("UPDATE run_leases SET expires_at = ? WHERE holder = ?").bind(now + ttlMs, holder).run();
   }
 
   async release(holder: string): Promise<void> {

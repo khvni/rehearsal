@@ -12,6 +12,7 @@ export interface RunLeaseStore {
   acquireSlot(holder: string, limit: number, ttlMs: number, now: number): Promise<boolean>;
   acquireLock(id: string, holder: string, stage: string, ttlMs: number, now: number): Promise<boolean>;
   activeLock(id: string, now: number): Promise<{ stage: string } | null>;
+  renew(holder: string, ttlMs: number, now: number): Promise<void>;
   release(holder: string): Promise<void>;
 }
 

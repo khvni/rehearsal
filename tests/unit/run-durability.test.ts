@@ -190,6 +190,7 @@ describe("chunked runs", () => {
     const { id } = await seededRun(orch);
     store.all.get(id)!.createdAt = "2020-01-01T00:00:00.000Z";
     const internal = orch as unknown as { exclusive: (id: string, stage: string, fn: () => Promise<void>) => Promise<void>; stepBody: () => Promise<void> };
+    const renewal = vi.spyOn(globalThis, "setInterval").mockImplementation(() => 0 as unknown as ReturnType<typeof setInterval>);
     let oldRelease!: () => void;
     const old = internal.exclusive(id, "rebuild", () => new Promise<void>((r) => { oldRelease = r; }));
     expect((await orch.resume(id, { inline: true })).resumed).toBe(false);
@@ -201,6 +202,7 @@ describe("chunked runs", () => {
     await expect(internal.exclusive(id, "run", async () => {})).rejects.toMatchObject({ runningStage: "spec" });
     expect((await orch.resume(id, { inline: true })).resumed).toBe(false);
     await vi.advanceTimersByTimeAsync(1000);
+    renewal.mockRestore();
     const work = vi.spyOn(internal, "stepBody").mockResolvedValue();
     expect((await orch.resume(id, { inline: true })).resumed).toBe(true);
     expect(work).toHaveBeenCalledOnce();

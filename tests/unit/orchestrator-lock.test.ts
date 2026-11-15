@@ -1,4 +1,4 @@
-import { afterEach, describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import { Experiment, type BrowserRunner, type ExperimentStore, type PageFetcher } from "@/lib/contracts";
 import { FixtureJevClient } from "@/lib/decisions/jev";
 import { FixtureLlmClient } from "@/lib/analysis/gemini";
@@ -9,7 +9,9 @@ const URL_A = "https://example.com/";
 const PAGE = "<html><head><title>Home</title></head><body><h1>Welcome</h1><p>No links here.</p></body></html>";
 
 afterEach(() => {
+  vi.useRealTimers();
   delete process.env.REHEARSAL_BROWSER;
+  delete process.env.REHEARSAL_RUN_SLOT_TTL_MS;
 });
 
 function setup(leases = new MemoryRunLeaseStore()) {
@@ -65,6 +67,26 @@ function setup(leases = new MemoryRunLeaseStore()) {
 }
 
 describe("orchestrator run lock", () => {
+  it("renews both local and global locks while work is active and clears renewal afterwards", async () => {
+    vi.useFakeTimers({ toFake: ["setInterval", "clearInterval", "Date"] });
+    process.env.REHEARSAL_RUN_SLOT_TTL_MS = "300";
+    const leases = new MemoryRunLeaseStore();
+    const renew = vi.spyOn(leases, "renew");
+    const a = setup(leases);
+    const b = setup(leases);
+    await a.seed("exp_renew");
+    await b.seed("exp_renew");
+    const first = a.orch.discover("exp_renew");
+    await vi.advanceTimersByTimeAsync(1000);
+    expect(renew).toHaveBeenCalledTimes(10);
+    await expect(a.orch.discover("exp_renew")).rejects.toBeInstanceOf(StageInProgressError);
+    await expect(b.orch.discover("exp_renew")).rejects.toBeInstanceOf(StageInProgressError);
+    await a.drain(first);
+    await vi.advanceTimersByTimeAsync(1000);
+    expect(renew).toHaveBeenCalledTimes(10);
+    expect(await leases.activeLock("exp_renew", Date.now())).toBeNull();
+  });
+
   it("rejects the same experiment on a second isolate sharing the lease store", async () => {
     const leases = new MemoryRunLeaseStore();
     const a = setup(leases);

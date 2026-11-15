@@ -1615,13 +1615,20 @@ Return ASSERTION_LIST as a JSON array of {kind, value, selector?}.`,
     const lock = { stage, acquiredAt: Date.now() };
     this.running.set(id, lock);
     const holder = randomUUID();
+    const ttlMs = runSlotTtlMs();
+    let renewal: ReturnType<typeof setInterval> | undefined;
     try {
-      if (!await this.leases.acquireLock(id, holder, stage, runSlotTtlMs(), Date.now())) {
+      if (!await this.leases.acquireLock(id, holder, stage, ttlMs, Date.now())) {
         const held = await this.leases.activeLock(id, Date.now());
         throw new StageInProgressError(id, held?.stage ?? stage);
       }
+      renewal = setInterval(() => {
+        lock.acquiredAt = Date.now();
+        void this.leases.renew(holder, ttlMs, lock.acquiredAt).catch(() => undefined);
+      }, ttlMs / 3);
       return await fn();
     } finally {
+      clearInterval(renewal);
       if (this.running.get(id) === lock) this.running.delete(id);
       await this.leases.release(holder).catch(() => undefined);
     }

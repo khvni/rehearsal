@@ -1,6 +1,6 @@
 import { DatabaseSync, type SQLInputValue } from "node:sqlite";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { D1RunLeaseStore } from "@/lib/storage";
+import { D1RunLeaseStore, MemoryRunLeaseStore } from "@/lib/storage";
 
 const env: { DB?: ReturnType<typeof binding> } = {};
 
@@ -64,5 +64,24 @@ describe("D1 run leases", () => {
   it("surfaces D1 failures without granting a lease", async () => {
     vi.spyOn(env.DB!, "prepare").mockImplementation(() => { throw new Error("D1 unavailable"); });
     await expect(new D1RunLeaseStore().acquireSlot("holder", 8, 100, 0)).rejects.toThrow("D1 unavailable");
+  });
+
+  it.each(["d1", "memory"])("renews %s leases and expires them once renewal stops", async (backend) => {
+    const leases = backend === "d1" ? new D1RunLeaseStore() : new MemoryRunLeaseStore();
+    await leases.renew("missing", 100, 0);
+    expect(await leases.activeLock("exp_a", 0)).toBeNull();
+    expect(await leases.acquireSlot("slot-holder", 1, 100, 0)).toBe(true);
+    expect(await leases.acquireLock("exp_a", "lock-holder", "rebuild", 100, 0)).toBe(true);
+    for (const now of [30, 60, 90, 120]) {
+      await leases.renew("slot-holder", 100, now);
+      await leases.renew("lock-holder", 100, now);
+    }
+    expect(await leases.acquireSlot("blocked", 1, 100, 219)).toBe(false);
+    expect(await leases.activeLock("exp_a", 219)).toEqual({ stage: "rebuild" });
+    expect(await leases.acquireSlot("replacement", 1, 100, 220)).toBe(true);
+    expect(await leases.activeLock("exp_a", 220)).toBeNull();
+    expect(await leases.acquireLock("exp_a", "replacement", "discover", 100, 220)).toBe(true);
+    await leases.renew("lock-holder", 100, 300);
+    expect(await leases.activeLock("exp_a", 320)).toBeNull();
   });
 });

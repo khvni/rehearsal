@@ -43,6 +43,39 @@ describe("shared-secret gate", () => {
 });
 
 describe("pipeline concurrency cap", () => {
+  it("renews a held slot past its TTL and stops renewing after work finishes", async () => {
+    vi.useFakeTimers();
+    process.env.REHEARSAL_RUN_SLOT_TTL_MS = "300";
+    const leases = new MemoryRunLeaseStore();
+    const renew = vi.spyOn(leases, "renew");
+    let release!: () => void;
+    const held = withRunSlot(() => new Promise<void>((resolve) => { release = resolve; }), 0, Date.now, leases);
+    await vi.advanceTimersByTimeAsync(1000);
+    expect(renew).toHaveBeenCalledTimes(10);
+    expect(await leases.acquireSlot("blocked", 1, 300, Date.now())).toBe(false);
+    release();
+    await held;
+    await vi.advanceTimersByTimeAsync(1000);
+    expect(renew).toHaveBeenCalledTimes(10);
+    expect(await leases.acquireSlot("free", 1, 300, Date.now())).toBe(true);
+  });
+
+  it("swallows renewal errors and clears the interval when work throws", async () => {
+    vi.useFakeTimers();
+    process.env.REHEARSAL_RUN_SLOT_TTL_MS = "300";
+    const leases = new MemoryRunLeaseStore();
+    const renew = vi.spyOn(leases, "renew").mockRejectedValue(new Error("renew failed"));
+    let fail!: (error: Error) => void;
+    const held = withRunSlot(() => new Promise<void>((_, reject) => { fail = reject; }), 0, Date.now, leases);
+    await vi.advanceTimersByTimeAsync(100);
+    expect(renew).toHaveBeenCalledTimes(1);
+    const rejected = expect(held).rejects.toThrow("work failed");
+    fail(new Error("work failed"));
+    await rejected;
+    await vi.advanceTimersByTimeAsync(1000);
+    expect(renew).toHaveBeenCalledTimes(1);
+  });
+
   it("runs eight builds concurrently across admission contexts and rejects the ninth", async () => {
     const leases = new MemoryRunLeaseStore();
     let release!: () => void;
@@ -96,7 +129,7 @@ describe("pipeline concurrency cap", () => {
     expect(work).not.toHaveBeenCalled();
     release();
     await held;
-    await vi.advanceTimersByTimeAsync(250);
+    await vi.advanceTimersByTimeAsync(1000);
     expect(await queued).toEqual({ busy: false, value: "queued" });
     await expect(withRunSlot(async () => { throw new Error("queued failure"); }, 20_000)).rejects.toThrow("queued failure");
     expect(await withRunSlot(async () => "free")).toEqual({ busy: false, value: "free" });
