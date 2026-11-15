@@ -145,6 +145,6 @@ Paste `https://ai.engineer/code/2026` and a goal, click **Rehearse**, and open `
 - **ai_tools (what built it):** Devin (SWE-2 Lightning subagents + orchestrator) on Cognition's harness.
 - **github link:** https://github.com/khvni/rehearsal
 - **demo video:** `demo/video/out/rehearsal-demo.mp4` (in repo). Attach it in the form.
-- **live demo:** http://146.190.113.82 (DigitalOcean droplet).
+- **live demo:** https://rehearsal.alikhani.co (Cloudflare Workers).
 - **extra_links:** "11-site sweep" → docs/runs/README.md · "Factory as code" → docs/factory.md · "Telemetry" → docs/telemetry.md
 - **sponsor_usage:** Gemini API: fast+deep models drive assertion compilation and rubric findings with deterministic fallback and per-run budget (REHEARSAL_GEMINI_MAX_CALLS); DigitalOcean: droplet stack in terraform/digitalocean deployed at the live demo URL; Tiger Data: experiments persist to Postgres/TimescaleDB via TigerDataStore (verified live); Firecrawl: scrape/map endpoints back discovery on JS-heavy pages; HyperFrames: the demo video is a HyperFrames composition (demo/video) rendered with hyperframes@0.9.42; Sentry: SDK wiring, stage spans, and a signed webhook that files first-responder issues; System One Models: Jev drives per-state action scoring in simulate; Software Factory: factory-as-code in factory/, contracts-first lint, spec-delta CI, hourly snapshot rebuilds, layered verification.

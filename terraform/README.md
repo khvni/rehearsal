@@ -1,6 +1,9 @@
 # Terraform deploys
 
-Two stacks; the demo host is **DigitalOcean**, Cloudflare is the alternate target.
+Two stacks; the live demo (rehearsal.alikhani.co) runs on **Cloudflare Workers**, DigitalOcean is the alternate target.
+On every push to `main`, `.github/workflows/deploy-cloudflare.yml` runs `opennextjs-cloudflare build` + `wrangler deploy`
+(Worker `rehearsal-demo`, config in `wrangler.jsonc`); it needs the `CLOUDFLARE_API_TOKEN` repo secret and the
+`CLOUDFLARE_ACCOUNT_ID` repo variable.
 Each stack is self-contained: `versions.tf` (pinned providers), `variables.tf`, `main.tf`,
 `outputs.tf`, plus a committed `.terraform.lock.hcl`. Terraform >= 1.9.
 
@@ -9,7 +12,7 @@ Each stack is self-contained: `versions.tf` (pinned providers), `variables.tf`, 
 Don't commit `*.tfvars` files that contain secrets (state files are gitignored; they hold
 secret values, so use a private/remote backend for anything shared).
 
-## DigitalOcean (primary — droplet)
+## DigitalOcean (alternate — droplet)
 
 One Ubuntu droplet; cloud-init installs Node 22 + Playwright Chromium (plus an AppArmor
 profile so its sandbox can create user namespaces), clones
@@ -53,7 +56,7 @@ user from 169.254.0.0/16, and local Chromium runs behind the app's egress proxy
 (`src/lib/fetch/egress-proxy.ts`). Rotate any key that was deployed by an older version of
 this stack, since it was in user-data.
 
-## Cloudflare (alternate — Workers)
+## Cloudflare (primary — Workers)
 
 The Next.js app deploys via `@opennextjs/cloudflare` (`npx opennextjs-cloudflare build && npx opennextjs-cloudflare deploy`).
 Terraform owns the Worker script slot (placeholder module until the first deploy), its
