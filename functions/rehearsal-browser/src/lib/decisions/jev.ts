@@ -10,7 +10,7 @@ import type {
   SiteState,
   TokenUsage,
 } from "../contracts";
-import { logEvent } from "../telemetry";
+import { isQuotaStatus, logEvent, reportProviderQuota } from "../telemetry";
 
 /** Jev reports no usage metadata; estimate tokens as bytes/4 of the JSON payloads. */
 function estTokens(bytes: number): number {
@@ -19,7 +19,8 @@ function estTokens(bytes: number): number {
 
 /**
  * Jev / System One client.
- * Live path: OpenRouter decisions API (POST /api/alpha/decisions, model typesafe/jev-*).
+ * Live path: TypeSafe System One API (POST /v1/systemone, model jev-*).
+ * OpenRouter's compatible decisions endpoint works too via JEV_BASE_URL.
  * Offline path: FixtureJevClient — deterministic typed answers from token overlap.
  */
 interface RawDecisionEntry {
@@ -27,11 +28,14 @@ interface RawDecisionEntry {
   distribution?: Record<string, number>;
   probabilities?: Record<string, number>;
   selected?: string;
+  choice?: string;
   value?: string;
 }
 interface RawDecisionResponse {
   decisions?: Record<string, RawDecisionEntry>;
   questions?: Record<string, RawDecisionEntry>;
+  answers?: Record<string, RawDecisionEntry>;
+  usage?: { input_tokens?: number; output_tokens?: number };
 }
 
 export class HttpJevClient implements JevClient {
@@ -42,10 +46,10 @@ export class HttpJevClient implements JevClient {
   private usage = { calls: 0, inputTokens: 0, outputTokens: 0 };
 
   constructor(env: Record<string, string | undefined> = process.env) {
-    this.baseUrl = env.JEV_BASE_URL ?? "https://openrouter.ai/api/alpha/decisions";
-    this.apiKey = env.JEV_API_KEY ?? env.OPENROUTER_API_KEY ?? "";
-    this.model = env.JEV_MODEL ?? "typesafe/jev-1.13";
-    if (!this.apiKey) throw new Error("HttpJevClient requires JEV_API_KEY or OPENROUTER_API_KEY");
+    this.baseUrl = env.JEV_BASE_URL ?? "https://api.typesafe.ai/v1/systemone";
+    this.apiKey = env.JEV_API_KEY ?? "";
+    this.model = env.JEV_MODEL ?? "jev-latest";
+    if (!this.apiKey) throw new Error("HttpJevClient requires JEV_API_KEY");
   }
 
   resetBudget(): void {
@@ -82,10 +86,11 @@ export class HttpJevClient implements JevClient {
     const requestBytes = JSON.stringify(body).length;
     const responseBytes = Number(res.headers.get("content-length") ?? 0);
     this.usage.calls++;
-    this.usage.inputTokens += estTokens(requestBytes);
-    if (!res.ok) throw new Error(`Jev request failed: ${res.status}`);
+    if (!res.ok) {
+      if (isQuotaStatus(res.status)) await reportProviderQuota("jev", res.status, "decide", { experimentId: ctx?.experimentId, stage: "simulate" });
+      throw new Error(`Jev request failed: ${res.status}`);
+    }
     const text = await res.text();
-    this.usage.outputTokens += estTokens(responseBytes || text.length);
     logEvent({
       experimentId: ctx?.experimentId,
       stage: "simulate",
@@ -100,7 +105,14 @@ export class HttpJevClient implements JevClient {
       },
     });
     const raw = JSON.parse(text) as RawDecisionResponse;
-    const decisions = raw.decisions ?? raw.questions ?? {};
+    if (raw.usage) {
+      this.usage.inputTokens += raw.usage.input_tokens ?? 0;
+      this.usage.outputTokens += raw.usage.output_tokens ?? 0;
+    } else {
+      this.usage.inputTokens += estTokens(requestBytes);
+      this.usage.outputTokens += estTokens(responseBytes || text.length);
+    }
+    const decisions = raw.decisions ?? raw.questions ?? raw.answers ?? {};
     return questions.map((q) => {
       const d = decisions[q.name] ?? {};
       const distribution = d.distribution ?? d.probabilities ?? {};
@@ -108,7 +120,7 @@ export class HttpJevClient implements JevClient {
         question: q.name,
         type: q.type,
         distribution,
-        selected: d.selected ?? d.value ?? argmax(distribution),
+        selected: d.selected ?? d.choice ?? d.value ?? argmax(distribution),
       };
     });
   }
@@ -248,7 +260,7 @@ export class FallbackJevClient implements JevClient {
 }
 
 export function selectJev(env: Record<string, string | undefined> = process.env): JevClient {
-  if (env.JEV_API_KEY || env.OPENROUTER_API_KEY) {
+  if (env.JEV_API_KEY) {
     try {
       return new FallbackJevClient(new HttpJevClient(env));
     } catch {
@@ -286,6 +298,32 @@ function scoreSignature(state: SiteState, goal: string, profile: BehavioralProfi
       ]),
     )
     .digest("hex");
+}
+
+/**
+ * Wraps `jev` so identical decide() payloads (state + questions) share one call,
+ * including calls still in flight; a failed call is evicted so a later one retries.
+ * Scope it to one swarm: persona agents revisit the same pages at the same step,
+ * and each agent still samples the shared distribution with its own seeded RNG.
+ */
+export function withDecideCache(jev: JevClient): JevClient {
+  const cache = new Map<string, Promise<DecisionResult[]>>();
+  return {
+    name: jev.name,
+    decide(state, questions, ctx) {
+      const key = JSON.stringify([state, questions]);
+      const cached = cache.get(key);
+      if (cached) return cached;
+      const pending = jev.decide(state, questions, ctx);
+      cache.set(key, pending);
+      pending.catch(() => {
+        if (cache.get(key) === pending) cache.delete(key);
+      });
+      return pending;
+    },
+    resetBudget: jev.resetBudget?.bind(jev),
+    usageReport: jev.usageReport?.bind(jev),
+  };
 }
 
 /**

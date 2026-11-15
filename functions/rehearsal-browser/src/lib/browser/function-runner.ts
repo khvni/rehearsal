@@ -12,7 +12,9 @@ import {
   type Viewport,
 } from "../contracts";
 import { RehearsalError } from "../errors";
+import { omit } from "../omit";
 import { assertPublicUrl } from "../fetch/guards";
+import { isQuotaStatus, reportProviderQuota } from "../telemetry";
 import { errorText } from "./types";
 import { mkdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
@@ -69,7 +71,8 @@ export class BrowserbaseFunctionRunner implements BrowserRunner {
 
   async runPersonaJourney(args: PersonaJourneyArgs): Promise<AgentJourney> {
     await assertPublicUrl(args.url);
-    const out = (await this.call({ op: "runPersonaJourney", args: { ...args } })) as {
+    // The Jev client cannot cross the wire (JSON drops its methods); the Function selects its own from its secrets.
+    const out = (await this.call({ op: "runPersonaJourney", args: omit(args, ["jev"]) })) as {
       journey: AgentJourney;
       shots?: { name: string; png: string }[];
     };
@@ -109,6 +112,13 @@ export class BrowserbaseFunctionRunner implements BrowserRunner {
     }
     if (!res.ok) {
       const body = errorText(await res.text().catch(() => ""), 200);
+      if (isQuotaStatus(res.status)) {
+        await reportProviderQuota("browserbase", res.status, `Function API ${path.split("/").slice(0, 4).join("/")}`);
+        throw new RehearsalError(
+          "PROVIDER_QUOTA",
+          `Browserbase Function API ${res.status === 402 ? "402 Payment Required" : "429 Too Many Requests"} on ${path.split("/").slice(0, 4).join("/")}: provider quota exhausted — ${body}`,
+        );
+      }
       throw new RehearsalError("BROWSER_REMOTE_FAILED", `Browserbase Function API ${res.status} on ${path.split("/").slice(0, 4).join("/")}: ${body}`);
     }
     return (await res.json()) as Invocation;

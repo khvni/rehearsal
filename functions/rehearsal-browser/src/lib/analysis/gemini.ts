@@ -1,5 +1,6 @@
 import type { CallContext, LlmClient, TokenUsage } from "../contracts";
-import { logEvent } from "../telemetry";
+import { isQuotaStatus, logEvent, reportProviderQuota } from "../telemetry";
+import { OpenRouterClient } from "./openrouter";
 
 /**
  * Gemini API client — REST over generativelanguage (stable across SDK churn).
@@ -8,6 +9,9 @@ import { logEvent } from "../telemetry";
  * The "mockup" slot (GEMINI_MODEL_MOCKUP) defaults to the deep model so the
  * frontier generation model builds previews; retryable errors fall back to fast.
  */
+/** One per LLM step of a run: assertions, goal intent, visitor questions, findings, spec, mockup, rebuild — plus headroom for a re-entered stage. */
+const DEFAULT_MAX_CALLS = 10;
+
 export class GeminiClient implements LlmClient {
   readonly name = "gemini";
   private apiKey: string;
@@ -24,8 +28,8 @@ export class GeminiClient implements LlmClient {
     this.fast = process.env.GEMINI_MODEL_FAST ?? "gemini-4-hydrogen";
     this.deep = process.env.GEMINI_MODEL_DEEP ?? "gemini-4-argon";
     this.mockup = process.env.GEMINI_MODEL_MOCKUP ?? this.deep;
-    const max = Number(process.env.REHEARSAL_GEMINI_MAX_CALLS ?? 6);
-    this.maxCalls = Number.isFinite(max) && max >= 0 ? max : 6;
+    const max = Number(process.env.REHEARSAL_GEMINI_MAX_CALLS ?? DEFAULT_MAX_CALLS);
+    this.maxCalls = Number.isFinite(max) && max >= 0 ? max : DEFAULT_MAX_CALLS;
     if (!this.apiKey) throw new Error("GeminiClient requires GEMINI_API_KEY");
   }
 
@@ -72,7 +76,10 @@ export class GeminiClient implements LlmClient {
         signal: AbortSignal.timeout(60000),
       },
     );
-    if (!res.ok) throw new Error(`Gemini ${model} failed: ${res.status}`);
+    if (!res.ok) {
+      if (isQuotaStatus(res.status)) await reportProviderQuota("gemini", res.status, model, { experimentId: this.experimentId, stage: "llm" });
+      throw new Error(`Gemini ${model} failed: ${res.status}`);
+    }
     const data = (await res.json()) as {
       candidates?: { content?: { parts?: { text?: string }[] } }[];
       usageMetadata?: { promptTokenCount?: number; candidatesTokenCount?: number; totalTokenCount?: number };
@@ -131,7 +138,15 @@ export class FixtureLlmClient implements LlmClient {
   }
 }
 
+/** OpenRouter when OPENROUTER_API_KEY is set, else Gemini, else the offline fixture. */
 export function selectLlm(): LlmClient {
+  if (process.env.OPENROUTER_API_KEY) {
+    try {
+      return new OpenRouterClient();
+    } catch {
+      /* fall through */
+    }
+  }
   if (process.env.GEMINI_API_KEY) {
     try {
       return new GeminiClient();

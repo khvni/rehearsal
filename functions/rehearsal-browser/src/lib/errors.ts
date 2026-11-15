@@ -15,6 +15,7 @@ export class RehearsalError extends Error {
 
 /** Ordered: first match wins, so specific patterns precede generic ones. */
 const PATTERNS: [ErrorCode, RegExp][] = [
+  ["PROVIDER_QUOTA", /\b402\b|payment required|\b429\b|too many requests|rate.?limit|quota (exceeded|exhausted)|insufficient (credits|funds|balance)/i],
   ["EGRESS_BLOCKED", /Blocked (private IP|hostname|protocol)|resolves to private IP|egress proxy refused/i],
   ["ROBOTS_DISALLOWED", /robots\.txt/i],
   ["REDIRECT_OFF_ORIGIN", /Redirected off-origin|off-origin redirect/i],

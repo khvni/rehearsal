@@ -102,6 +102,11 @@ function inspectTarget(selector: string): AgentTargetInfo | null {
   };
 }
 
+/** Let client-side rendering finish: wait for network idle, at most `capMs`. */
+function settle(page: Page, capMs: number): Promise<void> {
+  return page.waitForLoadState("networkidle", capMs).catch(() => undefined);
+}
+
 /** Reject a page that redirected off the target origin or onto a non-public address. */
 async function assertLanded(page: Page, target: URL): Promise<void> {
   const finalUrl = await page.url();
@@ -293,7 +298,7 @@ export class StagehandRunner implements BrowserRunner {
       return this.withSession(viewport, opts.patches, async (_sh, page) => {
         await page.goto(url, { waitUntil: "domcontentloaded", timeout: NAV_TIMEOUT_MS });
         await assertLanded(page, target);
-        await page.waitForTimeout(1200);
+        await settle(page, 1200);
         const screenshotPath = await this.shoot(page, String(opts?.shotName ?? Date.now()));
         const metrics = await measurePage(page);
         const html = await page.evaluate<string>("document.documentElement.outerHTML");
@@ -304,7 +309,7 @@ export class StagehandRunner implements BrowserRunner {
     const page = await this.capturePage(viewport, opts?.scope);
     await page.goto(url, { waitUntil: "domcontentloaded", timeout: NAV_TIMEOUT_MS });
     await assertLanded(page, target);
-    await page.waitForTimeout(1200);
+    await settle(page, 1200);
     const screenshotPath = await this.shoot(page, String(opts?.shotName ?? Date.now()));
     const metrics = await measurePage(page);
     const html = await page.evaluate<string>("document.documentElement.outerHTML");
@@ -345,7 +350,7 @@ export class StagehandRunner implements BrowserRunner {
     });
     await page.goto(args.url, { waitUntil: "domcontentloaded", timeout: NAV_TIMEOUT_MS });
     await assertLanded(page, target);
-    await page.waitForTimeout(800);
+    await settle(page, 800);
     const shot0 = await this.shoot(page, `${args.runId}_0`);
     if (shot0) screenshots.push(shot0);
   }
@@ -434,7 +439,7 @@ export class StagehandRunner implements BrowserRunner {
     const target = await assertPublicUrl(args.url);
     return this.withSession(args.viewport, undefined, async (_sh, page) => {
       await page.goto(target.toString(), { waitUntil: "domcontentloaded", timeout: NAV_TIMEOUT_MS });
-      await page.waitForTimeout(800);
+      await settle(page, 800);
       await leaveIfNotPublic(page);
       const driver = new LivePagePersonaDriver(
         page as unknown as PersonaPage,
@@ -444,7 +449,7 @@ export class StagehandRunner implements BrowserRunner {
       );
       const { personaJourneyLoop } = await import("../simulation/persona");
       const { selectJev } = await import("../decisions/jev");
-      return personaJourneyLoop(driver, this.opts.jev ?? selectJev(), args);
+      return personaJourneyLoop(driver, args.jev ?? this.opts.jev ?? selectJev(), args);
     });
   }
 
