@@ -5,6 +5,7 @@ import type {
   AgentDriver,
   AgentJourney,
   AgentRunArgs,
+  AgentTargetInfo,
   AssertionProbe,
   BrowserRun,
   BrowserRunner,
@@ -80,6 +81,25 @@ async function firstVisible(page: Page, selector: string): Promise<Locator | nul
     if (await loc.isVisible().catch(() => false)) return loc;
   }
   return null;
+}
+
+/**
+ * Runs in the page: resolve an observe() selector (xpath= or CSS) and describe its nearest form
+ * control ancestor, so a span inside a submit button still reads as that button.
+ */
+function inspectTarget(selector: string): AgentTargetInfo | null {
+  const node = selector.startsWith("xpath=")
+    ? document.evaluate(selector.slice(6), document, null, XPathResult.FIRST_ORDERED_NODE_TYPE, null).singleNodeValue
+    : document.querySelector(selector);
+  if (!(node instanceof Element)) return null;
+  const el = node.closest("button, input, textarea, select, option, label") ?? node;
+  return {
+    tag: el.tagName.toLowerCase(),
+    type: (el.getAttribute("type") ?? "").toLowerCase(),
+    role: (el.getAttribute("role") ?? "").toLowerCase(),
+    inForm: el.closest("form") !== null,
+    editable: el instanceof HTMLElement && el.isContentEditable,
+  };
 }
 
 /** Reject a page that redirected off the target origin or onto a non-public address. */
@@ -381,8 +401,10 @@ export class StagehandRunner implements BrowserRunner {
             const res = await sh.observe(instruction, { page });
             return res.data.map(({ selector, description, method }) => ({ selector, description, method }));
           },
-          act: async (instruction) => {
-            const res = await sh.act(instruction, { page });
+          inspect: (selector) => page.evaluate(inspectTarget, selector).catch(() => null),
+          act: async (instruction, target) => {
+            const action = { selector: target.selector, description: instruction, method: target.method ?? "click", arguments: [] };
+            const res = await sh.act(action, { page });
             await page.waitForLoadState("domcontentloaded", NAV_TIMEOUT_MS).catch(() => undefined);
             await leaveIfNotPublic(page);
             return { ok: res.data.success, detail: res.data.message };
