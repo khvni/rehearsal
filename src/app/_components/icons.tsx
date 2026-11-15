@@ -69,3 +69,19 @@ export function CompressIcon(props: IconProps) {
     </Svg>
   );
 }
+
+export function FormIcon(props: IconProps) {
+  return (
+    <Svg {...props}>
+      <path d="M11 3.25l1.75 1.75L5.5 12.25H3.75V10.5L11 3.25zM10.25 4l1.75 1.75" />
+    </Svg>
+  );
+}
+
+export function DocIcon(props: IconProps) {
+  return (
+    <Svg {...props}>
+      <path d="M4.5 2.5h4.75L12 5.25V13.5H4.5V2.5zM9.25 2.5v2.75H12" />
+    </Svg>
+  );
+}

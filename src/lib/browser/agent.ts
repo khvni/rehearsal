@@ -1,6 +1,6 @@
 import type { AgentCandidate, AgentDriver, AgentRunArgs, AgentTargetInfo, BrowserRun, TrajectoryAction } from "../contracts";
 import { normalizeLabel } from "./extract";
-import { evaluateAssertion, shouldShoot, summarizeRun } from "./types";
+import { errorText, evaluateAssertion, shouldShoot, summarizeRun } from "./types";
 
 // Model output and page labels are untrusted: the loop only ever clicks a vetted element, and
 // never types, selects, scrolls, or submits — no form interaction on third-party sites.
@@ -49,7 +49,7 @@ async function pickSafeCandidate(driver: AgentDriver, candidates: AgentCandidate
 }
 
 async function runStep(driver: AgentDriver, a: TrajectoryAction): Promise<BrowserRun["steps"][number]> {
-  const fail = (error: string) => ({ actionId: a.actionId, label: a.label, ok: false, error: error.slice(0, 160) });
+  const fail = (error: string) => ({ actionId: a.actionId, label: a.label, ok: false, error: errorText(error, 160) });
   if (a.role && !SAFE_ACTION_ROLES.has(a.role)) return fail(`refused: ${a.role} is not a click target`);
   const candidates = await driver.observe(observeInstruction(a));
   const target = await pickSafeCandidate(driver, candidates);
@@ -82,7 +82,7 @@ export async function agentLoop(
       try {
         steps.push(await runStep(driver, a));
       } catch (e) {
-        steps.push({ actionId: a.actionId, label: a.label, ok: false, error: String(e).slice(0, 160) });
+        steps.push({ actionId: a.actionId, label: a.label, ok: false, error: errorText(e, 160) });
       }
       if (shouldShoot(i, total)) {
         const shot = await shoot(`${args.runId}_${i + 1}`).catch(() => null);
@@ -94,7 +94,7 @@ export async function agentLoop(
       assertions.push({ assertion, passed: await evaluateAssertion(probe, assertion) });
     }
   } catch (e) {
-    errors.push(`run: ${String(e).slice(0, 200)}`);
+    errors.push(`run: ${errorText(e)}`);
   }
   return summarizeRun({ runId: args.runId, viewport: args.viewport, started, steps, assertions, errors, screenshots });
 }

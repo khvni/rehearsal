@@ -956,11 +956,16 @@ table.delta + table.delta { margin-top: var(--s-4); }
 .legend-edge { display: inline-flex; align-items: center; gap: var(--s-2); }
 .legend-line { display: inline-block; width: 20px; border-top: 1px solid var(--muted); }
 .legend-line.thick { border-top-width: 3px; border-top-color: var(--flow-600); }
+.legend-line.deep { border-top-color: var(--flow-700); }
 .node { display: grid; gap: 2px; min-width: 0; }
 .node-path { font: 600 var(--fs-12)/1.35 var(--font-mono); color: var(--text); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .node-title { font-size: var(--fs-12); color: color-mix(in oklab, var(--text) 40%, var(--text-2)); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .node-foot { display: flex; align-items: baseline; justify-content: space-between; gap: var(--s-2); margin-top: 2px; }
+.node-side { display: inline-flex; align-items: center; gap: var(--s-2); }
 .node-visits { font-size: var(--fs-12); color: var(--text); font-weight: 500; font-variant-numeric: tabular-nums; }
+.node-kind { display: inline-flex; align-items: center; gap: 3px; font-size: var(--fs-12); color: var(--muted); }
+.node-kind .icon { flex: none; }
+.node-kind.form { color: var(--flow-700); font-weight: 500; }
 .node-start { font-size: var(--fs-12); color: var(--flow-800); font-weight: 500; background: var(--flow-100); border-radius: 99px; padding: 0 7px; }
 
 /* spec.md prose */

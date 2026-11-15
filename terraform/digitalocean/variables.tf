@@ -23,9 +23,13 @@ variable "image" {
 }
 
 variable "domain" {
-  description = "Optional DigitalOcean-managed DNS zone (e.g. example.com). Empty = serve on the droplet IP over plain HTTP."
+  description = "DigitalOcean-managed DNS zone (e.g. example.com). Required: Caddy gets a TLS certificate for it, so the access token never crosses the network in cleartext."
   type        = string
-  default     = ""
+
+  validation {
+    condition     = trimspace(var.domain) != ""
+    error_message = "domain is required: without it the dashboard would be served over plain HTTP and the Basic-auth access token sent in cleartext."
+  }
 }
 
 variable "subdomain" {
