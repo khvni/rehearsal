@@ -3,18 +3,15 @@ import type { Experiment } from "@/lib/contracts";
 
 const startExperiment = vi.fn();
 const scheduleRun = vi.fn();
-const getByIdempotencyKey = vi.fn(async (): Promise<Experiment | null> => null);
-const findBySite = vi.fn(async (): Promise<Experiment | null> => null);
 vi.mock("@/lib/orchestrator", () => ({
   Orchestrator: class {
     startExperiment = startExperiment;
     scheduleRun = scheduleRun;
-    getByIdempotencyKey = getByIdempotencyKey;
-    findBySite = findBySite;
   },
 }));
 
-vi.mock("@/lib/ratelimit", () => ({ clientIp: () => "test", underDailyLimit: async () => true }));
+const underDailyLimit = vi.fn(async () => true);
+vi.mock("@/lib/ratelimit", () => ({ clientIp: () => "test", underDailyLimit }));
 
 const { POST } = await import("@/app/api/experiments/route");
 
@@ -47,14 +44,13 @@ describe("POST /api/experiments", () => {
       "https://example.com/",
       "x",
       expect.objectContaining({ trajectories: 1000, verifyCount: 8, maxStates: 50, viewports: ["desktop", "mobile"] }),
-      { idempotencyKey: undefined },
+      { idempotencyKey: undefined, admit: expect.any(Function) },
     );
     expect(scheduleRun).toHaveBeenCalledWith("exp_t", { origin: "http://localhost" });
   });
 
-  it("returns the existing record on a repeat Idempotency-Key without creating or scheduling", async () => {
-    getByIdempotencyKey.mockResolvedValueOnce({ id: "exp_old" } as Experiment);
-    startExperiment.mockClear();
+  it("returns the existing record on a repeat Idempotency-Key without scheduling", async () => {
+    startExperiment.mockResolvedValueOnce({ experiment: { id: "exp_old" } as Experiment, created: false, via: "idempotency" });
     const res = await post(
       { targetUrl: "https://example.com/", goal: "x" },
       { "idempotency-key": "k-1" },
@@ -63,27 +59,32 @@ describe("POST /api/experiments", () => {
     const data = await res.json();
     expect(data.id).toBe("exp_old");
     expect(data.dedupe).toBe("idempotency");
-    expect(startExperiment).not.toHaveBeenCalled();
+    expect(startExperiment).toHaveBeenCalledWith("https://example.com/", "x", expect.anything(), {
+      idempotencyKey: "k-1",
+      admit: expect.any(Function),
+    });
     expect(scheduleRun).not.toHaveBeenCalled();
   });
 
-  it("returns the existing record on a site dedupe hit without creating or scheduling", async () => {
-    findBySite.mockResolvedValueOnce({ id: "exp_site" } as Experiment);
-    startExperiment.mockClear();
+  it("returns the existing record on a site dedupe hit without scheduling", async () => {
+    startExperiment.mockResolvedValueOnce({ experiment: { id: "exp_site" } as Experiment, created: false, via: "site" });
     const res = await post({ targetUrl: "https://example.com/" });
     expect(res.status).toBe(200);
     const data = await res.json();
     expect(data.id).toBe("exp_site");
     expect(data.dedupe).toBe("site");
-    expect(startExperiment).not.toHaveBeenCalled();
+    expect(scheduleRun).not.toHaveBeenCalled();
   });
 
-  it("returns the inside-lock dedupe hit when a race slips past the pre-check", async () => {
-    startExperiment.mockResolvedValueOnce({ experiment: { id: "exp_race" } as Experiment, created: false, via: "site" });
+  it("admits a create against the per-IP daily budget and returns 429 when it is spent", async () => {
+    startExperiment.mockImplementationOnce(async (_u, _g, _c, opts: { admit: () => Promise<boolean> }) =>
+      (await opts.admit()) ? { experiment: { id: "exp_t" } as Experiment, created: true, via: "new" } : null,
+    );
+    underDailyLimit.mockResolvedValueOnce(false);
     const res = await post({ targetUrl: "https://example.com/" });
-    expect(res.status).toBe(200);
-    const data = await res.json();
-    expect(data.dedupe).toBe("site");
+    expect(res.status).toBe(429);
+    expect((await res.json()).error).toBe("daily experiment limit reached");
+    expect(underDailyLimit).toHaveBeenCalledWith("exp-create:test", 3);
     expect(scheduleRun).not.toHaveBeenCalled();
   });
 
@@ -109,6 +110,9 @@ describe("POST /api/experiments", () => {
     scheduleRun.mockResolvedValueOnce({ id: "exp_t", status: "queued" } as Experiment);
     const res2 = await post({ targetUrl: "https://example.com/" });
     expect(res2.status).toBe(200);
-    expect(startExperiment).toHaveBeenCalledWith("https://example.com/", undefined, expect.anything(), { idempotencyKey: undefined });
+    expect(startExperiment).toHaveBeenCalledWith("https://example.com/", undefined, expect.anything(), {
+      idempotencyKey: undefined,
+      admit: expect.any(Function),
+    });
   });
 });

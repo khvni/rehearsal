@@ -142,6 +142,26 @@ describe("startExperiment dedupe", () => {
     expect(other.created).toBe(true);
     expect(other.experiment.id).not.toBe(first.experiment.id);
   });
+
+  it("scans the store once per start and only spends `admit` on a real create", async () => {
+    process.env.REHEARSAL_ALLOW_PRIVATE = "1";
+    const store = memoryStore();
+    let scans = 0;
+    const list = store.list.bind(store);
+    store.list = async () => (scans++, list());
+    const orch = new Orchestrator({ store, fetcher: fetcher({ [URL]: HTML_V1 }) });
+    let admitted = 0;
+    const admit = async () => (admitted++, true);
+    const first = await orch.startExperiment(URL, "g", undefined, { idempotencyKey: "k-1", admit });
+    const byKey = await orch.startExperiment("https://other.test/", "g", undefined, { idempotencyKey: "k-1", admit });
+    const bySite = await orch.startExperiment(URL, "g", undefined, { idempotencyKey: "k-2", admit });
+    expect([first?.created, byKey?.via, bySite?.via]).toEqual([true, "idempotency", "site"]);
+    expect(scans).toBe(3);
+    expect(admitted).toBe(1);
+    const refused = await orch.startExperiment("https://new.test/", "g", undefined, { admit: async () => false });
+    expect(refused).toBeNull();
+    expect(store.all.size).toBe(1);
+  });
 });
 
 describe("discover quota fallback", () => {
