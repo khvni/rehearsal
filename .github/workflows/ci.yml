@@ -29,6 +29,8 @@ jobs:
       - name: Evals gate
         run: npm run eval
       - run: npm run check:skill-sync
+      - name: Function lib (vendored src/lib drift)
+        run: npm run check:function-lib
       - name: Facts (contract/env/catalog/API drift)
         run: npm run check:facts
       - name: E2E (hermetic fixtures)

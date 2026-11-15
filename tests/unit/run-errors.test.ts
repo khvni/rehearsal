@@ -100,6 +100,15 @@ describe("BrowserbaseFunctionRunner", () => {
     expect(calls[2].url).toBe("https://api.browserbase.com/v1/functions/invocations/inv_1");
   });
 
+  it("keeps the in-process Jev client out of the persona journey invoke body", async () => {
+    const journey = { persona: "info-seeker", seed: 1, steps: [], reachedGoal: false };
+    const { calls, runner } = fakeApi([{ status: "COMPLETED", results: { ok: true, value: { journey } } }]);
+    const jev = { name: "fixture", decide: async () => [] };
+    await runner.runPersonaJourney({ agentId: "agent-0001", url: "https://a.test/", viewport: VP, persona: "info-seeker", goal: "g", assertions: [], seed: 1, maxSteps: 3, jev }).catch(() => {});
+    expect(calls[0].body).toMatchObject({ params: { op: "runPersonaJourney", args: { url: "https://a.test/" } } });
+    expect((calls[0].body as { params: { args: object } }).params.args).not.toHaveProperty("jev");
+  });
+
   it("maps 402/429 API responses to PROVIDER_QUOTA so stages fail cleanly", async () => {
     const calls: string[] = [];
     const fetchImpl = (async (url: string) => {

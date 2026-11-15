@@ -24,12 +24,36 @@ async function db(): Promise<D1Binding | null> {
   }
 }
 
+/** Rate-limit key for the caller: the client IP, with IPv6 collapsed to its /64 (one subscriber's allocation). */
 export function clientIp(req: Request): string {
-  return (
-    req.headers.get("cf-connecting-ip") ??
-    req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ??
-    "anonymous"
-  );
+  const raw = req.headers.get("cf-connecting-ip") ?? req.headers.get("x-forwarded-for")?.split(",")[0]?.trim();
+  return raw ? ipBucket(raw) : "anonymous";
+}
+
+/** IPv4 as-is (including IPv4-mapped IPv6); any other IPv6 address → its normalized `/64` prefix. */
+export function ipBucket(ip: string): string {
+  const addr = ip
+    .trim()
+    .replace(/^\[|\]$/g, "")
+    .replace(/%.*$/, "")
+    .toLowerCase();
+  if (!addr.includes(":")) return addr;
+  const mapped = /^::ffff:(\d{1,3}(?:\.\d{1,3}){3})$/.exec(addr);
+  if (mapped) return mapped[1];
+  // An embedded dotted-quad tail is the low 32 bits — two groups that never reach the /64 prefix.
+  const hex = addr.replace(/\d{1,3}(?:\.\d{1,3}){3}$/, "0:0");
+  const parts = hex.split("::");
+  if (parts.length > 2) return addr;
+  const head = parts[0] ? parts[0].split(":") : [];
+  const tail = parts.length === 2 && parts[1] ? parts[1].split(":") : [];
+  const fill = parts.length === 2 ? 8 - head.length - tail.length : 0;
+  if (fill < 0) return addr;
+  const groups = [...head, ...Array<string>(fill).fill("0"), ...tail];
+  if (groups.length !== 8 || !groups.every((g) => /^[0-9a-f]{1,4}$/.test(g))) return addr;
+  return `${groups
+    .slice(0, 4)
+    .map((g) => parseInt(g, 16).toString(16))
+    .join(":")}::/64`;
 }
 
 /** true = within budget; false = over `max` hits today for `key`. */
@@ -57,4 +81,18 @@ export async function underDailyLimit(key: string, max: number): Promise<boolean
   } catch {
     return true;
   }
+}
+
+/** Public-demo caps on pipeline work against an existing experiment (stage POSTs, rescans). */
+export const RUN_PER_IP_PER_DAY = 10;
+export const RUN_PER_EXPERIMENT_PER_DAY = 6;
+
+/**
+ * Counts one pipeline run for the caller and for experiment `id`; false once
+ * either daily budget is spent. A caller over its own budget never consumes
+ * the experiment's, so one client can't lock others out of an experiment.
+ */
+export async function underRunLimit(req: Request, id: string): Promise<boolean> {
+  if (!(await underDailyLimit(`exp-run-ip:${clientIp(req)}`, RUN_PER_IP_PER_DAY))) return false;
+  return underDailyLimit(`exp-run:${id}`, RUN_PER_EXPERIMENT_PER_DAY);
 }

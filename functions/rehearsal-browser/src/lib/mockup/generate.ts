@@ -11,6 +11,7 @@ import type {
 } from "../contracts";
 import { CTA_VERB_RE, rollupBrand } from "../rebuild/brand";
 import { sanitizeRebuildHtml } from "../rebuild/sanitize";
+import { llmPageSource } from "../analysis/openrouter";
 import { logEvent } from "../telemetry";
 import { renderMockupPage, rewriteLinks } from "./render";
 
@@ -339,7 +340,7 @@ export async function generateMockup(exp: Experiment, llm: LlmClient): Promise<M
     const summary =
       draft?.summary ??
       (applied.length ? `Applies ${applied.length} spec change${applied.length === 1 ? "" : "s"}: ${applied.join("; ")}` : "No spec changes on this page");
-    return { slug, sourceUrl: state.url, title, summary, html, source: draft ? ("gemini" as const) : ("template" as const), bytes: new TextEncoder().encode(html).length };
+    return { slug, sourceUrl: state.url, title, summary, html, source: draft ? llmPageSource(llm) : ("template" as const), bytes: new TextEncoder().encode(html).length };
   });
 
   return { generatedAt: new Date().toISOString(), brand, pages, llm: llm.name };
