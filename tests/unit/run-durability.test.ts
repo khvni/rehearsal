@@ -201,5 +201,21 @@ describe("chunked runs", () => {
     await store.save(finished);
     expect((await orch.resume(id)).resumed).toBe(false);
   });
-});
 
+  it("resume({ inline }) runs the slice inside the caller's task — a GET watchdog's waitUntil must cover the slice and its hop", async () => {
+    process.env.REHEARSAL_ALLOW_PRIVATE = "1";
+    const pages = { [URL]: HOME };
+    const store = memoryStore();
+    let calls = 0;
+    const base = fetcher(pages);
+    const counted: PageFetcher = { name: base.name, fetchHtml: (url, o) => (calls++, base.fetchHtml(url, o)) };
+    const orch = new Orchestrator({ store, fetcher: counted, probeFetcher: counted, runner: runner(pages, () => calls++) });
+    const { id } = await seededRun(orch);
+    const stale = (await store.get(id))!;
+    stale.createdAt = new Date(Date.now() - 10 * 60 * 1000).toISOString();
+    await store.save(stale);
+
+    expect((await orch.resume(id, { inline: true })).resumed).toBe(true);
+    expect(calls).toBeGreaterThan(0);
+  });
+});

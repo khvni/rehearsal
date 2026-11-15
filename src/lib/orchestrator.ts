@@ -337,7 +337,7 @@ export class Orchestrator {
    * still producing activity inside the stall window. Safe to call from any
    * poll: it is the watchdog that covers a dropped continuation hop.
    */
-  async resume(id: string, opts?: { origin?: string }): Promise<{ experiment: Experiment; resumed: boolean }> {
+  async resume(id: string, opts?: { origin?: string; inline?: boolean }): Promise<{ experiment: Experiment; resumed: boolean }> {
     const exp = await this.mustGet(id);
     const inFlight = IN_FLIGHT_STATUSES.includes(exp.status) || exp.runCheckpoint !== undefined;
     if (!inFlight) return { experiment: exp, resumed: false };
@@ -352,7 +352,10 @@ export class Orchestrator {
         await this.markFailed(id, e).catch(() => undefined);
       }
     };
-    await runInBackground(() => enqueueRun(work));
+    // `inline` callers are already inside a background task (a GET's waitUntil):
+    // the slice and its continuation hop must run in that task, not a nested one.
+    if (opts?.inline) await enqueueRun(work);
+    else await runInBackground(() => enqueueRun(work));
     return { experiment: exp, resumed: true };
   }
 

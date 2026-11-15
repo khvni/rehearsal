@@ -22,7 +22,7 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
   // On Workers a bare promise dies with the response, so it rides waitUntil.
   const origin = new URL(req.url).origin;
   await runInBackground(async () => {
-    await orch.resume(id, { origin }).catch(() => undefined);
+    await orch.resume(id, { origin, inline: true }).catch(() => undefined);
   });
   return NextResponse.json(experiment);
 }
