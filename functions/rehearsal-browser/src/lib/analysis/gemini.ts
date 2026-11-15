@@ -19,6 +19,7 @@ export class GeminiClient implements LlmClient {
   private deep: string;
   private mockup: string;
   private maxCalls: number;
+  private stepMaxCalls: number | undefined;
   private calls = 0;
   private usage = { calls: 0, inputTokens: 0, outputTokens: 0, totalTokens: 0 };
   private experimentId: string | undefined;
@@ -34,6 +35,7 @@ export class GeminiClient implements LlmClient {
   }
 
   resetBudget(ctx?: CallContext): void {
+    this.stepMaxCalls = ctx?.maxCalls;
     this.calls = 0;
     this.usage = { calls: 0, inputTokens: 0, outputTokens: 0, totalTokens: 0 };
     this.experimentId = ctx?.experimentId;
@@ -45,7 +47,8 @@ export class GeminiClient implements LlmClient {
 
   /** Over budget throws; every caller already falls back to its deterministic path on error. */
   async complete(prompt: string, opts?: { deep?: boolean; json?: boolean; model?: string }): Promise<string> {
-    if (this.calls >= this.maxCalls) throw new Error(`Gemini call budget (${this.maxCalls}/run) exhausted`);
+    const maxCalls = this.stepMaxCalls ?? this.maxCalls;
+    if (this.calls >= maxCalls) throw new Error(`Gemini call budget (${maxCalls}/run) exhausted`);
     this.calls++;
     const model = opts?.model === "mockup" ? this.mockup : opts?.deep ? this.deep : this.fast;
     try {

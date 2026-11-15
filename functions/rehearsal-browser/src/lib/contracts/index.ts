@@ -586,7 +586,26 @@ export const RebuiltPage = z.object({
 export type RebuiltPage = z.infer<typeof RebuiltPage>;
 
 /** The rebuild stage's deliverable, stored on the experiment record. */
+export const BlockType = z.enum(["hero", "hero-split", "feature-split", "feature-list", "card-grid", "resource-index", "article-body", "faq", "table", "quote", "team", "logo-row", "cta-band", "contact", "link-list"]);
+export type BlockType = z.infer<typeof BlockType>;
+export const RebuildSitePage = z.object({
+  path: z.string().regex(/^\/(?!\/)/), sourceUrl: z.string().url(), title: z.string(),
+  mode: z.enum(["persuade", "read", "operate", "experience"]),
+  primaryAction: z.object({ label: z.string(), href: z.string() }).optional(),
+  blocks: z.array(z.object({ type: BlockType, purpose: z.string(), notes: z.string().optional() })),
+  status: z.enum(["planned", "built", "failed"]), html: z.string().optional(),
+  source: z.enum(["openrouter", "gemini", "template"]).optional(), issues: z.array(z.string()).optional(), bytes: z.number().nonnegative().optional(),
+});
+export type RebuildSitePage = z.infer<typeof RebuildSitePage>;
+export const RebuildSite = z.object({
+  tokens: z.object({ background: z.string(), foreground: z.string(), primary: z.string(), primaryForeground: z.string(), muted: z.string(), mutedForeground: z.string(), border: z.string(), ring: z.string(), card: z.string(), radius: z.string(), fontSans: z.string(), fontDisplay: z.string().optional() }),
+  designNotes: z.string().max(2000), nav: z.array(z.object({ label: z.string(), path: z.string() })).max(7),
+  footer: z.object({ note: z.string().optional(), links: z.array(z.object({ label: z.string(), href: z.string() })) }),
+  pages: z.array(RebuildSitePage), plannerModel: z.string(), plannerSource: z.enum(["llm", "template"]), implementerModel: z.string(), startedAt: z.string(), completedAt: z.string().optional(),
+});
+export type RebuildSite = z.infer<typeof RebuildSite>;
 export const RebuildResult = z.object({
+  site: RebuildSite.optional(),
   generatedAt: z.string(),
   brand: BrandProfile,
   goals: z.array(RebuildGoal),
