@@ -12,6 +12,7 @@ import {
   type Viewport,
 } from "../contracts";
 import { RehearsalError } from "../errors";
+import { omit } from "../omit";
 import { assertPublicUrl } from "../fetch/guards";
 import { isQuotaStatus, reportProviderQuota } from "../telemetry";
 import { errorText } from "./types";
@@ -70,7 +71,8 @@ export class BrowserbaseFunctionRunner implements BrowserRunner {
 
   async runPersonaJourney(args: PersonaJourneyArgs): Promise<AgentJourney> {
     await assertPublicUrl(args.url);
-    const out = (await this.call({ op: "runPersonaJourney", args: { ...args } })) as {
+    // The Jev client cannot cross the wire (JSON drops its methods); the Function selects its own from its secrets.
+    const out = (await this.call({ op: "runPersonaJourney", args: omit(args, ["jev"]) })) as {
       journey: AgentJourney;
       shots?: { name: string; png: string }[];
     };
