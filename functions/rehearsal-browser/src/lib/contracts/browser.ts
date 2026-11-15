@@ -38,10 +38,22 @@ export interface AgentCandidate {
   method?: string;
 }
 
+/** What an observe() candidate's selector resolves to on the page (its nearest form control, if any). */
+export interface AgentTargetInfo {
+  tag: string;
+  type?: string;
+  role?: string;
+  inForm: boolean;
+  editable: boolean;
+}
+
 /** The observe/act/extract surface an agent loop drives — Stagehand-backed, or a fixture in tests. */
 export interface AgentDriver {
   observe(instruction?: string): Promise<AgentCandidate[]>;
-  act(instruction: string): Promise<{ ok: boolean; detail?: string }>;
+  /** Resolve a candidate selector to its element facts; null when it doesn't resolve. */
+  inspect(selector: string): Promise<AgentTargetInfo | null>;
+  /** Run `target` (a vetted click/scroll candidate) with `instruction` as its trusted description. */
+  act(instruction: string, target: AgentCandidate): Promise<{ ok: boolean; detail?: string }>;
   extract(instruction: string, schema?: unknown): Promise<unknown>;
   probe(): AssertionProbe;
 }

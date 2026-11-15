@@ -64,7 +64,13 @@ export function AgentActivity({ id, live }: { id: string; live: boolean }) {
     <Panel
       title="Agent activity"
       className="span-2"
-      meta={count > 0 && <span className="tabular">{count} events</span>}
+      meta={
+        <span className="muted">
+          {count > 0 && <span className="tabular">{count} events · </span>}
+          {/* Server and browser zones differ — hydration warning suppressed intentionally. */}
+          times in your local timezone (<span suppressHydrationWarning>{Intl.DateTimeFormat().resolvedOptions().timeZone}</span>)
+        </span>
+      }
       busy={live}
       enter="none"
       state={state}

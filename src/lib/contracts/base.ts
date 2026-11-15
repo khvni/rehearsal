@@ -130,6 +130,21 @@ export const EXPERIMENT_LIMITS = {
   firecrawlMapLimit: 100,
 } as const;
 
+// Length caps on client-supplied text: `goal` lands in every LLM prompt, `targetUrl` in every fetch and log line.
+export const EXPERIMENT_INPUT_LIMITS = {
+  goal: 500,
+  targetUrl: 2048,
+} as const;
+
+export const ExperimentGoal = z.string().max(EXPERIMENT_INPUT_LIMITS.goal);
+
+/** Body of POST /api/experiments (after `url` → `targetUrl` aliasing); `config` is validated by ExperimentConfig. */
+export const ExperimentRequest = z.object({
+  targetUrl: z.string().min(1).max(EXPERIMENT_INPUT_LIMITS.targetUrl),
+  goal: ExperimentGoal.optional(),
+});
+export type ExperimentRequest = z.infer<typeof ExperimentRequest>;
+
 export const ExperimentConfig = z.object({
   seed: z.number().int().default(1337),
   maxStates: z.number().int().positive().max(EXPERIMENT_LIMITS.maxStates).default(30),

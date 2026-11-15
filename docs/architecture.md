@@ -85,8 +85,8 @@ Playwright stays the hermetic fallback.
 
 **Agent-driven verify** (`browser/agent.ts`) — `REHEARSAL_VERIFY_AGENT` swaps `runTrajectory`
 for `runAgentTask`: an observe/act/extract loop (Stagehand v4 primitives) where each step
-observes candidate elements in natural language and acts on the best one, instead of pinning
-to scripted locators. `BrowserRunner.supportsAgent` gates it; without a model (or on the
+observes candidate elements in natural language and clicks the first safe one (click only,
+never a form control or submit), instead of pinning to scripted locators. `BrowserRunner.supportsAgent` gates it; without a model (or on the
 Playwright backend) verify falls back to `runTrajectory` — see docs/sandbox.md
 for why this pattern (Vercel's agent-browser snapshot→refs→act model via Stagehand's API).
 
