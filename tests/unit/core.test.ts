@@ -32,6 +32,7 @@ describe("contracts", () => {
     });
     expect(e.configuration.maxStates).toBe(30);
     expect(ExperimentConfig.parse({}).trajectories).toBe(1000);
+    expect(ExperimentConfig.parse({}).viewports).toEqual(["desktop", "mobile"]);
   });
 
   it("bounds experiment budgets", () => {
@@ -43,11 +44,20 @@ describe("contracts", () => {
       { maxStates: 51 },
       { maxDepth: 6 },
       { verifyCount: 17 },
+      { viewports: [] },
       { viewports: ["desktop", "desktop"] },
       { viewports: ["desktop", "mobile", "desktop"] },
     ]) {
       expect(() => ExperimentConfig.parse(over), JSON.stringify(over)).toThrow();
     }
+  });
+
+  it.each([
+    { viewports: ["desktop"] },
+    { viewports: ["mobile"] },
+    { viewports: ["desktop", "mobile"] },
+  ])("accepts non-empty viewports $viewports", ({ viewports }) => {
+    expect(ExperimentConfig.parse({ viewports }).viewports).toEqual(viewports);
   });
 
   it("reads stored experiments over the budget limits, clamped", () => {
