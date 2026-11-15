@@ -55,7 +55,7 @@ import { generateMockup } from "./mockup";
 import { brandSignalsFromHtml, inferGoals, rollupBrand, mergeSignals } from "./rebuild";
 import { buildPage, planSite, rebuildPending, REBUILD_BATCH, SITE_BYTE_CAP } from "./rebuild/site";
 import { selectStore } from "./storage";
-import { enqueueRun } from "./access";
+import { enqueueRun, runSlotTtlMs } from "./access";
 import { continueRun, isWorkersRuntime, runInBackground } from "./jobs";
 import { captureError, logEvent, traceTags, withTrace } from "./telemetry";
 import { writeFileSync, mkdirSync } from "node:fs";
@@ -165,7 +165,7 @@ function isCrawlableLink(href: string | undefined, origin: string): boolean {
 
 export class Orchestrator {
   /** Experiment id -> stage currently running. One run per experiment at a time. */
-  private running = new Map<string, string>();
+  private running = new Map<string, { stage: string; acquiredAt: number }>();
   private fetcher: PageFetcher;
   private probeFetcher: PageFetcher;
   private firecrawl: FirecrawlClientPort;
@@ -385,7 +385,7 @@ export class Orchestrator {
    */
   async resume(id: string, opts?: { origin?: string; inline?: boolean }): Promise<{ experiment: Experiment; resumed: boolean }> {
     const exp = await this.mustGet(id);
-    if (this.running.has(id)) return { experiment: exp, resumed: false };
+    if (this.activeRun(id)) return { experiment: exp, resumed: false };
     const pendingRebuild = exp.status === "rebuilding" || rebuildPending(exp);
     if (!pendingRebuild && exp.spec && exp.runCheckpoint && exp.runCheckpoint.stage !== "rebuild") {
       exp.runCheckpoint = undefined;
@@ -1602,14 +1602,24 @@ Return ASSERTION_LIST as a JSON array of {kind, value, selector?}.`,
 
   /** Claim the run lock synchronously (before any await) so two concurrent calls can't both pass. */
   private async exclusive<T>(id: string, stage: string, fn: () => Promise<T>): Promise<T> {
-    const active = this.running.get(id);
-    if (active) throw new StageInProgressError(id, active);
-    this.running.set(id, stage);
+    const active = this.activeRun(id);
+    if (active) throw new StageInProgressError(id, active.stage);
+    const lock = { stage, acquiredAt: Date.now() };
+    this.running.set(id, lock);
     try {
       return await fn();
     } finally {
-      this.running.delete(id);
+      if (this.running.get(id) === lock) this.running.delete(id);
     }
+  }
+
+  private activeRun(id: string) {
+    const active = this.running.get(id);
+    if (active && Date.now() - active.acquiredAt >= runSlotTtlMs()) {
+      this.running.delete(id);
+      return undefined;
+    }
+    return active;
   }
 
   /** `exclusive` for background jobs: waits for the in-flight run to finish instead of throwing 409-style. */

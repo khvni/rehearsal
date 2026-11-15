@@ -76,6 +76,7 @@ afterEach(() => {
   vi.useRealTimers();
   vi.restoreAllMocks();
   delete process.env.REHEARSAL_MAX_CONCURRENT_RUNS;
+  delete process.env.REHEARSAL_RUN_SLOT_TTL_MS;
   delete process.env.REHEARSAL_ALLOW_PRIVATE;
   delete process.env.REHEARSAL_BROWSER;
 });
@@ -154,6 +155,33 @@ describe("chunked runs", () => {
     await held;
     await vi.advanceTimersByTimeAsync(2000);
     expect(work).toHaveBeenCalledOnce();
+  });
+
+  it("expires abandoned experiment locks for both exclusive and resume without releasing a newer lock", async () => {
+    vi.useFakeTimers();
+    process.env.REHEARSAL_RUN_SLOT_TTL_MS = "1000";
+    const pages = { [URL]: HOME };
+    const store = memoryStore();
+    const orch = new Orchestrator({ store, fetcher: fetcher(pages), runner: runner(pages) });
+    const { id } = await seededRun(orch);
+    store.all.get(id)!.createdAt = "2020-01-01T00:00:00.000Z";
+    const internal = orch as unknown as { exclusive: (id: string, stage: string, fn: () => Promise<void>) => Promise<void>; stepBody: () => Promise<void> };
+    let oldRelease!: () => void;
+    const old = internal.exclusive(id, "rebuild", () => new Promise<void>((r) => { oldRelease = r; }));
+    expect((await orch.resume(id, { inline: true })).resumed).toBe(false);
+    await vi.advanceTimersByTimeAsync(1000);
+    let newRelease!: () => void;
+    const next = internal.exclusive(id, "spec", () => new Promise<void>((r) => { newRelease = r; }));
+    oldRelease();
+    await old;
+    await expect(internal.exclusive(id, "run", async () => {})).rejects.toMatchObject({ runningStage: "spec" });
+    expect((await orch.resume(id, { inline: true })).resumed).toBe(false);
+    await vi.advanceTimersByTimeAsync(1000);
+    const work = vi.spyOn(internal, "stepBody").mockResolvedValue();
+    expect((await orch.resume(id, { inline: true })).resumed).toBe(true);
+    expect(work).toHaveBeenCalledOnce();
+    newRelease();
+    await next;
   });
 
   it("persists spec completion without a checkpoint before the slice finishes", async () => {

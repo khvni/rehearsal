@@ -31,10 +31,14 @@ export function presentsAccessToken(req: Request): boolean {
 const DEFAULT_MAX_CONCURRENT_RUNS = 2;
 const g = globalThis as unknown as { __rehearsalRunLeases?: Map<symbol, number> };
 
+export function runSlotTtlMs(): number {
+  const configured = Number(process.env.REHEARSAL_RUN_SLOT_TTL_MS);
+  return Number.isFinite(configured) && configured > 0 ? configured : 330_000;
+}
+
 function activeLeases(now: number): Map<symbol, number> {
   const leases = g.__rehearsalRunLeases ??= new Map();
-  const configured = Number(process.env.REHEARSAL_RUN_SLOT_TTL_MS);
-  const ttl = Number.isFinite(configured) && configured > 0 ? configured : 330_000;
+  const ttl = runSlotTtlMs();
   for (const [key, acquiredAt] of leases) {
     if (now - acquiredAt >= ttl) leases.delete(key);
   }
