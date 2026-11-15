@@ -112,6 +112,32 @@ describe("LLM output is validated against the contracts before it is stored", ()
     expect(findings[0]).toMatchObject({ title: "Vague CTA", severity: "medium", category: "clarity", evidenceType: "hypothesis" });
   });
 
+  it.each([
+    ["verified-failure", "reproducible-concern"],
+    ["reproducible-concern", "reproducible-concern"],
+    ["hypothesis", "hypothesis"],
+    ["invalid", "hypothesis"],
+  ])("llmFindings caps %s evidence at %s without browser verification", async (evidenceType, expected) => {
+    const findings = await llmFindings({
+      llm: stubLlm({
+        FINDINGS_JSON: JSON.stringify({
+          findings: [{ title: "Checkout crashes", description: "Checkout crashes on submit", evidenceType }],
+        }),
+      }),
+      states: [], runs: [], goal: "complete checkout",
+    });
+    expect(findings).toHaveLength(1);
+    expect(findings[0]).toMatchObject({
+      title: "Checkout crashes", evidenceType: expected, verificationStatus: "unverified", evidencePaths: [],
+    });
+  });
+
+  it.each(["{\"findings\":[]}", "not json"])("llmFindings returns no findings for empty or malformed replies: %s", async (reply) => {
+    expect(await llmFindings({
+      llm: stubLlm({ FINDINGS_JSON: reply }), states: [], runs: [], goal: "complete checkout",
+    })).toEqual([]);
+  });
+
   it("generateSpec ignores malformed LLM spec fields", async () => {
     const base = Experiment.parse({
       id: "exp_spec", targetUrl: "https://acme.test/", goal: "find pricing", status: "created",
