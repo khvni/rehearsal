@@ -61,17 +61,18 @@ export async function assertPublicUrl(raw: string): Promise<URL> {
 
 // ── Politeness ──────────────────────────────────────────────────────────────
 
-const lastRequestAt = new Map<string, number>();
+const nextSlotAt = new Map<string, number>();
 const MIN_INTERVAL_MS = 2000;
 
-/** Rate-limit requests to ~1 per 2s per target host. */
+/** Rate-limit requests to ~1 per 2s per target host.
+ *  Each caller reserves its slot before waiting, so concurrent callers are spaced too. */
 export async function politeDelay(url: URL): Promise<void> {
   const host = url.hostname;
   const now = Date.now();
-  const last = lastRequestAt.get(host) ?? 0;
-  const waitMs = Math.max(0, MIN_INTERVAL_MS - (now - last));
+  const slot = Math.max(now, nextSlotAt.get(host) ?? 0);
+  nextSlotAt.set(host, slot + MIN_INTERVAL_MS);
+  const waitMs = slot - now;
   if (waitMs > 0) await new Promise((r) => setTimeout(r, waitMs));
-  lastRequestAt.set(host, Date.now());
 }
 
 /** Return disallowed path prefixes for `url` per robots.txt; [] on any failure. */
