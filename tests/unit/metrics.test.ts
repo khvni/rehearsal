@@ -131,6 +131,16 @@ describe("metricsFromHtml (HTML-only fallback)", () => {
     expect(m.headingOutline).toEqual({ h1Count: 1, h1Text: ["Title"], skippedLevels: ["h2→h4"] });
     const huge = metricsFromHtml(`<h1>Top</h1>${" ".repeat(2_100_000)}<h1>Past the cap</h1>`, "https://acme.example/", VIEWPORTS.desktop);
     expect(huge.headingOutline.h1Text).toEqual(["Top"]);
+    const ws = " \n".repeat(400);
+    const padded = metricsFromHtml(
+      `<header><a href=/a>${ws}A</a><a href=/b>${ws}B</a><a href=/c>C</a></header><h1>${ws}Title</h1><template/><h1>Inert</h1><button>X</button></template>`,
+      "https://acme.example/",
+      VIEWPORTS.desktop,
+    );
+    expect(padded.navItemCount).toBe(3);
+    expect(padded.headingOutline.h1Text).toEqual(["Title"]);
+    expect(padded.trunkTest.hasPageName).toBe(true);
+    expect(padded.totalCtaCount).toBe(0);
   });
 });
 

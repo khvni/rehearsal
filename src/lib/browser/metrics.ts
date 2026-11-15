@@ -219,10 +219,15 @@ export function metricsFromHtml(rawHtml: string, pageUrl: string, viewport: View
     if (collapse(anchor.text) || anchor.ariaLabel) for (const b of anchor.blocks) b.links++;
     anchor = undefined;
   };
-  const addText = (text: string) => {
-    if (dropDepth > 0) return;
-    if (heading && heading.text.length < MAX_COLLECTED_TEXT) heading.text += text.slice(0, MAX_COLLECTED_TEXT - heading.text.length);
-    if (anchor && anchor.text.length < MAX_COLLECTED_TEXT) anchor.text += text.slice(0, MAX_COLLECTED_TEXT - anchor.text.length);
+  const append = (into: string, text: string) => {
+    const t = into === "" || into.endsWith(" ") ? text.trimStart() : text;
+    return into + t.slice(0, MAX_COLLECTED_TEXT - into.length);
+  };
+  const addText = (raw: string) => {
+    if (dropDepth > 0 || (!heading && !anchor)) return;
+    const text = raw.replace(/\s+/g, " ");
+    if (heading && heading.text.length < MAX_COLLECTED_TEXT) heading.text = append(heading.text, text);
+    if (anchor && anchor.text.length < MAX_COLLECTED_TEXT) anchor.text = append(anchor.text, text);
   };
 
   const isUtility = (a: Record<string, string>) =>
@@ -231,7 +236,8 @@ export function metricsFromHtml(rawHtml: string, pageUrl: string, viewport: View
 
   const openTag = (name: string, a: Record<string, string>, selfClosing: boolean) => {
     if (DROPPED_TAGS.has(name)) {
-      if (!selfClosing) dropDepth++;
+      // HTML ignores `/>` except on foreign elements like <svg>.
+      if (!(selfClosing && name === "svg")) dropDepth++;
       return;
     }
     if (dropDepth > 0) return;
