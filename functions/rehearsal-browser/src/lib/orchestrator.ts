@@ -936,8 +936,7 @@ export class Orchestrator {
       const pendingUrls = resumeData?.signaturePending ?? experiment.graph.states.map((s) => s.url);
       const statesByUrl = new Map(experiment.graph.states.map((s) => [s.url, s]));
       for (const url of pendingUrls) {
-        const key = url;
-        if (signatures.has(key)) continue;
+        if (signatures.has(url)) continue;
         if (expired()) {
           return suspend({
             vpIndex: config.viewports.length,
@@ -963,7 +962,7 @@ export class Orchestrator {
         } catch {
           // keep the crawl-extracted signature
         }
-        signatures.set(key, { url, signature: contentSignatureFor(url, page) });
+        signatures.set(url, { url, signature: contentSignatureFor(url, page) });
       }
       experiment.siteSignatures = [...signatures.values()];
       if (experiment.graph.states.length === 0) {
