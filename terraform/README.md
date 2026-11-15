@@ -14,15 +14,18 @@ secret values, so use a private/remote backend for anything shared).
 One Ubuntu droplet; cloud-init installs Node 22 + Playwright Chromium (plus an AppArmor
 profile so its sandbox can create user namespaces), clones
 `github_repo@git_ref`, runs `npm ci && npm run build`, serves `next start` on
-`127.0.0.1:3000` under systemd, and fronts it with Caddy (port 80, or auto-HTTPS when
-`domain` is set). A firewall allows only 22/80/443 in.
+`127.0.0.1:3000` under systemd, and fronts it with Caddy on HTTPS (automatic certificate
+for `subdomain.domain`; port 80 only serves the ACME challenge and redirects to HTTPS).
+A firewall allows only 22/80/443 in. `domain` is required: the access token is sent as a
+Basic-auth header on every request, so the stack refuses to serve the app over plain HTTP
+on the droplet IP.
 
 | Variable | Required | Default | Notes |
 | --- | --- | --- | --- |
 | `do_token` | yes | — | DigitalOcean API token |
 | `region` | no | `sfo3` | |
 | `size` | no | `s-2vcpu-4gb` | build + Chromium want >= 4 GB |
-| `domain` | no | `""` | DO-managed zone; creates an A record |
+| `domain` | yes | — | DO-managed zone; creates the A record Caddy gets a certificate for |
 | `subdomain` | no | `rehearsal` | record name in `domain` (`@` = apex) |
 | `rehearsal_access_token` | yes | — | shared secret for the dashboard + API (>= 16 chars); browsers prompt for it (any username) |
 | `ssh_key_fingerprints` | yes | — | DO SSH keys; Terraform needs one to write `/etc/rehearsal/env` |
