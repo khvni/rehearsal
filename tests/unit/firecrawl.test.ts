@@ -136,6 +136,14 @@ describe("looksLikeJsShell", () => {
     expect(stripNoscript(`a<noscript>x</noscript>b<NOSCRIPT y="1">z</NOSCRIPT>c`)).toBe("abc");
     expect(stripNoscript(`a<noscriptx>b</noscript>`)).toBe(`a<noscriptx>b</noscript>`); // `<noscriptx` isn't the tag; the stray closer stays
   });
+
+  it("keeps slices aligned when the page contains characters whose lowercase expands", () => {
+    // `İ`.toLowerCase() is two UTF-16 units — positions found on a lowercased copy
+    // would shift against the original and eat the next tag's `<`.
+    const html = `<p>a</p><noscript>İ enable javascript</noscript><script src="/a.js"></script>`;
+    expect(stripNoscript(html)).toBe(`<p>a</p><script src="/a.js"></script>`);
+    expect(judge(html)).toBe(true);
+  });
 });
 
 describe("FirecrawlClient", () => {

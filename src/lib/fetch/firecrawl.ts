@@ -15,32 +15,33 @@ const INTERACT_TIMEOUT_MS = 45_000;
 // ── JS-shell heuristic ──────────────────────────────────────────────────────
 
 const JS_REQUIRED_RE = /enable javascript|javascript is required|javascript is disabled|requires javascript|needs javascript to (?:run|work|load)/i;
-const NOSCRIPT_OPEN = "<noscript";
-const NOSCRIPT_CLOSE = "</noscript>";
+/** A single noscript open or close tag. Never spans content, so matching stays linear — unlike
+ *  a `<noscript>…*?</noscript>` form, which rescans the tail once per unclosed opener and stalls
+ *  the event loop on attacker-controlled HTML. */
+const NOSCRIPT_TAG_RE = /<noscript\b[^>]*>|<\/noscript\s*>/gi;
 
 /**
- * Remove `<noscript>…</noscript>` blocks in a single linear pass — their warnings persist in
- * fully rendered HTML (framework boilerplate) and must not count toward the JS-shell signals.
- * A lazy-regex form rescans the tail once per `<noscript` opener: attacker-controlled HTML full
- * of unclosed tags stalls the event loop for seconds. An unclosed trailing block is kept verbatim.
+ * Remove `<noscript>…</noscript>` blocks in one pass — their warnings persist in fully rendered
+ * HTML (framework boilerplate) and must not count toward the JS-shell signals. Tag positions are
+ * found on the original string (no lowercased copy, whose length can shift around characters like
+ * `İ` and corrupt slices). An unclosed trailing block is kept verbatim.
  */
 export function stripNoscript(html: string): string {
-  const lower = html.toLowerCase();
+  const tags = html.matchAll(NOSCRIPT_TAG_RE);
   let out = "";
   let cursor = 0;
-  for (;;) {
-    const open = lower.indexOf(NOSCRIPT_OPEN, cursor);
-    if (open === -1) break;
-    const boundary = lower.charAt(open + NOSCRIPT_OPEN.length);
-    if (/\w/.test(boundary)) {
-      out += html.slice(cursor, open + NOSCRIPT_OPEN.length); // `<noscriptx` is not the tag — keep it
-      cursor = open + NOSCRIPT_OPEN.length;
-      continue;
+  for (let m = tags.next(); !m.done; m = tags.next()) {
+    const tag = m.value;
+    if (tag[0].startsWith("</")) continue; // stray closer stays
+    out += html.slice(cursor, tag.index);
+    let close = tags.next();
+    while (!close.done && !close.value[0].startsWith("</")) close = tags.next(); // nested openers are inside the removed block
+    if (close.done) {
+      out += tag[0];
+      cursor = tag.index + tag[0].length; // unclosed tag kept verbatim
+      break;
     }
-    const close = lower.indexOf(NOSCRIPT_CLOSE, open + NOSCRIPT_OPEN.length);
-    if (close === -1) break;
-    out += html.slice(cursor, open);
-    cursor = close + NOSCRIPT_CLOSE.length;
+    cursor = close.value.index + close.value[0].length;
   }
   return out + html.slice(cursor);
 }
