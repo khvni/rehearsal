@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { isExperimentId } from "@/lib/contracts";
 import { Orchestrator } from "@/lib/orchestrator";
+import { runInBackground } from "@/lib/jobs";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -18,6 +19,10 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
   const experiment = await orch.get(id);
   if (!experiment) return NextResponse.json({ error: "not found" }, { status: 404 });
   // Self-healing watchdog: a stalled background run resumes on the next poll.
-  void orch.resume(id, { origin: new URL(req.url).origin }).catch(() => undefined);
+  // On Workers a bare promise dies with the response, so it rides waitUntil.
+  const origin = new URL(req.url).origin;
+  await runInBackground(async () => {
+    await orch.resume(id, { origin }).catch(() => undefined);
+  });
   return NextResponse.json(experiment);
 }

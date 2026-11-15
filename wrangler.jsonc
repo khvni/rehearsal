@@ -11,6 +11,7 @@
   "routes": [
     { "pattern": "rehearsal.alikhani.co", "zone_name": "alikhani.co", "custom_domain": true }
   ],
+  "services": [{ "binding": "WORKER_SELF_REFERENCE", "service": "rehearsal-demo" }],
   "observability": { "enabled": true },
   "vars": { "BROWSERBASE_FUNCTION_ID": "eb8a2fde-7dd4-4c0a-91e7-aa87117732ff" }
 }

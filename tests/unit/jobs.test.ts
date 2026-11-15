@@ -1,6 +1,8 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 vi.mock("@/lib/fetch/guards", () => ({ assertPublicUrl: vi.fn(async (u: string) => new URL(u)) }));
+const cfEnv: Record<string, unknown> = {};
+vi.mock("@opennextjs/cloudflare", () => ({ getCloudflareContext: async () => ({ env: cfEnv, ctx: {} }) }));
 
 import { assertPublicUrl } from "@/lib/fetch/guards";
 import { continueRun } from "@/lib/jobs";
@@ -18,6 +20,7 @@ describe("continueRun hop targeting on Workers", () => {
     fetchMock.mockClear();
     vi.mocked(assertPublicUrl).mockClear();
     delete process.env.REHEARSAL_ORIGIN;
+    delete cfEnv.WORKER_SELF_REFERENCE;
   });
   afterEach(() => vi.unstubAllGlobals());
 
@@ -45,6 +48,17 @@ describe("continueRun hop targeting on Workers", () => {
     expect(fetchMock).not.toHaveBeenCalled();
     vi.stubGlobal("navigator", workersUA);
     await continueRun("exp_x", { token: "t" });
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+
+  it("hops through the WORKER_SELF_REFERENCE binding when deployed — fetch() to its own Custom Domain never arrives", async () => {
+    const selfFetch = vi.fn(async () => new Response("", { status: 202 }));
+    cfEnv.WORKER_SELF_REFERENCE = { fetch: selfFetch };
+    await continueRun("exp_x", { origin: "https://rehearsal.example.com", token: "t" });
+    expect(selfFetch).toHaveBeenCalledWith(
+      hop("https://rehearsal.example.com"),
+      expect.objectContaining({ method: "POST", body: JSON.stringify({ id: "exp_x", token: "t" }) }),
+    );
     expect(fetchMock).not.toHaveBeenCalled();
   });
 });

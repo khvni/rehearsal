@@ -49,15 +49,37 @@ export async function continueRun(id: string, opts: { origin?: string; token?: s
     const hopOrigin = process.env.REHEARSAL_ORIGIN ?? opts.origin;
     if (!hopOrigin) return;
     const target = `${hopOrigin}/api/internal/run-step`;
-    const parsed = new URL(target);
-    const loopback = ["localhost", "127.0.0.1", "::1", "[::1]"].includes(parsed.hostname);
-    if (!loopback) await assertPublicUrl(target);
-    await fetch(target, {
+    const init: RequestInit = {
       method: "POST",
       headers: { "content-type": "application/json" },
       body: JSON.stringify({ id, token: opts.token }),
-    });
+    };
+    // A Worker's fetch() to its own Custom Domain never reaches it, so the hop
+    // goes through the self service binding when deployed; that always lands
+    // on this Worker whatever the URL host, so the SSRF guard doesn't apply.
+    const self = await selfReference();
+    if (self) {
+      await self.fetch(target, init);
+      return;
+    }
+    const parsed = new URL(target);
+    const loopback = ["localhost", "127.0.0.1", "::1", "[::1]"].includes(parsed.hostname);
+    if (!loopback) await assertPublicUrl(target);
+    await fetch(target, init);
   } catch {
     /* the watchdog resume path covers a lost hop */
+  }
+}
+
+type SelfService = { fetch(input: string, init?: RequestInit): Promise<Response> };
+
+/** The Worker's `WORKER_SELF_REFERENCE` service binding (wrangler.jsonc), when present. */
+async function selfReference(): Promise<SelfService | undefined> {
+  try {
+    const { getCloudflareContext } = await import("@opennextjs/cloudflare");
+    const { env } = await getCloudflareContext({ async: true });
+    return (env as { WORKER_SELF_REFERENCE?: SelfService }).WORKER_SELF_REFERENCE;
+  } catch {
+    return undefined;
   }
 }
