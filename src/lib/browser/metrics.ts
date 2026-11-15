@@ -206,6 +206,7 @@ export function metricsFromHtml(rawHtml: string, pageUrl: string, viewport: View
   let heading: { level: number; text: string } | undefined;
   let anchor: OpenAnchor | undefined;
   let dropDepth = 0;
+  let svgDepth = 0;
   let ctas = 0;
   let hasSearch = false;
   let hasYouAreHere = false;
@@ -236,8 +237,10 @@ export function metricsFromHtml(rawHtml: string, pageUrl: string, viewport: View
 
   const openTag = (name: string, a: Record<string, string>, selfClosing: boolean) => {
     if (DROPPED_TAGS.has(name)) {
-      // HTML ignores `/>` except on foreign elements like <svg>.
-      if (!(selfClosing && name === "svg")) dropDepth++;
+      // HTML ignores `/>` except on foreign (SVG) elements.
+      if (selfClosing && (name === "svg" || svgDepth > 0)) return;
+      dropDepth++;
+      if (name === "svg") svgDepth++;
       return;
     }
     if (dropDepth > 0) return;
@@ -281,6 +284,7 @@ export function metricsFromHtml(rawHtml: string, pageUrl: string, viewport: View
   const closeTag = (name: string) => {
     if (DROPPED_TAGS.has(name)) {
       if (dropDepth > 0) dropDepth--;
+      if (name === "svg" && svgDepth > 0) svgDepth--;
       return;
     }
     if (dropDepth > 0) return;

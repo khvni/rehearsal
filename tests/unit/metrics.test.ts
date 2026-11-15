@@ -133,7 +133,7 @@ describe("metricsFromHtml (HTML-only fallback)", () => {
     expect(huge.headingOutline.h1Text).toEqual(["Top"]);
     const ws = " \n".repeat(400);
     const padded = metricsFromHtml(
-      `<header><a href=/a>${ws}A</a><a href=/b>${ws}B</a><a href=/c>C</a></header><h1>${ws}Title</h1><template/><h1>Inert</h1><button>X</button></template>`,
+      `<header><a href=/a>${ws}A</a><a href=/b>${ws}B</a><a href=/c>C</a></header><h1>${ws}Title</h1><template/><h1>Inert</h1><button>X</button></template><svg><style/><script/></svg><h2>After svg</h2>`,
       "https://acme.example/",
       VIEWPORTS.desktop,
     );
@@ -141,6 +141,8 @@ describe("metricsFromHtml (HTML-only fallback)", () => {
     expect(padded.headingOutline.h1Text).toEqual(["Title"]);
     expect(padded.trunkTest.hasPageName).toBe(true);
     expect(padded.totalCtaCount).toBe(0);
+    expect(padded.headingOutline.skippedLevels).toEqual([]);
+    expect(metricsFromHtml(`<svg><style/></svg><h1>Seen</h1>`, "https://acme.example/", VIEWPORTS.desktop).headingOutline.h1Count).toBe(1);
   });
 });
 
