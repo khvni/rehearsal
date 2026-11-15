@@ -549,7 +549,7 @@ export class Orchestrator {
       }
       const goal = opts?.goal?.trim() || undefined;
       const goalChanged = Boolean(goal && goal !== exp.goal);
-      const stored = new Map((exp.siteSignatures ?? []).map((s) => [normalizeSiteUrl(s.url), s]));
+      const stored = new Map((exp.siteSignatures ?? []).map((s) => [s.url, s]));
       const probes = [exp.targetUrl, ...[...stored.values()].map((s) => s.url)].filter(
         (u, i, a) => a.indexOf(u) === i,
       );
@@ -568,7 +568,7 @@ export class Orchestrator {
           ]);
           const page = extractPage(html, url);
           const signature = contentSignatureFor(url, page);
-          const old = stored.get(normalizeSiteUrl(url));
+          const old = stored.get(url);
           checked++;
           if (!old || old.signature !== signature) mismatches.push(url);
         } catch {
@@ -934,12 +934,11 @@ export class Orchestrator {
       experiment.failures = [...experiment.failures.filter((f) => f.stage !== "discover"), ...pageFailures];
       const signatures = new Map<string, { url: string; signature: string }>();
       const resumeDone = resumeData?.signatureDone ?? [];
-      for (const s of resumeDone) signatures.set(normalizeSiteUrl(s.url), s);
+      for (const s of resumeDone) signatures.set(s.url, s);
       const pendingUrls = resumeData?.signaturePending ?? experiment.graph.states.map((s) => s.url);
       const statesByUrl = new Map(experiment.graph.states.map((s) => [s.url, s]));
       for (const url of pendingUrls) {
-        const key = normalizeSiteUrl(url);
-        if (signatures.has(key)) continue;
+        if (signatures.has(url)) continue;
         if (expired()) {
           return suspend({
             vpIndex: config.viewports.length,
@@ -965,7 +964,7 @@ export class Orchestrator {
         } catch {
           // keep the crawl-extracted signature
         }
-        signatures.set(key, { url, signature: contentSignatureFor(url, page) });
+        signatures.set(url, { url, signature: contentSignatureFor(url, page) });
       }
       experiment.siteSignatures = [...signatures.values()];
       if (experiment.graph.states.length === 0) {
