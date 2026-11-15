@@ -5,6 +5,7 @@ import {
   VIEWPORTS,
   type ActivityKind,
   Assertion,
+  type BrowserRun,
   type BrowserRunner,
   type Comparison,
   type ExperimentStore,
@@ -134,6 +135,13 @@ export class StageInProgressError extends Error {
     super(`Experiment ${experimentId} already has a ${runningStage === "run" ? "full" : runningStage} run in progress`);
     this.name = "StageInProgressError";
   }
+}
+
+/** Runner errors that mean "no browser this run": verify and compare degrade instead of failing the run. */
+const BROWSER_SKIP_CODES: ReadonlySet<string> = new Set(["BROWSER_UNAVAILABLE", "PROVIDER_QUOTA"]);
+
+function browserSkipped(e: Experiment): boolean {
+  return e.failures.some((f) => f.stage === "verify" && BROWSER_SKIP_CODES.has(f.code));
 }
 
 export class Orchestrator {
@@ -1045,36 +1053,49 @@ export class Orchestrator {
                 .filter(Boolean) as { actionId: string; label: string; href?: string; role?: string }[],
             }));
 
-      for (const selected of replayables) {
-        const actions = selected.actions;
+      e.failures = e.failures.filter((f) => f.stage !== "verify");
+      try {
+        for (const selected of replayables) {
+          const actions = selected.actions;
 
-        const vps = e.configuration.viewports.slice(0, 1);
-        if (selected === replayables[0] && e.configuration.viewports.includes("mobile") && !vps.includes("mobile")) vps.push("mobile");
-        for (const vpName of vps) {
-          const runId = `run_${selected.id}_${vpName}`;
-          await this.emit(id, "verify", "browser", `${runId}: replaying ${actions.length} steps on ${vpName}`);
-          const args = {
-            url: e.targetUrl,
-            viewport: VIEWPORTS[vpName],
-            actions,
-            assertions: e.assertions,
-            runId,
-          };
-          // Agent runs only where the backend has a model (opt-in); compare stays scripted so baseline/variant replay identically.
-          const useAgent =
-            agentVerifyEnabled() && this.runner.supportsAgent === true && typeof this.runner.runAgentTask === "function";
-          const run = useAgent
-            ? await this.runner.runAgentTask!({ ...args, goal: e.goal })
-            : await this.runner.runTrajectory(args);
-          for (const s of run.steps.filter((s) => !s.ok)) {
-            await this.emit(id, "verify", "assert", `"${s.label}" failed${s.error ? ` — ${s.error}` : ""}`);
+          const vps = e.configuration.viewports.slice(0, 1);
+          if (selected === replayables[0] && e.configuration.viewports.includes("mobile") && !vps.includes("mobile")) vps.push("mobile");
+          for (const vpName of vps) {
+            const runId = `run_${selected.id}_${vpName}`;
+            await this.emit(id, "verify", "browser", `${runId}: replaying ${actions.length} steps on ${vpName}`);
+            const args = {
+              url: e.targetUrl,
+              viewport: VIEWPORTS[vpName],
+              actions,
+              assertions: e.assertions,
+              runId,
+            };
+            // Agent runs only where the backend has a model (opt-in); compare stays scripted so baseline/variant replay identically.
+            const useAgent =
+              agentVerifyEnabled() && this.runner.supportsAgent === true && typeof this.runner.runAgentTask === "function";
+            const run = useAgent
+              ? await this.runner.runAgentTask!({ ...args, goal: e.goal })
+              : await this.runner.runTrajectory(args);
+            for (const s of run.steps.filter((s) => !s.ok)) {
+              await this.emit(id, "verify", "assert", `"${s.label}" failed${s.error ? ` — ${s.error}` : ""}`);
+            }
+            for (const a of run.assertions.filter((a) => !a.passed)) {
+              await this.emit(id, "verify", "assert", `Assertion failed: ${a.assertion.kind} "${a.assertion.value}"`);
+            }
+            await this.emit(id, "verify", "browser", `${runId}: ${run.success ? "goal reached" : "goal not reached"} in ${run.durationMs} ms`);
+            e.browserTests.push(run);
           }
-          for (const a of run.assertions.filter((a) => !a.passed)) {
-            await this.emit(id, "verify", "assert", `Assertion failed: ${a.assertion.kind} "${a.assertion.value}"`);
-          }
-          await this.emit(id, "verify", "browser", `${runId}: ${run.success ? "goal reached" : "goal not reached"} in ${run.durationMs} ms`);
-          e.browserTests.push(run);
         }
+      } catch (err) {
+        const code = classifyError(err);
+        if (!BROWSER_SKIP_CODES.has(code)) throw err;
+        e.failures.push(toFailure(err, "verify"));
+        await this.emit(
+          id,
+          "verify",
+          "info",
+          `Browser replays skipped (${code}): ${this.runner.name} can't run here — findings come from the crawl and simulation`,
+        );
       }
       await this.update(e, "created");
       return e;
@@ -1084,7 +1105,7 @@ export class Orchestrator {
   /** Stage 4 — rule + LLM findings. */
   private async runAnalyze(id: string): Promise<Experiment> {
     const e = await this.mustGet(id);
-    if (e.browserTests.length === 0) await this.runVerify(id);
+    if (e.browserTests.length === 0 && !browserSkipped(e)) await this.runVerify(id);
     const exp = (await this.mustGet(id))!;
     await this.update(exp, "analyzing");
     return withTrace("analyze", { experimentId: id, targetUrl: exp.targetUrl }, async () => {
@@ -1127,6 +1148,13 @@ export class Orchestrator {
       }
       const variant = await this.proposeVariant(exp, finding.findingId);
       exp.variants.push(variant);
+      const notReplayed = async (why: string) => {
+        variant.status = "proposed";
+        await this.emit(id, "compare", "info", `Variant ${variant.variantId} proposed, not replayed: ${why}`);
+        await this.update(exp, "created");
+        return exp;
+      };
+      if (!exp.browserTests.some((r) => !r.variantId)) return notReplayed("no baseline browser run to compare against");
       await this.emit(id, "compare", "browser", `Applied variant ${variant.variantId}: ${variant.patches.length} patch(es)`);
 
       const actionById = new Map((exp.graph?.states ?? []).flatMap((st) => st.actions.map((a) => [a.actionId, a] as const)));
@@ -1135,14 +1163,22 @@ export class Orchestrator {
           const a = s.actionId ? actionById.get(s.actionId) : undefined;
           return { actionId: s.actionId, label: s.label, href: a?.href, role: a?.role };
         }) ?? [];
-      const run = await this.runner.runTrajectory({
-        url: exp.targetUrl,
-        viewport: VIEWPORTS.desktop,
-        actions: baselineActions,
-        assertions: exp.assertions,
-        runId: `run_variant_${variant.variantId}`,
-        patches: variant.patches,
-      });
+      let run: BrowserRun;
+      try {
+        run = await this.runner.runTrajectory({
+          url: exp.targetUrl,
+          viewport: VIEWPORTS.desktop,
+          actions: baselineActions,
+          assertions: exp.assertions,
+          runId: `run_variant_${variant.variantId}`,
+          patches: variant.patches,
+        });
+      } catch (err) {
+        const code = classifyError(err);
+        if (!BROWSER_SKIP_CODES.has(code)) throw err;
+        exp.failures.push(toFailure(err, "compare"));
+        return notReplayed(`browser unavailable (${code})`);
+      }
       run.variantId = variant.variantId;
       exp.browserTests.push(run);
 
@@ -1190,7 +1226,7 @@ export class Orchestrator {
   /** Stage 6 — the deliverable: spec.md of all changes + rebuild plan. */
   private async runSpec(id: string): Promise<Experiment> {
     const e = await this.mustGet(id);
-    if (e.comparisons.length === 0) await this.runCompare(id);
+    if (e.comparisons.length === 0 && e.variants.length === 0) await this.runCompare(id);
     const exp = (await this.mustGet(id))!;
     return withTrace("spec", { experimentId: id, targetUrl: exp.targetUrl }, async () => {
       exp.spec = await generateSpec(exp, this.llm);
