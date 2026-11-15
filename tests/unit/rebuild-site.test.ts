@@ -13,14 +13,127 @@ function fixture(count = 8): Experiment {
 const fake = (output = ""): LlmClient => ({ name: "openrouter", complete: vi.fn(async () => output) });
 
 describe("whole-site rebuild", () => {
-  it("preserves external footer query strings and distinct query targets", () => {
+  it.each([
+    ["https://www.youtube.com/watch?v=demo", "https://www.youtube.com/@acme?feature=footer#about"],
+    ["https://www.youtube.com/watch?v=demo", "https://www.youtube.com/channel/UCacme"],
+    ["https://www.youtube.com/shorts/demo", "https://www.youtube.com/channel/UCacme"],
+    ["https://www.youtube.com/embed/demo", "https://www.youtube.com/channel/UCacme"],
+    ["https://www.youtube.com/live/demo", "https://www.youtube.com/channel/UCacme"],
+    ["https://youtu.be/demo", "https://www.youtube.com/channel/UCacme"],
+    ["https://x.com/acme/status/123", "https://twitter.com/acme"],
+    ["https://www.instagram.com/p/demo", "https://www.instagram.com/acme"],
+    ["https://www.instagram.com/reel/demo", "https://www.instagram.com/acme"],
+    ["https://www.linkedin.com/posts/demo", "https://www.linkedin.com/company/acme"],
+  ])("prefers a social profile/channel to content in either crawl order: %s", (content, profile) => {
+    const exp = fixture(1);
+    const home = exp.graph!.states[0];
+    for (const hrefs of [[content, profile], [profile, content]]) {
+      home.actions = ["https://[invalid", ...hrefs].map((href, i) => ({ actionId: `a${i}`, stateId: home.stateId, label: "Follow Acme", href, type: "click", enabled: true, safeToExecute: true }));
+      expect(deterministicPlan(exp).footer.links).toEqual([{ label: "Follow Acme", href: profile }]);
+    }
+  });
+  it("keeps an IASER-like footer to social profiles, contact and key pages without duplicate networks or article titles", () => {
+    const exp = fixture(6);
+    const paths = ["/", "/about", "/join", "/contact", "/articles/ai-impact", "/blog/dispatch"];
+    const titles = ["IASER", "About", "Join", "Contact", "Can We Measure the Iman Impact of AI? - IASER", "IASER Dispatch - IASER"];
+    exp.graph!.states.forEach((state, i) => { state.url = `https://example.com${paths[i]}`; state.pageTitle = titles[i]; });
+    const home = exp.graph!.states[0];
+    home.brand = { cssVars: {}, colors: [], fonts: [], navItems: [{ label: "Home", href: "/" }, { label: "About", href: "/about" }] };
+    home.actions = [
+      ["IASER on LinkedIn", "https://www.linkedin.com/company/iaser/?trk=footer#about"],
+      ["LinkedIn ↗", "https://linkedin.com/company/iaser"],
+      ["IASER on Instagram", "https://www.instagram.com/iaser"],
+      ["Email IASER", "mailto:hello@example.com?subject=Hello"],
+      [titles[4], "https://www.youtube.com/watch?v=article"],
+      [titles[5], "/blog/dispatch"],
+      ["Facebook", "https://www.facebook.com/posts/123"],
+      ["A very long article headline that should never become a footer social link title", "https://www.tiktok.com/@iaser"],
+      ["Somewhere else", "https://unknown.example/profile"],
+    ].map(([label, href], i) => ({ actionId: `a${i}`, stateId: home.stateId, label, href, type: "click", enabled: true, safeToExecute: true }));
+    const links = deterministicPlan(exp).footer.links;
+    expect(links).toHaveLength(5);
+    expect(links.map(l => l.href)).toEqual(expect.arrayContaining(["https://www.linkedin.com/company/iaser/?trk=footer#about", "https://www.instagram.com/iaser", "mailto:hello@example.com?subject=Hello", "/join", "/contact"]));
+    expect(links.filter(l => l.href.includes("linkedin.com"))).toHaveLength(1);
+    expect(links.every(l => l.label.length <= 60)).toBe(true);
+    expect(links.some(l => titles.slice(4).includes(l.label))).toBe(false);
+    expect(deterministicPlan(fixture(0)).footer.links).toEqual([]);
+  });
+  it.each(["llm", "opus"])("owns runtime metadata even when the planner returns %s and malformed optional fields", async plannerSource => {
+    const exp = fixture(2);
+    const fallback = deterministicPlan(exp);
+    const output = {
+      tokens: { ...fallback.tokens, fontDisplay: { family: "Bad" }, radius: null },
+      designNotes: "Quiet, readable editorial layouts. ".repeat(100),
+      nav: [{ label: "Home Home", path: "/" }, { label: "Guide", path: "/1" }, { label: "Duplicate", path: "/1" }, { label: {}, path: "/1" }],
+      footer: { note: { invalid: true }, links: [{ label: "Email", href: "mailto:team@example.com" }, { label: "Unsafe", href: "javascript:alert(1)" }, { label: "Missing href" }] },
+      plannerSource, plannerModel: { invalid: true }, implementerModel: null,
+      plannerError: "Fabricated failure".repeat(100), startedAt: 42, completedAt: ["invented"],
+      pages: fallback.pages.map((page, i) => ({
+        path: page.path, sourceUrl: { invalid: true }, title: { invalid: true },
+        mode: i ? { invalid: true } : "PERSUADE",
+        primaryAction: i ? { label: {}, href: "/bad" } : { label: "Join us", href: "/join" },
+        blocks: i ? [{ type: "article-body", purpose: 42, notes: 7 }] : [{ type: "hero", purpose: "Explain the mission", notes: { invalid: true } }, "cta-band", { type: "unknown-block" }],
+        status: "built", html: "<script>untrusted()</script>", source: "opus", bytes: "huge", issues: [42],
+      })),
+    };
+    const llm = fake(JSON.stringify(output));
+    const site = await planSite(exp, llm);
+    expect(site).toMatchObject({ plannerSource: "llm", plannerModel: fallback.plannerModel, implementerModel: fallback.implementerModel, startedAt: exp.createdAt });
+    expect(site.plannerError).toBeUndefined();
+    expect(site.completedAt).toBeUndefined();
+    expect(site.tokens.radius).toBe(fallback.tokens.radius);
+    expect(site.tokens.fontDisplay).toBeUndefined();
+    expect(site.designNotes).toHaveLength(2000);
+    expect(site.nav).toEqual([{ label: "Home", path: "/" }, { label: "Guide", path: "/1" }]);
+    expect(site.footer).toEqual({ note: fallback.footer.note, links: [{ label: "Email", href: "mailto:team@example.com" }] });
+    expect(site.pages[0].blocks).toEqual([{ type: "hero", purpose: "Explain the mission", notes: undefined }, { type: "cta-band", purpose: "Present Page 0", notes: undefined }]);
+    expect(site.pages[0].primaryAction).toEqual({ label: "Join us", href: "/join" });
+    expect(site.pages[1].blocks).toEqual([{ type: "article-body", purpose: "42", notes: "7" }]);
+    expect(site.pages[1].mode).toBe(fallback.pages[1].mode);
+    expect(site.pages[1].primaryAction).toBeUndefined();
+    site.pages.forEach((page, i) => {
+      expect(page).toMatchObject({ status: "planned", path: fallback.pages[i].path, sourceUrl: fallback.pages[i].sourceUrl, title: fallback.pages[i].title });
+      for (const field of ["html", "source", "bytes", "issues"] as const) expect(page[field]).toBeUndefined();
+    });
+    const prompt = vi.mocked(llm.complete).mock.calls[0][0];
+    expect(prompt).not.toContain('"plannerSource":');
+    expect(prompt).not.toContain('"status":');
+  });
+  it("accepts design-only output and recovers locally from unusable optional fields and page entries", async () => {
+    const exp = fixture(2);
+    const fallback = deterministicPlan(exp);
+    const site = await planSite(exp, fake(JSON.stringify({
+      tokens: { background: "#ffffff", foreground: {}, fontDisplay: false },
+      designNotes: {}, nav: false, footer: null,
+      pages: [{ path: "/", blocks: [null, { type: "bad" }, "hero"], mode: false, primaryAction: false }, { path: "/1", blocks: false }, { path: "/foreign", blocks: ["hero"] }],
+    })));
+    expect(site.plannerSource).toBe("llm");
+    expect(site.designNotes).toBe(fallback.designNotes);
+    expect(site.nav).toEqual(fallback.nav);
+    expect(site.footer).toEqual(fallback.footer);
+    expect(site.pages[0].blocks.map(b => b.type)).toEqual(["hero"]);
+    expect(site.pages[1]).toEqual(fallback.pages[1]);
+  });
+  it.each([
+    { tokens: null, pages: [{ path: "/", blocks: ["hero"] }] },
+    { tokens: { fontSans: "system-ui" }, pages: [{ path: "/", blocks: ["hero"] }] },
+    { tokens: { background: "#ffffff" }, pages: null },
+    { tokens: { background: "#ffffff" }, pages: [] },
+    { tokens: { background: "#ffffff" }, pages: [{ path: "/", blocks: [{ type: "unknown" }] }] },
+  ])("falls back when essential planner tokens/pages/blocks are unusable: %j", async output => {
+    const site = await planSite(fixture(1), fake(JSON.stringify(output)));
+    expect(site.plannerSource).toBe("template");
+    expect(site.plannerError).toMatch(/Planner (tokens|pages).*unusable/);
+  });
+  it("preserves query strings and fragments on selected external footer links", () => {
     const exp = fixture(1);
     const home = exp.graph!.states[0];
     const hrefs = ["https://www.youtube.com/watch?v=first#t=20", "https://www.youtube.com/watch?v=second", "https://www.facebook.com/profile.php?id=123", "mailto:hello@example.com?subject=Hello"];
     home.actions = [...hrefs, hrefs[0]].map((href, i) => ({ actionId: `a${i}`, stateId: home.stateId, label: `Contact ${i}`, href, type: "click", enabled: true, safeToExecute: true }));
     const links = deterministicPlan(exp).footer.links;
-    expect(links).toHaveLength(4);
-    expect(links.map(l => l.href)).toEqual(expect.arrayContaining(hrefs));
+    expect(links).toHaveLength(3);
+    expect(links.map(l => l.href)).toEqual(expect.arrayContaining([hrefs[0], hrefs[2], hrefs[3]]));
+    expect(links.map(l => l.href)).not.toContain(hrefs[1]);
   });
   it("cleans stored nav labels and prioritizes a bounded footer over crawled article dumps", () => {
     const exp = fixture(40);
@@ -31,7 +144,7 @@ describe("whole-site rebuild", () => {
     home.actions = ["https://github.com/acme/project", "https://github.com/acme", "mailto:hi@example.com", "https://x.com/acme", "javascript:bad()"].map((href, i) => ({ actionId: `a${i}`, stateId: home.stateId, label: i < 2 ? "GitHub GitHub" : "Contact", href, type: "click", enabled: true, safeToExecute: true }));
     const site = deterministicPlan(exp);
     expect(site.nav).toEqual([{ label: "Home", path: "/" }, { label: "About", path: "/about" }]);
-    expect(site.footer.links).toHaveLength(8);
+    expect(site.footer.links).toHaveLength(4);
     expect(site.footer.links.map(l => l.href)).toEqual(expect.arrayContaining(["mailto:hi@example.com", "https://github.com/acme", "https://x.com/acme", "/contact"]));
     expect(site.footer.links.some(l => l.href === "/about" || l.href.startsWith("javascript:"))).toBe(false);
     expect(site.footer.links.find(l => l.href.includes("github"))?.label).toBe("GitHub");
@@ -103,7 +216,7 @@ describe("whole-site rebuild", () => {
       const site = await planSite(exp, fake(output));
       expect(site).toMatchObject({ plannerSource: "template", plannerError: "parse error: invalid planner JSON" });
     }
-    expect((await planSite(exp, fake("{}"))).plannerError).toMatch(/zod: tokens: invalid_type/);
+    expect((await planSite(exp, fake("{}"))).plannerError).toBe("Planner tokens are unusable");
     const llm: LlmClient = { name: "fake", complete: async () => { throw new Error("Provider failed".repeat(100)); } };
     expect((await planSite(exp, llm)).plannerError).toHaveLength(320);
     const empty = await planSite(fixture(0), fake(JSON.stringify(deterministicPlan(fixture(0)))));
@@ -166,15 +279,16 @@ describe("whole-site rebuild", () => {
     expect(deterministicPlan(exp).pages).toEqual([]);
     await expect(planSite(exp, fake())).resolves.toMatchObject({ pages: [] });
   });
-  it("derives a branded footer from non-nav pages and social/contact links", () => {
+  it("derives a branded footer from non-nav key pages and social/contact links", () => {
     const exp = fixture();
+    exp.graph!.states[1].url = "https://example.com/contact";
     exp.graph!.states[0].brand = { cssVars: {}, colors: [], fonts: [], siteName: "Acme", navItems: [{ label: "Home", href: "https://example.com/" }] };
     const state = exp.graph!.states[0];
     state.actions = ["https://www.linkedin.com/company/acme", "mailto:hello@example.com", "https://unrelated.test", "javascript:alert(1)"].map((href, i) => ({ actionId: `a${i}`, stateId: state.stateId, type: "click", label: `Link ${i}`, href, enabled: true, safeToExecute: true }));
     const plan = deterministicPlan(exp);
     expect(plan.footer.note).toBe("Acme");
-    expect(plan.footer.links.map(l => l.href)).toEqual(expect.arrayContaining(["/1", "https://www.linkedin.com/company/acme", "mailto:hello@example.com"]));
-    expect(plan.footer.links.some(l => ["/", "https://unrelated.test", "javascript:alert(1)"].includes(l.href))).toBe(false);
+    expect(plan.footer.links.map(l => l.href)).toEqual(expect.arrayContaining(["/contact", "https://www.linkedin.com/company/acme", "mailto:hello@example.com"]));
+    expect(plan.footer.links.some(l => ["/", "/2", "https://unrelated.test", "javascript:alert(1)"].includes(l.href))).toBe(false);
   });
   it("rewrites same-site links, preserves fragments, leaves mail/external links and is idempotent", () => {
     const opts = { origin: "https://example.com", base: "/experiments/e/rb" };
