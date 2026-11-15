@@ -72,7 +72,7 @@ export async function POST(req: Request) {
       return NextResponse.json({ ...result.experiment, dedupe: result.via });
     }
     // Return as soon as the record exists — the pipeline runs as a background job.
-    const experiment = await orch.scheduleRun(result.experiment.id);
+    const experiment = await orch.scheduleRun(result.experiment.id, { origin: new URL(req.url).origin });
     return NextResponse.json(experiment);
   } catch (e) {
     return NextResponse.json({ error: String(e).slice(0, 300) }, { status: 400 });

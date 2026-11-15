@@ -13,5 +13,5 @@ export function proxy(req: NextRequest) {
 
 // Sentry webhooks carry their own HMAC signature; static build assets stay public.
 export const config = {
-  matcher: ["/((?!_next/static|_next/image|favicon.ico|api/hooks/).*)"],
+  matcher: ["/((?!_next/static|_next/image|favicon.ico|api/hooks/|api/internal/run-step).*)"],
 };

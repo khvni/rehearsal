@@ -14,6 +14,8 @@ import {
   type LlmClient,
   type PageFetcher,
   type RescanReport,
+  type DiscoverCheckpoint,
+  type RunCheckpoint,
   type RunFailure,
   type SimWeights,
   type Variant,
@@ -52,7 +54,7 @@ import { generateMockup } from "./mockup";
 import { brandSignalsFromHtml, generateRebuild, mergeSignals } from "./rebuild";
 import { selectStore } from "./storage";
 import { enqueueRun } from "./access";
-import { runInBackground } from "./jobs";
+import { continueRun, isWorkersRuntime, runInBackground } from "./jobs";
 import { captureError, logEvent, traceTags, withTrace } from "./telemetry";
 import { writeFileSync, mkdirSync } from "node:fs";
 import path from "node:path";
@@ -74,6 +76,42 @@ const PROBE_TIMEOUT_MS = 15_000;
 
 /** Fewer same-origin links than this on the seed page triggers one Firecrawl /v1/map expansion. */
 const MIN_SEED_LINKS = 3;
+
+/** Per-slice wall-clock budget for a background run step — Workers waitUntil windows die silently around ~30s, so slices stay comfortably under that. */
+function stepBudgetMs(): number {
+  const v = Number(process.env.REHEARSAL_STEP_BUDGET_MS);
+  return Number.isFinite(v) && v >= 1_000 ? v : 20_000;
+}
+
+/** A run with no activity for this long is treated as stalled and can be resumed via `resume()` (or any poll). */
+function stallMs(): number {
+  const v = Number(process.env.REHEARSAL_STALL_MS);
+  return Number.isFinite(v) && v >= 1_000 ? v : 180_000;
+}
+
+/** Slices a single stage may consume before it fails with STAGE_TIMEOUT — caps retry loops on stages that cannot finish in one step. */
+const MAX_STAGE_SLICES = 10;
+
+/** Statuses a chunked run can be sitting in when the runtime kills it mid-flight. */
+const IN_FLIGHT_STATUSES: readonly string[] = [
+  "queued",
+  "discovering",
+  "simulating",
+  "verifying",
+  "analyzing",
+  "comparing",
+  "rebuilding",
+];
+
+/** Status -> the pipeline stage a stale run resumes at when no checkpoint survived. */
+const STATUS_STAGE: Record<string, string> = {
+  discovering: "discover",
+  simulating: "simulate",
+  verifying: "verify",
+  analyzing: "analyze",
+  comparing: "compare",
+  rebuilding: "rebuild",
+};
 
 interface OrchestratorDeps {
   fetcher?: PageFetcher;
@@ -268,19 +306,156 @@ export class Orchestrator {
    * waits for a pipeline slot and for any in-flight run, and marks the
    * experiment failed on an unhandled stage error — nothing spins forever.
    */
-  async scheduleRun(id: string, opts?: { skipDiscover?: boolean }): Promise<Experiment> {
+  async scheduleRun(id: string, opts?: { skipDiscover?: boolean; origin?: string }): Promise<Experiment> {
     const exp = await this.mustGet(id);
+    exp.runToken = randomUUID();
+    exp.runOrigin = opts?.origin ?? exp.runOrigin;
+    exp.runCheckpoint = { stage: opts?.skipDiscover ? "simulate" : "discover", attempt: 0 };
     await this.update(exp, "queued");
     await this.emit(id, "run", "info", "Run queued — the pipeline continues in the background");
     const work = async (): Promise<void> => {
       try {
-        await this.exclusiveWhenFree(id, "run", () => this.runPipeline(id, opts));
+        await this.exclusiveWhenFree(id, "run", () => this.stepBody(id, { origin: opts?.origin }));
       } catch (e) {
         await this.markFailed(id, e).catch(() => undefined);
       }
     };
     await runInBackground(() => enqueueRun(work));
     return exp;
+  }
+
+  /**
+   * Resume a stalled background run — nothing to do when the run is finished or
+   * still producing activity inside the stall window. Safe to call from any
+   * poll: it is the watchdog that covers a dropped continuation hop.
+   */
+  async resume(id: string, opts?: { origin?: string }): Promise<{ experiment: Experiment; resumed: boolean }> {
+    const exp = await this.mustGet(id);
+    const inFlight = IN_FLIGHT_STATUSES.includes(exp.status) || exp.runCheckpoint !== undefined;
+    if (!inFlight) return { experiment: exp, resumed: false };
+    if (Date.now() - (await this.lastBeat(id, exp)) < stallMs()) {
+      return { experiment: exp, resumed: false };
+    }
+    await this.emit(id, "run", "info", "Run stalled — resuming from the last checkpoint");
+    const work = async (): Promise<void> => {
+      try {
+        await this.exclusiveWhenFree(id, "run", () => this.stepBody(id, { origin: opts?.origin }));
+      } catch (e) {
+        await this.markFailed(id, e).catch(() => undefined);
+      }
+    };
+    await runInBackground(() => enqueueRun(work));
+    return { experiment: exp, resumed: true };
+  }
+
+  /** One bounded slice of the pipeline under the run lock; self-continues on Workers when the slice suspended. */
+  async runStep(
+    id: string,
+    opts?: { origin?: string; deadlineMs?: number; now?: () => number },
+  ): Promise<Experiment> {
+    return this.exclusive(id, "run", async () => {
+      const { suspended } = await this.sliceRun(id, {
+        ...opts,
+        deadlineMs: opts?.deadlineMs ?? (isWorkersRuntime() ? stepBudgetMs() : undefined),
+      });
+      if (suspended && isWorkersRuntime()) {
+        const exp = await this.mustGet(id);
+        await continueRun(id, { origin: exp.runOrigin ?? opts?.origin, token: exp.runToken });
+      }
+      return this.mustGet(id);
+    });
+  }
+
+  /** Queued next-slice for the run-step route: waits for the in-flight slice to release the run lock — a same-isolate continuation can land while the caller still holds it. */
+  async runContinuation(id: string, opts?: { origin?: string }): Promise<void> {
+    await this.exclusiveWhenFree(id, "run", () => this.stepBody(id, opts));
+  }
+
+  /** Runs slices to completion: in-process loop on Node; one slice per run-step hop on Workers. Callers hold the lock. */
+  private async stepBody(id: string, opts?: { origin?: string }): Promise<void> {
+    const deadlineMs = isWorkersRuntime() ? stepBudgetMs() : undefined;
+    for (;;) {
+      const { suspended } = await this.sliceRun(id, { ...opts, deadlineMs });
+      if (!suspended) return;
+      if (isWorkersRuntime()) {
+        const exp = await this.mustGet(id);
+        await continueRun(id, { origin: exp.runOrigin ?? opts?.origin, token: exp.runToken });
+        return;
+      }
+    }
+  }
+
+  /**
+   * Sequential stage chain resuming at the persisted `runCheckpoint`. Each
+   * slice writes an entry checkpoint ({stage, attempt+1}) before running; a
+   * stage that suspends keeps the checkpoint, a killed slice is re-entered at
+   * attempt+1 — after MAX_STAGE_SLICES the run fails with STAGE_TIMEOUT
+   * instead of looping forever.
+   */
+  private async sliceRun(
+    id: string,
+    opts?: { deadlineMs?: number; origin?: string; now?: () => number },
+  ): Promise<{ suspended: boolean }> {
+    const exp = await this.mustGet(id);
+    const cp = exp.runCheckpoint;
+    const stageFns: Record<string, (deadline?: number, resume?: DiscoverCheckpoint, attempt?: number) => Promise<unknown>> = {
+      discover: (d, r, a) => this.runDiscover(id, { deadline: d, now: opts?.now, resume: r, attempt: a }),
+      simulate: () => this.runSimulate(id),
+      verify: () => this.runVerify(id),
+      analyze: () => this.runAnalyze(id),
+      compare: () => this.runCompare(id),
+      spec: () => this.runSpec(id),
+      rebuild: () => this.runRebuild(id),
+    };
+    const startAt = cp && (PIPELINE_STAGES as readonly string[]).includes(cp.stage)
+      ? cp.stage
+      : STATUS_STAGE[exp.status] ?? "discover";
+    const order = PIPELINE_STAGES.slice(PIPELINE_STAGES.indexOf(startAt as (typeof PIPELINE_STAGES)[number]));
+    const now = opts?.now ?? Date.now;
+    const deadline = opts?.deadlineMs !== undefined ? now() + opts.deadlineMs : undefined;
+    const persist = async (checkpoint: RunCheckpoint) => {
+      const latest = await this.mustGet(id);
+      latest.runCheckpoint = checkpoint;
+      await this.store.save(Experiment.parse(latest));
+    };
+    for (const stage of order) {
+      const carryDiscover = stage === "discover" && cp?.stage === "discover" ? cp.discover : undefined;
+      if (deadline !== undefined && now() >= deadline) {
+        await persist({ stage, attempt: cp?.stage === stage ? cp.attempt : 0, discover: carryDiscover });
+        await this.emit(id, "run", "info", `Step budget reached — run continues in the background (next: ${stage})`);
+        return { suspended: true };
+      }
+      const attempt = (cp?.stage === stage ? cp.attempt : 0) + 1;
+      if (attempt > MAX_STAGE_SLICES) {
+        throw new RehearsalError(
+          "STAGE_TIMEOUT",
+          `Stage ${stage} did not finish within ${MAX_STAGE_SLICES} run steps — the runtime's step budget is too small for it`,
+        );
+      }
+      await persist({ stage, attempt, discover: carryDiscover });
+      const result = (await stageFns[stage](
+        deadline,
+        carryDiscover,
+        stage === "discover" ? attempt : undefined,
+      )) as { complete?: boolean } | undefined;
+      // A stage that suspended mid-flight owns the checkpoint — don't overwrite it.
+      if (result?.complete === false) return { suspended: true };
+    }
+    const done = await this.mustGet(id);
+    done.runCheckpoint = undefined;
+    await this.store.save(Experiment.parse(done));
+    return { suspended: false };
+  }
+
+  /** Timestamp of the most recent activity event — the run heartbeat. Falls back to createdAt. */
+  private async lastBeat(id: string, exp: Experiment): Promise<number> {
+    try {
+      const feed = await this.store.activity(id, 1);
+      const last = feed[feed.length - 1]?.ts;
+      return Date.parse(last ?? exp.createdAt);
+    } catch {
+      return Date.parse(exp.createdAt);
+    }
   }
 
   /**
@@ -294,6 +469,12 @@ export class Orchestrator {
   async rescan(id: string, opts?: { goal?: string }): Promise<{ experiment: Experiment; report: RescanReport }> {
     return this.exclusive(id, "rescan", async () => {
       const exp = await this.mustGet(id);
+      if (exp.runCheckpoint !== undefined) {
+        if (Date.now() - (await this.lastBeat(id, exp)) < stallMs()) {
+          throw new StageInProgressError(id, "run");
+        }
+        // Stale run: the continuation died with no watchdog catch — let rescan proceed and scheduleRun restart it.
+      }
       const goal = opts?.goal?.trim() || undefined;
       const goalChanged = Boolean(goal && goal !== exp.goal);
       const stored = new Map((exp.siteSignatures ?? []).map((s) => [normalizeSiteUrl(s.url), s]));
@@ -404,7 +585,11 @@ export class Orchestrator {
    * duplicating browser/LLM work and overwriting the stored experiment.
    */
   async discover(id: string): Promise<Experiment> {
-    return this.exclusive(id, "discover", () => this.runDiscover(id));
+    return this.exclusive(id, "discover", async () => {
+      const cp = (await this.mustGet(id)).runCheckpoint;
+      await this.runDiscover(id, cp?.stage === "discover" ? { resume: cp.discover, attempt: cp.attempt } : undefined);
+      return this.mustGet(id);
+    });
   }
 
   async simulate(id: string): Promise<Experiment> {
@@ -432,15 +617,65 @@ export class Orchestrator {
   }
 
   /** Stage 1 — discover states, build graph. */
-  private async runDiscover(id: string): Promise<Experiment> {
+  /**
+   * Resumable discover: persists a `runCheckpoint` per crawled page so a
+   * suspended step (Workers waitUntil window) or a crashed process resumes the
+   * frontier instead of restarting the crawl. `deadline` is a wall-clock point
+   * (`now()`) at which the stage must checkpoint and suspend; `resume` replays
+   * a saved crawl state through GraphBuilder.restore.
+   */
+  private async runDiscover(
+    id: string,
+    opts?: { deadline?: number; now?: () => number; resume?: DiscoverCheckpoint; attempt?: number },
+  ): Promise<{ complete: boolean }> {
     const experiment = await this.mustGet(id);
     this.llm.resetBudget?.({ experimentId: id });
     this.jev.resetBudget?.({ experimentId: id });
     await this.update(experiment, "discovering");
     return withTrace("discover", { experimentId: id, targetUrl: experiment.targetUrl }, async () => {
       const config = experiment.configuration;
-      const builder = new GraphBuilder(config.maxStates, config.maxDepth);
-      const pageFailures: RunFailure[] = [];
+      const resumeData = opts?.resume;
+      const builder = resumeData
+        ? GraphBuilder.restore({ states: resumeData.states, edges: resumeData.edges }, config.maxStates, config.maxDepth)
+        : new GraphBuilder(config.maxStates, config.maxDepth);
+      const pageFailures: RunFailure[] = resumeData?.pageFailures ? [...resumeData.pageFailures] : [];
+      const attempt = opts?.attempt ?? 0;
+      const now = opts?.now ?? Date.now;
+      const expired = () => opts?.deadline !== undefined && now() >= opts.deadline;
+      /** Write the crawl state so a suspended step or dropped hop resumes where it left off. */
+      const persist = async (discover: DiscoverCheckpoint) => {
+        const latest = await this.mustGet(id);
+        latest.runCheckpoint = { stage: "discover", attempt, discover };
+        await this.store.save(Experiment.parse(latest));
+      };
+      const snapshot = async (parts: {
+        vpIndex: number;
+        frontier: { url: string; depth: number; from?: { stateId: string; actionId: string } }[];
+        attempted: Set<string>;
+        visited: Map<string, string>;
+        signaturePending?: string[];
+        signatureDone?: { url: string; signature: string }[];
+      }) => {
+        const built = builder.build();
+        await persist({
+          vpIndex: parts.vpIndex,
+          frontier: parts.frontier,
+          attempted: [...parts.attempted],
+          visited: [...parts.visited],
+          states: built.states,
+          edges: built.edges,
+          pageFailures,
+          providerQuotaHit,
+          signaturePending: parts.signaturePending,
+          signatureDone: parts.signatureDone ?? [],
+        });
+      };
+      /** Save + emit + report suspension in one place. */
+      const suspend = async (parts: Parameters<typeof snapshot>[0]) => {
+        await snapshot(parts);
+        await this.emit(id, "discover", "info", "Step budget reached mid-crawl — resuming on the next run step");
+        return { complete: false };
+      };
       // REHEARSAL_BROWSER opts the crawl into the browser runner (screenshots/metrics);
       // the default is plain fetch → Firecrawl rescue for JS-bound pages.
       const browserCrawl = (process.env.REHEARSAL_BROWSER ?? "auto") !== "auto";
@@ -456,12 +691,14 @@ export class Orchestrator {
 
       // Once the browser runner is out of provider quota the crawl continues on
       // the plain fetcher — pages lose screenshots/metrics but still map.
-      let providerQuotaHit = false;
+      let providerQuotaHit = resumeData?.providerQuotaHit ?? false;
       // Firecrawl /v1/map runs once per run, on the seed, when it exposes few links.
       let mapExpanded = false;
       const seedExtras: string[] = [];
       try {
-        for (const vpName of config.viewports) {
+        if (!resumeData?.signaturePending) {
+        for (let vi = resumeData?.vpIndex ?? 0; vi < config.viewports.length; vi++) {
+          const vpName = config.viewports[vi];
           const viewport = VIEWPORTS[vpName];
           const openPage = async (url: string, depth: number) => {
             if (browserCrawl) {
@@ -507,13 +744,13 @@ export class Orchestrator {
               `${this.probeFetcher.name} ${plainFailure}; ${this.firecrawl.name} ${scraped?.html ? "still saw a JS shell" : "returned nothing"}`,
             );
           };
-          const frontier: { url: string; depth: number; from?: { stateId: string; actionId: string } }[] = [
-            { url: experiment.targetUrl, depth: 0 },
-            ...seedExtras.map((url) => ({ url, depth: 1 })),
-          ];
-          const visited = new Map<string, string>(); // url -> canonical stateId
-          const attempted = new Set<string>();
+          const resumingVp = vi === resumeData?.vpIndex;
+          const frontier: { url: string; depth: number; from?: { stateId: string; actionId: string } }[] =
+            resumingVp ? resumeData.frontier.map((f) => ({ ...f })) : [{ url: experiment.targetUrl, depth: 0 }, ...seedExtras.map((url) => ({ url, depth: 1 }))];
+          const visited = new Map<string, string>(resumingVp ? resumeData.visited : []); // url -> canonical stateId
+          const attempted = new Set<string>(resumingVp ? resumeData.attempted : []);
           while (frontier.length > 0) {
+            if (expired()) return suspend({ vpIndex: vi, frontier, attempted, visited });
             const { url, depth, from } = frontier.shift()!;
             if (visited.has(url)) {
               if (from) builder.link(from.stateId, from.actionId, visited.get(url)!);
@@ -589,7 +826,10 @@ export class Orchestrator {
                 level: "warning",
               });
             }
+            // Durable per-page checkpoint — a kill mid-crawl resumes the frontier.
+            await snapshot({ vpIndex: vi, frontier, attempted, visited });
           }
+        }
         }
       } finally {
         await this.runner.releaseCaptures?.(id);
@@ -597,24 +837,39 @@ export class Orchestrator {
       experiment.graph = builder.build();
       experiment.failures = [...experiment.failures.filter((f) => f.stage !== "discover"), ...pageFailures];
       const signatures = new Map<string, { url: string; signature: string }>();
-      for (const s of experiment.graph.states) {
-        const key = normalizeSiteUrl(s.url);
+      const resumeDone = resumeData?.signatureDone ?? [];
+      for (const s of resumeDone) signatures.set(normalizeSiteUrl(s.url), s);
+      const pendingUrls = resumeData?.signaturePending ?? experiment.graph.states.map((s) => s.url);
+      const statesByUrl = new Map(experiment.graph.states.map((s) => [s.url, s]));
+      for (const url of pendingUrls) {
+        const key = normalizeSiteUrl(url);
         if (signatures.has(key)) continue;
+        if (expired()) {
+          return suspend({
+            vpIndex: config.viewports.length,
+            frontier: [],
+            attempted: new Set(),
+            visited: new Map(),
+            signaturePending: pendingUrls.slice(pendingUrls.indexOf(url)),
+            signatureDone: [...signatures.values()],
+          });
+        }
+        const s = statesByUrl.get(url);
         // Signatures must match what rescan re-probes: derive them from the
         // plain-fetch decode path (UTF-8), not the crawl html a browser may
         // have decoded differently (windows-1252 fallback for undeclared
         // charsets). On probe failure, fall back to the crawled extraction.
         let page: { title: string; visibleText: string; actions: { label: string; role?: string; href?: string }[] } = {
-          title: s.pageTitle,
-          visibleText: s.visibleText,
-          actions: s.actions,
+          title: s?.pageTitle ?? "",
+          visibleText: s?.visibleText ?? "",
+          actions: s?.actions ?? [],
         };
         try {
-          page = extractPage(await this.probeFetcher.fetchHtml(s.url), s.url);
+          page = extractPage(await this.probeFetcher.fetchHtml(url), url);
         } catch {
           // keep the crawl-extracted signature
         }
-        signatures.set(key, { url: s.url, signature: contentSignatureFor(s.url, page) });
+        signatures.set(key, { url, signature: contentSignatureFor(url, page) });
       }
       experiment.siteSignatures = [...signatures.values()];
       if (experiment.graph.states.length === 0) {
@@ -641,8 +896,9 @@ export class Orchestrator {
         `Map complete: ${experiment.graph.states.length} states · ${experiment.graph.edges.length} links`,
       );
       await this.mapIntents(experiment);
+      experiment.runCheckpoint = undefined;
       await this.update(experiment, "created");
-      return experiment;
+      return { complete: true };
     });
   }
 
@@ -977,20 +1233,12 @@ export class Orchestrator {
     });
   }
 
-  /** The stage chain `runAll` and the background job share — callers hold the lock. */
-  private async runPipeline(id: string, opts?: { skipDiscover?: boolean }): Promise<Experiment> {
-    if (!opts?.skipDiscover) await this.runDiscover(id);
-    await this.runSimulate(id);
-    await this.runVerify(id);
-    await this.runAnalyze(id);
-    await this.runCompare(id);
-    await this.runSpec(id);
-    return this.runRebuild(id);
-  }
-
   /** Full closed loop. */
-  async runAll(id: string): Promise<Experiment> {
-    return this.exclusive(id, "run", () => this.runPipeline(id));
+  async runAll(id: string, opts?: { origin?: string }): Promise<Experiment> {
+    return this.exclusive(id, "run", async () => {
+      await this.stepBody(id, opts);
+      return this.mustGet(id);
+    });
   }
 
   private async proposeVariant(exp: Experiment, findingId: string): Promise<Variant> {

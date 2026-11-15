@@ -154,6 +154,10 @@ const NOT_DEPLOYED: Record<string, string> = {
   SNOWFLAKE_ACCOUNT_URL: "optional knowledge base, not provisioned yet",
   SNOWFLAKE_TOKEN: "optional knowledge base, not provisioned yet",
   SNOWFLAKE_CORTEX_SERVICE: "optional knowledge base, not provisioned yet",
+  REHEARSAL_RUN_SECRET: "optional extra run-step auth; per-run token suffices",
+  REHEARSAL_ORIGIN: "optional run-step hop pin; request origin suffices",
+  REHEARSAL_STEP_BUDGET_MS: "has a code default",
+  REHEARSAL_STALL_MS: "has a code default",
 };
 
 /** Must never reach a deployment (disables the SSRF guard). */

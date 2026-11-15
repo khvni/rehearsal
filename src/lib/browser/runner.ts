@@ -38,15 +38,21 @@ export function selectRunner(env: EnvVars = process.env, workers = onWorkersRunt
       model,
     });
 
+  const noLocal = (which: string) =>
+    new UnavailableRunner(
+      `${which} cannot run inside workerd (playwright never evaluates on Workers) — use BROWSERBASE_FUNCTION_ID, or unset it for BROWSERBASE_API_KEY + BROWSERBASE_FUNCTION_ID`,
+    );
   switch (pref) {
     case "playwright":
-      return playwright();
+      return workers ? noLocal("REHEARSAL_BROWSER=playwright") : playwright();
     case "browserbase-function":
-      return bbKey && fnId ? fn() : playwright();
+      return bbKey && fnId ? fn() : workers ? noLocal("REHEARSAL_BROWSER=browserbase-function without BROWSERBASE keys") : playwright();
     case "stagehand":
-      return bbKey ? browserbase() : playwright();
+      return bbKey && !workers ? browserbase() : workers ? noLocal("REHEARSAL_BROWSER=stagehand") : playwright();
     case "stagehand-local":
-      return new StagehandRunner({ env: "local", executablePath: env.STAGEHAND_CHROME_PATH || undefined, chromiumSandbox: sandbox, model });
+      return workers
+        ? noLocal("REHEARSAL_BROWSER=stagehand-local")
+        : new StagehandRunner({ env: "local", executablePath: env.STAGEHAND_CHROME_PATH || undefined, chromiumSandbox: sandbox, model });
     default:
       if (workers) {
         return new UnavailableRunner(
