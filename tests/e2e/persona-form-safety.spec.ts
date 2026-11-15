@@ -35,3 +35,16 @@ test("live guard catches form ownership added after snapshot", async ({ page }) 
   expect((await driver.act(candidates[0])).ok).toBe(false);
   expect(page.url()).toBe("http://127.0.0.1:32123/");
 });
+
+for (const hidden of [false, true]) {
+  test(`safe button beside unrelated ${hidden ? "hidden" : "visible"} submit button`, async ({ page }) => {
+    const html = `${form}<button type="button" onclick="this.dataset.clicked = 'yes'">Continue</button>
+      <button form="checkout" ${hidden ? "hidden" : ""}>Continue to checkout</button>`;
+    await page.route("http://127.0.0.1:32123/**", (route) => route.fulfill({ contentType: "text/html", body: html }));
+    await page.goto("http://127.0.0.1:32123/");
+    const driver = new LivePagePersonaDriver(page, viewport, undefined);
+    expect(await driver.act({ actionId: "act_0", label: "Continue", role: "button" })).toEqual({ ok: true });
+    await expect(page.getByRole("button", { name: "Continue", exact: true })).toHaveAttribute("data-clicked", "yes");
+    expect(page.url()).toBe("http://127.0.0.1:32123/");
+  });
+}

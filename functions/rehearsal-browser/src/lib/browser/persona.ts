@@ -56,13 +56,21 @@ export class LivePagePersonaDriver implements PersonaDriver {
         const submits = await this.page.evaluate<boolean>(`(() => {
           const normalize = (text) => (text || '').replace(/\\s+/g, ' ').trim().toLowerCase();
           const label = normalize(${JSON.stringify(action.label)});
-          return Array.from(document.querySelectorAll('button')).some((el) => {
-            if (!(el instanceof HTMLButtonElement) || el.form === null || el.type !== 'submit') return false;
+          const role = ${JSON.stringify(action.role === "button" ? "button" : "link")};
+          const selector = role === 'button'
+            ? 'button, input[type="button"], input[type="submit"], [role="button"]'
+            : 'a[href], [role="link"]';
+          const target = Array.from(document.querySelectorAll(selector)).find((el) => {
+            if (el.getAttribute('role') && el.getAttribute('role') !== role) return false;
+            if (el.closest('[aria-hidden="true"]') || !el.getClientRects().length ||
+                getComputedStyle(el).visibility !== 'visible') return false;
             const labelledBy = (el.getAttribute('aria-labelledby') || '').split(/\\s+/)
               .map((id) => document.getElementById(id)?.textContent || '').join(' ');
-            return [labelledBy, el.getAttribute('aria-label'), el.textContent, el.getAttribute('title')]
-              .some((text) => normalize(text).includes(label));
+            const name = labelledBy || el.getAttribute('aria-label') ||
+              (el instanceof HTMLInputElement ? el.value : el.innerText) || el.getAttribute('title');
+            return normalize(name).includes(label);
           });
+          return target instanceof HTMLButtonElement && target.form !== null && target.type === 'submit';
         })()`);
         if (submits) return { ok: false, error: "Refusing to click a form submit button" };
         const loc =
