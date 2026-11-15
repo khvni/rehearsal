@@ -5,6 +5,7 @@ import {
   type FirecrawlClient as FirecrawlClientPort,
   type FirecrawlScrape,
 } from "../contracts";
+import { isQuotaStatus, reportProviderQuota } from "../telemetry";
 import { assertPublicUrl, politeDelay } from "./guards";
 
 const API_BASE = "https://api.firecrawl.dev/v1";
@@ -172,6 +173,7 @@ export class FirecrawlClient implements FirecrawlClientPort {
     });
     if (!res.ok) {
       const detail = await res.text().catch(() => "");
+      if (isQuotaStatus(res.status)) await reportProviderQuota("firecrawl", res.status, `${path}: ${detail}`);
       const label = res.status === 402 ? " Payment Required" : res.status === 429 ? " Too Many Requests" : "";
       throw new Error(`Firecrawl ${path} failed ${res.status}${label}${detail ? `: ${detail.slice(0, 200)}` : ""}`);
     }

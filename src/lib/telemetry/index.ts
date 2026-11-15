@@ -97,6 +97,59 @@ export async function captureError(
   if (s) s.captureException(error, { tags: opts.tags, extra: context, level: opts.level ?? "error" });
 }
 
+type QuotaProvider = "gemini" | "browserbase" | "firecrawl" | "jev";
+
+/** HTTP statuses providers use for "out of credits / over quota". */
+export const isQuotaStatus = (status: number) => status === 402 || status === 429;
+
+const QUOTA_REPORT_INTERVAL_MS = 10 * 60_000;
+const quotaReportedAt = new Map<string, number>();
+
+/** Test hook: forget which provider quota errors were already reported. */
+export function resetProviderQuotaReports(): void {
+  quotaReportedAt.clear();
+}
+
+/**
+ * A provider refused a call for billing/quota (402/429). Callers usually fall back
+ * (plain fetch, templates), so this reports it explicitly: one Sentry issue per
+ * provider + status, tagged `provider_quota` for the quota alert rule
+ * (docs/telemetry.md). At most once per provider + status per 10 minutes per isolate.
+ */
+export async function reportProviderQuota(
+  provider: QuotaProvider,
+  status: number,
+  detail: string,
+  ctx: { experimentId?: string; stage?: string } = {},
+): Promise<void> {
+  const key = `${provider}:${status}`;
+  const last = quotaReportedAt.get(key);
+  if (last !== undefined && Date.now() - last < QUOTA_REPORT_INTERVAL_MS) return;
+  quotaReportedAt.set(key, Date.now());
+  const label = status === 402 ? "402 Payment Required" : status === 429 ? "429 Too Many Requests" : String(status);
+  const message = `${provider} quota or billing limit hit: ${label}`;
+  logEvent({ experimentId: ctx.experimentId, stage: ctx.stage ?? "provider", kind: "provider-quota", data: { provider, status, detail: detail.slice(0, 300) } });
+  try {
+    const s = await getSentry();
+    if (!s) return;
+    const error = new Error(message);
+    error.name = "ProviderQuotaError";
+    s.captureException(error, {
+      level: "error",
+      fingerprint: ["provider-quota", provider, String(status)],
+      tags: {
+        provider_quota: provider,
+        http_status: String(status),
+        ...(ctx.stage ? { stage: ctx.stage } : {}),
+        ...(ctx.experimentId ? { experimentId: ctx.experimentId } : {}),
+      },
+      extra: { detail: detail.slice(0, 500) },
+    });
+  } catch {
+    /* telemetry must never break the pipeline */
+  }
+}
+
 /** Run `fn` inside a Sentry span when enabled; always logs stage timings. */
 export async function withTrace<T>(stage: string, ctx: TraceContext, fn: () => Promise<T>): Promise<T> {
   const { experimentId } = ctx;

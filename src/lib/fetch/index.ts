@@ -1,4 +1,5 @@
 import type { PageFetcher } from "../contracts";
+import { isQuotaStatus, reportProviderQuota } from "../telemetry";
 import { FirecrawlClient } from "./firecrawl";
 import { assertPublicUrl, fetchPublic, politeDelay, robotsAllows } from "./guards";
 
@@ -55,6 +56,7 @@ export class BrowserbaseFetcher implements PageFetcher {
           }),
         ])
       : await work;
+    if (isQuotaStatus(res.statusCode)) await reportProviderQuota("browserbase", res.statusCode, "Fetch API");
     if (res.statusCode >= 400) throw new Error(`Browserbase fetch failed: ${res.statusCode}${res.statusCode === 402 ? " Payment Required" : res.statusCode === 429 ? " Too Many Requests" : ""}`);
     return typeof res.content === "string" ? res.content : JSON.stringify(res.content);
   }

@@ -10,7 +10,7 @@ import type {
   SiteState,
   TokenUsage,
 } from "../contracts";
-import { logEvent } from "../telemetry";
+import { isQuotaStatus, logEvent, reportProviderQuota } from "../telemetry";
 
 /** Jev reports no usage metadata; estimate tokens as bytes/4 of the JSON payloads. */
 function estTokens(bytes: number): number {
@@ -86,7 +86,12 @@ export class HttpJevClient implements JevClient {
     const requestBytes = JSON.stringify(body).length;
     const responseBytes = Number(res.headers.get("content-length") ?? 0);
     this.usage.calls++;
-    if (!res.ok) throw new Error(`Jev request failed: ${res.status}`);
+    if (!res.ok) {
+      if (isQuotaStatus(res.status)) {
+        await reportProviderQuota("jev", res.status, await res.text().catch(() => ""), { experimentId: ctx?.experimentId, stage: "simulate" });
+      }
+      throw new Error(`Jev request failed: ${res.status}`);
+    }
     const text = await res.text();
     logEvent({
       experimentId: ctx?.experimentId,
