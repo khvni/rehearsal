@@ -64,7 +64,18 @@ const homePathFor = (site: RebuildSite) =>
   );
 
 export function sitemapFromGraph(exp: Experiment): RebuildSitePage[] {
-  const origin = new URL(exp.targetUrl);
+  let origin: URL;
+  let targetPath: string | undefined;
+  try {
+    origin = new URL(exp.targetUrl);
+  } catch {
+    return [];
+  }
+  try {
+    targetPath = pagePath(origin);
+  } catch {
+    /* Redirect targets may contain encoded separators. */
+  }
   const seen = new Set<string>();
   const pages: RebuildSitePage[] = [];
   for (const state of exp.graph?.states ?? []) {
@@ -87,7 +98,7 @@ export function sitemapFromGraph(exp: Experiment): RebuildSitePage[] {
   }
   const home =
     pages.find((page) => page.path === "/") ??
-    pages.find((page) => page.path === pagePath(origin)) ??
+    pages.find((page) => page.path === targetPath) ??
     pages[0];
   if (home) home.path = "/";
   const max = Number(process.env.REHEARSAL_REBUILD_MAX_PAGES ?? 40);

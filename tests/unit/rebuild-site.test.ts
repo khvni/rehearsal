@@ -52,6 +52,22 @@ describe("whole-site rebuild", () => {
     exp.targetUrl = "https://example.com/blog";
     expect(sitemapFromGraph(exp).map(p => p.path)).toEqual(["/", "/blog"]);
   });
+  it("plans safely when redirect targets contain encoded separators or URLs are malformed", async () => {
+    const exp = fixture(2);
+    exp.targetUrl = "https://example.com/blog%2F";
+    exp.graph!.states[0].url = "https://example.com/blog";
+    exp.graph!.states[1].url = "not a URL";
+    expect(sitemapFromGraph(exp)).toMatchObject([{ path: "/", sourceUrl: "https://example.com/blog" }]);
+    expect(await planSite(exp, fake())).toEqual(deterministicPlan(exp));
+    exp.targetUrl = "not a URL";
+    expect(sitemapFromGraph(exp)).toEqual([]);
+    expect(deterministicPlan(exp).pages).toEqual([]);
+    await expect(planSite(exp, fake())).resolves.toMatchObject({ pages: [] });
+    exp.targetUrl = "https://example.com/%252F";
+    exp.graph!.states[0].url = "https://example.com/%2F";
+    expect(deterministicPlan(exp).pages).toEqual([]);
+    await expect(planSite(exp, fake())).resolves.toMatchObject({ pages: [] });
+  });
   it("derives a branded footer from non-nav pages and social/contact links", () => {
     const exp = fixture();
     exp.graph!.states[0].brand = { cssVars: {}, colors: [], fonts: [], siteName: "Acme", navItems: [{ label: "Home", href: "https://example.com/" }] };
