@@ -81,3 +81,32 @@ describe("run without a browser", () => {
     expect(done.errors).toEqual([]);
   });
 });
+
+/** A Workers slice killed mid-spec (after the spec, during the mockup) must not regenerate the spec on retry. */
+describe("spec stage re-entry", () => {
+  beforeEach(() => {
+    process.env.REHEARSAL_ALLOW_PRIVATE = "1";
+  });
+
+  it("reuses the persisted spec when the spec slice is retried", async () => {
+    const store = memoryStore();
+    const orch = new Orchestrator({ store, fetcher, probeFetcher: fetcher, runner: new UnavailableRunner("no browser") });
+    const { experiment } = await orch.startExperiment(URL, "find pricing");
+    const first = await orch.spec(experiment.id);
+    const marker = { ...first.spec!, changes: first.spec!.changes.slice(0, 1) };
+    await store.save({ ...first, spec: marker, mockup: undefined, status: "created", runCheckpoint: { stage: "spec", attempt: 2 } });
+    const again = await orch.spec(experiment.id);
+    expect(again.status).toBe("complete");
+    expect(again.spec?.changes).toEqual(marker.changes);
+  });
+
+  it("regenerates the spec on a first attempt", async () => {
+    const store = memoryStore();
+    const orch = new Orchestrator({ store, fetcher, probeFetcher: fetcher, runner: new UnavailableRunner("no browser") });
+    const { experiment } = await orch.startExperiment(URL, "find pricing");
+    const first = await orch.spec(experiment.id);
+    await store.save({ ...first, spec: { ...first.spec!, changes: [] }, status: "created", runCheckpoint: { stage: "spec", attempt: 1 } });
+    const again = await orch.spec(experiment.id);
+    expect(again.spec?.changes.length).toBeGreaterThan(0);
+  });
+});
