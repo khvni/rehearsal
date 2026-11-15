@@ -14,6 +14,14 @@ import { SITE_CSS, CLASS_VOCABULARY } from "./site-css";
 import { derivedSurfaces, repairSiteTokens } from "./site-tokens";
 import { parsePlannerDesign } from "./planner-parse";
 import { previewImageUrl, rebuildPreview } from "../link-preview";
+import {
+  decodeCloudflareEmail,
+  emailHref,
+  emailLinkLabel,
+  isCloudflareEmailUrl,
+  isNonPageUrl,
+  normalizeEmailLink,
+} from "../site-links";
 
 export const REBUILD_BATCH = 6;
 export const SITE_BYTE_CAP = 700 * 1024;
@@ -56,7 +64,10 @@ const bytes = (html: string) => new TextEncoder().encode(html).length;
 const linksFor = (exp: Experiment, page: RebuildSitePage) =>
   (exp.graph?.states.find((s) => s.url === page.sourceUrl)?.actions ?? [])
     .filter((a) => a.href)
-    .map((a) => ({ label: a.label, href: a.href! }));
+    .flatMap((a) => {
+      const href = normalizeEmailLink(a.href!, page.sourceUrl);
+      return href ? [{ label: emailLinkLabel(a.label, href), href }] : [];
+    });
 const stateFor = (exp: Experiment, page: RebuildSitePage) =>
   exp.graph?.states.find((s) => s.url === page.sourceUrl);
 const homePathFor = (site: RebuildSite) =>
@@ -86,7 +97,8 @@ export function sitemapFromGraph(exp: Experiment): RebuildSitePage[] {
     try {
       const url = new URL(state.url);
       const path = pagePath(url);
-      if (!sameOrigin(url, origin) || seen.has(path)) continue;
+      if (!sameOrigin(url, origin) || isNonPageUrl(url) || seen.has(path))
+        continue;
       seen.add(path);
       pages.push({
         path,
@@ -145,7 +157,7 @@ export function deterministicPlan(exp: Experiment): RebuildSite {
     .flatMap((item) => {
       try {
         const u = new URL(item.href, exp.targetUrl);
-        return sameOrigin(u, new URL(exp.targetUrl))
+        return sameOrigin(u, new URL(exp.targetUrl)) && !isNonPageUrl(u)
           ? [
               {
                 label: item.label,
@@ -205,8 +217,10 @@ export function deterministicPlan(exp: Experiment): RebuildSite {
     for (const action of state.actions) {
       if (!action.href || !action.label.trim()) continue;
       try {
-        const url = new URL(action.href, state.url);
-        const label = cleanNavLabel(action.label);
+        const href = normalizeEmailLink(action.href, state.url);
+        if (!href) continue;
+        const url = new URL(href, state.url);
+        const label = cleanNavLabel(emailLinkLabel(action.label, href));
         if (
           label.length > 60 ||
           contentTitles.has(labelKey(label)) ||
@@ -390,16 +404,58 @@ export async function planSite(
   }
 }
 
+function decodeEmailMarkup(doc: ReturnType<typeof fragment>, origin: string) {
+  for (const el of doc.querySelectorAll("[data-cfemail]")) {
+    const email = decodeCloudflareEmail(
+      el.getAttribute("data-cfemail") ?? undefined,
+    );
+    if (!email) continue;
+    el.textContent = email;
+    const anchor = el.closest("a[href]");
+    if (anchor) {
+      try {
+        if (isCloudflareEmailUrl(new URL(anchor.getAttribute("href")!, origin)))
+          anchor.setAttribute("href", emailHref(email));
+      } catch {
+        /* Invalid links are removed by the rewriter. */
+      }
+    }
+  }
+  for (const anchor of doc.querySelectorAll("a[href]")) {
+    const href = normalizeEmailLink(anchor.getAttribute("href")!, origin);
+    if (!href) anchor.removeAttribute("href");
+    else {
+      anchor.setAttribute("href", href);
+      if (href.startsWith("mailto:")) {
+        const walker = doc.createTreeWalker(anchor, 4);
+        for (let text = walker.nextNode(); text; text = walker.nextNode())
+          if (text.textContent)
+            text.textContent = emailLinkLabel(text.textContent, href);
+      }
+    }
+  }
+}
+
 export function rewriteSiteLinks(
   html: string,
   opts: { origin: string; base: string; homePath?: string },
 ): string {
   const doc = fragment(html);
   const origin = new URL(opts.origin);
+  decodeEmailMarkup(doc, opts.origin);
   for (const a of doc.querySelectorAll("a[href]")) {
     try {
       const url = new URL(a.getAttribute("href")!, origin);
       if (sameOrigin(url, origin)) {
+        const original = new URL(url);
+        if (original.pathname.startsWith(opts.base + "/"))
+          original.pathname = original.pathname.slice(opts.base.length);
+        if (isNonPageUrl(original)) {
+          const href = normalizeEmailLink(original.href, opts.origin);
+          if (href) a.setAttribute("href", href);
+          else a.removeAttribute("href");
+          continue;
+        }
         const sourcePath = pagePath(url);
         const path =
           sourcePath === (opts.homePath ?? pagePath(origin)) ? "/" : sourcePath;
@@ -463,20 +519,26 @@ export function lintRebuiltPage(
       issues.add("multiple primary hero actions");
   if (/\p{Extended_Pictographic}/u.test(doc.body.textContent ?? ""))
     issues.add("emoji used as icons");
-  if (opts)
-    for (const a of doc.querySelectorAll("a[href]")) {
-      try {
-        const u = new URL(a.getAttribute("href")!, opts.origin);
-        if (
-          sameOrigin(u, new URL(opts.origin)) &&
-          u.pathname !== opts.base &&
-          !u.pathname.startsWith(opts.base + "/")
-        )
-          issues.add("internal link outside rebuild");
-      } catch {
-        /* Sanitizer handles invalid schemes. */
-      }
+  for (const a of doc.querySelectorAll("a[href]")) {
+    try {
+      const u = new URL(
+        a.getAttribute("href")!,
+        opts?.origin ?? "https://rebuilt.invalid",
+      );
+      if (/\/rb\/cdn-cgi(?:\/|$)/i.test(decodeURIComponent(u.pathname)))
+        issues.add("cdn-cgi link inside rebuild");
+      if (
+        opts &&
+        !isNonPageUrl(u) &&
+        sameOrigin(u, new URL(opts.origin)) &&
+        u.pathname !== opts.base &&
+        !u.pathname.startsWith(opts.base + "/")
+      )
+        issues.add("internal link outside rebuild");
+    } catch {
+      /* Sanitizer handles invalid schemes. */
     }
+  }
   return [...issues];
 }
 
@@ -487,6 +549,7 @@ function processHtml(
   site: RebuildSite,
 ): string {
   const doc = fragment(raw.replace(/^```(?:html)?\s*|\s*```$/g, ""));
+  decodeEmailMarkup(doc, page.sourceUrl);
   for (const el of doc.querySelectorAll("style, link, meta, title"))
     el.remove();
   for (const el of doc.querySelectorAll("*")) {
@@ -829,21 +892,26 @@ export function renderSiteDocument(exp: Experiment, path = "/", share?: { origin
   const base = baseFor(exp);
   const brand = exp.rebuild!.brand;
   const homePath = homePathFor(site);
-  const nav = site.nav
-    .map((n) => ({ ...n, path: n.path === homePath ? "/" : n.path }))
-    .map(
-      (n) =>
-        `<a href="${esc(base + (n.path === "/" ? "/" : n.path))}"${n.path === path ? ' aria-current="page"' : ""}>${esc(n.label)}</a>`,
-    )
-    .join("");
+  const nav = rewriteSiteLinks(
+    site.nav
+      .map((n) => ({ ...n, path: n.path === homePath ? "/" : n.path }))
+      .map(
+        (n) =>
+          `<a href="${esc(n.path)}"${n.path === path ? ' aria-current="page"' : ""}>${esc(n.label)}</a>`,
+      )
+      .join(""),
+    { origin: exp.targetUrl, base, homePath },
+  );
   const source = new URL(page?.sourceUrl ?? path, exp.targetUrl).href;
-  const body =
+  const body = rewriteSiteLinks(
     page?.html ??
-    [
-      `<section class="rb-hero rb-container"><h1>Not rebuilt yet</h1>`,
-      `<p class="rb-lede">This page wasn't included in the crawl.</p>`,
-      `<a class="rb-btn rb-btn--primary" href="${esc(base)}/">Back to home</a></section>`,
-    ].join("");
+      [
+        `<section class="rb-hero rb-container"><h1>Not rebuilt yet</h1>`,
+        `<p class="rb-lede">This page wasn't included in the crawl.</p>`,
+        `<a class="rb-btn rb-btn--primary" href="${esc(base)}/">Back to home</a></section>`,
+      ].join(""),
+    { origin: exp.targetUrl, base, homePath },
+  );
   const logo =
     brand.logoUrl &&
     new URL(brand.logoUrl, exp.targetUrl).origin ===
