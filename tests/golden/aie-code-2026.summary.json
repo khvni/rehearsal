@@ -19,10 +19,10 @@
   "trajectories": 40,
   "goalReached": 39,
   "verified": 2,
-  "verifiedPassed": 0,
+  "verifiedPassed": 1,
   "findings": [
     {
-      "ruleOrTitle": "Browser check failed: the URL \"schedule\" (# of # runs)",
+      "ruleOrTitle": "Browser check failed: the URL \"schedule\"",
       "severity": "high",
       "principle": "test-dont-argue",
       "count": 1
@@ -135,7 +135,7 @@
   "specSections": [
     "Summary",
     "Changes (by impact)",
-    "#. Browser check failed: the URL \"schedule\" (# of # runs) [M]",
+    "#. Browser check failed: the URL \"schedule\" [M]",
     "#. The page still invites registration for an event that already happened (# of # pages) [M]",
     "#. Desktop: a visitor landing here can't find site ID, primary navigation, search, you-are-here indicator [M]",
     "#. Too many links compete for attention (# of # pages) [S]",
