@@ -1,3 +1,4 @@
+import { createHash } from "node:crypto";
 import { NextResponse } from "next/server";
 import { isExperimentId } from "@/lib/contracts";
 import { Orchestrator } from "@/lib/orchestrator";
@@ -24,5 +25,13 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
   await runInBackground(async () => {
     await orch.resume(id, { origin, inline: true }).catch(() => undefined);
   });
-  return NextResponse.json(experiment);
+  const body = JSON.stringify(experiment);
+  const tag = `"${createHash("sha256").update(body).digest("hex")}"`;
+  const headers = { ETag: `W/${tag}`, "Cache-Control": "private, no-cache" };
+  const unchanged = req.headers.get("if-none-match")?.split(",").some((value) => {
+    const candidate = value.trim();
+    return candidate === "*" || candidate.replace(/^W\//, "") === tag;
+  });
+  if (unchanged) return new NextResponse(null, { status: 304, headers });
+  return new NextResponse(body, { headers: { ...headers, "Content-Type": "application/json" } });
 }

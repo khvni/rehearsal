@@ -63,12 +63,22 @@ export default function ExperimentPage() {
   const lastRunningStage = useRef<(typeof STAGES)[number] | null>(null);
   const [specDoc, setSpecDoc] = useState<SpecDoc | null>(null);
   const [viewport, setViewport] = useState<Viewport["name"]>("desktop");
+  const validator = useRef<{ id: string; etag: string | null } | null>(null);
 
   const refresh = useCallback(async () => {
     try {
-      const res = await fetch(`/api/experiments/${id}`, { cache: "no-store" });
+      const etag = validator.current?.id === id ? validator.current.etag : null;
+      const res = await fetch(`/api/experiments/${id}`, {
+        cache: "no-store",
+        headers: etag ? { "If-None-Match": etag } : {},
+      });
+      if (res.status === 304) {
+        setLoadError("");
+        return;
+      }
       if (!res.ok) return setLoadError(await readError(res));
       const next = (await res.json()) as Experiment;
+      validator.current = { id, etag: res.headers.get("etag") };
       setExp(next);
       const running = STATUS_STAGE[next.status];
       if (running) lastRunningStage.current = running;
