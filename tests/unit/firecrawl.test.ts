@@ -121,6 +121,12 @@ describe("looksLikeJsShell", () => {
     // thin but static — no scripts, so no renderer would change it
     expect(judge(`<html><body><h1>About</h1><p>Small static page.</p></body></html>`)).toBe(false);
   });
+
+  it("ignores 'enable javascript' boilerplate inside <noscript> on rendered pages", () => {
+    // CRA/Next-style pages keep the noscript warning verbatim after rendering —
+    // a scrape that returns rendered HTML must not be re-judged as a shell.
+    expect(judge(`<html><body><noscript>You need to enable JavaScript to run this app.</noscript>${"<p>content</p>".repeat(60)}<a href="/a">A</a><script src="/a.js"></script></body></html>`)).toBe(false);
+  });
 });
 
 describe("FirecrawlClient", () => {

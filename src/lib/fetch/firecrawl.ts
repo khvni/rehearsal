@@ -15,6 +15,8 @@ const INTERACT_TIMEOUT_MS = 45_000;
 // ── JS-shell heuristic ──────────────────────────────────────────────────────
 
 const JS_REQUIRED_RE = /enable javascript|javascript is required|javascript is disabled|requires javascript|needs javascript to (?:run|work|load)/i;
+/** `<noscript>` warnings persist in fully rendered HTML (framework boilerplate) — strip them before matching. */
+const NOSCRIPT_RE = /<noscript\b[^>]*>[\s\S]*?<\/noscript>/gi;
 /** Empty framework mount root: `<div id="root"></div>`, `__next`, `__nuxt`, `__svelte`, `___gatsby`, `app`, `ember-view`. */
 const EMPTY_APP_ROOT_RE = /<div id="(?:root|app|__next|__nuxt|__svelte|___gatsby|ember-view)"[^>]*>\s*<\/div>/i;
 const SCRIPT_TAG_RE = /<script\b/gi;
@@ -25,10 +27,11 @@ const SCRIPT_TAG_RE = /<script\b/gi;
  * pages (a stub, an empty list view) still map instead of spending a Firecrawl credit.
  */
 export function looksLikeJsShell(html: string, extracted: { visibleText: string; actions: unknown[] }): boolean {
-  const scripts = (html.match(SCRIPT_TAG_RE) ?? []).length;
+  const body = html.replace(NOSCRIPT_RE, "");
+  const scripts = (body.match(SCRIPT_TAG_RE) ?? []).length;
   const actions = extracted.actions.length;
   const text = extracted.visibleText.trim().length;
-  if (JS_REQUIRED_RE.test(html)) return true;
+  if (JS_REQUIRED_RE.test(body)) return true;
   if (EMPTY_APP_ROOT_RE.test(html) && scripts >= 1 && actions <= 4) return true;
   if (actions === 0 && text < 400 && scripts >= 1) return true;
   if (actions <= 2 && text < 600 && scripts >= 8) return true; // script-dominated thin page
