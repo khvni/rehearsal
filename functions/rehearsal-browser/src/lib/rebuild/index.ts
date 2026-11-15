@@ -15,3 +15,4 @@ export { MAX_REBUILD_GOALS, inferGoals } from "./goals";
 export { generateRebuild, seedPageContent } from "./generate";
 export { sanitizeRebuildHtml } from "./sanitize";
 export { renderGoalPage } from "./templates";
+export { sitemapFromGraph, deterministicPlan, planSite, buildPage, rewriteSiteLinks, lintRebuiltPage, renderSiteDocument, siteStylesheet, rebuildPending } from "./site";
