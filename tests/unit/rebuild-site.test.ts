@@ -11,6 +11,37 @@ function fixture(count = 8): Experiment {
 const fake = (output = ""): LlmClient => ({ name: "openrouter", complete: vi.fn(async () => output) });
 
 describe("whole-site rebuild", () => {
+  it("bounds planner facts while keeping the complete page facts for implementation", async () => {
+    const exp = fixture(1);
+    const state = exp.graph!.states[0];
+    state.visibleText = "Page facts. ".repeat(1100) + "IMPLEMENTER_ONLY_TAIL";
+    state.headings = ["A real heading"];
+    state.actions = Array.from({ length: 300 }, (_, i) => ({ actionId: `a${i}`, stateId: state.stateId, label: `Link ${i}`, href: `https://example.com/item/${i}`, type: "click" as const, enabled: true, safeToExecute: true }));
+    const llm = fake(JSON.stringify(deterministicPlan(exp)));
+    const site = await planSite(exp, llm);
+    const prompt = vi.mocked(llm.complete).mock.calls[0][0];
+    expect(prompt).toContain("A real heading");
+    expect(prompt).not.toContain("IMPLEMENTER_ONLY_TAIL");
+    expect(prompt).not.toContain('"label":"Link 299"');
+    expect(prompt.length).toBeLessThan(18000);
+    expect(llm.complete).toHaveBeenCalledWith(expect.any(String), expect.objectContaining({ maxTokens: 65536 }));
+    expect(site.plannerError).toBeUndefined();
+    const implementer = fake("<h1>Built</h1>");
+    await buildPage(exp, site, site.pages[0], implementer);
+    expect(vi.mocked(implementer.complete).mock.calls[0][0]).toContain("IMPLEMENTER_ONLY_TAIL");
+  });
+  it("records bounded planner errors for truncated JSON, empty output, schema and provider failures", async () => {
+    const exp = fixture();
+    for (const output of ['{"tokens":', ""]) {
+      const site = await planSite(exp, fake(output));
+      expect(site).toMatchObject({ plannerSource: "template", plannerError: "parse error: invalid planner JSON" });
+    }
+    expect((await planSite(exp, fake("{}"))).plannerError).toMatch(/zod: tokens: invalid_type/);
+    const llm: LlmClient = { name: "fake", complete: async () => { throw new Error("Provider failed".repeat(100)); } };
+    expect((await planSite(exp, llm)).plannerError).toHaveLength(320);
+    const empty = await planSite(fixture(0), fake(JSON.stringify(deterministicPlan(fixture(0)))));
+    expect(empty).toMatchObject({ plannerSource: "llm", pages: [] });
+  });
   it("normalizes/deduplicates same-site paths, orders home first and ignores foreign states", () => {
     const exp = fixture(3);
     exp.graph!.states[0].url = "https://example.com/resources/?q=1#x";
@@ -23,7 +54,7 @@ describe("whole-site rebuild", () => {
   it("falls back deterministically and fills missing planner pages without trusting source URLs", async () => {
     const exp = fixture();
     const plan = deterministicPlan(exp);
-    expect(await planSite(exp, fake("not json"))).toEqual(plan);
+    expect(await planSite(exp, fake("not json"))).toEqual({ ...plan, plannerError: "parse error: invalid planner JSON" });
     const llm = fake(JSON.stringify({ ...plan, pages: [{ ...plan.pages[0], sourceUrl: "https://evil.test" }] }));
     const result = await planSite(exp, llm);
     expect(result.plannerSource).toBe("llm");
@@ -58,7 +89,7 @@ describe("whole-site rebuild", () => {
     exp.graph!.states[0].url = "https://example.com/blog";
     exp.graph!.states[1].url = "not a URL";
     expect(sitemapFromGraph(exp)).toMatchObject([{ path: "/", sourceUrl: "https://example.com/blog" }]);
-    expect(await planSite(exp, fake())).toEqual(deterministicPlan(exp));
+    expect(await planSite(exp, fake())).toMatchObject({ ...deterministicPlan(exp), plannerError: expect.stringContaining("parse error") });
     exp.targetUrl = "not a URL";
     expect(sitemapFromGraph(exp)).toEqual([]);
     expect(deterministicPlan(exp).pages).toEqual([]);
@@ -192,6 +223,7 @@ describe("whole-site rebuild", () => {
     const orch = new Orchestrator({ store, llm: fake(), fetcher: { name: "fixture", fetchHtml: async () => "" } });
     await orch.rebuild(saved.id);
     expect(saved.status).toBe("rebuilding"); expect(rebuildPending(saved)).toBe(true);
+    expect(JSON.stringify(events)).toContain("parse error: invalid planner JSON");
     expect(saved.rebuild!.site!.pages.every(p => p.status === "planned")).toBe(true);
     await orch.rebuild(saved.id);
     expect(saved.rebuild!.site!.pages.filter(p => p.status === "built")).toHaveLength(6);

@@ -100,6 +100,7 @@ export const SiteState = z.object({
   viewport: Viewport,
   pageTitle: z.string(),
   visibleText: z.string(),
+  headings: z.array(z.string()).optional(),
   actions: z.array(ActionNode),
   screenshotPath: z.string().optional(),
   stateHash: z.string(),
@@ -601,7 +602,7 @@ export const RebuildSite = z.object({
   tokens: z.object({ background: z.string(), foreground: z.string(), primary: z.string(), primaryForeground: z.string(), muted: z.string(), mutedForeground: z.string(), border: z.string(), ring: z.string(), card: z.string(), radius: z.string(), fontSans: z.string(), fontDisplay: z.string().optional() }),
   designNotes: z.string().max(2000), nav: z.array(z.object({ label: z.string(), path: z.string() })).max(7),
   footer: z.object({ note: z.string().optional(), links: z.array(z.object({ label: z.string(), href: z.string() })) }),
-  pages: z.array(RebuildSitePage), plannerModel: z.string(), plannerSource: z.enum(["llm", "template"]), implementerModel: z.string(), startedAt: z.string(), completedAt: z.string().optional(),
+  pages: z.array(RebuildSitePage), plannerModel: z.string(), plannerSource: z.enum(["llm", "template"]), plannerError: z.string().max(320).optional(), implementerModel: z.string(), startedAt: z.string(), completedAt: z.string().optional(),
 });
 export type RebuildSite = z.infer<typeof RebuildSite>;
 export const RebuildResult = z.object({

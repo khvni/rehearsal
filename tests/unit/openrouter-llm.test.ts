@@ -43,6 +43,29 @@ describe("selectLlm provider order", () => {
 });
 
 describe("OpenRouterClient", () => {
+  it("passes maxTokens through without changing the default and records truncated completion usage", async () => {
+    vi.stubEnv("OPENROUTER_API_KEY", "or-test");
+    const fetchMock = vi.fn(async () => orResponse("ok"));
+    vi.stubGlobal("fetch", fetchMock);
+    const llm = new OpenRouterClient();
+    await llm.complete("normal");
+    expect(lastBody(fetchMock)).toHaveProperty("max_tokens", 16384);
+    await llm.complete("plan", { model: "rebuild-planner", maxTokens: 65536 });
+    expect(lastBody(fetchMock)).toHaveProperty("max_tokens", 65536);
+    fetchMock.mockImplementation(async () => orResponse("", { choices: [{ message: { content: null }, finish_reason: "length" }] }));
+    await expect(llm.complete("plan", { json: true })).rejects.toThrow("finish_reason=length");
+    expect(llm.usageReport().calls).toBe(3);
+  });
+  it("passes maxTokens through Gemini without changing its default", async () => {
+    vi.stubEnv("GEMINI_API_KEY", "g-test");
+    const fetchMock = vi.fn(async () => new Response(JSON.stringify({ candidates: [] })));
+    vi.stubGlobal("fetch", fetchMock);
+    const llm = new GeminiClient();
+    await expect(llm.complete("normal")).resolves.toBe("");
+    expect(lastBody(fetchMock)).toHaveProperty("generationConfig.maxOutputTokens", 8192);
+    await llm.complete("plan", { maxTokens: 65536 });
+    expect(lastBody(fetchMock)).toHaveProperty("generationConfig.maxOutputTokens", 65536);
+  });
   it("uses a rebuild-only step budget and restores the configured budget on normal reset", async () => {
     vi.stubEnv("OPENROUTER_API_KEY", "or-test");
     vi.stubEnv("REHEARSAL_GEMINI_MAX_CALLS", "1");

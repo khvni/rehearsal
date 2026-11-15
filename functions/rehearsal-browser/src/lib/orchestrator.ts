@@ -250,6 +250,7 @@ export class Orchestrator {
         viewport: VIEWPORTS.desktop,
         title: page.title,
         visibleText: page.visibleText,
+        headings: page.headings,
         actions: page.actions,
       });
       state.brand = brandSignalsFromHtml(html, url);
@@ -842,6 +843,7 @@ export class Orchestrator {
                 viewport,
                 title: extracted.title,
                 visibleText: extracted.visibleText,
+                headings: extracted.headings,
                 actions: extracted.actions,
                 screenshotPath,
               });
@@ -1401,7 +1403,7 @@ export class Orchestrator {
             id,
             "rebuild",
             "info",
-            `Planned ${site.pages.length} site pages (${site.plannerSource})`,
+            `Planned ${site.pages.length} site pages (${site.plannerSource})${site.plannerError ? `: ${site.plannerError}` : ""}`,
           );
         } else {
           const site = exp.rebuild.site;
