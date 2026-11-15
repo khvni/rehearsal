@@ -5,7 +5,7 @@
   "goal": "understand what the product does and request a demo",
   "status": "blocked",
   "failureReason": "renderer unresponsive in headless Chromium",
-  "error": "Discovery captured no states (every page load failed)",
+  "error": "RehearsalError: Discovery captured no states: 1 of 1 page loads failed with local-playwright. Most common cause: [NAV_TIMEOUT] page.content timed out after 15000ms (renderer unresponsive)",
   "runner": "local-playwright",
   "config": {
     "maxStates": 15,
@@ -15,7 +15,10 @@
     "viewports": [
       "desktop"
     ],
-    "seed": 1337
+    "seed": 1337,
+    "maxAgents": 20,
+    "maxStepsPerAgent": 8,
+    "maxConcurrentAgents": 3
   },
   "preflight": {
     "status": null,
@@ -30,12 +33,8 @@
   "discover": {
     "states": 0,
     "edges": 0,
-    "pageFailures": 2,
+    "pageFailures": 1,
     "pageFailureSamples": [
-      {
-        "url": "https://hyperframes.studio/",
-        "error": "Error: page.content timed out after 15000ms (renderer unresponsive)"
-      },
       {
         "url": "https://hyperframes.studio/",
         "error": "Error: page.content timed out after 15000ms (renderer unresponsive)"
@@ -73,9 +72,8 @@
     "titles": []
   },
   "durationsMs": {
-    "discover": 33657,
-    "simulate": 0,
-    "total": 99473
+    "discover": 31662,
+    "total": 65806
   },
-  "ranAt": "2026-11-13T22:24:56.492Z"
+  "ranAt": "2026-11-15T00:51:34.854Z"
 }

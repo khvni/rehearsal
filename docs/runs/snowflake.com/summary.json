@@ -13,7 +13,10 @@
     "viewports": [
       "desktop"
     ],
-    "seed": 1337
+    "seed": 1337,
+    "maxAgents": 20,
+    "maxStepsPerAgent": 8,
+    "maxConcurrentAgents": 3
   },
   "preflight": {
     "status": 200,
@@ -30,7 +33,7 @@
   ],
   "discover": {
     "states": 15,
-    "edges": 143,
+    "edges": 138,
     "pageFailures": 0,
     "pageFailureSamples": [],
     "urls": [
@@ -52,11 +55,11 @@
     ]
   },
   "simulate": {
-    "trajectories": 300,
-    "goalReachPct": 1.7,
+    "trajectories": 20,
+    "goalReachPct": 5,
     "outcomes": {
-      "repetition-limit": 295,
-      "goal-reached": 5
+      "dropped-off": 19,
+      "goal-reached": 1
     }
   },
   "verify": {
@@ -73,20 +76,20 @@
       "variant": false
     },
     "interactionCount": {
-      "baseline": 7,
-      "variant": 7
-    },
-    "backtracks": {
-      "baseline": 7,
-      "variant": 7
-    },
-    "failedInteractions": {
       "baseline": 1,
       "variant": 1
     },
+    "backtracks": {
+      "baseline": 0,
+      "variant": 0
+    },
+    "failedInteractions": {
+      "baseline": 0,
+      "variant": 1
+    },
     "runtimeErrors": {
-      "baseline": 16,
-      "variant": 21
+      "baseline": 3,
+      "variant": 4
     },
     "findingReproduces": true
   },
@@ -141,12 +144,12 @@
       "reproducible-concern": 21
     },
     "titles": [
-      "[high] Assertion failed in browser: url-matches \"trial\" (4 of 4 runs)",
-      "[high] Post-event page still invites registration (2 of 15 pages)",
-      "[medium] Dense link surface increases scan cost (15 of 15 pages)",
-      "[medium] Ambiguous link labels (1) (2 of 15 pages)",
-      "[low] Console errors during browser runs (39)",
-      "[medium] Desktop: homepage requires 8.37 screens of scrolling",
+      "[high] Browser check failed: the URL \"trial\" (4 of 4 runs)",
+      "[high] The page still invites registration for an event that already happened (2 of 15 pages)",
+      "[medium] Too many links compete for attention (15 of 15 pages)",
+      "[medium] 1 link label doesn't say where they go (2 of 15 pages)",
+      "[low] The page threw 12 script errors during desktop runs",
+      "[medium] Desktop: the homepage takes 8.37 screens of scrolling",
       "[medium] Desktop: no single dominant call to action above the fold",
       "[low] Desktop: primary navigation has 10 items",
       "[low] Heading outline is broken: skips h1→h4, h2→h5, h4→h6, h2→h4",
@@ -159,20 +162,21 @@
       "[low] Heading outline is broken: skips h1→h6",
       "[low] Heading outline is broken: skips h3→h5, h2→h6",
       "[low] Heading outline is broken: skips h3→h6, h3→h5, h2→h4, h4→h6, h2→h6",
-      "[medium] Desktop: missing page name, you-are-here indicator (trunk test fails)",
-      "[high] Desktop: missing primary navigation, search, you-are-here indicator (trunk test fails)",
-      "[low] Desktop: missing you-are-here indicator (trunk test fails)",
-      "[low] Desktop: missing search, you-are-here indicator (trunk test fails)"
+      "[medium] Desktop: a visitor landing here can't find page name, you-are-here indicator",
+      "[high] Desktop: a visitor landing here can't find primary navigation, search, you-are-here indicator",
+      "[low] Desktop: a visitor landing here can't find you-are-here indicator",
+      "[low] Desktop: a visitor landing here can't find search, you-are-here indicator"
     ]
   },
   "durationsMs": {
-    "discover": 51871,
-    "simulate": 50,
-    "verify": 15284,
-    "analyze": 84,
-    "compare": 9990,
-    "spec": 4,
-    "total": 79786
+    "discover": 59191,
+    "simulate": 28868,
+    "verify": 6512,
+    "analyze": 88,
+    "compare": 9625,
+    "spec": 42,
+    "rebuild": 43,
+    "total": 108780
   },
-  "ranAt": "2026-11-13T22:22:06.249Z"
+  "ranAt": "2026-11-15T00:47:45.884Z"
 }

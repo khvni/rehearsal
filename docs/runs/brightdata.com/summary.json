@@ -3,8 +3,7 @@
   "url": "https://brightdata.com",
   "targetUrl": "https://brightdata.com/",
   "goal": "find pricing for the Web Unlocker",
-  "status": "blocked",
-  "failureReason": "Cloudflare challenge",
+  "status": "complete",
   "runner": "local-playwright",
   "config": {
     "maxStates": 15,
@@ -14,14 +13,16 @@
     "viewports": [
       "desktop"
     ],
-    "seed": 1337
+    "seed": 1337,
+    "maxAgents": 20,
+    "maxStepsPerAgent": 8,
+    "maxConcurrentAgents": 3
   },
   "preflight": {
-    "status": 429,
+    "status": 200,
     "finalUrl": "https://brightdata.com/",
-    "title": "Just a moment...",
-    "blocked": true,
-    "blockReason": "Cloudflare challenge"
+    "title": "Bright Data: Web Data Infrastructure for Humans & Agents",
+    "blocked": false
   },
   "robotsAllowsTarget": true,
   "assertions": [
@@ -31,26 +32,41 @@
     }
   ],
   "discover": {
-    "states": 1,
-    "edges": 0,
+    "states": 15,
+    "edges": 240,
     "pageFailures": 0,
     "pageFailureSamples": [],
     "urls": [
-      "https://brightdata.com/"
+      "https://brightdata.com/",
+      "https://brightdata.com/products/web-unlocker",
+      "https://brightdata.com/pricing/web-unlocker",
+      "https://brightdata.com/pricing/crawl-api",
+      "https://brightdata.com/pricing/serp",
+      "https://brightdata.com/pricing/scraping-browser",
+      "https://brightdata.com/pricing/web-scraper",
+      "https://brightdata.com/pricing/web-scraper/studio",
+      "https://brightdata.com/pricing/datasets",
+      "https://brightdata.com/pricing/archive-api",
+      "https://brightdata.com/pricing/insights",
+      "https://brightdata.com/pricing/managed-services",
+      "https://brightdata.com/pricing/proxy-network/residential-proxies",
+      "https://brightdata.com/pricing/proxy-network/datacenter-proxies",
+      "https://brightdata.com/pricing/proxy-network/isp-proxies"
     ]
   },
   "simulate": {
-    "trajectories": 300,
-    "goalReachPct": 0,
+    "trajectories": 20,
+    "goalReachPct": 15,
     "outcomes": {
-      "dead-end": 300
+      "dropped-off": 17,
+      "goal-reached": 3
     }
   },
   "verify": {
     "runs": 4,
-    "passed": 0,
-    "failed": 4,
-    "assertionsPassed": 0,
+    "passed": 1,
+    "failed": 3,
+    "assertionsPassed": 1,
     "runsWithConsoleErrors": 4,
     "runErrors": []
   },
@@ -73,53 +89,78 @@
     },
     "runtimeErrors": {
       "baseline": 8,
-      "variant": 0
+      "variant": 13
     },
     "findingReproduces": true
   },
   "endpoints": {
     "intent": "quotation",
-    "total": 0,
-    "byClass": {}
+    "total": 22,
+    "byClass": {
+      "contact-form": {
+        "found": 1,
+        "reached": 1
+      },
+      "pricing": {
+        "found": 3,
+        "reached": 3
+      },
+      "docs-answers": {
+        "found": 5,
+        "reached": 3
+      },
+      "demo-video": {
+        "found": 5,
+        "reached": 5
+      },
+      "download": {
+        "found": 3,
+        "reached": 0
+      },
+      "schedule-event": {
+        "found": 5,
+        "reached": 0
+      }
+    }
   },
   "findings": {
     "total": 14,
     "bySeverity": {
       "critical": 0,
-      "high": 5,
-      "medium": 6,
-      "low": 3
+      "high": 2,
+      "medium": 5,
+      "low": 7
     },
     "byEvidence": {
       "verified-failure": 1,
-      "reproducible-concern": 6,
-      "hypothesis": 7
+      "reproducible-concern": 13
     },
     "titles": [
-      "[high] Assertion failed in browser: url-matches \"unlocker\" (4 of 4 runs)",
-      "[low] Console errors during browser runs (32)",
-      "[medium] Desktop: no call to action above the fold on the homepage",
-      "[high] Desktop: missing site ID, primary navigation, search (trunk test fails)",
-      "[high] \"What can I do here?\" has no answer path",
-      "[high] \"Where do I start?\" has no answer path",
-      "[medium] \"Why should I be here and not somewhere else?\" has no answer path",
-      "[medium] \"What's new?\" has no answer path",
-      "[medium] \"How do I follow along?\" has no answer path",
-      "[medium] \"How do I find something specific?\" has no answer path",
-      "[medium] \"Who is behind this?\" has no answer path",
-      "[low] \"How do I get in touch?\" has no answer path",
-      "[low] \"How do I join the community?\" has no answer path",
-      "[high] 9 of 10 expected visitor questions have no answer path"
+      "[high] Browser check failed: the URL \"unlocker\" (3 of 4 runs)",
+      "[medium] 1 link label doesn't say where they go",
+      "[medium] Too many links compete for attention (15 of 15 pages)",
+      "[low] The page threw 36 script errors during desktop runs",
+      "[high] No signup page or link found",
+      "[medium] Desktop: the homepage takes 9.78 screens of scrolling",
+      "[medium] Desktop: no single dominant call to action above the fold",
+      "[low] Heading outline is broken: skips h2→h4, h2→h5",
+      "[low] Heading outline is broken: skips h1→h3",
+      "[low] Heading outline is broken: no h1",
+      "[low] Desktop: a visitor landing here can't find search",
+      "[low] Desktop: a visitor landing here can't find search, you-are-here indicator",
+      "[medium] Desktop: a visitor landing here can't find page name, you-are-here indicator",
+      "[low] Desktop: a visitor landing here can't find you-are-here indicator"
     ]
   },
   "durationsMs": {
-    "discover": 19735,
-    "simulate": 3,
-    "verify": 68916,
-    "analyze": 8,
-    "compare": 1701,
-    "spec": 2,
-    "total": 108712
+    "discover": 59387,
+    "simulate": 106933,
+    "verify": 69543,
+    "analyze": 38,
+    "compare": 17455,
+    "spec": 45,
+    "rebuild": 88,
+    "total": 257881
   },
-  "ranAt": "2026-11-13T22:16:03.048Z"
+  "ranAt": "2026-11-15T00:36:07.292Z"
 }

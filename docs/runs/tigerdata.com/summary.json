@@ -13,7 +13,10 @@
     "viewports": [
       "desktop"
     ],
-    "seed": 1337
+    "seed": 1337,
+    "maxAgents": 20,
+    "maxStepsPerAgent": 8,
+    "maxConcurrentAgents": 3
   },
   "preflight": {
     "status": 200,
@@ -30,7 +33,7 @@
   ],
   "discover": {
     "states": 15,
-    "edges": 139,
+    "edges": 140,
     "pageFailures": 0,
     "pageFailureSamples": [],
     "urls": [
@@ -52,18 +55,17 @@
     ]
   },
   "simulate": {
-    "trajectories": 300,
-    "goalReachPct": 45,
+    "trajectories": 20,
+    "goalReachPct": 25,
     "outcomes": {
-      "goal-reached": 135,
-      "dead-end": 57,
-      "repetition-limit": 108
+      "goal-reached": 5,
+      "dropped-off": 15
     }
   },
   "verify": {
     "runs": 4,
-    "passed": 0,
-    "failed": 4,
+    "passed": 1,
+    "failed": 3,
     "assertionsPassed": 1,
     "runsWithConsoleErrors": 4,
     "runErrors": []
@@ -74,26 +76,26 @@
       "variant": false
     },
     "interactionCount": {
-      "baseline": 8,
-      "variant": 8
+      "baseline": 0,
+      "variant": 0
     },
     "backtracks": {
-      "baseline": 8,
-      "variant": 8
+      "baseline": 0,
+      "variant": 0
     },
     "failedInteractions": {
       "baseline": 0,
       "variant": 0
     },
     "runtimeErrors": {
-      "baseline": 9,
-      "variant": 9
+      "baseline": 1,
+      "variant": 1
     },
     "findingReproduces": true
   },
   "endpoints": {
     "intent": "quotation",
-    "total": 23,
+    "total": 22,
     "byClass": {
       "pricing": {
         "found": 5,
@@ -116,7 +118,7 @@
         "reached": 0
       },
       "download": {
-        "found": 4,
+        "found": 3,
         "reached": 0
       },
       "schedule-event": {
@@ -138,28 +140,29 @@
       "reproducible-concern": 11
     },
     "titles": [
-      "[high] Assertion failed in browser: url-matches \"pricing\" (3 of 4 runs)",
-      "[medium] Dense link surface increases scan cost (7 of 15 pages)",
-      "[high] Post-event page still invites registration",
-      "[medium] Ambiguous link labels (1)",
-      "[medium] Ambiguous link labels (3)",
-      "[low] Console errors during browser runs (25)",
-      "[low] Desktop: homepage requires 5.7 screens of scrolling",
+      "[high] Browser check failed: the URL \"pricing\" (3 of 4 runs)",
+      "[medium] Too many links compete for attention (7 of 15 pages)",
+      "[high] The page still invites registration for an event that already happened",
+      "[medium] 1 link label doesn't say where they go",
+      "[medium] 3 link labels don't say where they go (2 of 15 pages)",
+      "[low] The page threw 5 script errors during desktop runs",
+      "[low] Desktop: the homepage takes 5.86 screens of scrolling",
       "[medium] Desktop: no single dominant call to action above the fold",
       "[low] Desktop: primary navigation has 11 items",
       "[low] Heading outline is broken: no h1",
-      "[low] Desktop: missing search (trunk test fails)",
-      "[high] Desktop: missing site ID, page name, primary navigation, search, you-are-here indicator (trunk test fails)"
+      "[low] Desktop: a visitor landing here can't find search",
+      "[high] Desktop: a visitor landing here can't find site ID, page name, primary navigation, search, you-are-here indicator"
     ]
   },
   "durationsMs": {
-    "discover": 31938,
-    "simulate": 24,
-    "verify": 21108,
-    "analyze": 82,
-    "compare": 1534,
-    "spec": 2,
-    "total": 56822
+    "discover": 58765,
+    "simulate": 19433,
+    "verify": 3924,
+    "analyze": 105,
+    "compare": 989,
+    "spec": 21,
+    "rebuild": 23,
+    "total": 87485
   },
-  "ranAt": "2026-11-13T22:19:51.968Z"
+  "ranAt": "2026-11-15T00:44:07.299Z"
 }

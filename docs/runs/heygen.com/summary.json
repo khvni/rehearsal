@@ -13,7 +13,10 @@
     "viewports": [
       "desktop"
     ],
-    "seed": 1337
+    "seed": 1337,
+    "maxAgents": 20,
+    "maxStepsPerAgent": 8,
+    "maxConcurrentAgents": 3
   },
   "preflight": {
     "status": 200,
@@ -52,18 +55,18 @@
     ]
   },
   "simulate": {
-    "trajectories": 300,
-    "goalReachPct": 52.3,
+    "trajectories": 20,
+    "goalReachPct": 90,
     "outcomes": {
-      "repetition-limit": 143,
-      "goal-reached": 157
+      "goal-reached": 18,
+      "dropped-off": 2
     }
   },
   "verify": {
     "runs": 4,
-    "passed": 1,
-    "failed": 3,
-    "assertionsPassed": 1,
+    "passed": 2,
+    "failed": 2,
+    "assertionsPassed": 2,
     "runsWithConsoleErrors": 4,
     "runErrors": []
   },
@@ -73,20 +76,20 @@
       "variant": false
     },
     "interactionCount": {
-      "baseline": 8,
-      "variant": 8
+      "baseline": 0,
+      "variant": 0
     },
     "backtracks": {
-      "baseline": 8,
-      "variant": 8
+      "baseline": 0,
+      "variant": 0
     },
     "failedInteractions": {
       "baseline": 0,
       "variant": 0
     },
     "runtimeErrors": {
-      "baseline": 11,
-      "variant": 20
+      "baseline": 2,
+      "variant": 3
     },
     "findingReproduces": true
   },
@@ -125,43 +128,43 @@
     }
   },
   "findings": {
-    "total": 15,
+    "total": 14,
     "bySeverity": {
       "critical": 0,
       "high": 2,
-      "medium": 7,
+      "medium": 6,
       "low": 6
     },
     "byEvidence": {
       "verified-failure": 1,
-      "reproducible-concern": 14
+      "reproducible-concern": 13
     },
     "titles": [
-      "[high] Assertion failed in browser: url-matches \"pricing\" (3 of 4 runs)",
-      "[medium] Ambiguous link labels (1) (2 of 15 pages)",
-      "[medium] Dense link surface increases scan cost (14 of 15 pages)",
-      "[low] Console errors during browser runs (33)",
-      "[medium] Endpoint buried: signup \"Get started , Business\"",
-      "[medium] Endpoint buried: signup \"Sign up with Google\"",
-      "[medium] Endpoint buried: signup \"Get started , Pro\"",
-      "[medium] Desktop: homepage requires 20.98 screens of scrolling",
+      "[high] Browser check failed: the URL \"pricing\" (2 of 4 runs)",
+      "[medium] 1 link label doesn't say where they go (2 of 15 pages)",
+      "[medium] Too many links compete for attention (14 of 15 pages)",
+      "[low] The page threw 9 script errors during desktop runs",
+      "[medium] \"Get started , Business\" takes too many clicks to reach",
+      "[medium] \"Get started , Pro\" takes too many clicks to reach",
+      "[medium] Desktop: the homepage takes 20.98 screens of scrolling",
       "[medium] Desktop: no single dominant call to action above the fold",
       "[low] Desktop: primary navigation has 9 items",
       "[low] Heading outline is broken: skips h1→h3",
       "[low] Heading outline is broken: skips h2→h4",
       "[low] Desktop: largest text on the page is not the h1",
-      "[low] Desktop: missing search (trunk test fails)",
-      "[high] Desktop: missing primary navigation, search, you-are-here indicator (trunk test fails)"
+      "[low] Desktop: a visitor landing here can't find search",
+      "[high] Desktop: a visitor landing here can't find primary navigation, search, you-are-here indicator"
     ]
   },
   "durationsMs": {
-    "discover": 37985,
-    "simulate": 56,
-    "verify": 23074,
-    "analyze": 176,
-    "compare": 3678,
-    "spec": 4,
-    "total": 67144
+    "discover": 65630,
+    "simulate": 26842,
+    "verify": 8458,
+    "analyze": 179,
+    "compare": 1523,
+    "spec": 31,
+    "rebuild": 27,
+    "total": 107037
   },
-  "ranAt": "2026-11-13T22:26:35.966Z"
+  "ranAt": "2026-11-15T00:52:40.661Z"
 }

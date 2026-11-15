@@ -52,7 +52,7 @@ Paste the URL and goal, click Rehearse, watch the stages run, then open `spec.md
 `npm run site -- <url> --goal "find pricing"` runs the pipeline without the Next server
 and writes `docs/runs/<host>/{spec.md,summary.json}`. `npm run site -- --all` runs every
 site in `docs/runs/sites.json` and rebuilds the table in `docs/runs/README.md`.
-Flags: `--max-states 15 --trajectories 300 --verify 4 --max-depth 3 --viewports desktop --timeout-min 5`.
+Flags: `--max-states 15 --trajectories 300 --verify 4 --max-depth 3 --viewports desktop --timeout-min 5 --agents 20 --agent-steps 8 --agent-concurrency 3` (the persona-swarm flags keep live-site load polite; the app default is 200 agents).
 Sites that block local Playwright (bot wall, captcha, hung renderer) are recorded as
 `blocked`, with the reason. The Bright Data runner is for those.
 
