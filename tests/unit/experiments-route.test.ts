@@ -21,6 +21,18 @@ const post = (body: unknown, headers?: Record<string, string>) =>
 beforeEach(() => vi.clearAllMocks());
 
 describe("POST /api/experiments", () => {
+  it("rejects empty viewports before admission, storage, or scheduling", async () => {
+    const res = await post({ targetUrl: "https://example.com/", config: { viewports: [] } });
+    expect(res.status).toBe(400);
+    expect(await res.json()).toMatchObject({
+      error: "invalid config",
+      issues: [expect.stringMatching(/^viewports:/)],
+    });
+    expect(startExperiment).not.toHaveBeenCalled();
+    expect(underDailyLimit).not.toHaveBeenCalled();
+    expect(scheduleRun).not.toHaveBeenCalled();
+  });
+
   it.each([
     { trajectories: 1_000_000_000 },
     { maxStates: 1_000_000 },

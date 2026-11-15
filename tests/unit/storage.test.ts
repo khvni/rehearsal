@@ -40,4 +40,14 @@ describe("JsonFileStore", () => {
     await store.save(experiment("exp_1234abcd"));
     expect((await store.get("exp_1234abcd"))?.id).toBe("exp_1234abcd");
   });
+
+  it("still reads and lists legacy experiments with empty viewports", async () => {
+    const legacy = { ...experiment("exp_00000001"), configuration: { viewports: [] } };
+    writeFileSync(path.join(dir, `${legacy.id}.json`), JSON.stringify(legacy));
+
+    expect((await store.get(legacy.id))?.configuration.viewports).toEqual([]);
+    expect(await store.list()).toEqual(expect.arrayContaining([
+      expect.objectContaining({ id: legacy.id, configuration: expect.objectContaining({ viewports: [] }) }),
+    ]));
+  });
 });

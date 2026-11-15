@@ -159,6 +159,7 @@ export const ExperimentConfig = z.object({
   firecrawlMapLimit: z.number().int().positive().max(EXPERIMENT_LIMITS.firecrawlMapLimit).default(20),
   viewports: z
     .array(z.enum(["desktop", "mobile"]))
+    .min(1)
     .max(2)
     .refine((v) => new Set(v).size === v.length, { message: "viewports must be distinct" })
     .default(["desktop", "mobile"]),
