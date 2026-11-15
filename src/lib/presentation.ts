@@ -41,7 +41,7 @@ export function displaySpec(exp: Experiment): SpecReport | undefined {
       change: f.recommendation, steps: [f.recommendation], rationale: f.description,
       effort: exp.spec?.changes.find((c) => c.findingId === f.findingId)?.effort ?? "M",
       evidencePaths: f.evidencePaths,
-    }))],
+    }))].map((change, i) => ({ ...change, rank: i + 1 })),
   };
 }
 

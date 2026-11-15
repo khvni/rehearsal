@@ -35,10 +35,22 @@ describe("honest result presentation", () => {
     const survivingIds = new Set(displayFindings(exp).map((f) => f.findingId));
     const displayed = displaySpec(exp)!;
     expect(stored.changes[0].steps).toHaveLength(4);
-    expect(displayed.changes).toEqual(stored.changes.filter((c) => c.findingId && survivingIds.has(c.findingId)));
+    expect(displayed.changes).toEqual(stored.changes
+      .filter((c) => c.findingId && survivingIds.has(c.findingId))
+      .map((change, i) => ({ ...change, rank: i + 1 })));
+    expect(displayed.changes.map((c) => c.rank)).toEqual(displayed.changes.map((_, i) => i + 1));
     expect(displayed.rebuildPhases).toEqual(stored.rebuildPhases);
     expect(exp.spec).toEqual(stored);
     expect(displayed.summary).toContain(scenario === "no browser runs" ? "No browser verification" : "browser runs recorded");
+  });
+
+  it("ranks fallback changes after surviving stored changes without collisions", () => {
+    const exp = experiment();
+    exp.spec!.changes = [{ ...Experiment.parse(storedExperiment).spec!.changes[0], rank: 2, findingId: undefined }];
+    const displayed = displaySpec(exp)!;
+    expect(displayed.changes.map((c) => c.rank)).toEqual([1, 2]);
+    expect(displayed.changes[1].findingId).toBe(finding.findingId);
+    expect(exp.spec!.changes[0].rank).toBe(2);
   });
 
   it("keeps unlinked changes and empty stored steps without inventing replacements", () => {
