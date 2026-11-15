@@ -312,6 +312,31 @@ describe("discover fetch-first + firecrawl fallback", () => {
     expect(urls).not.toContain("https://other.test/x"); // same-origin only
   });
 
+  it.each(["page", "map"])("skips Cloudflare internal links from %s discovery", async (source) => {
+    process.env.REHEARSAL_ALLOW_PRIVATE = "1";
+    const blocked = [`${URL}cdn-cgi/l/email-protection#abc`, `${URL}cdn-cgi/trace`];
+    const normal = [`${URL}about`, `${URL}cdn-cgi-guide`];
+    const candidates = [...blocked, ...normal, "https://other.test/cdn-cgi/trace", "not a URL"];
+    const html = `<html><body><h1>Home</h1><p>Contact our team and learn about us.</p>${source === "page" ? candidates.map((href) => `<a href="${href}">${href}</a>`).join("") : ""}</body></html>`;
+    const fetched: string[] = [];
+    const counting: PageFetcher = {
+      name: "counting-fetch",
+      async fetchHtml(url) {
+        fetched.push(url);
+        return url === URL ? html : `<html><body><h1>${url}</h1><p>A normal content page.</p></body></html>`;
+      },
+    };
+    const fc = firecrawlStub({ mapLinks: async () => source === "map" ? candidates : [] });
+    const orch = new Orchestrator({
+      store: memoryStore(), fetcher: counting, probeFetcher: counting,
+      firecrawl: fc.stub, runner: runner({}),
+      jev: new FixtureJevClient(), llm: new FixtureLlmClient(),
+    });
+    const exp = await orch.createExperiment(URL, "g", { viewports: ["desktop"], maxStates: 10, maxDepth: 1 });
+    await orch.discover(exp.id);
+    expect(fetched).toEqual([URL, ...normal, ...(source === "page" ? [`${URL}not%20a%20URL`] : [])]);
+  });
+
   it("never calls firecrawl when the seed already links well", async () => {
     process.env.REHEARSAL_ALLOW_PRIVATE = "1";
     const LINKY = `<html><body>${[1, 2, 3, 4].map((i) => `<a href="/p${i}">p${i}</a>`).join("")}</body></html>`;
