@@ -301,6 +301,7 @@ export class Orchestrator {
   async scheduleRun(id: string, opts?: { skipDiscover?: boolean; origin?: string }): Promise<Experiment> {
     const exp = await this.mustGet(id);
     exp.runToken = randomUUID();
+    exp.runOrigin = opts?.origin ?? exp.runOrigin;
     exp.runCheckpoint = { stage: opts?.skipDiscover ? "simulate" : "discover", attempt: 0 };
     await this.update(exp, "queued");
     await this.emit(id, "run", "info", "Run queued — the pipeline continues in the background");
@@ -351,7 +352,7 @@ export class Orchestrator {
       });
       if (suspended && isWorkersRuntime()) {
         const exp = await this.mustGet(id);
-        await continueRun(id, { origin: opts?.origin, token: exp.runToken });
+        await continueRun(id, { origin: exp.runOrigin ?? opts?.origin, token: exp.runToken });
       }
       return this.mustGet(id);
     });
@@ -370,7 +371,7 @@ export class Orchestrator {
       if (!suspended) return;
       if (isWorkersRuntime()) {
         const exp = await this.mustGet(id);
-        await continueRun(id, { origin: opts?.origin, token: exp.runToken });
+        await continueRun(id, { origin: exp.runOrigin ?? opts?.origin, token: exp.runToken });
         return;
       }
     }

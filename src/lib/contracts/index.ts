@@ -741,6 +741,8 @@ export const Experiment = z.object({
   siteSignatures: z.array(z.object({ url: z.string(), signature: z.string() })).default([]),
   /** Per-run token a `POST /api/internal/run-step` call must present — regenerated at each `scheduleRun`. */
   runToken: z.string().optional(),
+  /** Origin the run was scheduled from — run-step hops target it (or `REHEARSAL_ORIGIN` when pinned), never the current request's Host. */
+  runOrigin: z.string().optional(),
   /** Persisted progress for a suspended background run — run-step continuations and stale-run resume pick up here. */
   runCheckpoint: RunCheckpoint.optional(),
   configuration: StoredExperimentConfig,
