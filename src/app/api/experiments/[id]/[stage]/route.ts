@@ -27,7 +27,8 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
     if (!presentsAccessToken(req)) {
       const experiment = await orch.get(id);
       if (!experiment) return NextResponse.json({ error: "not found" }, { status: 404 });
-      if (experiment.status === "complete") {
+      // `spec` marks the experiment complete before any rebuild exists, so a first rebuild stays allowed.
+      if (experiment.status === "complete" && (stage !== "rebuild" || experiment.rebuild)) {
         return NextResponse.json(
           { error: "experiment already complete — use Rescan site to refresh it" },
           { status: 403 },

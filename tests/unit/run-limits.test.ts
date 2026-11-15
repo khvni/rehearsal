@@ -29,6 +29,7 @@ vi.mock("@opennextjs/cloudflare", () => ({ getCloudflareContext: async () => ({ 
 
 const experiments = new Map<string, Partial<Experiment>>();
 const runAll = vi.fn(async (id: string) => ({ id }));
+const rebuild = vi.fn(async (id: string) => ({ id }));
 const rescan = vi.fn(async (id: string) => ({
   experiment: { id },
   report: { changed: false, checked: 1, mismatches: [], goalChanged: false, restarted: false },
@@ -38,6 +39,7 @@ vi.mock("@/lib/orchestrator", () => ({
   Orchestrator: class {
     get = async (id: string) => experiments.get(id) ?? null;
     runAll = runAll;
+    rebuild = rebuild;
     rescan = rescan;
     scheduleRun = vi.fn();
     markFailed = vi.fn(async () => undefined);
@@ -49,13 +51,13 @@ const stage = await import("@/app/api/experiments/[id]/[stage]/route");
 const rescanRoute = await import("@/app/api/experiments/[id]/rescan/route");
 
 const TOKEN = "fixture-token-0123456789";
-const run = (id: string, ip = "203.0.113.7", headers: Record<string, string> = {}) =>
+const run = (id: string, ip = "203.0.113.7", headers: Record<string, string> = {}, name = "run") =>
   stage.POST(
-    new Request(`http://localhost/api/experiments/${id}/run`, {
+    new Request(`http://localhost/api/experiments/${id}/${name}`, {
       method: "POST",
       headers: { "cf-connecting-ip": ip, ...headers },
     }),
-    { params: Promise.resolve({ id, stage: "run" }) },
+    { params: Promise.resolve({ id, stage: name }) },
   );
 const postRescan = (id: string, body: unknown, ip = "203.0.113.7") =>
   rescanRoute.POST(
@@ -112,6 +114,14 @@ describe("POST /api/experiments/:id/:stage daily run budget", () => {
     expect(runAll).not.toHaveBeenCalled();
     process.env.REHEARSAL_ACCESS_TOKEN = TOKEN;
     expect((await run(expId(1), undefined, { authorization: `Bearer ${TOKEN}` })).status).toBe(200);
+  });
+
+  it("still allows the first rebuild of a completed experiment, then refuses another", async () => {
+    experiments.set(expId(4), { id: expId(4), status: "complete" });
+    expect((await run(expId(4), undefined, {}, "rebuild")).status).toBe(200);
+    expect(rebuild).toHaveBeenCalledTimes(1);
+    experiments.set(expId(4), { id: expId(4), status: "complete", rebuild: {} as Experiment["rebuild"] });
+    expect((await run(expId(4), undefined, {}, "rebuild")).status).toBe(403);
   });
 
   it("404s unknown experiments before spending budget", async () => {
