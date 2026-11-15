@@ -1,8 +1,12 @@
 import type { Experiment, Finding, SpecReport } from "./contracts";
+import { contextQuestionIds } from "./intents/question-context";
 
 /** Question-bank prompts are suggestions, not evidence that this page needs that content. */
 export function displayFindings(exp: Experiment): Finding[] {
-  const contextual = new Set((exp.questions ?? []).filter((q) => q.source === "context").map((q) => `f_unanswered-question_${q.questionId}`));
+  const contextual = new Set([
+    ...(exp.questions ?? []).filter((q) => q.source === "context").map((q) => q.questionId),
+    ...(exp.graph ? contextQuestionIds(exp.graph) : []),
+  ].map((id) => `f_unanswered-question_${id}`));
   return exp.findings.filter((f) => !f.findingId.startsWith("f_unanswered-question") || contextual.has(f.findingId));
 }
 

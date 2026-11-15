@@ -1,4 +1,5 @@
 import { createHash } from "node:crypto";
+import { CONTEXT_SIGNALS, DATE } from "./question-context";
 import type {
   Endpoint,
   EndpointClass,
@@ -93,8 +94,6 @@ function homepageQuestions(siteType: SiteType): QuestionTemplate[] {
   ];
 }
 
-const DATE =
-  /\b(jan(uary)?|feb(ruary)?|mar(ch)?|apr(il)?|may|june?|july?|aug(ust)?|sep(t(ember)?)?|oct(ober)?|nov(ember)?|dec(ember)?)\.?\s+\d{1,2}(\s*[-–]\s*\d{1,2})?(,?\s+\d{4})?\b|\b\d{4}-\d{2}-\d{2}\b/i;
 const PLACE = /\b(venue|location|address|get directions|held at|takes place (at|in)|in-person at)\b|\/\/\s*location/i;
 const PRICE = /[$€£]\s?\d|\b(pricing|ticket prices?|tickets? (start|from|cost)|free (to attend|admission|of charge)|admission is free|no cost|per (month|seat|user|year))\b/i;
 const CONTACT = /\b(contact us|contact (sales|support|the (team|organi[sz]ers))|get in touch|email us|reach us|talk to (sales|us|a human|an expert)|chat with us)\b|mailto:/i;
@@ -175,45 +174,41 @@ interface ContextRule {
 
 /** Copy on the start page that raises a question the site should then answer. */
 const CONTEXT_RULES: ContextRule[] = [
-  { when: /\b(pricing|prices?|plans|paid|tickets?)\b/i, template: () => shared.cost(0.8) },
+  { ...CONTEXT_SIGNALS.cost, template: () => shared.cost(0.8) },
   {
-    when: /\benterprise\b/i,
-    siteTypes: ["saas", "commerce"],
+    ...CONTEXT_SIGNALS.sales,
     template: () => ({
       id: "ctx-sales", intent: "proposal", question: "How do I contact sales?", classes: ["contact-form"], importance: 0.8,
       text: /\b(contact sales|talk to sales|book a demo|request a demo)\b/i, endpointLabel: /\b(sales|demo|contact|talk to)\b/i,
     }),
   },
   {
-    when: /\b(by application( only)?|apply to attend|applications? (open|close|due))\b/i,
+    ...CONTEXT_SIGNALS.apply,
     template: () => ({
       id: "ctx-apply-criteria", intent: "proposal", question: "Who gets accepted, and when will I hear back?", classes: [], importance: 0.7,
       text: /\b(criteria|eligib(le|ility)|who can apply|selection process|we('ll| will) (review|notify|let you know)|decisions? (by|on|within)|deadline|hear back)\b/i,
     }),
   },
   {
-    when: /\b(free trial|free plan|free tier)\b/i,
-    siteTypes: ["saas", "content"],
+    ...CONTEXT_SIGNALS.trial,
     template: () => ({
       id: "ctx-trial-limits", intent: "quotation", question: "What's included free, and what happens when it ends?", classes: ["pricing"], importance: 0.6,
       text: /\b(trial (ends|length|lasts)|\d+[- ]day (free )?trial|no credit card|free plan includes|upgrade (any ?time|when))\b/i,
     }),
   },
   {
-    when: /\b(apis?|integrations?)\b/i,
-    siteTypes: ["saas"],
+    ...CONTEXT_SIGNALS.integrations,
     template: () => shared.integrations(0.6),
   },
   {
-    when: /\b(venue|hotel|in[- ]person)\b/i,
-    siteTypes: ["event"],
+    ...CONTEXT_SIGNALS.travel,
     template: () => ({
       id: "ctx-travel", intent: "information", question: "How do I get there and where should I stay?", classes: [], importance: 0.45,
       text: /\b(hotel (block|rate|discount)|room block|accommodations?|getting there|get directions|directions to|parking|public transit|nearby hotels?|travel (info|guide))\b/i,
     }),
   },
   {
-    when: DATE,
+    ...CONTEXT_SIGNALS.date,
     template: (m) => ({
       id: "ctx-date", intent: "proposal", question: `What happens on ${m[0].trim()}, and how do I take part?`, classes: ["schedule-event", "signup"], importance: 0.55,
       text: /\b(agenda|schedule|register|rsvp|apply|join us)\b/i,

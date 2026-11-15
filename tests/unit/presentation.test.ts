@@ -1,6 +1,8 @@
 import { describe, expect, it } from "vitest";
 import { Experiment, ExperimentConfig, type Finding } from "../../src/lib/contracts";
 import { displayFindings, displaySpec, failureMessage, hasBrowserEvidence, hasUsablePreview } from "../../src/lib/presentation";
+import { makeState } from "../../src/lib/graph";
+import { generateQuestions } from "../../src/lib/intents/questions";
 
 const finding: Finding = {
   findingId: "f_heading", title: "Missing page heading", category: "hierarchy", severity: "high",
@@ -38,6 +40,17 @@ describe("honest result presentation", () => {
     expect(hasBrowserEvidence(finding, exp)).toBe(false);
     exp.browserTests[0].screenshotPaths.push("page.png");
     expect(hasBrowserEvidence(finding, exp)).toBe(true);
+  });
+
+  it("retains legacy bank questions when the captured site raises their topics", () => {
+    const exp = experiment();
+    exp.graph = { states: [makeState({ url: exp.targetUrl, title: "Acme platform", visibleText: "Our platform has paid plans and integrations for teams.", viewport: { name: "desktop", width: 1440, height: 900 }, actions: [] })], edges: [] };
+    exp.questions = generateQuestions(exp.graph, [], "saas");
+    expect(exp.questions.find((q) => q.questionId === "cost")?.source).toBe("bank");
+    exp.findings = ["cost", "integrations", "join"].map((id) => ({ ...finding, findingId: `f_unanswered-question_${id}` }));
+    expect(displayFindings(exp).map((f) => f.findingId)).toEqual(["f_unanswered-question_cost", "f_unanswered-question_integrations"]);
+    expect(displaySpec(exp)?.changes).toHaveLength(2);
+    expect(exp.questions.find((q) => q.questionId === "cost")?.source).toBe("bank");
   });
 
   it("uses source-backed recommendations in crawl-only plans without mutating stored reports", () => {
