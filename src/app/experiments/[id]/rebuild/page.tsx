@@ -151,10 +151,10 @@ export default function RebuildPage() {
       ? { kind: "loading", label: "Rebuilding the site…" }
       : runError
         ? { kind: "error", message: runError, onRetry: () => void runRebuild() }
-        : { kind: "empty", message: "No rebuild yet." };
+        : { kind: "empty", message: "Rebuild only runs when you ask: it drafts one branded page per visitor goal with one Gemini call." };
   const runButton = (
     <Button variant="secondary" size="compact" loading={pending} disabled={pending} onClick={() => void runRebuild()}>
-      Run rebuild
+      {rebuild ? "Rebuild again" : "Build pages"}
     </Button>
   );
 

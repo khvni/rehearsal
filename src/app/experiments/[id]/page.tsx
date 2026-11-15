@@ -306,7 +306,7 @@ export default function ExperimentPage() {
           <nav className="summary-links" aria-label="Run results">
             <a href="#findings">Read findings</a>
             {exp.spec && <a href="#fix-plan">Read fix plan</a>}
-            {exp.rebuild && <Link href={`/experiments/${id}/rebuild`}>View rebuild</Link>}
+            {exp.rebuild ? <Link href={`/experiments/${id}/rebuild`}>View rebuild</Link> : exp.spec && <Link href={`/experiments/${id}/rebuild`}>Build the redesigned pages</Link>}
             {hasUsablePreview(exp) && <Link href={`/experiments/${id}/preview/`}>View preview</Link>}
           </nav>
           {exp.mockup && !hasUsablePreview(exp) && <p className="card-meta">Preview unavailable: only a template or incomplete mockup was generated.</p>}
@@ -630,7 +630,7 @@ const STAGE_LINE: Record<(typeof STAGES)[number], string> = {
   analyze: "Grades what went wrong",
   compare: "Patches the page and tries again",
   spec: "Writes up what to fix",
-  rebuild: "Generate the redesigned pages",
+  rebuild: "Builds the redesigned pages, when you ask",
 };
 
 const VIEWPORTS = ["desktop", "mobile"] as const;

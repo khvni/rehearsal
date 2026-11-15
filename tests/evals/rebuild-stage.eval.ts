@@ -206,4 +206,32 @@ describe("eval: orchestrator wires the rebuild stage (fixture adapters)", () => 
       delete process.env.REHEARSAL_ALLOW_PRIVATE;
     }
   });
+
+  it("a full run stops at spec: rebuild is opt-in", async () => {
+    process.env.REHEARSAL_ALLOW_PRIVATE = "1";
+    const orch = new Orchestrator({
+      runner, store, jev: new FixtureJevClient(), llm: new FixtureLlmClient(),
+      fetcher: { name: "fixture-fetch", fetchHtml: async () => "" },
+      probeFetcher: {
+        name: "fixture-fetch",
+        async fetchHtml(url) {
+          const html = pages[url];
+          if (!html) throw new Error(`no fixture for ${url}`);
+          return html;
+        },
+      },
+    });
+    try {
+      const exp = await orch.createExperiment(AIE_URL, GOAL, {
+        viewports: ["desktop"], trajectories: 200, verifyCount: 2, maxStates: 5,
+      });
+      const done = await orch.runAll(exp.id);
+      expect(done.status).toBe("complete");
+      expect(done.spec).toBeDefined();
+      expect(done.rebuild).toBeUndefined();
+      expect(done.runCheckpoint).toBeUndefined();
+    } finally {
+      delete process.env.REHEARSAL_ALLOW_PRIVATE;
+    }
+  });
 });

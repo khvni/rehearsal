@@ -17,7 +17,7 @@ eval cases.** `npm run check:skill-sync` fails the build otherwise.
 - `analyze` — rule-based + Gemini findings, each classified by evidence type + usability principle; LLM evidence deduped to one state per URL
 - `compare` — DOM-patch variant applied in isolated context; baseline vs variant deltas
 - `spec` — SpecReport generated (one change per finding, each with an ordered `steps` edit list); spec.md written under data/experiments/<id>/; per-run model usage (`experiment.usage`, `llm` + `jev` call/token totals) is stamped on every save and each call logged as a `llm-call`/`jev-call` telemetry event; the spec-applied site mockup is generated in the same stage (Gemini `mockup` model slot → deterministic template fallback), stored as experiment.mockup, served at /experiments/:id/preview/[/slug]
-- `rebuild` — brand extraction from crawled states → goal inference from CTAs/nav/titles/endpoints → per-goal branded page generation (Gemini, deterministic template fallback); stored as experiment.rebuild, served at /experiments/:id/rebuild[/slug]
+- `rebuild` — brand extraction from crawled states → goal inference from CTAs/nav/titles/endpoints → per-goal branded page generation (Gemini, deterministic template fallback); opt-in: a full run stops at spec and rebuild runs only via `POST /api/experiments/:id/rebuild`; stored as experiment.rebuild, served at /experiments/:id/rebuild[/slug]
 
 ## Run lifecycle (not a pipeline stage)
 
@@ -73,7 +73,7 @@ eval cases.** `npm run check:skill-sync` fails the build otherwise.
   - brand extraction — `brandSignalsFromHtml` on the AIE fixture returns the site name, ≥ 8 nav items (Apply to attend, Speakers, Program…) resolved against the page URL, and a cssVars record; `rollupBrand` over the fixture states is deterministic (two calls deep-equal)
   - goal inference — `inferGoals` on a fixture-built experiment returns ≥ 4 goals: the experiment goal first (source `experiment-goal`), ≥ 1 `cta`-sourced goal, unique url-safe slugs, weights in [0,1]
   - generated pages — `generateRebuild` with `FixtureLlmClient` yields one page per goal; no `<script>`, every `<img src>` on the audited origin, each page contains its goal's CTA label; byte-identical across two runs
-  - orchestrator wiring — fixture runner/store/Jev/LLM: `rebuild` (chaining every earlier stage) stores `experiment.rebuild`, it round-trips through the `Experiment` contract, discover stores per-state `brand` signals, and `rebuild.llm` is the fixture adapter name
+  - orchestrator wiring — fixture runner/store/Jev/LLM: `rebuild` (chaining every earlier stage) stores `experiment.rebuild`, it round-trips through the `Experiment` contract, discover stores per-state `brand` signals, and `rebuild.llm` is the fixture adapter name; `runAll` stops at spec (complete, no `experiment.rebuild`)
 
 ## Unit tests (tests/unit/)
 
