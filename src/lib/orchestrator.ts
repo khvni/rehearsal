@@ -156,6 +156,16 @@ function browserSkipped(e: Experiment): boolean {
   return e.failures.some((f) => f.stage === "verify" && BROWSER_SKIP_CODES.has(f.code));
 }
 
+function isCrawlableLink(href: string | undefined, origin: string): boolean {
+  if (!isSameOrigin(href, origin)) return false;
+  try {
+    const pathname = decodeURIComponent(new URL(href!).pathname);
+    return !/\.(?:md|mdx|markdown|txt|json|jsonl|csv|tsv|xml|ya?ml|pdf|docx?|xlsx?|pptx?|rtf|png|jpe?g|gif|svg|webp|avif|ico|bmp|tiff?|mp[34]|webm|ogg|wav|zip|gz|tar|7z|woff2?|ttf|otf|css|[cm]?js)$/i.test(pathname);
+  } catch {
+    return false;
+  }
+}
+
 export class Orchestrator {
   /** Experiment id -> stage currently running. One run per experiment at a time. */
   private running = new Map<string, string>();
@@ -863,7 +873,7 @@ export class Orchestrator {
                 const relevant = (label: string, href: string) =>
                   goalWords.some((w) => `${label} ${href}`.toLowerCase().includes(w)) ? 1 : 0;
                 const links = canonical.actions
-                  .filter((a) => a.type === "click" && isSameOrigin(a.href, origin))
+                  .filter((a) => a.type === "click" && isCrawlableLink(a.href, origin))
                   .sort((a, b) => relevant(b.label, b.href!) - relevant(a.label, a.href!));
                 for (const a of links) {
                   frontier.push({ url: a.href!, depth: depth + 1, from: { stateId: canonical.stateId, actionId: a.actionId } });
@@ -875,7 +885,7 @@ export class Orchestrator {
                   if (links.length < MIN_SEED_LINKS && this.firecrawl.available) {
                     const seen = new Set([...visited.keys(), ...attempted, ...frontier.map((f) => f.url)]);
                     const extra = (await this.firecrawl.mapLinks(experiment.targetUrl, config.firecrawlMapLimit))
-                      .filter((u) => isSameOrigin(u, origin) && !seen.has(u))
+                      .filter((u) => isCrawlableLink(u, origin) && !seen.has(u))
                       .slice(0, config.firecrawlMapLimit);
                     if (extra.length > 0) {
                       seedExtras.push(...extra);
