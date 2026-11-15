@@ -188,10 +188,12 @@ export default function RebuildPage() {
       ) : (
         <div className="grid">
           {(runError || rebuild.llmError) && (
-            <Banner status={runError ? "error" : "warning"} className="span-2" role={runError ? "alert" : "status"}>
-              <BannerTitle>{runError ? "Rebuild didn't run" : `${rebuild.llm} copy unavailable — pages use templates`}</BannerTitle>
-              <BannerDescription>{runError || rebuild.llmError}</BannerDescription>
-            </Banner>
+            <div className="span-2">
+              <Banner status={runError ? "error" : "warning"} role={runError ? "alert" : "status"}>
+                <BannerTitle>{runError ? "Rebuild didn't run" : `${rebuild.llm} copy unavailable — pages use templates`}</BannerTitle>
+                <BannerDescription>{runError || rebuild.llmError}</BannerDescription>
+              </Banner>
+            </div>
           )}
           <Panel
             title="Pages"
