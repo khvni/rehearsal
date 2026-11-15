@@ -13,6 +13,32 @@ function fixture(count = 8): Experiment {
 const fake = (output = ""): LlmClient => ({ name: "openrouter", complete: vi.fn(async () => output) });
 
 describe("whole-site rebuild", () => {
+  it("keeps an IASER-like footer to social profiles, contact and key pages without duplicate networks or article titles", () => {
+    const exp = fixture(6);
+    const paths = ["/", "/about", "/join", "/contact", "/articles/ai-impact", "/blog/dispatch"];
+    const titles = ["IASER", "About", "Join", "Contact", "Can We Measure the Iman Impact of AI? - IASER", "IASER Dispatch - IASER"];
+    exp.graph!.states.forEach((state, i) => { state.url = `https://example.com${paths[i]}`; state.pageTitle = titles[i]; });
+    const home = exp.graph!.states[0];
+    home.brand = { cssVars: {}, colors: [], fonts: [], navItems: [{ label: "Home", href: "/" }, { label: "About", href: "/about" }] };
+    home.actions = [
+      ["IASER on LinkedIn", "https://www.linkedin.com/company/iaser/?trk=footer#about"],
+      ["LinkedIn ↗", "https://linkedin.com/company/iaser"],
+      ["IASER on Instagram", "https://www.instagram.com/iaser"],
+      ["Email IASER", "mailto:hello@example.com?subject=Hello"],
+      [titles[4], "https://www.youtube.com/watch?v=article"],
+      [titles[5], "/blog/dispatch"],
+      ["Facebook", "https://www.facebook.com/posts/123"],
+      ["A very long article headline that should never become a footer social link title", "https://www.tiktok.com/@iaser"],
+      ["Somewhere else", "https://unknown.example/profile"],
+    ].map(([label, href], i) => ({ actionId: `a${i}`, stateId: home.stateId, label, href, type: "click", enabled: true, safeToExecute: true }));
+    const links = deterministicPlan(exp).footer.links;
+    expect(links).toHaveLength(5);
+    expect(links.map(l => l.href)).toEqual(expect.arrayContaining(["https://www.linkedin.com/company/iaser/?trk=footer#about", "https://www.instagram.com/iaser", "mailto:hello@example.com?subject=Hello", "/join", "/contact"]));
+    expect(links.filter(l => l.href.includes("linkedin.com"))).toHaveLength(1);
+    expect(links.every(l => l.label.length <= 60)).toBe(true);
+    expect(links.some(l => titles.slice(4).includes(l.label))).toBe(false);
+    expect(deterministicPlan(fixture(0)).footer.links).toEqual([]);
+  });
   it.each(["llm", "opus"])("owns runtime metadata even when the planner returns %s and malformed optional fields", async plannerSource => {
     const exp = fixture(2);
     const fallback = deterministicPlan(exp);
@@ -80,14 +106,15 @@ describe("whole-site rebuild", () => {
     expect(site.plannerSource).toBe("template");
     expect(site.plannerError).toMatch(/Planner (tokens|pages).*unusable/);
   });
-  it("preserves external footer query strings and distinct query targets", () => {
+  it("preserves query strings and fragments on selected external footer links", () => {
     const exp = fixture(1);
     const home = exp.graph!.states[0];
     const hrefs = ["https://www.youtube.com/watch?v=first#t=20", "https://www.youtube.com/watch?v=second", "https://www.facebook.com/profile.php?id=123", "mailto:hello@example.com?subject=Hello"];
     home.actions = [...hrefs, hrefs[0]].map((href, i) => ({ actionId: `a${i}`, stateId: home.stateId, label: `Contact ${i}`, href, type: "click", enabled: true, safeToExecute: true }));
     const links = deterministicPlan(exp).footer.links;
-    expect(links).toHaveLength(4);
-    expect(links.map(l => l.href)).toEqual(expect.arrayContaining(hrefs));
+    expect(links).toHaveLength(3);
+    expect(links.map(l => l.href)).toEqual(expect.arrayContaining([hrefs[0], hrefs[2], hrefs[3]]));
+    expect(links.map(l => l.href)).not.toContain(hrefs[1]);
   });
   it("cleans stored nav labels and prioritizes a bounded footer over crawled article dumps", () => {
     const exp = fixture(40);
@@ -98,7 +125,7 @@ describe("whole-site rebuild", () => {
     home.actions = ["https://github.com/acme/project", "https://github.com/acme", "mailto:hi@example.com", "https://x.com/acme", "javascript:bad()"].map((href, i) => ({ actionId: `a${i}`, stateId: home.stateId, label: i < 2 ? "GitHub GitHub" : "Contact", href, type: "click", enabled: true, safeToExecute: true }));
     const site = deterministicPlan(exp);
     expect(site.nav).toEqual([{ label: "Home", path: "/" }, { label: "About", path: "/about" }]);
-    expect(site.footer.links).toHaveLength(8);
+    expect(site.footer.links).toHaveLength(4);
     expect(site.footer.links.map(l => l.href)).toEqual(expect.arrayContaining(["mailto:hi@example.com", "https://github.com/acme", "https://x.com/acme", "/contact"]));
     expect(site.footer.links.some(l => l.href === "/about" || l.href.startsWith("javascript:"))).toBe(false);
     expect(site.footer.links.find(l => l.href.includes("github"))?.label).toBe("GitHub");

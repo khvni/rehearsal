@@ -157,8 +157,30 @@ export function deterministicPlan(exp: Experiment): RebuildSite {
   const nav = crawledNav.length
     ? crawledNav
     : pages.slice(0, 7).map((p) => ({ label: p.title, path: p.path }));
+  const keyFooterPath = (path: string) =>
+    /^\/(?:about(?:-us)?|contact(?:-us)?|team|people|join|membership|community|support|resources|projects|docs|documentation|faq|privacy(?:-policy)?|terms(?:-of-(?:use|service))?|accessibility|careers|donate|newsletter|subscribe)?$/i.test(
+      path,
+    );
+  const labelKey = (label: string) =>
+    label.trim().replace(/\s+/g, " ").toLowerCase();
+  const contentTitles = new Set(
+    (exp.graph?.states ?? []).flatMap((state) => {
+      try {
+        if (keyFooterPath(pagePath(new URL(state.url)))) return [];
+        const title = labelKey(state.pageTitle);
+        return [title, title.replace(/\s+[|–—-]\s+[^|–—-]+$/, "")];
+      } catch {
+        return [];
+      }
+    }),
+  );
   const footerLinks = pages
-    .filter((p) => !nav.some((n) => n.path === p.path))
+    .filter(
+      (p) =>
+        keyFooterPath(p.path) &&
+        p.title.trim().length <= 60 &&
+        !nav.some((n) => n.path === p.path),
+    )
     .sort((a, b) => {
       const rank = (path: string) =>
         /\b(contact|about|team|join|support|resources|projects|docs|privacy|terms|accessibility)\b/i.test(
@@ -175,19 +197,38 @@ export function deterministicPlan(exp: Experiment): RebuildSite {
       if (!action.href || !action.label.trim()) continue;
       try {
         const url = new URL(action.href, state.url);
-        const social =
-          /(^|\.)(?:linkedin\.com|twitter\.com|x\.com|instagram\.com|facebook\.com|youtube\.com|youtu\.be|github\.com|bsky\.app|threads\.net|tiktok\.com)$/.test(
-            url.hostname,
-          );
+        const label = cleanNavLabel(action.label);
+        if (
+          label.length > 60 ||
+          contentTitles.has(labelKey(label)) ||
+          /(?:^|\/)(?:articles?|posts?|dispatch(?:es)?|blogs?)(?:[\/._-]|$)/i.test(
+            url.pathname,
+          )
+        )
+          continue;
+        const social = url.hostname.match(
+          /(?:^|\.)(linkedin\.com|twitter\.com|x\.com|instagram\.com|facebook\.com|youtube\.com|youtu\.be|github\.com|bsky\.app|threads\.net|tiktok\.com)$/,
+        )?.[1];
         if (
           url.protocol === "mailto:" ||
           (social &&
             /^https?:$/.test(url.protocol) &&
             !sameOrigin(url, new URL(exp.targetUrl)))
         ) {
-          if (!socialLinks.has(url.href))
-            socialLinks.set(url.href, {
-              label: cleanNavLabel(action.label).slice(0, 100),
+          const network =
+            url.protocol === "mailto:"
+              ? "mailto:"
+              : social === "twitter.com"
+                ? "x.com"
+                : social === "youtu.be"
+                  ? "youtube.com"
+                  : social!;
+          const existing = socialLinks.get(network);
+          const depth = (href: string) =>
+            new URL(href).pathname.split("/").filter(Boolean).length || 10;
+          if (!existing || depth(url.href) < depth(existing.href))
+            socialLinks.set(network, {
+              label,
               href: url.href,
             });
         }
