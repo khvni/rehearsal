@@ -53,6 +53,18 @@ export class LivePagePersonaDriver implements PersonaDriver {
         await assertPublicUrl(href);
         await this.page.goto(href, { waitUntil: "domcontentloaded", timeout: this.navTimeoutMs });
       } else {
+        const submits = await this.page.evaluate<boolean>(`(() => {
+          const normalize = (text) => (text || '').replace(/\\s+/g, ' ').trim().toLowerCase();
+          const label = normalize(${JSON.stringify(action.label)});
+          return Array.from(document.querySelectorAll('button')).some((el) => {
+            if (!(el instanceof HTMLButtonElement) || el.form === null || el.type !== 'submit') return false;
+            const labelledBy = (el.getAttribute('aria-labelledby') || '').split(/\\s+/)
+              .map((id) => document.getElementById(id)?.textContent || '').join(' ');
+            return [labelledBy, el.getAttribute('aria-label'), el.textContent, el.getAttribute('title')]
+              .some((text) => normalize(text).includes(label));
+          });
+        })()`);
+        if (submits) return { ok: false, error: "Refusing to click a form submit button" };
         const loc =
           action.role === "button"
             ? this.page.getByRole("button", { name: action.label })
