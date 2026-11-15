@@ -306,6 +306,7 @@ export default function ExperimentPage() {
           <nav className="summary-links" aria-label="Run results">
             <a href="#findings">Read findings</a>
             {exp.spec && <a href="#fix-plan">Read fix plan</a>}
+            {exp.rebuild && <Link href={`/experiments/${id}/rebuild`}>View rebuild</Link>}
             {hasUsablePreview(exp) && <Link href={`/experiments/${id}/preview/`}>View preview</Link>}
           </nav>
           {exp.mockup && !hasUsablePreview(exp) && <p className="card-meta">Preview unavailable: only a template or incomplete mockup was generated.</p>}
