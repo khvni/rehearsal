@@ -9,7 +9,7 @@ import {
   SpecReport,
   VIEWPORTS,
 } from "@/lib/contracts";
-import { extractPage, isVagueLabel, memoizedExtractPage, normalizeUrl, stateHashFor } from "@/lib/browser/extract";
+import { extractPage, isVagueLabel, MAX_HTML_CHARS, memoizedExtractPage, normalizeUrl, stateHashFor } from "@/lib/browser/extract";
 import { GraphBuilder, makeState } from "@/lib/graph";
 import { mulberry32, simulateTrajectories, selectTrajectories, applyProfile } from "@/lib/simulation";
 import { FixtureJevClient, scoreActions } from "@/lib/decisions/jev";
@@ -93,6 +93,8 @@ describe("extract", () => {
     expect(extract("<title>changed</title>", AIE_URL).title).toBe("changed");
     extract("<p>third</p>", "https://third.example/");
     expect(extract(aieHtml, AIE_URL)).not.toBe(first);
+    const oversized = "x".repeat(MAX_HTML_CHARS + 1);
+    expect(extract(oversized, AIE_URL)).not.toBe(extract(oversized, AIE_URL));
   });
 
   it("flags vague labels", () => {

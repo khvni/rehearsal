@@ -225,12 +225,14 @@ const MEMO_MAX_PAGES = 32;
 /**
  * `extractPage` memoized by (url, html) for one run: persona journeys
  * re-snapshot and re-probe the same pages every step. Results are shared, so
- * callers must not mutate them. Past `maxPages` the oldest-cached URL is dropped.
+ * callers must not mutate them. Past `maxPages` the oldest-cached URL is dropped;
+ * pages over MAX_HTML_CHARS are not cached, so keys stay bounded.
  */
 export function memoizedExtractPage(maxPages = MEMO_MAX_PAGES): typeof extractPage {
   const byUrl = new Map<string, Map<string, ExtractedPage>>();
   let size = 0;
   return (rawHtml, pageUrl) => {
+    if (rawHtml.length > MAX_HTML_CHARS) return extractPage(rawHtml, pageUrl);
     let byHtml = byUrl.get(pageUrl);
     const hit = byHtml?.get(rawHtml);
     if (hit) return hit;
