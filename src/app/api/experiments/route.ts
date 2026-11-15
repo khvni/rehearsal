@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { ExperimentConfig, ExperimentRequest } from "@/lib/contracts";
 import { Orchestrator } from "@/lib/orchestrator";
 import { clientIp, underDailyLimit } from "@/lib/ratelimit";
+import { displayFindings } from "@/lib/presentation";
 
 /** Public-demo caps: experiment creation per IP, journeys and browser runs per experiment. */
 const CREATE_PER_IP_PER_DAY = 3;
@@ -88,6 +89,7 @@ export async function GET() {
       goal: e.goal,
       status: e.status,
       createdAt: e.createdAt,
+      exampleEligible: e.status === "complete" && Boolean(e.spec) && displayFindings(e).length > 0,
       // Slim mockup summary for the /mockups index — no page HTML in the list payload.
       ...(e.mockup
         ? {

@@ -16,6 +16,7 @@ interface ExperimentSummary {
   goal: string;
   status: string;
   createdAt: string;
+  exampleEligible?: boolean;
 }
 
 const RUNNING = ["queued", "discovering", "simulating", "verifying", "analyzing", "comparing"];
@@ -34,16 +35,7 @@ function shortDate(iso: string): string {
     : d.toLocaleDateString(undefined, { month: "short", day: "numeric" });
 }
 
-function PastExperiments() {
-  const [experiments, setExperiments] = useState<ExperimentSummary[] | null>(null);
-
-  useEffect(() => {
-    fetch("/api/experiments")
-      .then((r) => (r.ok ? r.json() : []))
-      .then((data) => setExperiments(Array.isArray(data) ? data : []))
-      .catch(() => setExperiments([]));
-  }, []);
-
+function PastExperiments({ experiments }: { experiments: ExperimentSummary[] | null }) {
   return (
     <section className="panel past-experiments">
       <div className="panel-head">
@@ -91,11 +83,20 @@ function PastExperiments() {
 }
 
 export default function Home() {
+  const [experiments, setExperiments] = useState<ExperimentSummary[] | null>(null);
   const [url, setUrl] = useState("https://ai.engineer/code/2026");
   const [goal, setGoal] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const router = useRouter();
+
+  useEffect(() => {
+    fetch("/api/experiments")
+      .then((r) => (r.ok ? r.json() : []))
+      .then((data) => setExperiments(Array.isArray(data) ? data : []))
+      .catch(() => setExperiments([]));
+  }, []);
+  const example = experiments?.find((e) => e.exampleEligible);
 
   async function start(e: React.FormEvent) {
     e.preventDefault();
@@ -123,7 +124,9 @@ export default function Home() {
     <main className="page narrow home reveal-product">
       <header className="hero">
         <h1 className="wordmark">Rehearsal</h1>
-        <p className="tagline">Why leave your website to chance?</p>
+        <p className="tagline">Simulated visitors test your site and suggest fixes.</p>
+        <p className="hero-description">Give us a public page and a visitor goal. Get ranked usability findings, browser evidence when available, and a fix plan.</p>
+        {example && <Link className="example-link" href={`/experiments/${example.id}`}>See an example run <ArrowIcon size={14} /></Link>}
       </header>
       <form className="launch" onSubmit={start} aria-busy={busy}>
         <FieldGroup>
@@ -152,7 +155,7 @@ export default function Home() {
           {!busy && <ArrowIcon size={14} />}
         </Button>
       </form>
-      <PastExperiments />
+      <PastExperiments experiments={experiments} />
     </main>
   );
 }

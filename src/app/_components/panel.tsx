@@ -2,8 +2,10 @@ import type { ReactNode } from "react";
 import type { PanelState } from "@/lib/contracts";
 import { Banner, BannerAction, BannerActions, BannerDescription, BannerTitle } from "@/components/ui/banner";
 import { ThinkingIndicator } from "@/components/ui/thinking-indicator";
+import { failureMessage } from "@/lib/presentation";
 
 export function Panel({
+  id,
   title,
   meta,
   actions,
@@ -15,6 +17,7 @@ export function Panel({
   loadingPreview,
   children,
 }: {
+  id?: string;
   title: string;
   meta?: ReactNode;
   actions?: ReactNode;
@@ -27,7 +30,7 @@ export function Panel({
   children?: ReactNode;
 }) {
   return (
-    <section className={`panel ${className ?? ""}`} aria-busy={state.kind === "loading" || busy}>
+    <section id={id} className={`panel ${className ?? ""}`} aria-busy={state.kind === "loading" || busy}>
       <header className="panel-head">
         <h2>{title}</h2>
         {meta && <span className="panel-meta">{meta}</span>}
@@ -51,7 +54,8 @@ export function Panel({
         <div className="state reveal">
           <Banner status="error" className="panel-error">
             <BannerTitle>This step failed</BannerTitle>
-            <BannerDescription>{state.message}</BannerDescription>
+            <BannerDescription>{failureMessage(state.message)}</BannerDescription>
+            <details className="error-details"><summary>Technical details</summary><pre>{state.message}</pre></details>
             {state.onRetry && (
               <BannerActions>
                 <BannerAction onClick={state.onRetry}>Try again</BannerAction>
