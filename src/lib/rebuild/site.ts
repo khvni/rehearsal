@@ -30,6 +30,13 @@ const linksFor = (exp: Experiment, page: RebuildSitePage) =>
     .map((a) => ({ label: a.label, href: a.href! }));
 const stateFor = (exp: Experiment, page: RebuildSitePage) =>
   exp.graph?.states.find((s) => s.url === page.sourceUrl);
+const homePathFor = (site: RebuildSite) =>
+  pagePath(
+    new URL(
+      site.pages.find((page) => page.path === "/")?.sourceUrl ??
+        "https://invalid/",
+    ),
+  );
 
 export function sitemapFromGraph(exp: Experiment): RebuildSitePage[] {
   const origin = new URL(exp.targetUrl);
@@ -53,6 +60,11 @@ export function sitemapFromGraph(exp: Experiment): RebuildSitePage[] {
       /* Invalid crawl URLs do not belong in the sitemap. */
     }
   }
+  const home =
+    pages.find((page) => page.path === "/") ??
+    pages.find((page) => page.path === pagePath(origin)) ??
+    pages[0];
+  if (home) home.path = "/";
   const max = Number(process.env.REHEARSAL_REBUILD_MAX_PAGES ?? 40);
   return pages
     .sort((a, b) => Number(b.path === "/") - Number(a.path === "/"))
@@ -103,7 +115,16 @@ export function deterministicPlan(exp: Experiment): RebuildSite {
       try {
         const u = new URL(item.href, exp.targetUrl);
         return sameOrigin(u, new URL(exp.targetUrl))
-          ? [{ label: item.label, path: pagePath(u) }]
+          ? [
+              {
+                label: item.label,
+                path:
+                  pagePath(u) ===
+                  pagePath(new URL(pages[0]?.sourceUrl ?? exp.targetUrl))
+                    ? "/"
+                    : pagePath(u),
+              },
+            ]
           : [];
       } catch {
         return [];
@@ -222,7 +243,7 @@ export async function planSite(
 
 export function rewriteSiteLinks(
   html: string,
-  opts: { origin: string; base: string },
+  opts: { origin: string; base: string; homePath?: string },
 ): string {
   const doc = fragment(html);
   const origin = new URL(opts.origin);
@@ -230,7 +251,9 @@ export function rewriteSiteLinks(
     try {
       const url = new URL(a.getAttribute("href")!, origin);
       if (sameOrigin(url, origin)) {
-        const path = pagePath(url);
+        const sourcePath = pagePath(url);
+        const path =
+          sourcePath === (opts.homePath ?? pagePath(origin)) ? "/" : sourcePath;
         a.setAttribute(
           "href",
           (path === opts.base
@@ -296,6 +319,7 @@ function processHtml(
   raw: string,
   exp: Experiment,
   page: RebuildSitePage,
+  site: RebuildSite,
 ): string {
   const doc = fragment(raw.replace(/^```(?:html)?\s*|\s*```$/g, ""));
   for (const el of doc.querySelectorAll("style, link, meta, title"))
@@ -321,6 +345,7 @@ function processHtml(
   const html = rewriteSiteLinks(safe, {
     origin: exp.targetUrl,
     base: baseFor(exp),
+    homePath: homePathFor(site),
   });
   if (
     !/<(?:h1|h2|p|section|article)\b/i.test(html) ||
@@ -341,7 +366,12 @@ function templateBody(
   const origin = new URL(exp.targetUrl);
   const targetKey = (href: string) => {
     const url = new URL(href, page.sourceUrl);
-    return sameOrigin(url, origin) ? pagePath(url) : url.href;
+    const path = pagePath(url);
+    return sameOrigin(url, origin)
+      ? path === homePathFor(site)
+        ? "/"
+        : path
+      : url.href;
   };
   const safeAction = (action: { label: string; href: string }) => {
     try {
@@ -510,7 +540,7 @@ export async function buildPage(
       const rawIssues = lintRebuiltPage(raw).filter(
         (i) => i === "gradient text" || i === "eyebrow label",
       );
-      const html = processHtml(raw, exp, page);
+      const html = processHtml(raw, exp, page, site);
       const issues = [
         ...new Set([...rawIssues, ...lintRebuiltPage(html, opts)]),
       ];
@@ -529,7 +559,7 @@ export async function buildPage(
     }
   }
   if (best) return best;
-  const html = processHtml(templateBody(exp, site, page), exp, page);
+  const html = processHtml(templateBody(exp, site, page), exp, page, site);
   return {
     ...page,
     status: "built",
@@ -577,7 +607,9 @@ export function renderSiteDocument(exp: Experiment, path = "/"): string {
   const page = site.pages.find((p) => p.path === path && p.status === "built");
   const base = baseFor(exp);
   const brand = exp.rebuild!.brand;
+  const homePath = homePathFor(site);
   const nav = site.nav
+    .map((n) => ({ ...n, path: n.path === homePath ? "/" : n.path }))
     .map(
       (n) =>
         `<a href="${esc(base + (n.path === "/" ? "/" : n.path))}"${n.path === path ? ' aria-current="page"' : ""}>${esc(n.label)}</a>`,
@@ -604,7 +636,7 @@ export function renderSiteDocument(exp: Experiment, path = "/"): string {
         .join(""),
       { imageOrigins: [] },
     ),
-    { origin: exp.targetUrl, base },
+    { origin: exp.targetUrl, base, homePath },
   );
   return [
     '<!doctype html><html lang="en"><head><meta charset="utf-8">',

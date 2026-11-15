@@ -31,6 +31,27 @@ describe("whole-site rebuild", () => {
     expect(result.pages[0].sourceUrl).toBe(exp.graph!.states[0].url);
     expect(llm.complete).toHaveBeenCalledWith(expect.any(String), expect.objectContaining({ model: "rebuild-planner", timeoutMs: 180000 }));
   });
+  it("uses a subpath target (or first crawl page) as home and rewrites its links consistently", async () => {
+    const exp = fixture(2);
+    exp.targetUrl = "https://example.com/blog";
+    exp.graph!.states[0].url = "https://example.com/blog/post";
+    exp.graph!.states[1].url = exp.targetUrl;
+    exp.graph!.states[0].brand = { cssVars: {}, colors: [], fonts: [], navItems: [{ label: "Blog", href: "/blog" }] };
+    const site = deterministicPlan(exp);
+    expect(site.pages.map(p => p.path)).toEqual(["/", "/blog/post"]);
+    expect(site.pages[0].sourceUrl).toBe(exp.targetUrl);
+    expect(site.nav).toEqual([{ label: "Blog", path: "/" }]);
+    const built = await buildPage(exp, site, site.pages[0], fake('<h1>Blog</h1><a href="/blog">Blog</a><a href="/blog/post">Post</a>'));
+    expect(built.html).toContain('href="/experiments/exp_site/rb/"');
+    expect(built.html).toContain('href="/experiments/exp_site/rb/blog/post"');
+    exp.rebuild = { brand: rollupBrand(exp.graph!.states), generatedAt: exp.createdAt, goals: [], pages: [], llm: "fixture", site: { ...site, pages: [built, site.pages[1]] } };
+    expect(renderSiteDocument(exp)).toContain("<h1>Blog</h1>");
+    exp.targetUrl = "https://example.com/missing";
+    expect(sitemapFromGraph(exp)[0]).toMatchObject({ path: "/", sourceUrl: "https://example.com/blog/post" });
+    exp.graph!.states[0].url = "https://example.com/";
+    exp.targetUrl = "https://example.com/blog";
+    expect(sitemapFromGraph(exp).map(p => p.path)).toEqual(["/", "/blog"]);
+  });
   it("derives a branded footer from non-nav pages and social/contact links", () => {
     const exp = fixture();
     exp.graph!.states[0].brand = { cssVars: {}, colors: [], fonts: [], siteName: "Acme", navItems: [{ label: "Home", href: "https://example.com/" }] };
