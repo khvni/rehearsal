@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { ActivityEvent, PanelState } from "@/lib/contracts";
+import { Banner, BannerDescription, BannerTitle } from "@/components/ui/banner";
 import { Panel } from "../app/_components/panel";
 
 const POLL_MS = 2000;
@@ -25,14 +26,17 @@ function clock(ts: string): string {
 /** Live feed of what the agent is doing — polls the activity endpoint while a run is live. */
 export function AgentActivity({ id, live }: { id: string; live: boolean }) {
   const [events, setEvents] = useState<ActivityEvent[]>([]);
+  const [error, setError] = useState("");
   const feedRef = useRef<HTMLOListElement>(null);
 
   const load = useCallback(async () => {
     try {
       const res = await fetch(`/api/experiments/${id}/activity`, { cache: "no-store" });
-      if (res.ok) setEvents((await res.json()) as ActivityEvent[]);
-    } catch {
-      /* keep the last rendered feed */
+      if (!res.ok) throw new Error(`Request failed (${res.status})`);
+      setEvents((await res.json()) as ActivityEvent[]);
+      setError("");
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Request failed");
     }
   }, [id]);
 
@@ -54,7 +58,7 @@ export function AgentActivity({ id, live }: { id: string; live: boolean }) {
   }, [count]);
 
   const state: PanelState =
-    count > 0
+    count > 0 || error
       ? { kind: "ready" }
       : live
         ? { kind: "loading", label: "Waiting for the first move…" }
@@ -75,6 +79,12 @@ export function AgentActivity({ id, live }: { id: string; live: boolean }) {
       enter="none"
       state={state}
     >
+      {error && (
+        <Banner status="error">
+          <BannerTitle>Couldn&apos;t load activity</BannerTitle>
+          <BannerDescription>{error}</BannerDescription>
+        </Banner>
+      )}
       <ol className="activity list" ref={feedRef} aria-label="Agent activity">
         {events.map((e, i) => (
           <li key={i} className={`k-${e.kind}`}>
