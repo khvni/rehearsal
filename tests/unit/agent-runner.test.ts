@@ -1,6 +1,19 @@
 import { readFileSync } from "node:fs";
 import path from "node:path";
-import { afterEach, describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
+
+// runDiscover consults robots.txt with a real fetch and assertPublicUrl does a
+// real DNS lookup; stub both at the edge so the verify tests stay hermetic
+// while the rest of the module stays real.
+vi.mock("@/lib/fetch/guards", async (importOriginal) => {
+  const original = await importOriginal<typeof import("@/lib/fetch/guards")>();
+  return {
+    ...original,
+    assertPublicUrl: async (raw: string) => new URL(raw),
+    robotsAllows: async () => true,
+  };
+});
+
 import {
   Experiment,
   VIEWPORTS,
@@ -290,6 +303,14 @@ describe("orchestrator verify routes to runAgentTask only when opted in and supp
     const orch = new Orchestrator({
       runner, store, jev: new FixtureJevClient(), llm: new FixtureLlmClient(),
       fetcher: { name: "fixture-fetch", fetchHtml: async () => "" },
+      probeFetcher: {
+        name: "fixture-probe",
+        async fetchHtml(url) {
+          const html = pages[url];
+          if (html === undefined) throw new Error(`fixture 404: ${url}`);
+          return html;
+        },
+      },
     });
     const exp = await orch.createExperiment(AIE_URL, "find the conference schedule", {
       viewports: ["desktop"], trajectories: 50, verifyCount: 2, maxStates: 3,
@@ -301,11 +322,9 @@ describe("orchestrator verify routes to runAgentTask only when opted in and supp
 
   afterEach(() => {
     delete process.env.REHEARSAL_VERIFY_AGENT;
-    delete process.env.REHEARSAL_ALLOW_PRIVATE;
   });
 
   it("uses runAgentTask with the goal when REHEARSAL_VERIFY_AGENT=1", async () => {
-    process.env.REHEARSAL_ALLOW_PRIVATE = "1";
     process.env.REHEARSAL_VERIFY_AGENT = "1";
     const { runner, calls } = fixtureRunner(true);
     const exp = await verifyWith(runner);
@@ -315,7 +334,6 @@ describe("orchestrator verify routes to runAgentTask only when opted in and supp
   });
 
   it("keeps runTrajectory when the flag is unset", async () => {
-    process.env.REHEARSAL_ALLOW_PRIVATE = "1";
     const { runner, calls } = fixtureRunner(true);
     const exp = await verifyWith(runner);
     expect(calls.agent).toEqual([]);
@@ -323,7 +341,6 @@ describe("orchestrator verify routes to runAgentTask only when opted in and supp
   });
 
   it("falls back to runTrajectory when supportsAgent=false even with the flag set", async () => {
-    process.env.REHEARSAL_ALLOW_PRIVATE = "1";
     process.env.REHEARSAL_VERIFY_AGENT = "1";
     const { runner, calls } = fixtureRunner(false);
     const exp = await verifyWith(runner);
