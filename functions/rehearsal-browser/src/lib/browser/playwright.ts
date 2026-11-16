@@ -13,11 +13,12 @@ import type {
   PersonaJourneyArgs,
   PersonaPage,
   PlaywrightStepOptions,
+  SharedLanding,
   TrajectoryArgs,
   Viewport,
 } from "../contracts";
 import type { startEgressProxy } from "../fetch/egress-proxy";
-import { assertPublicUrl, politeDelay, robotsAllows } from "../fetch/guards";
+import { assertPublicUrl, fetchPublic, politeDelay, robotsAllows } from "../fetch/guards";
 import { compilePatches } from "../variants";
 import { isSameOrigin } from "./extract";
 import { measurePage } from "./metrics";
@@ -257,14 +258,57 @@ export class PlaywrightRunner implements BrowserRunner {
     return summarizeRun({ runId: args.runId, viewport: args.viewport, started, errors, ...result });
   }
 
-  async runPersonaJourney(args: PersonaJourneyArgs): Promise<AgentJourney> {
-    const target = await assertPublicUrl(args.url);
+  /**
+   * Fetch the swarm's landing page once (robots.txt + politeDelay on the one
+   * request) so a swarm pays politeness per run, not per agent. Agents replay
+   * the captured response into their own contexts — no further requests to the
+   * landing URL. Off-origin redirects and non-HTML responses throw, in which
+   * case runPersonaSwarm falls back to per-agent fetches.
+   */
+  async captureLandingPage(url: string): Promise<SharedLanding> {
+    const target = await assertPublicUrl(url);
     if (!(await robotsAllows(target))) throw new Error(`robots.txt disallows ${target.pathname}`);
-    await politeDelay(target);
+    const res = await fetchPublic(
+      url,
+      { headers: { "user-agent": USER_AGENT, accept: "text/html,application/xhtml+xml" }, signal: AbortSignal.timeout(30000) },
+      { requireSameOrigin: true },
+    );
+    const contentType = res.headers.get("content-type") ?? "";
+    if (contentType && !/html|xml/i.test(contentType)) throw new Error(`Non-HTML response (${contentType}) for ${url}`);
+    if (!res.ok) throw new Error(`Fetch failed ${res.status} for ${url}`);
+    return {
+      url: res.url,
+      status: res.status,
+      headers: Object.fromEntries(res.headers),
+      body: await res.text(),
+    };
+  }
+
+  async runPersonaJourney(args: PersonaJourneyArgs): Promise<AgentJourney> {
+    const landing = args.landing;
+    if (landing) {
+      await assertPublicUrl(landing.url);
+    } else {
+      const target = await assertPublicUrl(args.url);
+      if (!(await robotsAllows(target))) throw new Error(`robots.txt disallows ${target.pathname}`);
+      await politeDelay(target);
+    }
     const ctx = await this.newContext(args.viewport);
     try {
+      if (landing) {
+        // Serve the shared capture at its final URL; replayed headers must not
+        // describe the wire encoding — body was already decoded by the capture.
+        const headers = { ...landing.headers };
+        delete headers["content-encoding"];
+        delete headers["content-length"];
+        delete headers["transfer-encoding"];
+        await ctx.route(
+          (u) => u.toString() === landing.url,
+          (route) => route.fulfill({ status: landing.status, headers, body: landing.body }),
+        );
+      }
       const page = await ctx.newPage();
-      await page.goto(args.url, { waitUntil: "domcontentloaded", timeout: 30000 });
+      await page.goto(landing?.url ?? args.url, { waitUntil: "domcontentloaded", timeout: 30000 });
       await assertPublicPage(page);
       await settle(page, 800);
       await settleInterstitial(page);
