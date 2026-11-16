@@ -1,8 +1,15 @@
-import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { BrowserbaseFunctionRunner } from "@/lib/browser/function-runner";
 import { classifyError } from "@/lib/errors";
 import { Orchestrator } from "@/lib/orchestrator";
 import type { Experiment, ExperimentStore, PageFetcher } from "@/lib/contracts";
+
+// Deadline tests isolate the timeout budget: robots.txt checks and per-host
+// politeness spacing are preconditions covered by hosted-politeness tests.
+vi.mock("@/lib/fetch/guards", async (importOriginal) => {
+  const real = await importOriginal<typeof import("@/lib/fetch/guards")>();
+  return { ...real, robotsAllows: vi.fn(async () => true), politeDelay: vi.fn(async () => undefined) };
+});
 
 const URL = "https://site.test/";
 const PAGES: Record<string, string> = {
