@@ -9,7 +9,17 @@ const BLOCKED_HOSTNAMES = new Set([
 ]);
 
 function isPrivateIp(ip: string): boolean {
-  return ipaddr.process(ip).range() !== "unicast";
+  const parsed = ipaddr.process(ip);
+  // Deprecated IPv4-compatible form (::/96): ipaddr.js only delegates to the IPv4
+  // range when the tail is written dotted (`::169.254.169.254`); the hex form
+  // (`::a9fe:a9fe`) reports unicast, so classify the embedded address explicitly.
+  if (parsed.kind() === "ipv6") {
+    const bytes = parsed.toByteArray();
+    if (bytes.slice(0, 12).every((b) => b === 0)) {
+      return new ipaddr.IPv4(bytes.slice(12)).range() !== "unicast";
+    }
+  }
+  return parsed.range() !== "unicast";
 }
 
 /** Resolve `hostname` and return the address to connect to; throws if it is blocked or private.

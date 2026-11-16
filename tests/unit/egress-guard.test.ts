@@ -45,12 +45,15 @@ describe("SSRF guards", () => {
     "2001:db8::1", "0:0:0:0:0:0:0:1", "0:0:0:0:0:0:0:0",
     "10.0.0.1", "127.0.0.1", "0.0.0.0", "169.254.0.1", "172.16.0.1", "192.168.0.1",
     "100.64.0.1", "198.18.0.1", "224.0.0.1", "240.0.0.1", "255.255.255.255", "192.0.2.1",
+    // Deprecated IPv4-compatible IPv6 form (::/96): the embedded IPv4 decides the range.
+    "::a9fe:a9fe", "::7f00:1", "::a00:1", "::ac10:1", "::c0a8:1", "::e000:1",
+    "::169.254.169.254", "::10.0.0.1",
   ])("blocks non-public literal %s", async (host) => {
     delete process.env.REHEARSAL_ALLOW_PRIVATE;
     await expect(resolvePublicHost(host)).rejects.toThrow(/Blocked private IP/);
   });
 
-  it.each(["fe7f::1", "2606:4700::1", "8.8.8.8", "::ffff:8.8.8.8"])("allows unicast literal %s", async (host) => {
+  it.each(["fe7f::1", "2606:4700::1", "8.8.8.8", "::ffff:8.8.8.8", "::808:808", "::8.8.8.8"])("allows unicast literal %s", async (host) => {
     delete process.env.REHEARSAL_ALLOW_PRIVATE;
     await expect(resolvePublicHost(host)).resolves.toBe(host);
   });
