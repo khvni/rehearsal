@@ -346,19 +346,28 @@ export function stateHashFor(
     .slice(0, 16);
 }
 
+/** Params that never change the page served — dropped for site/state dedupe. */
+const TRACKING_PARAMS = /^utm_|^(fbclid|gclid|gclsrc|dclid|mc_cid|mc_eid|igshid|msclkid|_ga|ref_src)$/i;
+
+/**
+ * State identity key: hash dropped, tracking params dropped, real params sorted
+ * (`?b=2&a=1` ≡ `?a=1&b=2`), trailing path slashes folded. Real query params
+ * stay — `?page=2` serves different content and must be its own state.
+ */
 export function normalizeUrl(url: string): string {
   try {
     const u = new URL(url);
     u.hash = "";
-    u.search = ""; // query excluded: state identity is path+content
+    for (const key of [...u.searchParams.keys()]) {
+      if (TRACKING_PARAMS.test(key)) u.searchParams.delete(key);
+    }
+    u.searchParams.sort();
+    u.pathname = u.pathname.replace(/\/+$/, "");
     return u.toString().replace(/\/$/, "");
   } catch {
     return url;
   }
 }
-
-/** Params that never change the page served — dropped for site-level dedupe. */
-const TRACKING_PARAMS = /^utm_|^(fbclid|gclid|gclsrc|dclid|mc_cid|mc_eid|igshid|msclkid|_ga|ref_src)$/i;
 
 /**
  * Site-level dedupe key: hash dropped, host lowercased (URL does that), tracking

@@ -412,6 +412,42 @@ describe("discover fetch-first + firecrawl fallback", () => {
     expect(fetched.sort()).toEqual([URL, `${URL}about`]);
   });
 
+  it("keeps paginated pages as separate states, folding tracking params", async () => {
+    process.env.REHEARSAL_ALLOW_PRIVATE = "1";
+    // Same action labels on both pages: `stateHashFor` signs on role+label, so
+    // identical nav + different content is exactly the case the query strip merges.
+    const SEED = `<html><body><h1>Home</h1><a href="/list?page=1">Page 1</a><a href="/list?page=2">Page 2</a><a href="/list?page=1&utm_source=newsletter">Tracked page 1</a></body></html>`;
+    const PAGE_1 = `<html><body><h1>Results</h1><p>Items one through ten</p><a href="/">Home</a><a href="/list?page=2">More results</a></body></html>`;
+    const PAGE_2 = `<html><body><h1>Results</h1><p>Items eleven through twenty</p><a href="/">Home</a><a href="/list?page=1">More results</a></body></html>`;
+    const pages: Record<string, string> = {
+      [URL]: SEED,
+      [`${URL}list?page=1`]: PAGE_1,
+      [`${URL}list?page=2`]: PAGE_2,
+      [`${URL}list?page=1&utm_source=newsletter`]: PAGE_1,
+    };
+    const orch = new Orchestrator({
+      store: memoryStore(),
+      fetcher: fetcher(pages),
+      probeFetcher: fetcher(pages),
+      firecrawl: firecrawlStub({}).stub,
+      runner: runner(pages),
+      jev: new FixtureJevClient(),
+      llm: new FixtureLlmClient(),
+    });
+    const exp = await orch.createExperiment(URL, "g", { viewports: ["desktop"], maxStates: 6, maxDepth: 2 });
+    const done = await orch.discover(exp.id);
+    const states = done.graph?.states ?? [];
+    const urls = states.map((s) => s.url);
+    expect(urls).toContain(`${URL}list?page=1`);
+    expect(urls).toContain(`${URL}list?page=2`);
+    // `?page=1&utm_source=…` folds onto `?page=1` — no extra state for a tracking param.
+    expect(states.length).toBe(3);
+    const p1 = states.find((s) => s.url === `${URL}list?page=1`)!;
+    const p2 = states.find((s) => s.url === `${URL}list?page=2`)!;
+    // The page-1 → page-2 edge links distinct states, not a self-loop.
+    expect(done.graph?.edges.some((e) => e.fromStateId === p1.stateId && e.toStateId === p2.stateId)).toBe(true);
+  });
+
   it("keeps URLs that differ only by a trailing slash as separate pages", async () => {
     process.env.REHEARSAL_ALLOW_PRIVATE = "1";
     const SEED = `<html><body><h1>Home</h1><a href="/docs">Docs</a><a href="/docs/">Docs index</a></body></html>`;
