@@ -36,6 +36,8 @@ Whole-site rebuild: `rebuild(id, {restart?})` persists one planning step or a ba
 
 Missing-page rebuild phase: after the initial page batches, one frozen gap round collects same-origin HTML links missing from the sitemap, including graph actions and edge destination states. `REHEARSAL_REBUILD_GAP_MAX_PAGES` defaults to 12 (0–100). Fetch steps use the guarded plain probe fetcher with strict HTML content type, at most two pages / ten seconds, and checkpoint each attempt. Successful pages enter the graph and ordinary sitemap rows as planned, retain the existing design, and use deterministic article blocks before normal implementation batches; no second planner call. Failed/over-cap/non-page destinations retain the not-rebuilt response. Links found on gap pages do not start another round. Completion and public continuation exemptions span fetch and implementation steps. `tests/unit/rebuild-gaps.test.ts` covers hermetic fetch/build, filters, caps, failures, non-recursion and resume.
 
+Legacy completed rebuilds without gap state stay complete during reads/watchdog resumes. Only an explicit non-restart rebuild POST opts them into the missing-page phase, under the experiment lock; it persists the gap snapshot before fetching, preserves built pages and design, and takes no new run allowance. Once gap state exists, completion is idempotent. `tests/unit/rebuild-gaps.test.ts` covers the legacy POST, unchanged original pages, no planner call, free continuations, and no automatic upgrade.
+
 ## Eval cases (tests/evals/, gated by evals.config.json thresholds)
 
 - `core.eval.ts` — extraction coverage, simulation determinism/scale, Jev mapping validity, rubric coverage, stale-date finding (Scenario B), spec completeness, variant idempotency, SSRF guards

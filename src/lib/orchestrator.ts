@@ -712,8 +712,19 @@ export class Orchestrator {
   }
 
   /** A standalone rebuild gets a fresh call budget: the per-run budget resets only at discover, so a finished run has spent it. */
-  async rebuild(id: string, opts?: { restart?: boolean }): Promise<Experiment> {
+  async rebuild(id: string, opts?: { restart?: boolean; resumeLegacy?: boolean }): Promise<Experiment> {
     return this.exclusive(id, "rebuild", async () => {
+      if (opts?.resumeLegacy && !opts.restart) {
+        const exp = await this.mustGet(id);
+        const site = exp.rebuild?.site;
+        if (site?.completedAt && !site.gap) {
+          site.gap = collectRebuildGaps(exp);
+          delete site.completedAt;
+          exp.status = "rebuilding";
+          exp.runCheckpoint = { stage: "rebuild", attempt: 0 };
+          await this.store.save(Experiment.parse(exp));
+        }
+      }
       return this.runRebuild(id, opts);
     });
   }

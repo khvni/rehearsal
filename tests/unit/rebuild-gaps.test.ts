@@ -4,7 +4,7 @@ import { Orchestrator } from "@/lib/orchestrator";
 import { extractPage } from "@/lib/browser/extract";
 import { makeState } from "@/lib/graph";
 import { collectRebuildGaps, GAP_STEP_MS } from "@/lib/rebuild/gaps";
-import { deterministicPlan } from "@/lib/rebuild/site";
+import { deterministicPlan, rebuildPending } from "@/lib/rebuild/site";
 import { rollupBrand } from "@/lib/rebuild";
 import { PlainFetcher } from "@/lib/fetch";
 import { assertPublicUrl, fetchPublic } from "@/lib/fetch/guards";
@@ -67,6 +67,39 @@ beforeEach(() => { vi.useFakeTimers({ toFake: ["Date"] }); vi.setSystemTime(new 
 afterEach(() => { delete g.__orchestrator; vi.useRealTimers(); vi.unstubAllEnvs(); vi.restoreAllMocks(); });
 
 describe("stepwise rebuild gaps", () => {
+  it("upgrades legacy completion only on an explicit non-restart POST, without charging or rebuilding existing pages", async () => {
+    const exp = builtFixture(["/survey"]);
+    exp.rebuild!.site!.completedAt = exp.createdAt;
+    const originalPages = structuredClone(exp.rebuild!.site!.pages);
+    const ctx = setup(exp);
+    expect(rebuildPending(ctx.saved())).toBe(false);
+    expect((await g.__orchestrator!.resume(ID, { inline: true })).resumed).toBe(false);
+    await g.__orchestrator!.rebuild(ID);
+    expect((await get([])).status).toBe(200);
+    expect(ctx.saved().rebuild!.site!.completedAt).toBe(exp.createdAt);
+    expect(ctx.saved().rebuild!.site!.gap).toBeUndefined();
+    expect(ctx.fetcher.fetchHtml).not.toHaveBeenCalled();
+    expect(ctx.llm.complete).not.toHaveBeenCalled();
+    expect((await post()).status).toBe(200);
+    expect(rebuildPending(ctx.saved())).toBe(true);
+    expect(ctx.saved().rebuild!.site!.completedAt).toBeUndefined();
+    expect(ctx.saved().rebuild!.site!.gap).toMatchObject({ cursor: 1, completed: true });
+    expect(ctx.saved().rebuild!.site!.pages[1]).toMatchObject({ path: "/survey", status: "planned" });
+    expect(ctx.snapshots.some(s => s.status === "rebuilding" && s.rebuild?.site?.gap?.cursor === 0 && !s.rebuild.site.completedAt)).toBe(true);
+    expect(ctx.llm.complete).not.toHaveBeenCalled();
+    expect(mocks.allowance).not.toHaveBeenCalled();
+    ctx.install();
+    expect((await post()).status).toBe(200);
+    expect(ctx.saved().status).toBe("complete");
+    expect((await get(["survey"])).status).toBe(200);
+    expect(ctx.llm.complete).toHaveBeenCalledTimes(1);
+    expect(ctx.saved().rebuild!.site!.pages.slice(0, originalPages.length)).toEqual(originalPages);
+    expect((await post()).status).toBe(200);
+    expect(ctx.fetcher.fetchHtml).toHaveBeenCalledTimes(1);
+    expect(ctx.llm.complete).toHaveBeenCalledTimes(1);
+    expect(mocks.allowance).not.toHaveBeenCalled();
+  });
+
   it("discovers, fetches and builds missing pages using the existing design and one run charge", async () => {
     const ctx = setup();
     await post();
