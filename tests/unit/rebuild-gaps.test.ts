@@ -67,6 +67,40 @@ beforeEach(() => { vi.useFakeTimers({ toFake: ["Date"] }); vi.setSystemTime(new 
 afterEach(() => { delete g.__orchestrator; vi.useRealTimers(); vi.unstubAllEnvs(); vi.restoreAllMocks(); });
 
 describe("stepwise rebuild gaps", () => {
+  it("refreshes an existing gap state and remaps surviving edges before building from fresh content", async () => {
+    vi.stubEnv("REHEARSAL_REBUILD_MAX_PAGES", "1");
+    const exp = fixture(["/survey"]);
+    const url = "https://example.com/survey";
+    const oldHtml = '<html><title>Old survey</title><h1>Old survey</h1><p>Outdated content.</p><a href="/">Home</a><a href="/removed">Removed</a></html>';
+    const freshHtml = '<html><title>Fresh survey</title><h1>Fresh survey</h1><p>Current survey facts are available to all community members.</p><a href="/fresh">Fresh</a><a href="/">Home</a></html>';
+    const old = extractPage(oldHtml, url);
+    const state = makeState({ url, viewport: VIEWPORTS.desktop, title: old.title, visibleText: old.visibleText, headings: old.headings, actions: old.actions });
+    const home = exp.graph!.states[0];
+    const removed = makeState({ url: "https://example.com/removed", viewport: VIEWPORTS.desktop, title: "Removed", visibleText: "Removed page", actions: [] });
+    home.actions[0].destinationStateId = state.stateId;
+    exp.graph!.states.push(state, removed);
+    const incoming = { fromStateId: home.stateId, actionId: home.actions[0].actionId, toStateId: state.stateId };
+    exp.graph!.edges = [incoming, { fromStateId: state.stateId, actionId: state.actions[0].actionId, toStateId: home.stateId }, { fromStateId: state.stateId, actionId: state.actions[1].actionId, toStateId: removed.stateId }];
+    exp.siteSignatures = [{ url, signature: contentSignatureFor(url, old) }];
+    const ctx = setup(exp, { "/survey": freshHtml });
+    await post(); await post(); await post();
+    const graph = ctx.saved().graph!;
+    const refreshed = graph.states.find(s => s.url === url)!;
+    expect(refreshed).toMatchObject({ stateId: state.stateId, pageTitle: "Fresh survey", visibleText: expect.stringContaining("Current survey facts") });
+    expect(refreshed.stateHash).not.toBe(state.stateHash);
+    expect(refreshed.actions.map(action => action.label)).toEqual(["Fresh", "Home"]);
+    expect(refreshed.actions.every(action => action.stateId === state.stateId)).toBe(true);
+    expect(graph.edges).toEqual([incoming, { fromStateId: state.stateId, actionId: refreshed.actions[1].actionId, toStateId: home.stateId }]);
+    expect(graph.edges.every(edge => graph.states.some(s => s.stateId === edge.toStateId) && graph.states.find(s => s.stateId === edge.fromStateId)?.actions.some(action => action.actionId === edge.actionId))).toBe(true);
+    expect(ctx.saved().siteSignatures).toEqual([{ url, signature: contentSignatureFor(url, extractPage(freshHtml, url)) }]);
+    await post();
+    const response = await get(["survey"]);
+    expect(response.status).toBe(200);
+    const html = await response.text();
+    expect(html).toContain("Current survey facts");
+    expect(html).not.toContain("Outdated content");
+  });
+
   it("persists gap signatures with the fetch checkpoint so rescan detects a gap-only change", async () => {
     const exp = fixture(["/survey", "/missing"]);
     const home = pageHtml(["/survey", "/missing"]);

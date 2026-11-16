@@ -57,8 +57,18 @@ export async function fetchRebuildGaps(exp: Experiment, fetcher: PageFetcher, ch
       const extracted = extractPage(html, page.sourceUrl);
       const graph = exp.graph ??= { states: [], edges: [] };
       const existing = graph.states.find(s => s.url === page.sourceUrl);
-      const state = existing ?? makeState({ url: page.sourceUrl, viewport: VIEWPORTS.desktop, title: extracted.title ?? page.path, visibleText: extracted.visibleText, headings: extracted.headings, actions: extracted.actions });
-      if (!existing) graph.states.push(state);
+      const state = makeState({ url: page.sourceUrl, viewport: existing?.viewport ?? VIEWPORTS.desktop, title: extracted.title ?? page.path, visibleText: extracted.visibleText, headings: extracted.headings, actions: extracted.actions });
+      if (existing) {
+        state.stateId = existing.stateId;
+        state.actions = state.actions.map((action, i) => ({ ...action, stateId: state.stateId, actionId: `${state.stateId}_a${i}` }));
+        graph.edges = graph.edges.flatMap(edge => {
+          if (edge.fromStateId !== existing.stateId) return [edge];
+          const previous = existing.actions.find(action => action.actionId === edge.actionId);
+          const current = previous && state.actions.find(action => action.type === previous.type && action.href === previous.href && action.label === previous.label && action.role === previous.role && action.locator === previous.locator);
+          return current ? [{ ...edge, actionId: current.actionId }] : [];
+        });
+        graph.states[graph.states.indexOf(existing)] = state;
+      } else graph.states.push(state);
       site.pages.push({ ...page, title: state.pageTitle || page.path, mode: "read", blocks: [{ type: "article-body", purpose: `Present ${state.pageTitle || page.path} using the crawled facts` }], status: "planned" });
       const signatures = new Map((exp.siteSignatures ?? []).map(s => [s.url, s]));
       signatures.set(page.sourceUrl, { url: page.sourceUrl, signature: contentSignatureFor(page.sourceUrl, extracted) });

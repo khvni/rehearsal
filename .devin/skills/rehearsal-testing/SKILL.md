@@ -40,6 +40,8 @@ Legacy completed rebuilds without gap state stay complete during reads/watchdog 
 
 Successful gap fetches also checkpoint `siteSignatures` from the plain-fetch extraction using `contentSignatureFor`, preserving existing URL signatures and excluding failed fetches. The gap tests verify an unchanged rescan and a subsequent rescan where only the added page changes.
 
+When a fetched gap already has a graph state (for example, outside the initial sitemap cap), the fresh extraction replaces its content/actions/hash while retaining its state ID and viewport. Incoming edges remain valid; outgoing edges are remapped to unchanged actions and removed when their action disappears. The gap tests verify fresh built content and consistent edges after action reordering/removal.
+
 ## Eval cases (tests/evals/, gated by evals.config.json thresholds)
 
 - `core.eval.ts` — extraction coverage, simulation determinism/scale, Jev mapping validity, rubric coverage, stale-date finding (Scenario B), spec completeness, variant idempotency, SSRF guards
