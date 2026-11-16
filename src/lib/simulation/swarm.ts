@@ -111,6 +111,12 @@ export async function runPersonaSwarm(args: {
   if (!run) throw new Error(`${runner.name} does not support persona journeys`);
   const jev = args.jev && withDecideCache(args.jev);
 
+  // Fetch the landing page once per run when the runner can replay it to every
+  // agent (politeDelay on a public host costs ~2s per journey otherwise). A
+  // failed capture falls back to per-agent fetches, keeping today's failure
+  // shape — e.g. a robots-blocked start still lands every agent as dropped-off.
+  const landing = runner.captureLandingPage ? await runner.captureLandingPage(url).catch(() => undefined) : undefined;
+
   const weights = personaWeights(args.endpoints, args.intents);
   const kinds = Object.keys(weights) as PersonaKind[];
   const total = kinds.reduce((a, k) => a + weights[k], 0);
@@ -153,6 +159,7 @@ export async function runPersonaSwarm(args: {
             seed,
             maxSteps: config.maxStepsPerAgent,
             jev,
+            landing,
           });
         } catch {
           journeys[i] = {

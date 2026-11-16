@@ -13,11 +13,12 @@ import type {
   PersonaJourneyArgs,
   PersonaPage,
   PlaywrightStepOptions,
+  SharedLanding,
   TrajectoryArgs,
   Viewport,
 } from "../contracts";
 import type { startEgressProxy } from "../fetch/egress-proxy";
-import { assertPublicUrl, politeDelay, robotsAllows } from "../fetch/guards";
+import { assertPublicUrl, fetchPublic, politeDelay, robotsAllows } from "../fetch/guards";
 import { compilePatches } from "../variants";
 import { isSameOrigin } from "./extract";
 import { measurePage } from "./metrics";
@@ -43,6 +44,56 @@ const PAGE_CALL_MS = 15000;
 /** Let client-side rendering finish: wait for network idle, at most `capMs`. */
 function settle(page: Page, capMs: number): Promise<void> {
   return page.waitForLoadState("networkidle", { timeout: capMs }).catch(() => undefined);
+}
+
+/**
+ * Turn a Set-Cookie captured at `hop.url` into context-jar cookies. Path and
+ * domain are resolved the way RFC 6265 makes Chromium do it on a real response:
+ * an absent Path defaults to the hop URL's directory, an absent Domain to its
+ * host — the same origin as the landing URL, since fetchPublic enforces it.
+ */
+type AddCookie = Parameters<BrowserContext["addCookies"]>[0][number];
+
+function setCookieFor(cookie: { url: string; header: string }): AddCookie[] {
+  const hopUrl = new URL(cookie.url);
+  const defaultPath = (() => {
+    const p = hopUrl.pathname;
+    if (!p.startsWith("/")) return "/";
+    const cut = p.lastIndexOf("/");
+    return cut <= 0 ? "/" : p.slice(0, cut);
+  })();
+  const attrs: Record<string, string | true> = {};
+  const [pair, ...rest] = cookie.header.split(";");
+  for (const seg of rest) {
+    const eq = seg.indexOf("=");
+    const k = seg.slice(0, eq < 0 ? undefined : eq).trim().toLowerCase();
+    attrs[k] = eq < 0 ? true : seg.slice(eq + 1).trim();
+  }
+  const eq = pair.indexOf("=");
+  if (eq <= 0) return [];
+  const domain = typeof attrs.domain === "string" ? attrs.domain.toLowerCase() : undefined;
+  // Chromium rejects a Domain attribute the response host can't set — apply
+  // the same check so the jar can't carry cookies to a foreign host.
+  if (domain) {
+    const d = domain.replace(/^\./, "");
+    if (hopUrl.hostname !== d && !hopUrl.hostname.endsWith(`.${d}`)) return [];
+  }
+  const maxAge = typeof attrs["max-age"] === "string" ? parseInt(attrs["max-age"], 10) : NaN;
+  const expiresAttr = typeof attrs.expires === "string" ? new Date(attrs.expires).getTime() : NaN;
+  const sameSite = typeof attrs.samesite === "string" ? attrs.samesite.toLowerCase() : undefined;
+  return [
+    {
+      name: pair.slice(0, eq).trim(),
+      value: pair.slice(eq + 1).trim(),
+      domain: domain ?? hopUrl.hostname,
+      // An empty or non-/ Path falls back to the hop's default path (RFC 6265 §5.1.4).
+      path: typeof attrs.path === "string" && attrs.path.startsWith("/") ? attrs.path : defaultPath,
+      expires: !isNaN(maxAge) ? Math.floor(Date.now() / 1000) + maxAge : !isNaN(expiresAttr) ? Math.floor(expiresAttr / 1000) : -1,
+      httpOnly: "httponly" in attrs,
+      secure: "secure" in attrs,
+      sameSite: sameSite === "strict" ? "Strict" : sameSite === "lax" ? "Lax" : sameSite === "none" ? "None" : undefined,
+    },
+  ];
 }
 
 /** Headless Chromium with its sandbox on (Playwright passes --no-sandbox unless chromiumSandbox is set). */
@@ -257,14 +308,79 @@ export class PlaywrightRunner implements BrowserRunner {
     return summarizeRun({ runId: args.runId, viewport: args.viewport, started, errors, ...result });
   }
 
-  async runPersonaJourney(args: PersonaJourneyArgs): Promise<AgentJourney> {
-    const target = await assertPublicUrl(args.url);
+  /**
+   * Fetch the swarm's landing page once (robots.txt + politeDelay on the one
+   * request) so a swarm pays politeness per run, not per agent. Agents replay
+   * the captured response into their own contexts — no further requests to the
+   * landing URL. Off-origin redirects and non-HTML responses throw, in which
+   * case runPersonaSwarm falls back to per-agent fetches.
+   */
+  async captureLandingPage(url: string): Promise<SharedLanding> {
+    const target = await assertPublicUrl(url);
     if (!(await robotsAllows(target))) throw new Error(`robots.txt disallows ${target.pathname}`);
-    await politeDelay(target);
+    // Cookies land per hop: Chromium applies Set-Cookie on each redirect with
+    // the hop URL's default path, while fetchPublic only returns the final
+    // response — so every hop's cookies are kept beside the URL that set them.
+    const cookies: NonNullable<SharedLanding["cookies"]> = [];
+    const res = await fetchPublic(
+      url,
+      { headers: { "user-agent": USER_AGENT, accept: "text/html,application/xhtml+xml" }, signal: AbortSignal.timeout(30000) },
+      {
+        requireSameOrigin: true,
+        onHop: (r) => {
+          for (const header of r.headers.getSetCookie()) cookies.push({ url: r.url, header });
+        },
+      },
+    );
+    const contentType = res.headers.get("content-type") ?? "";
+    if (contentType && !/html|xml/i.test(contentType)) throw new Error(`Non-HTML response (${contentType}) for ${url}`);
+    if (!res.ok) throw new Error(`Fetch failed ${res.status} for ${url}`);
+    const headers = Object.fromEntries(res.headers);
+    delete headers["set-cookie"]; // applied to the context jar explicitly, per hop URL
+    return {
+      url: res.url,
+      status: res.status,
+      headers,
+      body: Buffer.from(await res.arrayBuffer()).toString("base64"),
+      cookies: cookies.length ? cookies : undefined,
+    };
+  }
+
+  async runPersonaJourney(args: PersonaJourneyArgs): Promise<AgentJourney> {
+    const landing = args.landing;
+    if (landing) {
+      await assertPublicUrl(landing.url);
+    } else {
+      const target = await assertPublicUrl(args.url);
+      if (!(await robotsAllows(target))) throw new Error(`robots.txt disallows ${target.pathname}`);
+      await politeDelay(target);
+    }
     const ctx = await this.newContext(args.viewport);
     try {
+      if (landing) {
+        // Replayed headers must not describe the wire encoding — the stored
+        // body is the raw response bytes, so charset is left for the browser to
+        // apply. Redirect-hop cookies go into the jar with the hop URL's
+        // default path (the same derivation Chromium would have made).
+        const headers = { ...landing.headers };
+        delete headers["content-encoding"];
+        delete headers["content-length"];
+        delete headers["transfer-encoding"];
+        if (landing.cookies?.length) await ctx.addCookies(landing.cookies.flatMap(setCookieFor));
+        // Only the initial navigation replays: an agent that later navigates
+        // back to the landing URL must see fresh site state, not the capture.
+        let served = false;
+        await ctx.route(
+          (u) => u.toString() === landing.url,
+          (route) => {
+            if (served) return route.continue();
+            served = true;
+            return route.fulfill({ status: landing.status, headers, body: Buffer.from(landing.body, "base64") });
+          },
+        );
+      }
       const page = await ctx.newPage();
-      await page.goto(args.url, { waitUntil: "domcontentloaded", timeout: 30000 });
+      await page.goto(landing?.url ?? args.url, { waitUntil: "domcontentloaded", timeout: 30000 });
       await assertPublicPage(page);
       await settle(page, 800);
       await settleInterstitial(page);

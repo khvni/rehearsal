@@ -65,6 +65,18 @@ export interface AgentRunArgs extends TrajectoryArgs {
   goal: string;
 }
 
+/** The swarm's landing page, fetched once per run and replayed to every agent that shares it. */
+export interface SharedLanding {
+  /** Final URL after redirects — agents replay straight to it instead of following the chain (Playwright does not intercept redirect hops). */
+  url: string;
+  status: number;
+  headers: Record<string, string>;
+  /** The served document body, base64 — raw bytes survive replay, so the browser applies the declared charset itself. */
+  body: string;
+  /** `Set-Cookie` header from each redirect hop (fetchPublic drops hop responses), kept with the hop's URL so replay derives the right default path. */
+  cookies?: { url: string; header: string }[];
+}
+
 /** One persona-agent journey over the live site (the swarm's unit of work). */
 export interface PersonaJourneyArgs {
   /** Stable agent id, e.g. "agent-0042"; also prefixes screenshots. */
@@ -79,6 +91,8 @@ export interface PersonaJourneyArgs {
   maxSteps: number;
   /** Decision client injected by the caller; runners fall back to their own selectJev() when absent (a serialized Function invocation ignores it — the function selects from its own env). */
   jev?: JevClient;
+  /** Shared landing capture from runPersonaSwarm; runners that replay it skip their own landing fetch (and its politeDelay). */
+  landing?: SharedLanding;
 }
 
 export interface OpenPageResult {
@@ -127,6 +141,13 @@ export interface BrowserRunner {
    * Playwright, fixture sites); simulate falls back to seeded sampling when absent.
    */
   runPersonaJourney?(args: PersonaJourneyArgs): Promise<AgentJourney>;
+  /**
+   * Fetch `url` once for a whole swarm; runPersonaSwarm passes the result back
+   * as PersonaJourneyArgs.landing so every agent replays it instead of
+   * re-fetching (and re-paying politeDelay). Runners without replay support
+   * leave it undefined and each journey fetches the landing itself.
+   */
+  captureLandingPage?(url: string): Promise<SharedLanding>;
   close(): Promise<void>;
 }
 
