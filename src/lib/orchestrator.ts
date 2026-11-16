@@ -769,6 +769,7 @@ export class Orchestrator {
       };
       const snapshot = async (parts: {
         vpIndex: number;
+        passStart?: number;
         frontier: { url: string; depth: number; from?: { stateId: string; actionId: string } }[];
         attempted: Set<string>;
         visited: Map<string, string>;
@@ -778,6 +779,7 @@ export class Orchestrator {
         const built = builder.build();
         await persist({
           vpIndex: parts.vpIndex,
+          passStart: parts.passStart,
           frontier: parts.frontier,
           attempted: [...parts.attempted],
           visited: [...parts.visited],
@@ -882,18 +884,25 @@ export class Orchestrator {
             );
           };
           const resumingVp = vi === resumeData?.vpIndex;
+          // Reserve a fair share of the remaining page budget for each later
+          // pass: without a per-viewport cap the first pass can spend the whole
+          // maxStates budget and later viewports never crawl. `passStart` is
+          // persisted so a suspended pass keeps the same budget on resume.
+          const passStart = resumingVp && resumeData.passStart !== undefined ? resumeData.passStart : builder.size;
+          const passBudget = Math.ceil((config.maxStates - passStart) / (config.viewports.length - vi));
+          const passFull = () => builder.size - passStart >= passBudget;
           const frontier: { url: string; depth: number; from?: { stateId: string; actionId: string } }[] =
             resumingVp ? resumeData.frontier.map((f) => ({ ...f })) : [{ url: experiment.targetUrl, depth: 0 }, ...seedExtras.map((url) => ({ url, depth: 1 }))];
           const visited = new Map<string, string>(resumingVp ? resumeData.visited : []); // url -> canonical stateId
           const attempted = new Set<string>(resumingVp ? resumeData.attempted : []);
           while (frontier.length > 0) {
-            if (expired()) return suspend({ vpIndex: vi, frontier, attempted, visited });
+            if (expired()) return suspend({ vpIndex: vi, passStart, frontier, attempted, visited });
             const { url, depth, from } = frontier.shift()!;
             if (visited.has(url)) {
               if (from) builder.link(from.stateId, from.actionId, visited.get(url)!);
               continue;
             }
-            if (attempted.has(url) || depth > config.maxDepth || builder.full) continue;
+            if (attempted.has(url) || depth > config.maxDepth || passFull()) continue;
             attempted.add(url);
             await this.emit(id, "discover", "fetch", `Fetching ${url}`, url);
             try {
@@ -967,7 +976,7 @@ export class Orchestrator {
             // Batched durable checkpoint — a kill mid-crawl resumes the frontier, redoing at most one batch.
             pagesSinceSave += 1;
             if (pagesSinceSave >= DISCOVER_CHECKPOINT_PAGES || now() - lastSaveAt >= DISCOVER_CHECKPOINT_MS) {
-              await snapshot({ vpIndex: vi, frontier, attempted, visited });
+              await snapshot({ vpIndex: vi, passStart, frontier, attempted, visited });
             }
           }
         }

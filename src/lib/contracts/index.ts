@@ -728,6 +728,8 @@ const StoredExperimentConfig = z
 export const DiscoverCheckpoint = z.object({
   /** Index into `configuration.viewports` of the pass in flight. */
   vpIndex: z.number().int().nonnegative(),
+  /** Graph size when the in-flight viewport pass began — keeps its reserved budget stable across a resume. */
+  passStart: z.number().int().nonnegative().optional(),
   frontier: z.array(
     z.object({
       url: z.string(),
