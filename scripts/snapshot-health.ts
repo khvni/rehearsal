@@ -8,7 +8,8 @@ import { readFileSync, appendFileSync } from "node:fs";
 import type { AddressInfo } from "node:net";
 import path from "node:path";
 import { Orchestrator, PIPELINE_STAGES } from "../src/lib/orchestrator";
-import { rebuildPending } from "../src/lib/rebuild/site";
+import { REBUILD_BATCH, rebuildPending } from "../src/lib/rebuild/site";
+import { GAP_MAX_ROUNDS, GAP_STEP_PAGES } from "../src/lib/rebuild/gaps";
 
 process.env.REHEARSAL_ALLOW_PRIVATE = "1";
 process.env.REHEARSAL_BROWSER = "playwright";
@@ -16,8 +17,14 @@ process.env.REHEARSAL_BROWSER = "playwright";
 const html = readFileSync(path.join(process.cwd(), "tests", "evals", "fixtures", "aie-code-2026.html"), "utf8");
 // The fixture references third-party images (YouTube, Sessionize); CSP keeps the browser off the network.
 const CSP = "default-src 'self'; img-src 'self' data:; style-src 'self' 'unsafe-inline'; font-src 'self' data:";
-// rebuild() persists one step (planning, then batches of REBUILD_BATCH pages); bound the loop so a stuck rebuild fails the smoke.
-const MAX_REBUILD_STEPS = 20;
+// rebuild() persists one step per call: plan, batches of REBUILD_BATCH pages, then gap
+// probes at GAP_STEP_PAGES per step across up to GAP_MAX_ROUNDS rounds of at most
+// REHEARSAL_REBUILD_GAP_MAX_PAGES additions each (failed fetches retry other paths, so
+// a round can fill its budget on dead links). Bound the loop so a stuck rebuild fails
+// the smoke while still covering that worst case.
+const GAP_MAX_PAGES = 12; // default REHEARSAL_REBUILD_GAP_MAX_PAGES
+const MAX_REBUILD_STEPS =
+  6 + Math.ceil((GAP_MAX_ROUNDS * GAP_MAX_PAGES) / GAP_STEP_PAGES) + Math.ceil(GAP_MAX_PAGES / REBUILD_BATCH);
 const server = createServer((req, res) => {
   if (req.url === "/" || req.url === "/code/2026") {
     res.writeHead(200, { "content-type": "text/html", "content-security-policy": CSP });
