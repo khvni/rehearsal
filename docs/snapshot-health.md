@@ -20,8 +20,9 @@ The pipeline smoke serves `tests/evals/fixtures/aie-code-2026.html` on `127.0.0.
 `PIPELINE_STAGES` stage (discover → rebuild) through the real `Orchestrator` with local Playwright and
 the keyless fixture adapters, at tiny budgets (desktop only, 3 states, depth 1, 50 trajectories,
 1 verify). It fails if discover finds no states, the experiment doesn't reach `complete` with a spec,
-or any stage records an error. Rebuild is stepped through planning and page batches until it
-finishes, capped at 20 rebuild calls so a stuck rebuild fails. No external network, no API keys.
+or any stage records an error. Rebuild is stepped through planning, page batches and gap rounds until
+it finishes, capped at a step bound derived from `REBUILD_BATCH`, `GAP_STEP_PAGES` and
+`GAP_MAX_ROUNDS` so a stuck rebuild fails. No external network, no API keys.
 
 The job summary shows a per-step result + duration table, plus per-stage pipeline timings.
 
