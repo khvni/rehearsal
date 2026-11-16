@@ -168,13 +168,16 @@ const MAX_REDIRECTS = 3;
 
 /** `fetch` that follows at most 3 redirects itself, re-validating every hop with `assertPublicUrl`.
  *  `requireSameOrigin` rejects a hop that leaves the start origin (matches the runner's
- *  `Redirected off-origin` check). */
-export async function fetchPublic(start: string, init: RequestInit = {}, opts?: { requireSameOrigin?: boolean }): Promise<Response> {
+ *  `Redirected off-origin` check). `onHop` sees every response including redirect hops —
+ *  the returned Response only carries the final hop's headers (e.g. Set-Cookie on an
+ *  earlier hop is otherwise lost). */
+export async function fetchPublic(start: string, init: RequestInit = {}, opts?: { requireSameOrigin?: boolean; onHop?: (res: Response) => void }): Promise<Response> {
   let target = await assertPublicUrl(start);
   const startOrigin = target.origin;
   for (let hop = 0; ; hop++) {
     await politeDelay(target);
     const res = await fetch(target, { ...init, redirect: "manual" });
+    opts?.onHop?.(res);
     const location = res.headers.get("location");
     if (res.status < 300 || res.status >= 400 || !location) return res;
     await res.body?.cancel();

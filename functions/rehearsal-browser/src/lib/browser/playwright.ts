@@ -268,19 +268,26 @@ export class PlaywrightRunner implements BrowserRunner {
   async captureLandingPage(url: string): Promise<SharedLanding> {
     const target = await assertPublicUrl(url);
     if (!(await robotsAllows(target))) throw new Error(`robots.txt disallows ${target.pathname}`);
+    const hops: Response[] = [];
     const res = await fetchPublic(
       url,
       { headers: { "user-agent": USER_AGENT, accept: "text/html,application/xhtml+xml" }, signal: AbortSignal.timeout(30000) },
-      { requireSameOrigin: true },
+      { requireSameOrigin: true, onHop: (r) => hops.push(r) },
     );
     const contentType = res.headers.get("content-type") ?? "";
     if (contentType && !/html|xml/i.test(contentType)) throw new Error(`Non-HTML response (${contentType}) for ${url}`);
     if (!res.ok) throw new Error(`Fetch failed ${res.status} for ${url}`);
+    // Cookies from every hop: Chromium applies Set-Cookie on each redirect,
+    // while fetchPublic only returns the final response.
+    const cookies = hops.flatMap((r) => r.headers.getSetCookie());
+    const headers = Object.fromEntries(res.headers);
+    delete headers["set-cookie"]; // replayed from `cookies` so none are merged away
     return {
       url: res.url,
       status: res.status,
-      headers: Object.fromEntries(res.headers),
-      body: await res.text(),
+      headers,
+      body: Buffer.from(await res.arrayBuffer()).toString("base64"),
+      cookies: cookies.length ? cookies : undefined,
     };
   }
 
@@ -297,14 +304,25 @@ export class PlaywrightRunner implements BrowserRunner {
     try {
       if (landing) {
         // Serve the shared capture at its final URL; replayed headers must not
-        // describe the wire encoding — body was already decoded by the capture.
+        // describe the wire encoding — the stored body is the raw response
+        // bytes, so charset is left for the browser to apply. Redirect-hop
+        // cookies come back via the newline-joined set-cookie header (Chromium
+        // applies them to the context jar).
         const headers = { ...landing.headers };
         delete headers["content-encoding"];
         delete headers["content-length"];
         delete headers["transfer-encoding"];
+        if (landing.cookies?.length) headers["set-cookie"] = landing.cookies.join("\n");
+        // Only the initial navigation replays: an agent that later navigates
+        // back to the landing URL must see fresh site state, not the capture.
+        let served = false;
         await ctx.route(
           (u) => u.toString() === landing.url,
-          (route) => route.fulfill({ status: landing.status, headers, body: landing.body }),
+          (route) => {
+            if (served) return route.continue();
+            served = true;
+            return route.fulfill({ status: landing.status, headers, body: Buffer.from(landing.body, "base64") });
+          },
         );
       }
       const page = await ctx.newPage();

@@ -71,8 +71,10 @@ export interface SharedLanding {
   url: string;
   status: number;
   headers: Record<string, string>;
-  /** The served document body. */
+  /** The served document body, base64 — raw bytes survive replay, so the browser applies the declared charset itself. */
   body: string;
+  /** Raw `Set-Cookie` headers from every redirect hop (fetchPublic drops hop responses). */
+  cookies?: string[];
 }
 
 /** One persona-agent journey over the live site (the swarm's unit of work). */

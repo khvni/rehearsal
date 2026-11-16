@@ -101,7 +101,7 @@ async function main() {
     });
     const ms = Number(hrtime.bigint() - t0) / 1e6;
     await runner.close();
-    const reached = swarm.journeys.filter((j) => j.goalReached).length;
+    const reached = swarm.journeys.filter((j) => j.outcome === "goal-reached").length;
     rows.push({
       sample: i,
       ms: Math.round(ms),

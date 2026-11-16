@@ -1,3 +1,4 @@
+import { createServer, type Server } from "node:http";
 import { describe, expect, it } from "vitest";
 import type { AgentJourney, BrowserRunner, BrowserRun, OpenPageResult, PersonaJourneyArgs, SharedLanding } from "@/lib/contracts";
 import { ExperimentConfig as Config, VIEWPORTS } from "@/lib/contracts";
@@ -124,5 +125,35 @@ describe("runPersonaSwarm landing capture", () => {
     const swarm = await runPersonaSwarm({ ...args, runner: failing });
     expect(swarm.journeys.length).toBe(CONFIG.maxAgents);
     expect(failing.seenLandings.every((l) => l === undefined)).toBe(true);
+  });
+});
+
+describe("captureLandingPage", () => {
+  it("keeps Set-Cookie headers from redirect hops and stores the raw body", async () => {
+    process.env.REHEARSAL_ALLOW_PRIVATE = "1";
+    const server: Server = createServer((req, res) => {
+      if (req.url === "/robots.txt") {
+        res.writeHead(200, { "content-type": "text/plain" });
+        return res.end("User-agent: *\nAllow: /\n");
+      }
+      if (req.url === "/start") {
+        res.writeHead(302, { location: "/final", "set-cookie": "hop=1; Path=/" });
+        return res.end();
+      }
+      res.writeHead(200, { "content-type": "text/html", "set-cookie": "sess=abc; Path=/" });
+      res.end("<html><body>final</body></html>");
+    });
+    await new Promise<void>((r) => server.listen(0, "127.0.0.1", r));
+    try {
+      const port = (server.address() as { port: number }).port;
+      const { PlaywrightRunner } = await import("@/lib/browser/playwright");
+      const landing = await new PlaywrightRunner().captureLandingPage(`http://127.0.0.1:${port}/start`);
+      expect(landing.url).toBe(`http://127.0.0.1:${port}/final`);
+      expect(landing.cookies).toEqual(["hop=1; Path=/", "sess=abc; Path=/"]);
+      expect(Buffer.from(landing.body, "base64").toString()).toBe("<html><body>final</body></html>");
+      expect(landing.headers["set-cookie"]).toBeUndefined();
+    } finally {
+      await new Promise<void>((r) => server.close(() => r()));
+    }
   });
 });
