@@ -78,6 +78,10 @@ export class GraphBuilder {
     return b;
   }
 
+  get size(): number {
+    return this.states.size;
+  }
+
   get full(): boolean {
     return this.states.size >= this.maxStates;
   }
