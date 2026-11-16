@@ -67,15 +67,14 @@ export interface AgentRunArgs extends TrajectoryArgs {
 
 /** The swarm's landing page, fetched once per run and replayed to every agent that shares it. */
 export interface SharedLanding {
-  /** Final URL after redirects — asserted public before replay. */
+  /** Final URL after redirects — agents replay straight to it instead of following the chain (Playwright does not intercept redirect hops). */
   url: string;
-  /**
-   * The fetch's hops in order. Replaying the chain reproduces redirects exactly —
-   * including each hop's Set-Cookie with the default path Chromium derives from
-   * that hop's URL. `body` (base64 raw bytes, so the browser applies the declared
-   * charset) exists only on the final hop.
-   */
-  hops: { url: string; status: number; headers: Record<string, string>; body?: string }[];
+  status: number;
+  headers: Record<string, string>;
+  /** The served document body, base64 — raw bytes survive replay, so the browser applies the declared charset itself. */
+  body: string;
+  /** `Set-Cookie` header from each redirect hop (fetchPublic drops hop responses), kept with the hop's URL so replay derives the right default path. */
+  cookies?: { url: string; header: string }[];
 }
 
 /** One persona-agent journey over the live site (the swarm's unit of work). */

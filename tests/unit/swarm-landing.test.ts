@@ -95,9 +95,9 @@ describe("runPersonaSwarm landing capture", () => {
   it("captures the landing page once and threads it into every journey", async () => {
     const landing: SharedLanding = {
       url: BASE,
-      hops: [
-        { url: BASE, status: 200, headers: { "content-type": "text/html" }, body: Buffer.from(htmlFor("/")).toString("base64") },
-      ],
+      status: 200,
+      headers: { "content-type": "text/html" },
+      body: Buffer.from(htmlFor("/")).toString("base64"),
     };
     const r = runner({ landing });
     const swarm = await runPersonaSwarm({ ...args, runner: r });
@@ -110,9 +110,9 @@ describe("runPersonaSwarm landing capture", () => {
   it("produces identical journeys whether or not a landing is shared", async () => {
     const landing: SharedLanding = {
       url: BASE,
-      hops: [
-        { url: BASE, status: 200, headers: { "content-type": "text/html" }, body: Buffer.from(htmlFor("/")).toString("base64") },
-      ],
+      status: 200,
+      headers: { "content-type": "text/html" },
+      body: Buffer.from(htmlFor("/")).toString("base64"),
     };
     const shared = await runPersonaSwarm({ ...args, runner: runner({ landing }) });
     const unshared = await runPersonaSwarm({ ...args, runner: runner() });
@@ -128,7 +128,7 @@ describe("runPersonaSwarm landing capture", () => {
 });
 
 describe("captureLandingPage", () => {
-  it("keeps each hop's Set-Cookie on its own URL and stores the raw body", async () => {
+  it("keeps each hop's Set-Cookie with its URL and stores the raw body", async () => {
     process.env.REHEARSAL_ALLOW_PRIVATE = "1";
     const respond = (u: string, status: number, headers: Record<string, string>, body?: string) => {
       const res = new Response(body, { status, headers });
@@ -145,11 +145,13 @@ describe("captureLandingPage", () => {
       const { PlaywrightRunner } = await import("@/lib/browser/playwright");
       const landing = await new PlaywrightRunner().captureLandingPage("http://127.0.0.1:1/start");
       expect(landing.url).toBe("http://127.0.0.1:1/final");
-      expect(landing.hops.map((h) => h.url)).toEqual(["http://127.0.0.1:1/start", "http://127.0.0.1:1/final"]);
       // Path-less cookies keep their hop URL so replay derives the right default path.
-      expect(landing.hops[0].headers["set-cookie"]).toBe("hop=1");
-      expect(landing.hops[1].headers["set-cookie"]).toBe("sess=abc; Path=/");
-      expect(Buffer.from(landing.hops[1].body!, "base64").toString()).toBe("<html><body>final</body></html>");
+      expect(landing.cookies).toEqual([
+        { url: "http://127.0.0.1:1/start", header: "hop=1" },
+        { url: "http://127.0.0.1:1/final", header: "sess=abc; Path=/" },
+      ]);
+      expect(Buffer.from(landing.body, "base64").toString()).toBe("<html><body>final</body></html>");
+      expect(landing.headers["set-cookie"]).toBeUndefined();
     } finally {
       vi.unstubAllGlobals();
     }

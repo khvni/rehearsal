@@ -1,6 +1,7 @@
 import { mkdirSync } from "node:fs";
 import path from "node:path";
 import type { Browser, BrowserContext, LaunchOptions, Page } from "playwright";
+import { getSetCookies } from "undici";
 import type {
   AgentJourney,
   Assertion,
@@ -44,6 +45,39 @@ const PAGE_CALL_MS = 15000;
 /** Let client-side rendering finish: wait for network idle, at most `capMs`. */
 function settle(page: Page, capMs: number): Promise<void> {
   return page.waitForLoadState("networkidle", { timeout: capMs }).catch(() => undefined);
+}
+
+/**
+ * Turn a Set-Cookie captured at `hop.url` into context-jar cookies. Path and
+ * domain are resolved the way RFC 6265 makes Chromium do it on a real response:
+ * an absent Path defaults to the hop URL's directory, an absent Domain to its
+ * host — the same origin as the landing URL, since fetchPublic enforces it.
+ */
+type AddCookie = Parameters<BrowserContext["addCookies"]>[0][number];
+
+function setCookieFor(cookie: { url: string; header: string }): AddCookie[] {
+  const hopUrl = new URL(cookie.url);
+  const defaultPath = (() => {
+    const p = hopUrl.pathname;
+    if (!p.startsWith("/")) return "/";
+    const cut = p.lastIndexOf("/");
+    return cut <= 0 ? "/" : p.slice(0, cut);
+  })();
+  return getSetCookies(new Headers({ "set-cookie": cookie.header })).map((c) => ({
+    name: c.name,
+    value: c.value,
+    domain: c.domain ?? hopUrl.hostname,
+    path: c.path ?? (c.domain ? "/" : defaultPath),
+    expires:
+      c.maxAge != null
+        ? Math.floor(Date.now() / 1000) + c.maxAge
+        : c.expires
+          ? Math.floor(typeof c.expires === "number" ? c.expires : c.expires.getTime() / 1000)
+          : -1,
+    httpOnly: c.httpOnly,
+    secure: c.secure,
+    sameSite: c.sameSite,
+  }));
 }
 
 /** Headless Chromium with its sandbox on (Playwright passes --no-sandbox unless chromiumSandbox is set). */
@@ -268,26 +302,32 @@ export class PlaywrightRunner implements BrowserRunner {
   async captureLandingPage(url: string): Promise<SharedLanding> {
     const target = await assertPublicUrl(url);
     if (!(await robotsAllows(target))) throw new Error(`robots.txt disallows ${target.pathname}`);
-    const hops: SharedLanding["hops"] = [];
+    // Cookies land per hop: Chromium applies Set-Cookie on each redirect with
+    // the hop URL's default path, while fetchPublic only returns the final
+    // response — so every hop's cookies are kept beside the URL that set them.
+    const cookies: NonNullable<SharedLanding["cookies"]> = [];
     const res = await fetchPublic(
       url,
       { headers: { "user-agent": USER_AGENT, accept: "text/html,application/xhtml+xml" }, signal: AbortSignal.timeout(30000) },
       {
         requireSameOrigin: true,
         onHop: (r) => {
-          const headers = Object.fromEntries(r.headers);
-          delete headers["set-cookie"];
-          const cookies = r.headers.getSetCookie();
-          if (cookies.length) headers["set-cookie"] = cookies.join("\n");
-          hops.push({ url: r.url, status: r.status, headers });
+          for (const header of r.headers.getSetCookie()) cookies.push({ url: r.url, header });
         },
       },
     );
     const contentType = res.headers.get("content-type") ?? "";
     if (contentType && !/html|xml/i.test(contentType)) throw new Error(`Non-HTML response (${contentType}) for ${url}`);
     if (!res.ok) throw new Error(`Fetch failed ${res.status} for ${url}`);
-    hops[hops.length - 1].body = Buffer.from(await res.arrayBuffer()).toString("base64");
-    return { url: res.url, hops };
+    const headers = Object.fromEntries(res.headers);
+    delete headers["set-cookie"]; // applied to the context jar explicitly, per hop URL
+    return {
+      url: res.url,
+      status: res.status,
+      headers,
+      body: Buffer.from(await res.arrayBuffer()).toString("base64"),
+      cookies: cookies.length ? cookies : undefined,
+    };
   }
 
   async runPersonaJourney(args: PersonaJourneyArgs): Promise<AgentJourney> {
@@ -302,33 +342,29 @@ export class PlaywrightRunner implements BrowserRunner {
     const ctx = await this.newContext(args.viewport);
     try {
       if (landing) {
-        // Replay the whole hop chain — redirect statuses, Location headers and
-        // per-hop Set-Cookie (with the hop URL's default path) all re-execute
-        // inside the context. Replayed headers must not describe the wire
-        // encoding: stored bodies are the raw response bytes, so charset is
-        // left for the browser to apply. Each hop is served once; an agent
-        // navigating back to a landing-chain URL later gets a real request,
-        // not the stale capture.
-        const pending = new Map(landing.hops.map((h) => [h.url, h]));
+        // Replayed headers must not describe the wire encoding — the stored
+        // body is the raw response bytes, so charset is left for the browser to
+        // apply. Redirect-hop cookies go into the jar with the hop URL's
+        // default path (the same derivation Chromium would have made).
+        const headers = { ...landing.headers };
+        delete headers["content-encoding"];
+        delete headers["content-length"];
+        delete headers["transfer-encoding"];
+        if (landing.cookies?.length) await ctx.addCookies(landing.cookies.flatMap(setCookieFor));
+        // Only the initial navigation replays: an agent that later navigates
+        // back to the landing URL must see fresh site state, not the capture.
+        let served = false;
         await ctx.route(
-          (u) => pending.has(u.toString()),
+          (u) => u.toString() === landing.url,
           (route) => {
-            const hop = pending.get(route.request().url())!;
-            pending.delete(hop.url);
-            const headers = { ...hop.headers };
-            delete headers["content-encoding"];
-            delete headers["content-length"];
-            delete headers["transfer-encoding"];
-            return route.fulfill({
-              status: hop.status,
-              headers,
-              body: hop.body ? Buffer.from(hop.body, "base64") : undefined,
-            });
+            if (served) return route.continue();
+            served = true;
+            return route.fulfill({ status: landing.status, headers, body: Buffer.from(landing.body, "base64") });
           },
         );
       }
       const page = await ctx.newPage();
-      await page.goto(landing?.hops[0]?.url ?? args.url, { waitUntil: "domcontentloaded", timeout: 30000 });
+      await page.goto(landing?.url ?? args.url, { waitUntil: "domcontentloaded", timeout: 30000 });
       await assertPublicPage(page);
       await settle(page, 800);
       await settleInterstitial(page);
