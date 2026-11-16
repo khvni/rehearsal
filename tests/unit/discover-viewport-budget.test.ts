@@ -1,4 +1,12 @@
-import { beforeEach, describe, expect, it } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
+
+// runDiscover consults robots.txt with a real fetch; stub it so the test
+// stays hermetic while assertPublicUrl and the rest of the module stay real.
+vi.mock("@/lib/fetch/guards", async (importOriginal) => {
+  const original = await importOriginal<typeof import("@/lib/fetch/guards")>();
+  return { ...original, robotsAllows: async () => true };
+});
+
 import { Orchestrator } from "@/lib/orchestrator";
 import { UnavailableRunner } from "@/lib/browser/function-runner";
 import { FixtureJevClient } from "@/lib/decisions/jev";
