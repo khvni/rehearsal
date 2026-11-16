@@ -601,6 +601,7 @@ export const RebuildSitePage = z.object({
 });
 export type RebuildSitePage = z.infer<typeof RebuildSitePage>;
 export const RebuildGap = z.object({
+  round: z.number().int().min(1).max(4).default(1),
   candidates: z.array(z.object({ path: z.string(), sourceUrl: z.string().url() })),
   cursor: z.number().int().nonnegative(),
   limit: z.number().int().nonnegative(),

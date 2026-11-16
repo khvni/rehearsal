@@ -15,6 +15,47 @@ const fake = (output = ""): LlmClient => ({ name: "openrouter", complete: vi.fn(
 
 describe("whole-site rebuild", () => {
   it.each([
+    ["", 0],
+    ["   ", 0],
+    ['<h1>Survey</h1><p>Introduction</p><a href="https://form.example/">Continue</a>', 1],
+    ['<section class="rb-hero"><h1>Survey</h1><p>Introduction</p></section><article class="rb-prose"><p>Details</p></article>', 1],
+    ['<section class="rb-section"><div class="rb-container"><h1>Survey</h1></div></section>', 1],
+    ['<section class="rb-hero rb-container"><h1>Survey</h1></section>', 1],
+    ['<article class="rb-narrow"><h1>Survey</h1></article>', 1],
+    ['<section><div class="rb-container"><h1>Survey</h1></div></section><p>Uncontained</p><section><div class="rb-container"><p>Contained</p></div></section>', 3],
+    ['<section class="rb-hero"><h1>Unclosed survey', 1],
+  ])("repairs stored main content without nesting containers: %s", (html, containers) => {
+    const exp = fixture(1), site = deterministicPlan(exp);
+    site.pages[0] = { ...site.pages[0], status: "built", html };
+    exp.rebuild = { generatedAt: exp.createdAt, brand: rollupBrand(exp.graph!.states), goals: [], pages: [], llm: "fixture", site };
+    const main = parseHTML(renderSiteDocument(exp)).document.querySelector("main")!;
+    expect(main.querySelectorAll(".rb-container")).toHaveLength(containers);
+    expect(main.querySelector(".rb-container .rb-container")).toBeNull();
+    for (const el of main.querySelectorAll("h1,p,a")) expect(el.closest(".rb-container")).not.toBeNull();
+    expect(lintRebuiltPage(main.innerHTML)).not.toContain("missing main container");
+    site.pages[0].html = main.innerHTML;
+    expect(parseHTML(renderSiteDocument(exp)).document.querySelector("main")!.innerHTML).toBe(main.innerHTML);
+  });
+
+  it("preserves correctly contained full-bleed sections and normalizes new implementer output", async () => {
+    const exp = fixture(1), site = deterministicPlan(exp);
+    const correct = '<section class="rb-section rb-section--muted"><div class="rb-container rb-narrow"><h1>Survey</h1><p>Introduction.</p></div></section>';
+    site.pages[0] = { ...site.pages[0], status: "built", html: correct };
+    exp.rebuild = { generatedAt: exp.createdAt, brand: rollupBrand(exp.graph!.states), goals: [], pages: [], llm: "fixture", site };
+    expect(parseHTML(renderSiteDocument(exp)).document.querySelector("main")!.innerHTML).toBe(correct);
+    expect(lintRebuiltPage(correct)).not.toContain("missing main container");
+    const raw = '<section class="rb-hero"><h1>Survey</h1><p>Introduction.</p></section>';
+    expect(lintRebuiltPage(raw)).toContain("missing main container");
+    const llm = fake(raw);
+    const page = await buildPage(exp, site, site.pages[0], llm);
+    const doc = parseHTML(`<html><body>${page.html}</body></html>`).document;
+    expect(doc.querySelector(".rb-container .rb-hero h1")).not.toBeNull();
+    expect(page.issues).not.toContain("missing main container");
+    expect(llm.complete).toHaveBeenCalledTimes(1);
+    expect(vi.mocked(llm.complete).mock.calls[0][0]).toContain("Never nest rb-container");
+  });
+
+  it.each([
     ["Hikmah School – Islamic School", "Hikmah School – Islamic School", "Hikmah School – Islamic School"],
     ["Welcome to Hikmah School – Islamic School", "Hikmah School – Islamic School", "Welcome to Hikmah School – Islamic School"],
     ["HIKMAH SCHOOL – ISLAMIC SCHOOL", "Hikmah School – Islamic School", "HIKMAH SCHOOL – ISLAMIC SCHOOL"],
@@ -344,7 +385,7 @@ describe("whole-site rebuild", () => {
   });
   it("detects forbidden polish and internal links", () => {
     expect(lintRebuiltPage('<section class="rb-hero"><p>OUR STORY</p><h1>Hello</h1><a class="rb-btn--primary">A</a><a class="rb-btn--primary">B</a><i>🚀</i></section><a href="/docs">Docs</a>', { origin: "https://example.com", base: "/experiments/e/rb" })).toEqual(expect.arrayContaining(["eyebrow label", "multiple primary hero actions", "emoji used as icons", "internal link outside rebuild"]));
-    expect(lintRebuiltPage("<h1>Hello</h1><p>A useful introduction.</p>")).toEqual([]);
+    expect(lintRebuiltPage('<div class="rb-container"><h1>Hello</h1><p>A useful introduction.</p></div>')).toEqual([]);
   });
   it("sanitizes the body, resolves relative links, strips CSS and retries lint once", async () => {
     const exp = fixture(); const site = deterministicPlan(exp);

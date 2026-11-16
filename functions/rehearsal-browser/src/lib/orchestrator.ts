@@ -717,11 +717,13 @@ export class Orchestrator {
       if (opts?.resumeLegacy && !opts.restart) {
         const exp = await this.mustGet(id);
         const site = exp.rebuild?.site;
-        if (site?.completedAt && !site.gap) {
+        if (site?.completedAt) {
           site.gap = collectRebuildGaps(exp);
-          delete site.completedAt;
-          exp.status = "rebuilding";
-          exp.runCheckpoint = { stage: "rebuild", attempt: 0 };
+          if (!site.gap.completed) {
+            delete site.completedAt;
+            exp.status = "rebuilding";
+            exp.runCheckpoint = { stage: "rebuild", attempt: 0 };
+          }
           await this.store.save(Experiment.parse(exp));
         }
       }
@@ -1511,7 +1513,7 @@ export class Orchestrator {
         }
         const site = exp.rebuild.site;
         if (site && !site.pages.some((p) => p.status === "planned")) {
-          site.gap ??= collectRebuildGaps(exp);
+          site.gap = collectRebuildGaps(exp);
           if (site.gap.completed) {
             site.completedAt = new Date().toISOString();
             const counts = {

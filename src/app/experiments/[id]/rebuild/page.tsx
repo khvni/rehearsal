@@ -311,7 +311,7 @@ export default function RebuildPage() {
                   }{" "}
                   of {rebuild.site.pages.length} pages
                   {rebuild.site.gap && (
-                    <> · Gap pages: checked {rebuild.site.gap.cursor} of {rebuild.site.gap.candidates.length}
+                    <> · Gap round {rebuild.site.gap.round} of 4: checked {rebuild.site.gap.cursor} of {rebuild.site.gap.candidates.length}
                       {rebuild.site.gap.failed.length > 0 && `; ${rebuild.site.gap.failed.length} failed`}
                       {rebuild.site.gap.skipped > 0 && `; ${rebuild.site.gap.skipped} over cap`}
                     </>

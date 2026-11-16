@@ -7,12 +7,17 @@ import { normalizeRebuildPath, SITE_BYTE_CAP } from "./site";
 
 export const GAP_STEP_PAGES = 2;
 export const GAP_STEP_MS = 10_000;
+export const GAP_MAX_ROUNDS = 4;
 
 export function collectRebuildGaps(exp: Experiment): RebuildGap {
   const site = exp.rebuild!.site!;
+  const previous = site.gap;
+  if (previous && (!previous.completed || previous.round >= GAP_MAX_ROUNDS || previous.cursor - previous.failed.length >= previous.limit)) return previous;
   const origin = new URL(exp.targetUrl);
   const base = `/experiments/${encodeURIComponent(exp.id)}/rb`;
   const known = new Set(site.pages.flatMap(p => [p.path, normalizeRebuildPath(new URL(p.sourceUrl).pathname.split("/"))]));
+  for (const page of previous?.candidates ?? []) known.add(page.path);
+  for (const page of previous?.failed ?? []) known.add(page.path);
   const candidates = new Map<string, RebuildGap["candidates"][number]>();
   const add = (href: string, source: string) => {
     try {
@@ -37,9 +42,11 @@ export function collectRebuildGaps(exp: Experiment): RebuildGap {
     for (const action of state.actions) if (action.href) add(action.href, state.url);
   }
   const configured = Number(process.env.REHEARSAL_REBUILD_GAP_MAX_PAGES ?? 12);
-  let limit = Number.isFinite(configured) && configured >= 0 ? Math.min(100, Math.floor(configured)) : 12;
+  let limit = previous?.limit ?? (Number.isFinite(configured) && configured >= 0 ? Math.min(100, Math.floor(configured)) : 12);
   if (site.pages.reduce((n, p) => n + (p.bytes ?? 0), 0) >= SITE_BYTE_CAP || site.pages.some(p => p.issues?.includes("size cap"))) limit = 0;
-  return { candidates: [...candidates.values()].slice(0, limit), cursor: 0, limit, skipped: Math.max(0, candidates.size - limit), failed: [], completed: !candidates.size || limit === 0 };
+  const remaining = Math.max(0, limit - ((previous?.cursor ?? 0) - (previous?.failed.length ?? 0)));
+  const added = [...candidates.values()].slice(0, remaining);
+  return { round: (previous?.round ?? 1) + (previous && added.length ? 1 : 0), candidates: [...(previous?.candidates ?? []), ...added], cursor: previous?.cursor ?? 0, limit, skipped: Math.max(0, candidates.size - added.length), failed: previous?.failed ?? [], completed: !added.length };
 }
 
 export async function fetchRebuildGaps(exp: Experiment, fetcher: PageFetcher, checkpoint: () => Promise<void>): Promise<void> {
