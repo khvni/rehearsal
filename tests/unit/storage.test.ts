@@ -1,9 +1,9 @@
 import { mkdirSync, mkdtempSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import { Experiment, isExperimentId } from "../../src/lib/contracts";
-import { JsonFileStore } from "../../src/lib/storage";
+import { JsonFileStore, selectStore } from "../../src/lib/storage";
 
 const experiment = (id: string) =>
   Experiment.parse({
@@ -17,6 +17,33 @@ describe("experiment ids", () => {
     for (const bad of ["../x", "exp_1234abcd/../../x", "exp_1234ABCD", "exp_123", "..%2Fpackage", "", undefined]) {
       expect(isExperimentId(bad)).toBe(false);
     }
+  });
+});
+
+describe("selectStore", () => {
+  afterEach(() => vi.unstubAllEnvs());
+
+  it.each(["", "   "])("uses DATABASE_URL when TIGERDATA_URL is blank (%j)", (blank) => {
+    vi.stubEnv("TIGERDATA_URL", blank);
+    vi.stubEnv("DATABASE_URL", "postgres://example.invalid/database");
+
+    expect(selectStore().name).toBe("tigerdata");
+  });
+
+  it.each(["", "   "])("uses JSON when both database URLs are blank (%j)", (blank) => {
+    vi.stubEnv("TIGERDATA_URL", blank);
+    vi.stubEnv("DATABASE_URL", blank);
+
+    expect(selectStore().name).toBe("json-file");
+  });
+
+  it("prefers TIGERDATA_URL over DATABASE_URL and trims it", () => {
+    vi.stubEnv("TIGERDATA_URL", "  postgres://example.invalid/tigerdata  ");
+    vi.stubEnv("DATABASE_URL", "postgres://example.invalid/database");
+
+    const store = selectStore();
+    expect(store.name).toBe("tigerdata");
+    expect(store).toHaveProperty("url", "postgres://example.invalid/tigerdata");
   });
 });
 
