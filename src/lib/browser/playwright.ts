@@ -1,7 +1,6 @@
 import { mkdirSync } from "node:fs";
 import path from "node:path";
 import type { Browser, BrowserContext, LaunchOptions, Page } from "playwright";
-import { getSetCookies } from "undici";
 import type {
   AgentJourney,
   Assertion,
@@ -63,29 +62,37 @@ function setCookieFor(cookie: { url: string; header: string }): AddCookie[] {
     const cut = p.lastIndexOf("/");
     return cut <= 0 ? "/" : p.slice(0, cut);
   })();
-  return getSetCookies(new Headers({ "set-cookie": cookie.header }))
-    // Chromium rejects a Domain attribute the response host can't set — apply
-    // the same check so the jar can't carry cookies to a foreign host.
-    .filter((c) => {
-      if (!c.domain) return true;
-      const d = c.domain.replace(/^\./, "");
-      return hopUrl.hostname === d || hopUrl.hostname.endsWith(`.${d}`);
-    })
-    .map((c) => ({
-      name: c.name,
-      value: c.value,
-      domain: c.domain ?? hopUrl.hostname,
-      path: c.path ?? (c.domain ? "/" : defaultPath),
-      expires:
-        c.maxAge != null
-          ? Math.floor(Date.now() / 1000) + c.maxAge
-          : c.expires
-            ? Math.floor(typeof c.expires === "number" ? c.expires : c.expires.getTime() / 1000)
-            : -1,
-      httpOnly: c.httpOnly,
-      secure: c.secure,
-      sameSite: c.sameSite,
-    }));
+  const attrs: Record<string, string | true> = {};
+  const [pair, ...rest] = cookie.header.split(";");
+  for (const seg of rest) {
+    const eq = seg.indexOf("=");
+    const k = seg.slice(0, eq < 0 ? undefined : eq).trim().toLowerCase();
+    attrs[k] = eq < 0 ? true : seg.slice(eq + 1).trim();
+  }
+  const eq = pair.indexOf("=");
+  if (eq <= 0) return [];
+  const domain = typeof attrs.domain === "string" ? attrs.domain : undefined;
+  // Chromium rejects a Domain attribute the response host can't set — apply
+  // the same check so the jar can't carry cookies to a foreign host.
+  if (domain) {
+    const d = domain.replace(/^\./, "");
+    if (hopUrl.hostname !== d && !hopUrl.hostname.endsWith(`.${d}`)) return [];
+  }
+  const maxAge = typeof attrs["max-age"] === "string" ? parseInt(attrs["max-age"], 10) : NaN;
+  const expiresAttr = typeof attrs.expires === "string" ? new Date(attrs.expires).getTime() : NaN;
+  const sameSite = typeof attrs.samesite === "string" ? attrs.samesite.toLowerCase() : undefined;
+  return [
+    {
+      name: pair.slice(0, eq).trim(),
+      value: pair.slice(eq + 1).trim(),
+      domain: domain ?? hopUrl.hostname,
+      path: typeof attrs.path === "string" ? attrs.path : domain ? "/" : defaultPath,
+      expires: !isNaN(maxAge) ? Math.floor(Date.now() / 1000) + maxAge : !isNaN(expiresAttr) ? Math.floor(expiresAttr / 1000) : -1,
+      httpOnly: attrs.httponly === true,
+      secure: attrs.secure === true,
+      sameSite: sameSite === "strict" ? "Strict" : sameSite === "lax" ? "Lax" : sameSite === "none" ? "None" : undefined,
+    },
+  ];
 }
 
 /** Headless Chromium with its sandbox on (Playwright passes --no-sandbox unless chromiumSandbox is set). */
