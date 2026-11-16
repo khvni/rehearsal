@@ -71,7 +71,7 @@ function setCookieFor(cookie: { url: string; header: string }): AddCookie[] {
   }
   const eq = pair.indexOf("=");
   if (eq <= 0) return [];
-  const domain = typeof attrs.domain === "string" ? attrs.domain : undefined;
+  const domain = typeof attrs.domain === "string" ? attrs.domain.toLowerCase() : undefined;
   // Chromium rejects a Domain attribute the response host can't set — apply
   // the same check so the jar can't carry cookies to a foreign host.
   if (domain) {
@@ -86,10 +86,11 @@ function setCookieFor(cookie: { url: string; header: string }): AddCookie[] {
       name: pair.slice(0, eq).trim(),
       value: pair.slice(eq + 1).trim(),
       domain: domain ?? hopUrl.hostname,
-      path: typeof attrs.path === "string" ? attrs.path : domain ? "/" : defaultPath,
+      // An empty or non-/ Path falls back to the hop's default path (RFC 6265 §5.1.4).
+      path: typeof attrs.path === "string" && attrs.path.startsWith("/") ? attrs.path : defaultPath,
       expires: !isNaN(maxAge) ? Math.floor(Date.now() / 1000) + maxAge : !isNaN(expiresAttr) ? Math.floor(expiresAttr / 1000) : -1,
-      httpOnly: attrs.httponly === true,
-      secure: attrs.secure === true,
+      httpOnly: "httponly" in attrs,
+      secure: "secure" in attrs,
       sameSite: sameSite === "strict" ? "Strict" : sameSite === "lax" ? "Lax" : sameSite === "none" ? "None" : undefined,
     },
   ];
