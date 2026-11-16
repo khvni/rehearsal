@@ -13,7 +13,7 @@ import {
 } from "../contracts";
 import { RehearsalError, RemoteTimeoutError } from "../errors";
 import { omit } from "../omit";
-import { assertPublicUrl } from "../fetch/guards";
+import { assertPublicUrl, politeDelay, robotsAllows } from "../fetch/guards";
 import { isQuotaStatus, reportProviderQuota } from "../telemetry";
 import { errorText } from "./types";
 import { mkdirSync, writeFileSync } from "node:fs";
@@ -125,6 +125,12 @@ export class BrowserbaseFunctionRunner implements BrowserRunner {
   }
 
   private async call(params: BrowserFunctionParams): Promise<unknown> {
+    // Hosted ops keep the politeness contract caller-side: each Function
+    // invocation is its own process, so only this gate can space invocations
+    // on one host apart — robots.txt first, then the per-host slot.
+    const target = await assertPublicUrl(String(params.args.url));
+    if (!(await robotsAllows(target))) throw new Error(`robots.txt disallows ${target.pathname}`);
+    await politeDelay(target);
     const timeoutMs = this.opts.timeoutMs ?? 180_000;
     const pollMs = this.opts.pollMs ?? 2_000;
     const deadline = Date.now() + timeoutMs;

@@ -19,7 +19,7 @@ import type {
   TrajectoryArgs,
   Viewport,
 } from "../contracts";
-import { assertPublicUrl } from "../fetch/guards";
+import { assertPublicUrl, politeDelay, robotsAllows } from "../fetch/guards";
 import { compilePatches } from "../variants";
 import { agentLoop } from "./agent";
 import { isSameOrigin } from "./extract";
@@ -293,6 +293,10 @@ export class StagehandRunner implements BrowserRunner {
     opts?: { patches?: DomPatch[]; shotName?: string; scope?: string },
   ): Promise<OpenPageResult> {
     const target = await assertPublicUrl(url);
+    if (!this.opts.politenessHandledByCaller) {
+      if (!(await robotsAllows(target))) throw new Error(`robots.txt disallows ${target.pathname}`);
+      await politeDelay(target);
+    }
     // Patched captures need an isolated context (init scripts would leak across pages).
     if (opts?.patches?.length) {
       return this.withSession(viewport, opts.patches, async (_sh, page) => {
@@ -456,6 +460,10 @@ export class StagehandRunner implements BrowserRunner {
   /** Persona-agent journey: extraction snapshot → batched Jev scoring → seeded pick → act, per step. */
   async runPersonaJourney(args: PersonaJourneyArgs): Promise<AgentJourney> {
     const target = await assertPublicUrl(args.url);
+    if (!this.opts.politenessHandledByCaller) {
+      if (!(await robotsAllows(target))) throw new Error(`robots.txt disallows ${target.pathname}`);
+      await politeDelay(target);
+    }
     return this.withSession(args.viewport, undefined, async (_sh, page) => {
       await page.goto(target.toString(), { waitUntil: "domcontentloaded", timeout: NAV_TIMEOUT_MS });
       await settle(page, 800);

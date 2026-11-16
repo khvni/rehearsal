@@ -18,6 +18,9 @@ defineFn(
       browserbaseApiKey: env.BROWSERBASE_API_KEY,
       browserbaseSessionId: context.session.id,
       evidenceDir: EVIDENCE_DIR,
+      // BrowserbaseFunctionRunner.call already ran robots.txt + the per-host
+      // slot; re-gating here would refetch robots.txt per invocation.
+      politenessHandledByCaller: true,
       model: stagehandModelFromEnv(env),
       jev: selectJev(env), // context.secrets carry JEV_API_KEY/OPENROUTER_API_KEY, not process.env
     });
