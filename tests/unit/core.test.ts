@@ -113,7 +113,9 @@ describe("extract", () => {
   });
 
   it("normalizes URLs deterministically", () => {
-    expect(normalizeUrl("https://a.b/x/?y=1#f")).toBe("https://a.b/x");
+    expect(normalizeUrl("https://a.b/x/?y=1#f")).toBe("https://a.b/x?y=1");
+    expect(normalizeUrl("https://a.b/x?b=2&a=1")).toBe("https://a.b/x?a=1&b=2");
+    expect(normalizeUrl("https://a.b/x?utm_source=news&y=1")).toBe("https://a.b/x?y=1");
   });
 });
 
