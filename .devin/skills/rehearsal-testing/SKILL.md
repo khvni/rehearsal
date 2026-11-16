@@ -38,6 +38,8 @@ Missing-page rebuild phase: after the initial page batches, one frozen gap round
 
 Legacy completed rebuilds without gap state stay complete during reads/watchdog resumes. Only an explicit non-restart rebuild POST opts them into the missing-page phase, under the experiment lock; it persists the gap snapshot before fetching, preserves built pages and design, and takes no new run allowance. Once gap state exists, completion is idempotent. `tests/unit/rebuild-gaps.test.ts` covers the legacy POST, unchanged original pages, no planner call, free continuations, and no automatic upgrade.
 
+Successful gap fetches also checkpoint `siteSignatures` from the plain-fetch extraction using `contentSignatureFor`, preserving existing URL signatures and excluding failed fetches. The gap tests verify an unchanged rescan and a subsequent rescan where only the added page changes.
+
 ## Eval cases (tests/evals/, gated by evals.config.json thresholds)
 
 - `core.eval.ts` — extraction coverage, simulation determinism/scale, Jev mapping validity, rubric coverage, stale-date finding (Scenario B), spec completeness, variant idempotency, SSRF guards

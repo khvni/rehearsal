@@ -1,6 +1,6 @@
 import { parseHTML } from "linkedom";
 import { type Experiment, type PageFetcher, type RebuildGap, VIEWPORTS } from "../contracts";
-import { extractPage } from "../browser/extract";
+import { contentSignatureFor, extractPage } from "../browser/extract";
 import { makeState } from "../graph";
 import { isNonPageUrl } from "../site-links";
 import { normalizeRebuildPath, SITE_BYTE_CAP } from "./site";
@@ -60,6 +60,9 @@ export async function fetchRebuildGaps(exp: Experiment, fetcher: PageFetcher, ch
       const state = existing ?? makeState({ url: page.sourceUrl, viewport: VIEWPORTS.desktop, title: extracted.title ?? page.path, visibleText: extracted.visibleText, headings: extracted.headings, actions: extracted.actions });
       if (!existing) graph.states.push(state);
       site.pages.push({ ...page, title: state.pageTitle || page.path, mode: "read", blocks: [{ type: "article-body", purpose: `Present ${state.pageTitle || page.path} using the crawled facts` }], status: "planned" });
+      const signatures = new Map((exp.siteSignatures ?? []).map(s => [s.url, s]));
+      signatures.set(page.sourceUrl, { url: page.sourceUrl, signature: contentSignatureFor(page.sourceUrl, extracted) });
+      exp.siteSignatures = [...signatures.values()];
     } catch (error) {
       gap.failed.push({ path: page.path, reason: String(error).slice(0, 320) });
     }

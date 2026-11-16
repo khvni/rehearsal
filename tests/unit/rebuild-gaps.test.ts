@@ -1,7 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { Experiment, type ExperimentStore, type LlmClient, type PageFetcher, VIEWPORTS } from "@/lib/contracts";
 import { Orchestrator } from "@/lib/orchestrator";
-import { extractPage } from "@/lib/browser/extract";
+import { contentSignatureFor, extractPage } from "@/lib/browser/extract";
 import { makeState } from "@/lib/graph";
 import { collectRebuildGaps, GAP_STEP_MS } from "@/lib/rebuild/gaps";
 import { deterministicPlan, rebuildPending } from "@/lib/rebuild/site";
@@ -67,6 +67,25 @@ beforeEach(() => { vi.useFakeTimers({ toFake: ["Date"] }); vi.setSystemTime(new 
 afterEach(() => { delete g.__orchestrator; vi.useRealTimers(); vi.unstubAllEnvs(); vi.restoreAllMocks(); });
 
 describe("stepwise rebuild gaps", () => {
+  it("persists gap signatures with the fetch checkpoint so rescan detects a gap-only change", async () => {
+    const exp = fixture(["/survey", "/missing"]);
+    const home = pageHtml(["/survey", "/missing"]);
+    const pages = { "/": home, "/survey": pageHtml(), "/missing": new Error("HTTP 404") };
+    const homeSignature = { url: exp.targetUrl, signature: contentSignatureFor(exp.targetUrl, extractPage(home, exp.targetUrl)) };
+    exp.siteSignatures = [homeSignature];
+    const ctx = setup(exp, pages);
+    await post(); await post(); await post();
+    const surveySignature = { url: "https://example.com/survey", signature: contentSignatureFor("https://example.com/survey", extractPage(pages["/survey"], "https://example.com/survey")) };
+    expect(ctx.saved().siteSignatures).toEqual([homeSignature, surveySignature]);
+    expect(ctx.snapshots.some(s => s.rebuild?.site?.gap?.cursor === 1 && s.siteSignatures.some(signature => signature.url === surveySignature.url))).toBe(true);
+    await post();
+    ctx.install();
+    expect((await g.__orchestrator!.rescan(ID)).report).toMatchObject({ changed: false, checked: 2, mismatches: [] });
+    pages["/survey"] = pageHtml().replace("our community.", "our community. A new survey question has been added.");
+    ctx.install();
+    expect((await g.__orchestrator!.rescan(ID)).report).toMatchObject({ changed: true, checked: 2, mismatches: [surveySignature.url], restarted: true });
+  });
+
   it("upgrades legacy completion only on an explicit non-restart POST, without charging or rebuilding existing pages", async () => {
     const exp = builtFixture(["/survey"]);
     exp.rebuild!.site!.completedAt = exp.createdAt;
