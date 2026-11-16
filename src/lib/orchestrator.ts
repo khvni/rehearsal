@@ -55,6 +55,7 @@ import { generateSpec, specToMarkdown } from "./analysis/spec";
 import { generateMockup } from "./mockup";
 import { brandSignalsFromHtml, inferGoals, rollupBrand, mergeSignals } from "./rebuild";
 import { buildPage, planSite, rebuildPending, REBUILD_BATCH, SITE_BYTE_CAP } from "./rebuild/site";
+import { collectRebuildGaps, fetchRebuildGaps } from "./rebuild/gaps";
 import { selectStore, selectRunLeaseStore } from "./storage";
 import { enqueueRun, runSlotTtlMs } from "./access";
 import { continueRun, isWorkersRuntime, runInBackground } from "./jobs";
@@ -711,8 +712,19 @@ export class Orchestrator {
   }
 
   /** A standalone rebuild gets a fresh call budget: the per-run budget resets only at discover, so a finished run has spent it. */
-  async rebuild(id: string, opts?: { restart?: boolean }): Promise<Experiment> {
+  async rebuild(id: string, opts?: { restart?: boolean; resumeLegacy?: boolean }): Promise<Experiment> {
     return this.exclusive(id, "rebuild", async () => {
+      if (opts?.resumeLegacy && !opts.restart) {
+        const exp = await this.mustGet(id);
+        const site = exp.rebuild?.site;
+        if (site?.completedAt && !site.gap) {
+          site.gap = collectRebuildGaps(exp);
+          delete site.completedAt;
+          exp.status = "rebuilding";
+          exp.runCheckpoint = { stage: "rebuild", attempt: 0 };
+          await this.store.save(Experiment.parse(exp));
+        }
+      }
       return this.runRebuild(id, opts);
     });
   }
@@ -1411,7 +1423,7 @@ export class Orchestrator {
         .slice(0, REBUILD_BATCH).length ?? 0;
     this.llm.resetBudget?.({
       experimentId: id,
-      maxCalls: planning ? 1 : batchSize * 2,
+      maxCalls: planning ? 1 : exp.rebuild?.site?.gap && !exp.rebuild.site.gap.completed ? 0 : batchSize * 2,
     });
     const priorUsage = exp.usage?.llm;
     const baseline = this.llm.usageReport?.();
@@ -1457,6 +1469,10 @@ export class Orchestrator {
             "info",
             `Planned ${site.pages.length} site pages (${site.plannerSource})${site.plannerError ? `: ${site.plannerError}` : ""}`,
           );
+        } else if (exp.rebuild.site.gap && !exp.rebuild.site.gap.completed) {
+          await fetchRebuildGaps(exp, this.probeFetcher, () => saveStep("rebuilding"));
+          const gap = exp.rebuild.site.gap;
+          await this.emit(id, "rebuild", "info", `Gap pages: checked ${gap.cursor} of ${gap.candidates.length}; ${gap.failed.length} failed; ${gap.skipped} over cap`);
         } else {
           const site = exp.rebuild.site;
           const batch = site.pages
@@ -1492,7 +1508,11 @@ export class Orchestrator {
             "info",
             `Built ${site.pages.filter((p) => p.status === "built").length} of ${site.pages.length} site pages`,
           );
-          if (!site.pages.some((p) => p.status === "planned")) {
+        }
+        const site = exp.rebuild.site;
+        if (site && !site.pages.some((p) => p.status === "planned")) {
+          site.gap ??= collectRebuildGaps(exp);
+          if (site.gap.completed) {
             site.completedAt = new Date().toISOString();
             const counts = {
               openrouter: 0,

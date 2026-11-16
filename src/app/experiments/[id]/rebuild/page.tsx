@@ -310,6 +310,12 @@ export default function RebuildPage() {
                       .length
                   }{" "}
                   of {rebuild.site.pages.length} pages
+                  {rebuild.site.gap && (
+                    <> · Gap pages: checked {rebuild.site.gap.cursor} of {rebuild.site.gap.candidates.length}
+                      {rebuild.site.gap.failed.length > 0 && `; ${rebuild.site.gap.failed.length} failed`}
+                      {rebuild.site.gap.skipped > 0 && `; ${rebuild.site.gap.skipped} over cap`}
+                    </>
+                  )}
                 </span>
               }
             >

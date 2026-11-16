@@ -137,7 +137,7 @@ async function runStage(
     case "spec":
       return NextResponse.json(await orch.spec(id));
     case "rebuild":
-      return NextResponse.json(await orch.rebuild(id, { restart }));
+      return NextResponse.json(await orch.rebuild(id, { restart, resumeLegacy: !restart }));
     case "run":
       return NextResponse.json(await orch.runAll(id, { origin }));
     default:

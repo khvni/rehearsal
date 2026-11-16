@@ -56,7 +56,7 @@ export interface LlmClient {
 
 export interface PageFetcher {
   /** Fetch fully-rendered or raw HTML for a public URL. `signal` aborts the request; fetchers without abort support still honor their own deadline. */
-  fetchHtml(url: string, opts?: { signal?: AbortSignal }): Promise<string>;
+  fetchHtml(url: string, opts?: { signal?: AbortSignal; requireHtmlContentType?: boolean }): Promise<string>;
   readonly name: string;
 }
 

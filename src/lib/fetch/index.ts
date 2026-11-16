@@ -12,7 +12,7 @@ const UA =
 export class PlainFetcher implements PageFetcher {
   readonly name = "plain-fetch";
 
-  async fetchHtml(url: string, opts?: { signal?: AbortSignal }): Promise<string> {
+  async fetchHtml(url: string, opts?: { signal?: AbortSignal; requireHtmlContentType?: boolean }): Promise<string> {
     const target = await assertPublicUrl(url);
     if (!(await robotsAllows(target))) throw new Error(`robots.txt disallows ${target.pathname}`);
     const res = await fetchPublic(
@@ -24,6 +24,8 @@ export class PlainFetcher implements PageFetcher {
       { requireSameOrigin: true },
     );
     const contentType = res.headers.get("content-type") ?? "";
+    if (opts?.requireHtmlContentType && !/^(?:text\/html|application\/xhtml\+xml)(?:;|$)/i.test(contentType))
+      throw new Error(`Non-HTML response (${contentType}) for ${url}`);
     if (contentType && !/html|xml/i.test(contentType)) throw new Error(`Non-HTML response (${contentType}) for ${url}`);
     if (!res.ok) throw new Error(`Fetch failed ${res.status} for ${url}`);
     return res.text();

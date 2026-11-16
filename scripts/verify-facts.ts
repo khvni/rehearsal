@@ -139,6 +139,7 @@ const NOT_DEPLOYED: Record<string, string> = {
   OPENROUTER_MODEL_REBUILD: "has a code default",
   OPENROUTER_MODEL_REBUILD_PLANNER: "has a code default",
   REHEARSAL_REBUILD_MAX_PAGES: "has a code default of 40",
+  REHEARSAL_REBUILD_GAP_MAX_PAGES: "has a code default of 12",
   REHEARSAL_MAX_CONCURRENT_RUNS: "has a code default",
   REHEARSAL_RUN_SLOT_TTL_MS: "has a code default",
   JEV_BASE_URL: "has a code default",
