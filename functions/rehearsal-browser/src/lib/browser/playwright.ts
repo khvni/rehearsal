@@ -63,21 +63,29 @@ function setCookieFor(cookie: { url: string; header: string }): AddCookie[] {
     const cut = p.lastIndexOf("/");
     return cut <= 0 ? "/" : p.slice(0, cut);
   })();
-  return getSetCookies(new Headers({ "set-cookie": cookie.header })).map((c) => ({
-    name: c.name,
-    value: c.value,
-    domain: c.domain ?? hopUrl.hostname,
-    path: c.path ?? (c.domain ? "/" : defaultPath),
-    expires:
-      c.maxAge != null
-        ? Math.floor(Date.now() / 1000) + c.maxAge
-        : c.expires
-          ? Math.floor(typeof c.expires === "number" ? c.expires : c.expires.getTime() / 1000)
-          : -1,
-    httpOnly: c.httpOnly,
-    secure: c.secure,
-    sameSite: c.sameSite,
-  }));
+  return getSetCookies(new Headers({ "set-cookie": cookie.header }))
+    // Chromium rejects a Domain attribute the response host can't set — apply
+    // the same check so the jar can't carry cookies to a foreign host.
+    .filter((c) => {
+      if (!c.domain) return true;
+      const d = c.domain.replace(/^\./, "");
+      return hopUrl.hostname === d || hopUrl.hostname.endsWith(`.${d}`);
+    })
+    .map((c) => ({
+      name: c.name,
+      value: c.value,
+      domain: c.domain ?? hopUrl.hostname,
+      path: c.path ?? (c.domain ? "/" : defaultPath),
+      expires:
+        c.maxAge != null
+          ? Math.floor(Date.now() / 1000) + c.maxAge
+          : c.expires
+            ? Math.floor(typeof c.expires === "number" ? c.expires : c.expires.getTime() / 1000)
+            : -1,
+      httpOnly: c.httpOnly,
+      secure: c.secure,
+      sameSite: c.sameSite,
+    }));
 }
 
 /** Headless Chromium with its sandbox on (Playwright passes --no-sandbox unless chromiumSandbox is set). */
