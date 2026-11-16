@@ -268,27 +268,26 @@ export class PlaywrightRunner implements BrowserRunner {
   async captureLandingPage(url: string): Promise<SharedLanding> {
     const target = await assertPublicUrl(url);
     if (!(await robotsAllows(target))) throw new Error(`robots.txt disallows ${target.pathname}`);
-    const hops: Response[] = [];
+    const hops: SharedLanding["hops"] = [];
     const res = await fetchPublic(
       url,
       { headers: { "user-agent": USER_AGENT, accept: "text/html,application/xhtml+xml" }, signal: AbortSignal.timeout(30000) },
-      { requireSameOrigin: true, onHop: (r) => hops.push(r) },
+      {
+        requireSameOrigin: true,
+        onHop: (r) => {
+          const headers = Object.fromEntries(r.headers);
+          delete headers["set-cookie"];
+          const cookies = r.headers.getSetCookie();
+          if (cookies.length) headers["set-cookie"] = cookies.join("\n");
+          hops.push({ url: r.url, status: r.status, headers });
+        },
+      },
     );
     const contentType = res.headers.get("content-type") ?? "";
     if (contentType && !/html|xml/i.test(contentType)) throw new Error(`Non-HTML response (${contentType}) for ${url}`);
     if (!res.ok) throw new Error(`Fetch failed ${res.status} for ${url}`);
-    // Cookies from every hop: Chromium applies Set-Cookie on each redirect,
-    // while fetchPublic only returns the final response.
-    const cookies = hops.flatMap((r) => r.headers.getSetCookie());
-    const headers = Object.fromEntries(res.headers);
-    delete headers["set-cookie"]; // replayed from `cookies` so none are merged away
-    return {
-      url: res.url,
-      status: res.status,
-      headers,
-      body: Buffer.from(await res.arrayBuffer()).toString("base64"),
-      cookies: cookies.length ? cookies : undefined,
-    };
+    hops[hops.length - 1].body = Buffer.from(await res.arrayBuffer()).toString("base64");
+    return { url: res.url, hops };
   }
 
   async runPersonaJourney(args: PersonaJourneyArgs): Promise<AgentJourney> {
@@ -303,30 +302,33 @@ export class PlaywrightRunner implements BrowserRunner {
     const ctx = await this.newContext(args.viewport);
     try {
       if (landing) {
-        // Serve the shared capture at its final URL; replayed headers must not
-        // describe the wire encoding — the stored body is the raw response
-        // bytes, so charset is left for the browser to apply. Redirect-hop
-        // cookies come back via the newline-joined set-cookie header (Chromium
-        // applies them to the context jar).
-        const headers = { ...landing.headers };
-        delete headers["content-encoding"];
-        delete headers["content-length"];
-        delete headers["transfer-encoding"];
-        if (landing.cookies?.length) headers["set-cookie"] = landing.cookies.join("\n");
-        // Only the initial navigation replays: an agent that later navigates
-        // back to the landing URL must see fresh site state, not the capture.
-        let served = false;
+        // Replay the whole hop chain — redirect statuses, Location headers and
+        // per-hop Set-Cookie (with the hop URL's default path) all re-execute
+        // inside the context. Replayed headers must not describe the wire
+        // encoding: stored bodies are the raw response bytes, so charset is
+        // left for the browser to apply. Each hop is served once; an agent
+        // navigating back to a landing-chain URL later gets a real request,
+        // not the stale capture.
+        const pending = new Map(landing.hops.map((h) => [h.url, h]));
         await ctx.route(
-          (u) => u.toString() === landing.url,
+          (u) => pending.has(u.toString()),
           (route) => {
-            if (served) return route.continue();
-            served = true;
-            return route.fulfill({ status: landing.status, headers, body: Buffer.from(landing.body, "base64") });
+            const hop = pending.get(route.request().url())!;
+            pending.delete(hop.url);
+            const headers = { ...hop.headers };
+            delete headers["content-encoding"];
+            delete headers["content-length"];
+            delete headers["transfer-encoding"];
+            return route.fulfill({
+              status: hop.status,
+              headers,
+              body: hop.body ? Buffer.from(hop.body, "base64") : undefined,
+            });
           },
         );
       }
       const page = await ctx.newPage();
-      await page.goto(landing?.url ?? args.url, { waitUntil: "domcontentloaded", timeout: 30000 });
+      await page.goto(landing?.hops[0]?.url ?? args.url, { waitUntil: "domcontentloaded", timeout: 30000 });
       await assertPublicPage(page);
       await settle(page, 800);
       await settleInterstitial(page);

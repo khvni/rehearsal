@@ -1,5 +1,4 @@
-import { createServer, type Server } from "node:http";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import type { AgentJourney, BrowserRunner, BrowserRun, OpenPageResult, PersonaJourneyArgs, SharedLanding } from "@/lib/contracts";
 import { ExperimentConfig as Config, VIEWPORTS } from "@/lib/contracts";
 import { personaJourneyLoop } from "@/lib/simulation/persona";
@@ -96,9 +95,9 @@ describe("runPersonaSwarm landing capture", () => {
   it("captures the landing page once and threads it into every journey", async () => {
     const landing: SharedLanding = {
       url: BASE,
-      status: 200,
-      headers: { "content-type": "text/html" },
-      body: htmlFor("/"),
+      hops: [
+        { url: BASE, status: 200, headers: { "content-type": "text/html" }, body: Buffer.from(htmlFor("/")).toString("base64") },
+      ],
     };
     const r = runner({ landing });
     const swarm = await runPersonaSwarm({ ...args, runner: r });
@@ -111,9 +110,9 @@ describe("runPersonaSwarm landing capture", () => {
   it("produces identical journeys whether or not a landing is shared", async () => {
     const landing: SharedLanding = {
       url: BASE,
-      status: 200,
-      headers: { "content-type": "text/html" },
-      body: htmlFor("/"),
+      hops: [
+        { url: BASE, status: 200, headers: { "content-type": "text/html" }, body: Buffer.from(htmlFor("/")).toString("base64") },
+      ],
     };
     const shared = await runPersonaSwarm({ ...args, runner: runner({ landing }) });
     const unshared = await runPersonaSwarm({ ...args, runner: runner() });
@@ -129,31 +128,30 @@ describe("runPersonaSwarm landing capture", () => {
 });
 
 describe("captureLandingPage", () => {
-  it("keeps Set-Cookie headers from redirect hops and stores the raw body", async () => {
+  it("keeps each hop's Set-Cookie on its own URL and stores the raw body", async () => {
     process.env.REHEARSAL_ALLOW_PRIVATE = "1";
-    const server: Server = createServer((req, res) => {
-      if (req.url === "/robots.txt") {
-        res.writeHead(200, { "content-type": "text/plain" });
-        return res.end("User-agent: *\nAllow: /\n");
-      }
-      if (req.url === "/start") {
-        res.writeHead(302, { location: "/final", "set-cookie": "hop=1; Path=/" });
-        return res.end();
-      }
-      res.writeHead(200, { "content-type": "text/html", "set-cookie": "sess=abc; Path=/" });
-      res.end("<html><body>final</body></html>");
+    const respond = (u: string, status: number, headers: Record<string, string>, body?: string) => {
+      const res = new Response(body, { status, headers });
+      Object.defineProperty(res, "url", { value: u });
+      return res;
+    };
+    vi.stubGlobal("fetch", async (raw: string | URL) => {
+      const u = String(raw);
+      if (u.endsWith("/robots.txt")) return respond(u, 200, { "content-type": "text/plain" }, "User-agent: *\nAllow: /\n");
+      if (u.endsWith("/start")) return respond(u, 302, { location: "/final", "set-cookie": "hop=1" });
+      return respond(u, 200, { "content-type": "text/html", "set-cookie": "sess=abc; Path=/" }, "<html><body>final</body></html>");
     });
-    await new Promise<void>((r) => server.listen(0, "127.0.0.1", r));
     try {
-      const port = (server.address() as { port: number }).port;
       const { PlaywrightRunner } = await import("@/lib/browser/playwright");
-      const landing = await new PlaywrightRunner().captureLandingPage(`http://127.0.0.1:${port}/start`);
-      expect(landing.url).toBe(`http://127.0.0.1:${port}/final`);
-      expect(landing.cookies).toEqual(["hop=1; Path=/", "sess=abc; Path=/"]);
-      expect(Buffer.from(landing.body, "base64").toString()).toBe("<html><body>final</body></html>");
-      expect(landing.headers["set-cookie"]).toBeUndefined();
+      const landing = await new PlaywrightRunner().captureLandingPage("http://127.0.0.1:1/start");
+      expect(landing.url).toBe("http://127.0.0.1:1/final");
+      expect(landing.hops.map((h) => h.url)).toEqual(["http://127.0.0.1:1/start", "http://127.0.0.1:1/final"]);
+      // Path-less cookies keep their hop URL so replay derives the right default path.
+      expect(landing.hops[0].headers["set-cookie"]).toBe("hop=1");
+      expect(landing.hops[1].headers["set-cookie"]).toBe("sess=abc; Path=/");
+      expect(Buffer.from(landing.hops[1].body!, "base64").toString()).toBe("<html><body>final</body></html>");
     } finally {
-      await new Promise<void>((r) => server.close(() => r()));
+      vi.unstubAllGlobals();
     }
   });
 });
