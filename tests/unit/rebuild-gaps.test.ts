@@ -2,6 +2,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { Experiment, type ExperimentStore, type LlmClient, type PageFetcher, VIEWPORTS } from "@/lib/contracts";
 import { Orchestrator } from "@/lib/orchestrator";
 import { contentSignatureFor, extractPage } from "@/lib/browser/extract";
+import { metricsFromHtml } from "@/lib/browser/metrics";
 import { makeState } from "@/lib/graph";
 import { collectRebuildGaps, GAP_STEP_MS } from "@/lib/rebuild/gaps";
 import { deterministicPlan, rebuildPending } from "@/lib/rebuild/site";
@@ -67,38 +68,46 @@ beforeEach(() => { vi.useFakeTimers({ toFake: ["Date"] }); vi.setSystemTime(new 
 afterEach(() => { delete g.__orchestrator; vi.useRealTimers(); vi.unstubAllEnvs(); vi.restoreAllMocks(); });
 
 describe("stepwise rebuild gaps", () => {
-  it("refreshes an existing gap state and remaps surviving edges before building from fresh content", async () => {
+  it("preserves an existing gap state and signature so saved actions remain valid and rescan detects fresh changes", async () => {
     vi.stubEnv("REHEARSAL_REBUILD_MAX_PAGES", "1");
     const exp = fixture(["/survey"]);
     const url = "https://example.com/survey";
     const oldHtml = '<html><title>Old survey</title><h1>Old survey</h1><p>Outdated content.</p><a href="/">Home</a><a href="/removed">Removed</a></html>';
     const freshHtml = '<html><title>Fresh survey</title><h1>Fresh survey</h1><p>Current survey facts are available to all community members.</p><a href="/fresh">Fresh</a><a href="/">Home</a></html>';
     const old = extractPage(oldHtml, url);
-    const state = makeState({ url, viewport: VIEWPORTS.desktop, title: old.title, visibleText: old.visibleText, headings: old.headings, actions: old.actions });
+    const state = makeState({ url, viewport: VIEWPORTS.desktop, title: old.title, visibleText: old.visibleText, headings: old.headings, actions: old.actions, screenshotPath: "shots/original-survey.png" });
+    state.metrics = metricsFromHtml(oldHtml, url, VIEWPORTS.desktop);
     const home = exp.graph!.states[0];
-    const removed = makeState({ url: "https://example.com/removed", viewport: VIEWPORTS.desktop, title: "Removed", visibleText: "Removed page", actions: [] });
+    const removedHtml = '<html><title>Removed</title><h1>Removed</h1><p>The existing reference page.</p></html>';
+    const removedPage = extractPage(removedHtml, "https://example.com/removed");
+    const removed = makeState({ url: "https://example.com/removed", viewport: VIEWPORTS.desktop, title: removedPage.title, visibleText: removedPage.visibleText, headings: removedPage.headings, actions: removedPage.actions });
     home.actions[0].destinationStateId = state.stateId;
     exp.graph!.states.push(state, removed);
     const incoming = { fromStateId: home.stateId, actionId: home.actions[0].actionId, toStateId: state.stateId };
     exp.graph!.edges = [incoming, { fromStateId: state.stateId, actionId: state.actions[0].actionId, toStateId: home.stateId }, { fromStateId: state.stateId, actionId: state.actions[1].actionId, toStateId: removed.stateId }];
-    exp.siteSignatures = [{ url, signature: contentSignatureFor(url, old) }];
-    const ctx = setup(exp, { "/survey": freshHtml });
+    const homeHtml = pageHtml(["/survey"]);
+    exp.siteSignatures = [
+      { url: exp.targetUrl, signature: contentSignatureFor(exp.targetUrl, extractPage(homeHtml, exp.targetUrl)) },
+      { url, signature: contentSignatureFor(url, old) },
+      { url: removed.url, signature: contentSignatureFor(removed.url, removedPage) },
+    ];
+    const originalGraph = structuredClone(exp.graph);
+    const originalSignatures = structuredClone(exp.siteSignatures);
+    const ctx = setup(exp, { "/": homeHtml, "/survey": freshHtml, "/removed": removedHtml });
     await post(); await post(); await post();
     const graph = ctx.saved().graph!;
-    const refreshed = graph.states.find(s => s.url === url)!;
-    expect(refreshed).toMatchObject({ stateId: state.stateId, pageTitle: "Fresh survey", visibleText: expect.stringContaining("Current survey facts") });
-    expect(refreshed.stateHash).not.toBe(state.stateHash);
-    expect(refreshed.actions.map(action => action.label)).toEqual(["Fresh", "Home"]);
-    expect(refreshed.actions.every(action => action.stateId === state.stateId)).toBe(true);
-    expect(graph.edges).toEqual([incoming, { fromStateId: state.stateId, actionId: refreshed.actions[1].actionId, toStateId: home.stateId }]);
+    expect(graph).toEqual(originalGraph);
+    expect(graph.states.find(s => s.url === url)).toEqual(state);
     expect(graph.edges.every(edge => graph.states.some(s => s.stateId === edge.toStateId) && graph.states.find(s => s.stateId === edge.fromStateId)?.actions.some(action => action.actionId === edge.actionId))).toBe(true);
-    expect(ctx.saved().siteSignatures).toEqual([{ url, signature: contentSignatureFor(url, extractPage(freshHtml, url)) }]);
+    expect(ctx.saved().siteSignatures).toEqual(originalSignatures);
     await post();
     const response = await get(["survey"]);
     expect(response.status).toBe(200);
     const html = await response.text();
-    expect(html).toContain("Current survey facts");
-    expect(html).not.toContain("Outdated content");
+    expect(html).toContain("Outdated content");
+    expect(html).not.toContain("Current survey facts");
+    expect(ctx.saved().graph).toEqual(originalGraph);
+    expect((await g.__orchestrator!.rescan(ID)).report).toMatchObject({ changed: true, checked: 3, mismatches: [url], restarted: true });
   });
 
   it("persists gap signatures with the fetch checkpoint so rescan detects a gap-only change", async () => {
