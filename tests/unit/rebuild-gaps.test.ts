@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { Experiment, type ExperimentStore, type LlmClient, type PageFetcher, VIEWPORTS } from "@/lib/contracts";
+import { Experiment, RebuildGap, type ExperimentStore, type LlmClient, type PageFetcher, VIEWPORTS } from "@/lib/contracts";
 import { Orchestrator } from "@/lib/orchestrator";
 import { contentSignatureFor, extractPage } from "@/lib/browser/extract";
 import { metricsFromHtml } from "@/lib/browser/metrics";
@@ -186,8 +186,8 @@ describe("stepwise rebuild gaps", () => {
     expect(await (await get(["survey"])).text()).toContain("fetched page");
   });
 
-  it("freezes one round, checkpoints each fetch, and resumes fetch and build steps on a new orchestrator", async () => {
-    const ctx = setup(fixture(["/a", "/b", "/c"]), { "/a": pageHtml(["/nested"]), "/b": pageHtml(), "/c": pageHtml() });
+  it("checkpoints each fetch and resumes across multiple fetch/build rounds on new orchestrators", async () => {
+    const ctx = setup(fixture(["/a", "/b", "/c"]), { "/a": pageHtml(["/nested"]), "/b": pageHtml(), "/c": pageHtml(), "/nested": pageHtml(["/a"]) });
     await post(); await post(); await post();
     expect(ctx.saved().rebuild!.site!.gap).toMatchObject({ cursor: 2, completed: false });
     expect(ctx.snapshots.some(s => s.rebuild?.site?.gap?.cursor === 1)).toBe(true);
@@ -196,11 +196,73 @@ describe("stepwise rebuild gaps", () => {
     expect(ctx.saved().rebuild!.site!.gap).toMatchObject({ cursor: 3, completed: true });
     ctx.install();
     await post();
-    expect(ctx.saved().status).toBe("complete");
+    expect(ctx.saved().status).toBe("rebuilding");
+    expect(ctx.saved().rebuild!.site!.gap).toMatchObject({ round: 2, cursor: 3, completed: false });
     expect(ctx.fetcher.fetchHtml).toHaveBeenCalledTimes(3);
-    expect(ctx.saved().rebuild!.site!.pages).toHaveLength(4);
-    expect((await get(["nested"])).status).toBe(404);
+    ctx.install();
+    await post(); await post();
+    expect(ctx.saved().status).toBe("complete");
+    expect(ctx.fetcher.fetchHtml).toHaveBeenCalledTimes(4);
+    expect(ctx.saved().rebuild!.site!.pages).toHaveLength(5);
+    expect((await get(["nested"])).status).toBe(200);
     expect(mocks.allowance).toHaveBeenCalledTimes(1);
+  });
+
+  it("applies the added-page cap across rounds, excludes failed attempts and leaves later links not rebuilt", async () => {
+    vi.stubEnv("REHEARSAL_REBUILD_GAP_MAX_PAGES", "2");
+    const ctx = setup(fixture(["/a", "/missing"]), { "/a": pageHtml(["/b", "/missing"]), "/missing": new Error("HTTP 404"), "/b": pageHtml(["/c"]) });
+    await post(); await post(); await post(); await post();
+    expect(ctx.saved().rebuild!.site!.gap).toMatchObject({ round: 2, cursor: 2, limit: 2, completed: false });
+    await post(); await post();
+    expect(ctx.saved().status).toBe("complete");
+    expect(ctx.saved().rebuild!.site!.gap).toMatchObject({ round: 2, cursor: 3, failed: [{ path: "/missing" }] });
+    expect(ctx.fetcher.fetchHtml).toHaveBeenCalledTimes(3);
+    expect((await get(["b"])).status).toBe(200);
+    expect((await get(["c"])).status).toBe(404);
+    await post();
+    expect(ctx.fetcher.fetchHtml).toHaveBeenCalledTimes(3);
+  });
+
+  it("stops after four rounds even with cap space, including explicit continuation POSTs", async () => {
+    const ctx = setup(fixture(["/a"]), { "/a": pageHtml(["/b"]), "/b": pageHtml(["/c"]), "/c": pageHtml(["/d"]), "/d": pageHtml(["/e"]) });
+    for (let i = 0; i < 10; i++) await post();
+    expect(ctx.saved().status).toBe("complete");
+    expect(ctx.saved().rebuild!.site!.gap).toMatchObject({ round: 4, cursor: 4, limit: 12, completed: true });
+    expect(ctx.fetcher.fetchHtml).toHaveBeenCalledTimes(4);
+    expect((await get(["d"])).status).toBe(200);
+    expect((await get(["e"])).status).toBe(404);
+    await post();
+    expect(ctx.fetcher.fetchHtml).toHaveBeenCalledTimes(4);
+  });
+
+  it("reopens an old one-round completion only on an explicit POST without replanning or another charge", async () => {
+    const exp = builtFixture(["/a"]), site = exp.rebuild!.site!;
+    const extracted = extractPage(pageHtml(["/b"]), "https://example.com/a");
+    exp.graph!.states.push(makeState({ url: "https://example.com/a", viewport: VIEWPORTS.desktop, title: extracted.title, visibleText: extracted.visibleText, actions: extracted.actions }));
+    site.pages.push({ path: "/a", sourceUrl: "https://example.com/a", title: "A", mode: "read", blocks: [{ type: "article-body", purpose: "Read A" }], status: "built", html: pageHtml(["/b"]) });
+    site.gap = RebuildGap.parse({ candidates: [{ path: "/a", sourceUrl: "https://example.com/a" }, { path: "/missing", sourceUrl: "https://example.com/missing" }], cursor: 2, limit: 12, skipped: 0, failed: [{ path: "/missing", reason: "HTTP 404" }], completed: true });
+    site.completedAt = exp.createdAt;
+    const originalPages = structuredClone(site.pages), originalGraph = structuredClone(exp.graph);
+    const ctx = setup(exp, { "/b": pageHtml(["/missing"]) });
+    expect(rebuildPending(ctx.saved())).toBe(false);
+    expect((await g.__orchestrator!.resume(ID, { inline: true })).resumed).toBe(false);
+    await g.__orchestrator!.rebuild(ID);
+    expect(ctx.fetcher.fetchHtml).not.toHaveBeenCalled();
+    expect(ctx.saved().rebuild!.site!.completedAt).toBe(exp.createdAt);
+    expect((await post()).status).toBe(200);
+    expect(ctx.saved().rebuild!.site!.gap).toMatchObject({ round: 2, cursor: 3, completed: true });
+    expect(ctx.saved().rebuild!.site!.completedAt).toBeUndefined();
+    ctx.install();
+    await post();
+    expect(ctx.saved().status).toBe("complete");
+    expect(ctx.saved().rebuild!.site!.pages.slice(0, 2)).toEqual(originalPages);
+    expect(ctx.saved().graph!.states.slice(0, 2)).toEqual(originalGraph!.states);
+    expect(ctx.fetcher.fetchHtml).toHaveBeenCalledTimes(1);
+    expect(ctx.llm.complete).toHaveBeenCalledTimes(1);
+    expect(mocks.allowance).not.toHaveBeenCalled();
+    expect((await get(["b"])).status).toBe(200);
+    await post();
+    expect(ctx.fetcher.fetchHtml).toHaveBeenCalledTimes(1);
   });
 
   it("caps the round and leaves over-cap paths not rebuilt", async () => {

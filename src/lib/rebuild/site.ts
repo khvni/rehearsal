@@ -476,12 +476,34 @@ export function rewriteSiteLinks(
   return doc.body.innerHTML;
 }
 
+function normalizeMainContainers(html: string): string {
+  const doc = fragment(html);
+  let wrapper: ReturnType<typeof doc.createElement> | undefined;
+  for (const node of [...doc.body.childNodes]) {
+    const element = node.nodeType === 1 ? node as Element : undefined;
+    if (element?.matches(".rb-container") || element?.querySelector(".rb-container")) {
+      wrapper = undefined;
+      continue;
+    }
+    if (!element && !node.textContent?.trim()) continue;
+    if (!wrapper) {
+      wrapper = doc.createElement("div");
+      wrapper.className = "rb-container";
+      doc.body.insertBefore(wrapper, node);
+    }
+    wrapper.appendChild(node);
+  }
+  return doc.body.innerHTML;
+}
+
 export function lintRebuiltPage(
   html: string,
   opts?: { origin: string; base: string },
 ): string[] {
   const doc = fragment(html);
   const issues = new Set<string>();
+  if ([...doc.body.children].some(el => !el.matches(".rb-container") && !el.querySelector(".rb-container")) ||
+      [...doc.body.childNodes].some(node => node.nodeType === 3 && node.textContent?.trim())) issues.add("missing main container");
   for (const group of [
     doc.body,
     ...doc.querySelectorAll("section, ul, ol, nav, footer, .rb-cluster"),
@@ -570,15 +592,15 @@ function processHtml(
   const safe = sanitizeRebuildHtml(inner, {
     imageOrigins: [new URL(exp.targetUrl).origin],
   });
-  const html = rewriteSiteLinks(safe, {
+  const html = normalizeMainContainers(rewriteSiteLinks(safe, {
     origin: exp.targetUrl,
     base: baseFor(exp),
     homePath: homePathFor(site),
-  });
+  }));
   if (
     !/<(?:h1|h2|p|section|article)\b/i.test(html) ||
     bytes(html) > 30 * 1024 ||
-    /^\s*[\[{]/.test(html)
+    /^\s*[\[{]/.test(safe)
   )
     throw new Error("Invalid page HTML or page size cap");
   return html;
@@ -908,7 +930,7 @@ export function renderSiteDocument(exp: Experiment, path = "/", share?: { origin
     { origin: exp.targetUrl, base, homePath },
   );
   const source = new URL(page?.sourceUrl ?? path, exp.targetUrl).href;
-  const body = rewriteSiteLinks(
+  const body = normalizeMainContainers(rewriteSiteLinks(
     page?.html ??
       [
         `<section class="rb-hero rb-container"><h1>Not rebuilt yet</h1>`,
@@ -916,7 +938,7 @@ export function renderSiteDocument(exp: Experiment, path = "/", share?: { origin
         `<a class="rb-btn rb-btn--primary" href="${esc(base)}/">Back to home</a></section>`,
       ].join(""),
     { origin: exp.targetUrl, base, homePath },
-  );
+  ));
   const logo =
     brand.logoUrl &&
     new URL(brand.logoUrl, exp.targetUrl).origin ===

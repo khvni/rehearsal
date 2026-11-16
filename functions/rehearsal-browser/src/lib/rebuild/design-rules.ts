@@ -28,6 +28,7 @@ export const IMPLEMENTER_RULES = `You are a senior design engineer implementing 
 
 Composition:
 - Follow the page plan's blocks in order; don't invent page structure. Use ONLY the given rb-* classes plus semantic HTML (section, article, h1-h4, p, ul/ol/li, a, img, figure/figcaption, table, details/summary, blockquote, time, dl). Wrap each block in <section class="rb-section"> with an rb-container (or rb-narrow for reading) inside.
+- Every block, including deterministic article-body gap pages and heroes, must have an rb-container around its content. Use rb-narrow only alongside rb-container for reading measure, never as a substitute. Never nest rb-container inside another rb-container.
 - Exactly one h1, in the hero. Headings in the site's own words, sentence case, text short enough to balance on two lines.
 - One dominant action: at most one rb-btn rb-btn--primary per screenful, the plan's primaryAction. Secondary actions use rb-btn--secondary or rb-btn--ghost or plain links.
 - Carry the page's real content thoroughly: on index pages list every item from the facts (title, date/meta, one-line description, link); on read pages render the full text as rb-prose with real paragraphs, headings and lists. Keep the content's order and meaning; tighten wording only where it is clearly filler.
