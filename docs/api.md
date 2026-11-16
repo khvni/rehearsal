@@ -42,6 +42,8 @@ experiment, no mockup yet, or an unknown slug.
 `firecrawlMapLimit` (20 — seed-expansion links from Firecrawl `/v1/map` when the plain crawl
 finds few; only fires with `FIRECRAWL_API_KEY`). These budgets
 are per experiment; there are no env overrides. Upper bounds (`EXPERIMENT_LIMITS`): `maxStates` ≤ 50,
-`maxDepth` ≤ 5, `trajectories` ≤ 5000, `verifyCount` ≤ 16, `firecrawlMapLimit` ≤ 100, `viewports` at most 2 distinct values.
+`maxDepth` ≤ 5, `trajectories` ≤ 5000, `verifyCount` ≤ 16, `firecrawlMapLimit` ≤ 100, `viewports` 1–2 distinct values.
 A config outside these bounds gets a 400 `{error: "invalid config", issues}`.
+An empty `viewports` array is rejected before experiment creation or admission-budget use;
+omitting it keeps the desktop + mobile default. Older stored empty-viewport experiments still load.
 Stored experiments created before these bounds still load, with each budget clamped to its limit.
