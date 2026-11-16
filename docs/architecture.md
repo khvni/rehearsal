@@ -122,6 +122,7 @@ a variable that is missing here or in `.env.example`, or if `.env.example` lists
 | `OPENROUTER_MODEL_FAST` / `OPENROUTER_MODEL_DEEP` / `OPENROUTER_MODEL_MOCKUP` / `OPENROUTER_MODEL_REBUILD` | `analysis/openrouter.ts` | `google/gemini-4-hydrogen` / `google/gemini-4-argon` / the deep model / `google/gemini-3.8-flash`; calls send OpenRouter a `models` fallback list ending in the fast model |
 | `OPENROUTER_MODEL_REBUILD_PLANNER` | `analysis/openrouter.ts` | `anthropic/claude-opus-5.5`; one whole-site planning call with a 180s timeout; page implementation uses the rebuild model with 90s |
 | `REHEARSAL_REBUILD_MAX_PAGES` | `rebuild/site.ts` | `40`; home-first unique crawled paths, with durable batches of six and a 700KiB total HTML cap |
+| `REHEARSAL_REBUILD_GAP_MAX_PAGES` | `rebuild/gaps.ts` | `12` (0–100); one frozen round of missing same-origin HTML pages, fetched two per step within 10 seconds, then built with the existing plan; failures and over-cap links retain the not-rebuilt response |
 | `REHEARSAL_GEMINI_MAX_CALLS` | `analysis/gemini.ts`, `analysis/openrouter.ts` | `10` LLM calls per run (reset at discover and at a standalone rebuild), first come first served; a run makes up to 7 (assertions, goal intent, visitor questions, findings, spec, mockup, rebuild), and calls past the cap use the deterministic fallback |
 | `JEV_API_KEY` | `decisions/jev.ts` | `FixtureJevClient` |
 | `JEV_BASE_URL` / `JEV_MODEL` | `decisions/jev.ts` | `https://api.typesafe.ai/v1/systemone` / `jev-latest` |
