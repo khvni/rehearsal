@@ -213,4 +213,20 @@ describe("StagehandRunner politeness", () => {
     expect(mockedRobots.mock.invocationCallOrder[0]).toBeLessThan(mockedDelay.mock.invocationCallOrder[0]);
     expect(String(mockedDelay.mock.calls[0][0])).toBe("https://swarm2.example.com/");
   });
+
+  it("skips the gate inside the Function — the caller already gated", async () => {
+    // Each Function invocation is a fresh process: re-gating would refetch
+    // robots.txt per invocation and its per-host map could not space calls.
+    const runner = new StagehandRunner({
+      env: "local",
+      evidenceDir: "/tmp/x",
+      politenessHandledByCaller: true,
+    });
+    await runner
+      .runPersonaJourney(journeyArgs("https://swarm-inner.example.com/", "agent-0"))
+      .catch(() => undefined);
+    expect(mockedRobots).not.toHaveBeenCalled();
+    expect(mockedDelay).not.toHaveBeenCalled();
+    expect(hoisted.launchAttempts).toHaveLength(1);
+  });
 });

@@ -217,6 +217,8 @@ export interface StagehandRunnerOptions {
   evidenceDir?: string;
   /** Jev client for persona journeys; defaults to selectJev() (env-resolved). */
   jev?: JevClient;
+  /** Skip robots.txt + per-host spacing because the caller already gated (Browserbase Function). */
+  politenessHandledByCaller?: boolean;
 }
 
 export interface PlaywrightStepOptions {
