@@ -592,37 +592,39 @@ export class Orchestrator {
       }
     }
     const done = await this.mustGet(id);
-    // A stage requested mid-run queues here: run it after the chain so a click
-    // on a stage the order skips (rebuild) still executes.
-    const queued = done.queuedStage;
-    done.queuedStage = undefined;
     done.runCheckpoint = undefined;
     await this.store.save(Experiment.parse(done));
-    if (queued && (PIPELINE_STAGES as readonly string[]).includes(queued)) {
-      await this.emit(id, "run", "info", `Queued stage ${queued} starting`);
-      const result = (await stageFns[queued](deadline, undefined, undefined)) as { complete?: boolean } | undefined;
-      if (result?.complete === false) {
-        const latest = await this.mustGet(id);
-        latest.runCheckpoint = { stage: queued, attempt: 1 };
-        await this.store.save(Experiment.parse(latest));
-        return { suspended: true };
-      }
-      const finished = await this.mustGet(id);
-      finished.runCheckpoint = undefined;
-      await this.store.save(Experiment.parse(finished));
-    }
     return { suspended: false };
   }
 
-  /** Record a stage request made while another stage holds the lock — the chain runs it after its stages. Stages the in-flight chain already reaches are ignored. */
-  async queueStage(id: string, stage: string, runningStage: string): Promise<void> {
+  /**
+   * Queue a stage request behind the in-flight run: `enqueueRun` waits for a
+   * pipeline slot, `exclusiveWhenFree` waits for the run's lock, then the stage
+   * runs through its normal entry. Stages the in-flight chain already reaches
+   * are ignored (no duplicate work); the rest — e.g. rebuild during a full run
+   * — run right after it finishes.
+   */
+  async enqueueStage(id: string, stage: string, runningStage: string): Promise<void> {
     const order = PIPELINE_STAGES as readonly string[];
     if (!order.includes(stage)) return;
     const runningAt = order.indexOf(runningStage);
     if (runningAt >= 0 && order.indexOf(stage) > runningAt) return;
-    const exp = await this.mustGet(id);
-    exp.queuedStage = stage;
-    await this.store.save(Experiment.parse(exp));
+    const work: Record<string, () => Promise<unknown>> = {
+      discover: () => this.runDiscover(id),
+      simulate: () => this.runSimulate(id),
+      verify: () => this.runVerify(id),
+      analyze: () => this.runAnalyze(id),
+      compare: () => this.runCompare(id),
+      spec: () => this.runSpec(id),
+      rebuild: () => this.runRebuild(id),
+    };
+    await enqueueRun(async () => {
+      await this.exclusiveWhenFree(id, stage, async () => {
+        await work[stage]();
+      }).catch(async (e) => {
+        await this.markFailed(id, e).catch(() => undefined);
+      });
+    });
   }
 
   /** Timestamp of the most recent activity event — the run heartbeat. Falls back to createdAt. */
