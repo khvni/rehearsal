@@ -49,14 +49,14 @@ function LayoutExample() {
               <div><strong>Starter</strong><span>{proposed ? "$12 / month" : "For the everyday"}</span>{proposed && <span className="sample-cta">Choose Starter</span>}</div>
               <div><strong>Team</strong><span>{proposed ? "$29 / month" : "For the ambitious"}</span>{proposed && <span className="sample-cta">Choose Team</span>}</div>
             </div>
-            {!proposed && <span className="sample-vague-cta">Let’s go <ArrowIcon size={14} /></span>}
+            {!proposed && <span className="sample-vague-cta">Let’s go</span>}
           </div>
         </div>
         <div className="example-annotation" role="status">
-          <p>{proposed ? "Visitors can compare prices and choose a plan in one place." : "Visitors have to look elsewhere to find prices or choose a plan."}</p>
+          <p>{proposed ? "Prices and plan choices together." : "No prices on the page."}</p>
         </div>
       </div>
-      <figcaption><strong>Why black and white?</strong> A wireframe leaves out branding so you can review the layout, wording, and flow first. This fictional example illustrates a proposed fix, not a tested result.</figcaption>
+      <figcaption>Black and white so you judge layout and wording, not branding. An illustration, not a tested result.</figcaption>
     </figure>
   );
 }
@@ -146,12 +146,11 @@ export default function Home() {
               <h1 id="landing-title">Find where<br /><span>visitors get stuck.</span></h1>
               <div className="intro-copy">
                 <p>Check your website against a visitor&rsquo;s goal.</p>
-                <p>Get a list of usability problems, the evidence behind them, and a plan for fixing them.</p>
-                <a href={example ? `/experiments/${example.id}` : "#how-it-works"}>{example ? "View an example rehearsal" : "See how it works"}<ArrowIcon size={16} /></a>
+                <p>Get the usability problems, the evidence, and a fix plan.</p>
+                <a href={example ? `/experiments/${example.id}` : "#how-it-works"}>{example ? "View an example rehearsal" : "See how it works"}</a>
               </div>
             </div>
-            <form id="start" className="rehearsal-form" onSubmit={start} aria-busy={busy} aria-labelledby="start-title" noValidate>
-              <div className="form-heading"><h2 id="start-title">Start a rehearsal</h2><span>Public websites only</span></div>
+            <form id="start" className="rehearsal-form" onSubmit={start} aria-busy={busy} aria-label="Start a rehearsal" noValidate>
               <fieldset disabled={busy}>
                 <legend className="sr-only">Website and visitor goal</legend>
                 <div className="form-fields">
@@ -166,13 +165,13 @@ export default function Home() {
                     <Textarea id="goal" name="goal" rows={1} maxLength={500} placeholder="e.g. Find the right plan and sign up" value={goal} onChange={(event) => setGoal(event.target.value)} aria-describedby="goal-help" />
                     <p id="goal-help" className="field-help">Leave blank to use a goal suggested from the page.</p>
                     <div className="goal-examples" aria-label="Visitor goal examples">
-                      {GOALS.map((suggestion) => <button key={suggestion} type="button" aria-pressed={goal === suggestion} onClick={() => setGoal(suggestion)}>{suggestion}<ArrowIcon size={12} /></button>)}
+                      {GOALS.map((suggestion) => <button key={suggestion} type="button" onClick={() => setGoal(suggestion)}>{suggestion}</button>)}
                     </div>
                   </div>
                 </div>
                 {error && <p className="landing-error submit-error" role="alert">{error}</p>}
                 <div className="form-footer">
-                  <p>Your live site stays untouched.<br /><span>Runs in this shared demo are public. Results can take a few minutes.</span></p>
+                  <p>Your live site stays untouched.<br /><span>Results can take a few minutes.</span></p>
                   <button type="submit" className="landing-submit" disabled={busy}>{busy ? "Starting rehearsal…" : "Start rehearsal"}<ArrowIcon size={20} /></button>
                 </div>
               </fieldset>
@@ -181,25 +180,25 @@ export default function Home() {
           <section id="how-it-works" className="landing-method" aria-labelledby="method-title">
             <div className="method-heading"><h2 id="method-title">How a rehearsal works</h2><p>Review the findings, then try a wireframe<br className="desktop-break" /> based on the suggested fixes.</p></div>
             <div className="method-body">
-              <ol className="method-steps">
-                <li><span>01</span><div><h3>Choose a visitor&rsquo;s task</h3><p>Start with a public page and a goal, such as choosing a plan. Rehearsal maps the pages and simulates ways to complete the task.</p></div></li>
-                <li><span>02</span><div><h3>Review the findings</h3><p>See suggested fixes in priority order. Each finding shows the available browser evidence or is labeled as a hypothesis.</p></div></li>
-                <li><span>03</span><div><h3>Try the proposed changes</h3><p>Create a wireframe from the findings to compare the layout, wording, and interactions. Your live site stays as it is.</p></div></li>
+              <ol className="method-steps" role="list">
+                <li><h3>Choose a visitor&rsquo;s task</h3><p>Start with a page and a goal, such as choosing a plan. Rehearsal maps the pages and simulates ways to complete the task.</p></li>
+                <li><h3>Review the findings</h3><p>See suggested fixes in priority order. Each finding cites browser evidence or is labeled a hypothesis.</p></li>
+                <li><h3>Try the proposed changes</h3><p>Create a wireframe from the findings to compare the layout, wording, and interactions.</p></li>
               </ol>
               <LayoutExample />
             </div>
-            <aside className="evidence-note"><strong>Check the findings with real people.</strong><p>Simulated journeys can help you spot problems, but they can&rsquo;t tell you how your customers will behave. Use the findings to plan changes and usability tests.</p></aside>
+            <p className="evidence-note">Simulations show where a flow breaks, not how real customers behave. Check findings with usability tests.</p>
           </section>
           <section id="recent" className="landing-recent" aria-labelledby="recent-title">
-            <div className="recent-heading"><div><h2 id="recent-title">Recent rehearsals</h2><p>Rehearsals in this shared demo are public. Open one to see its findings.</p></div><Link href="/mockups">Browse mockups<ArrowIcon size={16} /></Link></div>
-            {experimentsLoadError ? <div className="recent-state" role="alert"><p>Could not load recent rehearsals.</p><button type="button" onClick={() => void loadExperiments()}>Try again<ArrowIcon size={16} /></button></div>
+            <div className="recent-heading"><div><h2 id="recent-title">Recent rehearsals</h2><p>Rehearsals in this shared demo are public. Open one to see its findings.</p></div><Link href="/mockups">Browse mockups</Link></div>
+            {experimentsLoadError ? <div className="recent-state" role="alert"><p>Could not load recent rehearsals.</p><button type="button" onClick={() => void loadExperiments()}>Try again</button></div>
               : experiments === null ? <p className="recent-state" role="status">Loading recent rehearsals…</p>
                 : experiments.length === 0 ? <p className="recent-state">No rehearsals yet. Add your page above to start the first one.</p>
-                  : <ul className="recent-list">{visibleExperiments?.map((experiment) => <li key={experiment.id}><Link href={`/experiments/${experiment.id}`}><span className="recent-site">{siteName(experiment.targetUrl)}</span><span className="recent-goal">{experiment.goal || "Inferred visitor goal"}</span><span className="recent-status">{experiment.status.replace(/-/g, " ")}</span><time dateTime={experiment.createdAt}>{shortDate(experiment.createdAt)}</time><ArrowIcon size={16} /></Link></li>)}</ul>}
-            {!experimentsLoadError && experiments && experiments.length > 4 && <button className="show-rehearsals" type="button" aria-expanded={showAll} onClick={() => setShowAll(!showAll)}>{showAll ? "Show fewer rehearsals" : `Show all ${experiments.length} rehearsals`}<ArrowIcon size={16} /></button>}
+                  : <ul className="recent-list">{visibleExperiments?.map((experiment) => <li key={experiment.id}><Link href={`/experiments/${experiment.id}`}><span className="recent-site">{siteName(experiment.targetUrl)}</span><span className="recent-goal">{experiment.goal || "Goal inferred from page"}</span><span className="recent-status">{experiment.status.replace(/-/g, " ")}</span><time dateTime={experiment.createdAt}>{shortDate(experiment.createdAt)}</time></Link></li>)}</ul>}
+            {!experimentsLoadError && experiments && experiments.length > 4 && <button className="show-rehearsals" type="button" aria-expanded={showAll} onClick={() => setShowAll(!showAll)}>{showAll ? "Show fewer rehearsals" : `Show all ${experiments.length} rehearsals`}</button>}
           </section>
         </main>
-        <footer className="landing-footer"><Link href="/" className="landing-brand">Rehearsal</Link><a href="#start">Start a rehearsal<ArrowIcon size={16} /></a></footer>
+        <footer className="landing-footer"><Link href="/" className="landing-brand">Rehearsal</Link><a href="#start">Start a rehearsal</a></footer>
       </div>
     </div>
   );
