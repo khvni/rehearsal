@@ -474,7 +474,7 @@ export class Orchestrator {
   }
 
   /** Runs slices to completion: in-process loop on Node; one slice per run-step hop on Workers. Callers hold the lock. */
-  private async stepBody(id: string, opts?: { origin?: string }): Promise<void> {
+  private async stepBody(id: string, opts?: { origin?: string; queuedOnly?: boolean }): Promise<void> {
     const deadlineMs = isWorkersRuntime() ? stepBudgetMs() : undefined;
     for (;;) {
       const { suspended } = await this.sliceRun(id, { ...opts, deadlineMs });
@@ -496,7 +496,7 @@ export class Orchestrator {
    */
   private async sliceRun(
     id: string,
-    opts?: { deadlineMs?: number; origin?: string; now?: () => number },
+    opts?: { deadlineMs?: number; origin?: string; now?: () => number; queuedOnly?: boolean },
   ): Promise<{ suspended: boolean }> {
     const exp = await this.mustGet(id);
     const cp = exp.runCheckpoint;
@@ -530,7 +530,7 @@ export class Orchestrator {
     // checkpoint resumes just that stage, never the chain around it.
     const order = cp?.queued
       ? [cp.stage]
-      : pipelineFinished(exp) && cp === undefined
+      : opts?.queuedOnly || (pipelineFinished(exp) && cp === undefined)
         ? []
         : PIPELINE_STAGES.slice(PIPELINE_STAGES.indexOf(startAt as (typeof PIPELINE_STAGES)[number]))
           .filter((s) => s !== "rebuild" || startAt === "rebuild");
@@ -549,6 +549,11 @@ export class Orchestrator {
       const queuedReq = head === undefined || cp?.queued === true;
       const stage = head ?? (await this.nextQueued(id));
       if (stage === undefined) break;
+      // A queued checkpoint resumes a request whose feed event was never
+      // consumed — mark it so the same request isn't pulled again below.
+      if (cp?.queued === true && stage === cp.stage) {
+        await this.emit(id, "run", "queued-start", stage);
+      }
       const carryDiscover = stage === "discover" && cp?.stage === "discover" ? cp.discover : undefined;
       if (deadline !== undefined && now() >= deadline) {
         await persist({ stage, attempt: cp?.stage === stage ? cp.attempt : 0, queued: queuedReq || undefined, discover: carryDiscover });
@@ -629,10 +634,18 @@ export class Orchestrator {
     // When nothing is mid-flight (standalone stage finishing, or a finished
     // run), leave a checkpoint breadcrumb so runNeedsWatchdog keeps polling
     // and resume() schedules the drain.
-    const exp = await this.mustGet(id);
-    if (exp.runCheckpoint === undefined) {
-      exp.runCheckpoint = { stage, attempt: 0, queued: true };
-      await this.store.save(Experiment.parse(exp));
+    // When nothing is mid-flight (standalone stage finishing, or a finished
+    // run), leave a checkpoint breadcrumb so runNeedsWatchdog keeps polling
+    // and resume() schedules the drain. Best-effort: an in-flight stage's
+    // concurrent save may race this, so keep the window small.
+    try {
+      const exp = await this.mustGet(id);
+      if (exp.runCheckpoint === undefined && !IN_FLIGHT_STATUSES.includes(exp.status)) {
+        exp.runCheckpoint = { stage, attempt: 0, queued: true };
+        await this.store.save(Experiment.parse(exp));
+      }
+    } catch {
+      /* the feed event is the durable record; the breadcrumb only accelerates the watchdog */
     }
   }
 
@@ -804,7 +817,7 @@ export class Orchestrator {
     return this.exclusive(id, "discover", async () => {
       const cp = (await this.mustGet(id)).runCheckpoint;
       await this.runDiscover(id, cp?.stage === "discover" ? { resume: cp.discover, attempt: cp.attempt } : undefined);
-      if ((await this.queuedStages(id)).length > 0) await this.stepBody(id);
+      if ((await this.queuedStages(id)).length > 0) await this.stepBody(id, { queuedOnly: true });
       return this.mustGet(id);
     });
   }
@@ -812,7 +825,7 @@ export class Orchestrator {
   async simulate(id: string): Promise<Experiment> {
     return this.exclusive(id, "simulate", async () => {
       await this.runSimulate(id);
-      if ((await this.queuedStages(id)).length > 0) await this.stepBody(id);
+      if ((await this.queuedStages(id)).length > 0) await this.stepBody(id, { queuedOnly: true });
       return this.mustGet(id);
     });
   }
@@ -820,7 +833,7 @@ export class Orchestrator {
   async verify(id: string): Promise<Experiment> {
     return this.exclusive(id, "verify", async () => {
       await this.runVerify(id);
-      if ((await this.queuedStages(id)).length > 0) await this.stepBody(id);
+      if ((await this.queuedStages(id)).length > 0) await this.stepBody(id, { queuedOnly: true });
       return this.mustGet(id);
     });
   }
@@ -828,7 +841,7 @@ export class Orchestrator {
   async analyze(id: string): Promise<Experiment> {
     return this.exclusive(id, "analyze", async () => {
       await this.runAnalyze(id);
-      if ((await this.queuedStages(id)).length > 0) await this.stepBody(id);
+      if ((await this.queuedStages(id)).length > 0) await this.stepBody(id, { queuedOnly: true });
       return this.mustGet(id);
     });
   }
@@ -836,7 +849,7 @@ export class Orchestrator {
   async compare(id: string): Promise<Experiment> {
     return this.exclusive(id, "compare", async () => {
       await this.runCompare(id);
-      if ((await this.queuedStages(id)).length > 0) await this.stepBody(id);
+      if ((await this.queuedStages(id)).length > 0) await this.stepBody(id, { queuedOnly: true });
       return this.mustGet(id);
     });
   }
@@ -844,7 +857,7 @@ export class Orchestrator {
   async spec(id: string): Promise<Experiment> {
     return this.exclusive(id, "spec", async () => {
       await this.runSpec(id);
-      if ((await this.queuedStages(id)).length > 0) await this.stepBody(id);
+      if ((await this.queuedStages(id)).length > 0) await this.stepBody(id, { queuedOnly: true });
       return this.mustGet(id);
     });
   }
@@ -866,7 +879,7 @@ export class Orchestrator {
         }
       }
       const result = await this.runRebuild(id, opts);
-      if ((await this.queuedStages(id)).length > 0) await this.stepBody(id);
+      if ((await this.queuedStages(id)).length > 0) await this.stepBody(id, { queuedOnly: true });
       return result;
     });
   }
