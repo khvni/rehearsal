@@ -70,7 +70,6 @@
 .form-footer p { margin: 0; font-size: 14px; }
 .form-footer p > span { color: var(--pencil); font-size: 12px; }
 .landing-submit { display: inline-flex; align-items: center; justify-content: center; gap: 28px; flex-shrink: 0; padding: 16px 22px; min-height: 56px; border: 1px solid var(--proof); border-radius: 2px; background: var(--proof); color: var(--sheet); font-size: 15px !important; font-weight: 500 !important; transition: background-color 120ms, border-color 120ms, transform 160ms cubic-bezier(.23, 1, .32, 1); }
-.landing-submit:active:not(:disabled):not(:focus-visible) { transform: scale(.96); }
 .landing-submit:hover:not(:disabled) { background: var(--proof-hover); border-color: var(--proof-hover); }
 .landing-error { margin: 12px 0 0; color: var(--error); font-size: 14px; }
 .submit-error { padding: 0 24px 20px; }
@@ -188,7 +187,9 @@
   .sample-content { padding: 24px 12px; }
   .sample-nav { padding-inline: 12px; }
 }
+@media (prefers-reduced-motion: no-preference) {
+  .landing-submit:active:not(:disabled):not(:focus-visible) { transform: scale(.96); }
+}
 @media (prefers-reduced-motion: reduce) {
   .landing *, .landing *::before, .landing *::after { animation: none; transition: none; scroll-behavior: auto; }
-  .landing-submit:active:not(:disabled) { transform: none; }
 }
