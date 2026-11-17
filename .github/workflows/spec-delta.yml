@@ -9,8 +9,11 @@ on:
   pull_request:
     types: [opened, synchronize, reopened, ready_for_review]
     paths:
+      # The delta is produced by src/ (pipeline + dashboard), the evals fixtures
+      # it reads, and the golden summaries it diffs against — not unit/e2e tests.
       - "src/**"
-      - "tests/**"
+      - "tests/evals/**"
+      - "tests/golden/**"
       - "scripts/spec-delta.ts"
       - "package.json"
       - "package-lock.json"
