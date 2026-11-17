@@ -551,7 +551,7 @@ export class Orchestrator {
       if (stage === undefined) break;
       // A queued checkpoint resumes a request whose feed event was never
       // consumed — mark it so the same request isn't pulled again below.
-      if (cp?.queued === true && stage === cp.stage) {
+      if (head !== undefined && cp?.queued === true && stage === cp.stage) {
         await this.emit(id, "run", "queued-start", stage);
       }
       const carryDiscover = stage === "discover" && cp?.stage === "discover" ? cp.discover : undefined;
@@ -816,48 +816,66 @@ export class Orchestrator {
   async discover(id: string): Promise<Experiment> {
     return this.exclusive(id, "discover", async () => {
       const cp = (await this.mustGet(id)).runCheckpoint;
-      await this.runDiscover(id, cp?.stage === "discover" ? { resume: cp.discover, attempt: cp.attempt } : undefined);
-      if ((await this.queuedStages(id)).length > 0) await this.stepBody(id, { queuedOnly: true });
+      try {
+        await this.runDiscover(id, cp?.stage === "discover" ? { resume: cp.discover, attempt: cp.attempt } : undefined);
+      } finally {
+        if ((await this.queuedStages(id)).length > 0) await this.stepBody(id, { queuedOnly: true });
+      }
       return this.mustGet(id);
     });
   }
 
   async simulate(id: string): Promise<Experiment> {
     return this.exclusive(id, "simulate", async () => {
-      await this.runSimulate(id);
-      if ((await this.queuedStages(id)).length > 0) await this.stepBody(id, { queuedOnly: true });
+      try {
+        await this.runSimulate(id);
+      } finally {
+        if ((await this.queuedStages(id)).length > 0) await this.stepBody(id, { queuedOnly: true });
+      }
       return this.mustGet(id);
     });
   }
 
   async verify(id: string): Promise<Experiment> {
     return this.exclusive(id, "verify", async () => {
-      await this.runVerify(id);
-      if ((await this.queuedStages(id)).length > 0) await this.stepBody(id, { queuedOnly: true });
+      try {
+        await this.runVerify(id);
+      } finally {
+        if ((await this.queuedStages(id)).length > 0) await this.stepBody(id, { queuedOnly: true });
+      }
       return this.mustGet(id);
     });
   }
 
   async analyze(id: string): Promise<Experiment> {
     return this.exclusive(id, "analyze", async () => {
-      await this.runAnalyze(id);
-      if ((await this.queuedStages(id)).length > 0) await this.stepBody(id, { queuedOnly: true });
+      try {
+        await this.runAnalyze(id);
+      } finally {
+        if ((await this.queuedStages(id)).length > 0) await this.stepBody(id, { queuedOnly: true });
+      }
       return this.mustGet(id);
     });
   }
 
   async compare(id: string): Promise<Experiment> {
     return this.exclusive(id, "compare", async () => {
-      await this.runCompare(id);
-      if ((await this.queuedStages(id)).length > 0) await this.stepBody(id, { queuedOnly: true });
+      try {
+        await this.runCompare(id);
+      } finally {
+        if ((await this.queuedStages(id)).length > 0) await this.stepBody(id, { queuedOnly: true });
+      }
       return this.mustGet(id);
     });
   }
 
   async spec(id: string): Promise<Experiment> {
     return this.exclusive(id, "spec", async () => {
-      await this.runSpec(id);
-      if ((await this.queuedStages(id)).length > 0) await this.stepBody(id, { queuedOnly: true });
+      try {
+        await this.runSpec(id);
+      } finally {
+        if ((await this.queuedStages(id)).length > 0) await this.stepBody(id, { queuedOnly: true });
+      }
       return this.mustGet(id);
     });
   }
@@ -878,8 +896,12 @@ export class Orchestrator {
           await this.store.save(Experiment.parse(exp));
         }
       }
-      const result = await this.runRebuild(id, opts);
-      if ((await this.queuedStages(id)).length > 0) await this.stepBody(id, { queuedOnly: true });
+      let result: Experiment;
+      try {
+        result = await this.runRebuild(id, opts);
+      } finally {
+        if ((await this.queuedStages(id)).length > 0) await this.stepBody(id, { queuedOnly: true });
+      }
       return result;
     });
   }
