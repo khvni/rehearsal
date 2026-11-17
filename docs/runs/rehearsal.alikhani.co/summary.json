@@ -5,11 +5,6 @@
   "goal": "Understand what Rehearsal produces and find an example result",
   "status": "complete",
   "runner": "local-playwright",
-  "interpretationLimits": [
-    "Fixture-backed baseline; generated findings are not independently verified UX diagnoses.",
-    "The generic url-matches: result assertion does not match this product's route contract.",
-    "Event-oriented visitor questions misclassify the product; see spec.md for interpretation."
-  ],
   "config": {
     "maxStates": 4,
     "trajectories": 50,
