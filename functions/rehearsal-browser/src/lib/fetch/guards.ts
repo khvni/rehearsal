@@ -176,6 +176,52 @@ export function robotsAllowsPath(rules: RobotsRule[], pathAndQuery: string): boo
 
 const MAX_REDIRECTS = 3;
 
+// ── Self-origin fetches on Workers ───────────────────────────────────────────
+
+/** Origins this deployment serves — recorded from each incoming request's URL.
+ *  A Worker's fetch() to one of its own Custom Domains never reaches it (the
+ *  edge answers with a generated text/plain stub), so self-origin fetches go
+ *  through the WORKER_SELF_REFERENCE service binding, which always lands on
+ *  this Worker whatever the URL host — the same trick the run-step hop uses. */
+const selfOrigins = new Set<string>();
+
+/** Record an origin this deployment serves (called from each request's URL). */
+export function noteSelfOrigin(origin: string): void {
+  try {
+    selfOrigins.add(new URL(origin).origin);
+  } catch {
+    /* malformed origin — nothing to record */
+  }
+}
+
+/** `new URL(req.url).origin`, recorded as a self origin for fetchPublic. */
+export function requestOrigin(req: Request): string {
+  const origin = new URL(req.url).origin;
+  noteSelfOrigin(origin);
+  return origin;
+}
+
+function isSelfOrigin(url: URL): boolean {
+  return selfOrigins.has(url.origin) || process.env.REHEARSAL_ORIGIN === url.origin;
+}
+
+function onWorkers(): boolean {
+  return typeof navigator !== "undefined" && navigator.userAgent === "Cloudflare-Workers";
+}
+
+type SelfService = { fetch(input: string, init?: RequestInit): Promise<Response> };
+
+/** The Worker's WORKER_SELF_REFERENCE service binding (wrangler.jsonc), when present. */
+export async function selfService(): Promise<SelfService | undefined> {
+  try {
+    const { getCloudflareContext } = await import("@opennextjs/cloudflare");
+    const { env } = await getCloudflareContext({ async: true });
+    return (env as { WORKER_SELF_REFERENCE?: SelfService }).WORKER_SELF_REFERENCE;
+  } catch {
+    return undefined;
+  }
+}
+
 /** `fetch` that follows at most 3 redirects itself, re-validating every hop with `assertPublicUrl`.
  *  `requireSameOrigin` rejects a hop that leaves the start origin (matches the runner's
  *  `Redirected off-origin` check). `onHop` sees every response including redirect hops —
@@ -186,7 +232,10 @@ export async function fetchPublic(start: string, init: RequestInit = {}, opts?: 
   const startOrigin = target.origin;
   for (let hop = 0; ; hop++) {
     await politeDelay(target);
-    const res = await fetch(target, { ...init, redirect: "manual" });
+    const self = onWorkers() && isSelfOrigin(target) ? await selfService() : undefined;
+    const res = self
+      ? await self.fetch(target.toString(), { ...init, redirect: "manual" })
+      : await fetch(target, { ...init, redirect: "manual" });
     opts?.onHop?.(res);
     const location = res.headers.get("location");
     if (res.status < 300 || res.status >= 400 || !location) return res;

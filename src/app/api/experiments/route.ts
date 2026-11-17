@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { ExperimentConfig, ExperimentRequest } from "@/lib/contracts";
 import { InvalidTargetError } from "@/lib/errors";
 import { Orchestrator } from "@/lib/orchestrator";
+import { requestOrigin } from "@/lib/fetch/guards";
 import { clientIp, underDailyLimit } from "@/lib/ratelimit";
 import { displayFindings } from "@/lib/presentation";
 
@@ -23,6 +24,10 @@ function orchestrator(): Orchestrator {
 
 export async function POST(req: Request) {
   try {
+    // Register this deployment's origin before the first-page probe: a Worker's
+    // fetch() to its own Custom Domain never arrives, so the pipeline's fetches
+    // go through the self service binding once the origin is known.
+    const origin = requestOrigin(req);
     const json: unknown = await req.json().catch(() => undefined);
     if (!json || typeof json !== "object" || Array.isArray(json)) {
       return NextResponse.json({ error: "body must be a JSON object" }, { status: 400 });
@@ -75,7 +80,7 @@ export async function POST(req: Request) {
       return NextResponse.json({ ...result.experiment, dedupe: result.via });
     }
     // Return as soon as the record exists — the pipeline runs as a background job.
-    const experiment = await orch.scheduleRun(result.experiment.id, { origin: new URL(req.url).origin });
+    const experiment = await orch.scheduleRun(result.experiment.id, { origin });
     return NextResponse.json(experiment);
   } catch (e) {
     if (e instanceof InvalidTargetError) {

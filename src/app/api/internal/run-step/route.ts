@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { isExperimentId } from "@/lib/contracts";
 import { Orchestrator, StageInProgressError } from "@/lib/orchestrator";
 import { enqueueRun } from "@/lib/access";
+import { requestOrigin } from "@/lib/fetch/guards";
 import { runInBackground } from "@/lib/jobs";
 
 export const runtime = "nodejs";
@@ -33,7 +34,7 @@ export async function POST(req: Request) {
   if (!bearerOk && !tokenOk) {
     return NextResponse.json({ error: "unauthorized" }, { status: 401 });
   }
-  const origin = new URL(req.url).origin;
+  const origin = requestOrigin(req);
   await runInBackground(() =>
     enqueueRun(async () => {
       try {

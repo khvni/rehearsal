@@ -1,6 +1,9 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-vi.mock("@/lib/fetch/guards", () => ({ assertPublicUrl: vi.fn(async (u: string) => new URL(u)) }));
+vi.mock("@/lib/fetch/guards", () => ({
+  assertPublicUrl: vi.fn(async (u: string) => new URL(u)),
+  selfService: vi.fn(async () => cfEnv.WORKER_SELF_REFERENCE),
+}));
 const cfEnv: Record<string, unknown> = {};
 vi.mock("@opennextjs/cloudflare", () => ({ getCloudflareContext: async () => ({ env: cfEnv, ctx: {} }) }));
 
