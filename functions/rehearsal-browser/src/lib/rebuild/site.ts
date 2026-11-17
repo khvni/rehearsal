@@ -923,7 +923,7 @@ export function renderSiteDocument(exp: Experiment, path = "/", share?: { origin
     share ? shareMeta(exp, path, share.origin) : "",
     `<link rel="stylesheet" href="${esc(base)}/_assets/site.css"></head><body>`,
     '<aside class="rb-notice" aria-label="About this wireframe"><div class="rb-container rb-cluster">',
-    '<strong>Rehearsal wireframe</strong><span>Layout and interactions to test. Not a finished design or a verified improvement.</span>',
+    '<strong>Rehearsal wireframe</strong><span>Black and white on purpose: branding is stripped so you can judge the layout, wording and flow first. Not a finished design or a verified improvement.</span>',
     '<details class="rb-study"><summary>Study goal</summary>',
     `<p>${esc(exp.goal)}</p></details></div></aside>`,
     '<a class="rb-skip" href="#rb-main">Skip to content</a>',
