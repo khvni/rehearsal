@@ -18,7 +18,7 @@ pre-commit:
     # design-check.yml that does not need a browser. The rendered scan
     # (build + Playwright) stays in CI.
     - name: impeccable detect
-      glob: "src/app/**/*.{ts,tsx}"
+      glob: "src/app/**"
       run: sh .devin/skills/impeccable/scripts/impeccable detect {staged_files}
 
     - name: terraform fmt
@@ -52,7 +52,7 @@ pre-push:
         else
           code=$(printf '%s\n' "$files" | grep -E '\.(ts|tsx|mts|cts|mjs|cjs|js)$' || true)
           if [ -n "$code" ]; then
-            npx vitest related --passWithNoTests $code
+            CI=true npx vitest related --passWithNoTests $code
           else
             echo 'No code files changed; skipping tests.'
           fi
