@@ -1,10 +1,26 @@
 name: ci
 
+# Static gates (oxlint, eslint, tsc, skill-sync, function-lib, facts) run in the
+# lefthook pre-push hook, so they are checked before code ever reaches CI. This
+# workflow keeps only what hooks cannot cover: tests that need a real Chromium,
+# and diff-scoped vitest on PRs. The daily snapshot-health rebuild still runs the
+# full `npm run check` on main as a backstop for pushed-without-hooks commits.
+
 on:
   push:
     branches: [main]
+    paths-ignore:
+      - "docs/**"
+      - "*.md"
+      - "terraform/**"
+      - "factory/**"
   pull_request:
     types: [opened, synchronize, reopened, ready_for_review]
+    paths-ignore:
+      - "docs/**"
+      - "*.md"
+      - "terraform/**"
+      - "factory/**"
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
@@ -32,20 +48,6 @@ jobs:
           key: ${{ runner.os }}-node-modules-${{ hashFiles('package.json', 'package-lock.json') }}
       - run: npm ci
         if: steps.deps.outputs.cache-hit != 'true'
-      # Fastest gate first: oxlint is ~0.5s and fails on correctness errors.
-      # Warnings print but don't fail the job — eslint remains the source of truth.
-      - name: oxlint
-        run: npx --yes oxlint@latest src tests scripts
-      - name: Lint, typecheck and drift checks (parallel)
-        run: |
-          npm run lint &
-          npm run typecheck &
-          npm run check:skill-sync &
-          npm run check:function-lib &
-          npm run check:facts &
-          FAIL=0
-          for pid in $(jobs -p); do wait "$pid" || FAIL=1; done
-          exit $FAIL
       # e2e (and the Chromium it needs) is skipped when the diff can't change
       # what the browser exercises. Output is a count, never filenames.
       - name: Changed files
