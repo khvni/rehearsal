@@ -52,15 +52,6 @@ jobs:
             echo "rendered=true" >> "$GITHUB_OUTPUT"
           fi
 
-  static:
-    name: static scan (src/app)
-    if: github.event.pull_request.draft == false
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - name: Detect anti-patterns in source
-        run: $IMPECCABLE detect --github src/app
-
   rendered:
     name: rendered scan (/ and an experiment page)
     needs: changes

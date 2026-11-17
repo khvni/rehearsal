@@ -24,6 +24,7 @@
     "bench": "tsx scripts/bench.ts",
     "site": "tsx scripts/run-site.ts",
     "check": "npm run lint && npm run typecheck && npm run test && npm run eval && npm run check:skill-sync && npm run check:function-lib && npm run check:facts",
+    "postinstall": "lefthook install",
     "factory:sync": "tsx scripts/factory-sync.ts",
     "factory:check": "tsx scripts/factory-sync.ts --check"
   },
@@ -64,6 +65,8 @@
     "@types/react-dom": "^19.2.3",
     "eslint": "^9.39.1",
     "eslint-config-next": "^16.0.3",
+    "lefthook": "^2.2.2",
+    "oxlint": "^1.94.0",
     "tailwindcss": "^4.3.5",
     "tsx": "^4.20.6",
     "typescript": "^5.9.3",
