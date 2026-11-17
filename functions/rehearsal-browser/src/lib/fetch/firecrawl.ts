@@ -29,15 +29,16 @@ const QUOTA_RETRY_BUDGET_MS = 20_000;
 const QUOTA_COOLDOWN_MS = 60_000;
 
 // Quota and pacing apply to the API key (the account), not a client instance — module-level
-// so parallel crawls on this isolate share both instead of bursting together.
-let apiSlotAt = 0;
-let quotaExhaustedUntil = 0;
-const quotaExhausted = () => Date.now() < quotaExhaustedUntil;
+// keyed by apiKey so parallel crawls on this isolate share a slot instead of bursting together,
+// and a second account keeps working when one exhausts its quota.
+const apiSlotAt = new Map<string, number>();
+const quotaExhaustedUntil = new Map<string, number>();
+const quotaExhausted = (apiKey: string) => Date.now() < (quotaExhaustedUntil.get(apiKey) ?? 0);
 
-/** Test hook: forget the shared pacing slot and quota cooldown. */
+/** Test hook: forget the shared pacing slots and quota cooldowns. */
 export function resetFirecrawlRateLimit(): void {
-  apiSlotAt = 0;
-  quotaExhaustedUntil = 0;
+  apiSlotAt.clear();
+  quotaExhaustedUntil.clear();
 }
 
 /** Positive-int env override with a floor of 0 and a sane default (tests shrink the waits). */
@@ -147,14 +148,14 @@ export class FirecrawlClient implements FirecrawlClientPort {
 
   /** PageFetcher port — scrape and hand back the rendered html. `""` (no-op) without a key. */
   async fetchHtml(url: string, opts?: { signal?: AbortSignal }): Promise<string> {
-    if (!this.available || quotaExhausted()) return "";
+    if (!this.available || quotaExhausted(this.apiKey)) return "";
     const scraped = await this.scrape(url, opts);
     if (!scraped?.html) throw new Error(`Firecrawl scrape returned no HTML for ${url}`);
     return scraped.html;
   }
 
   async scrape(url: string, opts?: { signal?: AbortSignal }): Promise<FirecrawlScrape | null> {
-    if (!this.available || quotaExhausted()) return null;
+    if (!this.available || quotaExhausted(this.apiKey)) return null;
     const u = await assertPublicUrl(url); // every outbound call is egress-guarded
     await politeDelay(u);
     const json = await this.call(
@@ -166,7 +167,7 @@ export class FirecrawlClient implements FirecrawlClientPort {
   }
 
   async mapLinks(url: string, limit: number, opts?: { signal?: AbortSignal }): Promise<string[]> {
-    if (!this.available || quotaExhausted()) return [];
+    if (!this.available || quotaExhausted(this.apiKey)) return [];
     const u = await assertPublicUrl(url);
     await politeDelay(u);
     const json = await this.call(
@@ -185,7 +186,7 @@ export class FirecrawlClient implements FirecrawlClientPort {
   }
 
   async interact(url: string, actions: FirecrawlAction[], opts?: { signal?: AbortSignal }): Promise<FirecrawlScrape | null> {
-    if (!this.available || quotaExhausted()) return null;
+    if (!this.available || quotaExhausted(this.apiKey)) return null;
     const u = await assertPublicUrl(url);
     await politeDelay(u);
     const json = await this.call(
@@ -217,8 +218,8 @@ export class FirecrawlClient implements FirecrawlClientPort {
   private async paceApi(): Promise<void> {
     if (process.env.REHEARSAL_ALLOW_PRIVATE === "1") return; // hermetic tests
     const now = Date.now();
-    const slot = Math.max(now, apiSlotAt);
-    apiSlotAt = slot + this.apiMinIntervalMs;
+    const slot = Math.max(now, apiSlotAt.get(this.apiKey) ?? 0);
+    apiSlotAt.set(this.apiKey, slot + this.apiMinIntervalMs);
     if (slot > now) await new Promise((r) => setTimeout(r, slot - now));
   }
 
@@ -227,7 +228,7 @@ export class FirecrawlClient implements FirecrawlClientPort {
   }
 
   private async call(path: string, body: Record<string, unknown>, opts?: { signal?: AbortSignal }): Promise<Record<string, unknown>> {
-    if (quotaExhausted()) return {}; // callers treat "no data" as the clean fallback
+    if (quotaExhausted(this.apiKey)) return {}; // callers treat "no data" as the clean fallback
     let waitedMs = 0;
     for (let attempt = 0; ; attempt++) {
       await this.paceApi();
@@ -249,7 +250,7 @@ export class FirecrawlClient implements FirecrawlClientPort {
           }
           // The wait would outlive the run slice — exhaust instead of stalling the crawl.
         }
-        if (isQuotaStatus(res.status)) quotaExhaustedUntil = Date.now() + QUOTA_COOLDOWN_MS;
+        if (isQuotaStatus(res.status)) quotaExhaustedUntil.set(this.apiKey, Date.now() + QUOTA_COOLDOWN_MS);
         const label = res.status === 402 ? " Payment Required" : res.status === 429 ? " Too Many Requests" : "";
         throw new Error(`Firecrawl ${path} failed ${res.status}${label}${detail ? `: ${detail.slice(0, 200)}` : ""}`);
       }

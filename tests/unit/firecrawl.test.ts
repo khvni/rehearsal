@@ -253,6 +253,13 @@ describe("FirecrawlClient", () => {
     await expect(client.fetchHtml(URL)).resolves.toBe("");
     await expect(other.scrape(URL)).resolves.toBeNull();
     expect(calls).toBe(2);
+    // A different API key is a different account — its quota is untouched.
+    const otherAccount = new FirecrawlClient({ FIRECRAWL_API_KEY: "fc_other" }, async () => {
+      calls++;
+      return okResponse({ success: true, data: { rawHtml: "<html/>" } });
+    });
+    await expect(otherAccount.scrape(URL)).resolves.toMatchObject({ html: "<html/>" });
+    expect(calls).toBe(3);
   });
 
   it("throws when the API reports success:false", async () => {
