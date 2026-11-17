@@ -6,7 +6,7 @@ import { brandSignalsFromHtml, rollupBrand } from "@/lib/rebuild";
 import { extractPage } from "@/lib/browser/extract";
 import { parseHTML } from "linkedom";
 import { contrastRatio, parseColor } from "@/lib/rebuild/brand";
-import { repairSiteTokens } from "@/lib/rebuild/site-tokens";
+import { repairSiteTokens, WIREFRAME_TOKENS, WIREFRAME_NOTES } from "@/lib/rebuild/site-tokens";
 
 function fixture(count = 8): Experiment {
   return Experiment.parse({ configuration: {}, id: "exp_site", targetUrl: "https://example.com", goal: "Read resources", createdAt: "2026-01-01T00:00:00Z", status: "complete", graph: { states: Array.from({ length: count }, (_, i) => ({ stateId: `s${i}`, stateHash: `h${i}`, url: `https://example.com/${i || ""}`, pageTitle: `Page ${i}`, visibleText: "Useful information from the audited website for readers.", viewport: { name: "desktop", width: 1280, height: 900 }, actions: [] })), edges: [] }, spec: { targetUrl: "https://example.com", goal: "Read resources", generatedAt: "2026-01-01T00:00:00Z", summary: "Improve navigation", changes: [], rebuildPhases: [] } });
@@ -14,6 +14,56 @@ function fixture(count = 8): Experiment {
 const fake = (output = ""): LlmClient => ({ name: "openrouter", complete: vi.fn(async () => output) });
 
 describe("whole-site rebuild", () => {
+  it("accepts layout-only plans without giving the model control over theme tokens", async () => {
+    const exp = fixture(1);
+    for (const tokens of [undefined, null, { primary: "#ff00ff", radius: "99px", fontSans: "Comic Sans MS" }]) {
+      const site = await planSite(exp, fake(JSON.stringify({ tokens, pages: [{ path: "/", blocks: ["hero", "link-list"] }] })));
+      expect(site.plannerSource).toBe("llm");
+      expect(site.tokens).toEqual(WIREFRAME_TOKENS);
+    }
+  });
+
+  it.each([
+    ['<div class="rb-card"><div class="rb-card">Nested</div></div>', "nested cards"],
+    ['<div class="rb-cta-band">One</div><div class="rb-cta-band">Two</div>', "repeated CTA bands"],
+    ['<form><input placeholder="Search"><button>Search</button></form>', "nonfunctional prototype control"],
+  ])("retries then rejects wireframe anti-patterns: %s", async (markup, issue) => {
+    const exp = fixture(1), site = deterministicPlan(exp);
+    const llm = fake(`<section><div class="rb-container"><h1>Useful page</h1>${markup}</div></section>`);
+    const built = await buildPage(exp, site, site.pages[0], llm);
+    expect(llm.complete).toHaveBeenCalledTimes(2);
+    expect(vi.mocked(llm.complete).mock.calls[1][0]).toContain(issue);
+    expect(built.source).toBe("template");
+    expect(built.issues).toEqual([]);
+  });
+
+  it("uses corrected markup after the default slop check and keeps disclosure usable", async () => {
+    const exp = fixture(1), site = deterministicPlan(exp);
+    const llm = fake();
+    vi.mocked(llm.complete)
+      .mockResolvedValueOnce('<div class="rb-container"><p>OUR STORY</p><h1>Guide</h1></div>')
+      .mockResolvedValueOnce('<div class="rb-container"><h1>Guide</h1><details class="rb-faq"><summary>What should I bring?</summary><p>A laptop.</p></details><a href="/next">Next step</a></div>');
+    const built = await buildPage(exp, site, site.pages[0], llm);
+    expect(built.source).toBe("openrouter");
+    expect(built.issues).toEqual([]);
+    expect(built.html).toContain("<summary>What should I bring?</summary>");
+    expect(built.html).toContain("/experiments/exp_site/rb/next");
+  });
+
+  it("frames saved branded rebuilds honestly without rendering their logo or changing content", () => {
+    const exp = fixture(1), site = deterministicPlan(exp);
+    exp.goal = 'Find <script>alert("goal")</script> & compare workshops';
+    site.pages[0] = { ...site.pages[0], status: "built", html: '<div class="rb-container"><h1>Workshop directory</h1><p>Real content.</p></div>' };
+    exp.rebuild = { generatedAt: exp.createdAt, brand: { ...rollupBrand(exp.graph!.states), logoUrl: "https://example.com/logo.png" }, goals: [], pages: [], llm: "fixture", site };
+    const html = renderSiteDocument(exp);
+    expect(html).toContain("Rehearsal wireframe");
+    expect(html).toContain("Not a finished design or a verified improvement");
+    expect(html).toContain('href="#rb-main"');
+    expect(html).toContain("Real content.");
+    expect(html).not.toContain("<script>");
+    expect(html).not.toContain("logo.png");
+  });
+
   it.each([
     ["", 0],
     ["   ", 0],
@@ -198,12 +248,10 @@ describe("whole-site rebuild", () => {
     expect(site.pages[1]).toEqual(fallback.pages[1]);
   });
   it.each([
-    { tokens: null, pages: [{ path: "/", blocks: ["hero"] }] },
-    { tokens: { fontSans: "system-ui" }, pages: [{ path: "/", blocks: ["hero"] }] },
     { tokens: { background: "#ffffff" }, pages: null },
     { tokens: { background: "#ffffff" }, pages: [] },
     { tokens: { background: "#ffffff" }, pages: [{ path: "/", blocks: [{ type: "unknown" }] }] },
-  ])("falls back when essential planner tokens/pages/blocks are unusable: %j", async output => {
+  ])("falls back when essential planner pages/blocks are unusable: %j", async output => {
     const site = await planSite(fixture(1), fake(JSON.stringify(output)));
     expect(site.plannerSource).toBe("template");
     expect(site.plannerError).toMatch(/Planner (tokens|pages).*unusable/);
@@ -249,12 +297,11 @@ describe("whole-site rebuild", () => {
     expect(vi.mocked(llm.complete).mock.calls[1][0]).not.toContain("Fix these lint issues: undefined");
     expect(page).toMatchObject({ source: "template", status: "built", issues: [] });
   });
-  it("derives dark-brand surfaces and repairs deterministic and LLM token contrast", async () => {
+  it("uses one accessible wireframe system regardless of crawled and planner branding", async () => {
     const exp = fixture(1);
     exp.graph!.states[0].brand = { cssVars: { "--background": "#24292e", "--foreground": "#e1e4e8", "--primary": "#58b595" }, colors: ["#24292e", "#e1e4e8", "#58b595"], fonts: [], navItems: [] };
     const dark = deterministicPlan(exp);
-    expect(dark.tokens.background).toBe("#24292e");
-    expect(dark.tokens.muted).not.toBe("#f4f4f5");
+    expect(dark.tokens).toEqual(WIREFRAME_TOKENS);
     expect(dark.tokens.border).not.toBe(dark.tokens.background);
     const check = (tokens: typeof dark.tokens) => {
       for (const [foreground, background] of [["foreground", "background"], ["foreground", "muted"], ["foreground", "card"], ["mutedForeground", "muted"], ["mutedForeground", "background"], ["primaryForeground", "primary"]] as const)
@@ -264,6 +311,8 @@ describe("whole-site rebuild", () => {
     const broken = { ...dark.tokens, muted: "#f4f4f5", card: "#ffffff", mutedForeground: "#a3a3a3", primaryForeground: "#ffffff" };
     const planned = await planSite(exp, fake(JSON.stringify({ ...dark, tokens: broken })));
     expect(planned.plannerSource).toBe("llm");
+    expect(planned.tokens).toEqual(WIREFRAME_TOKENS);
+    expect(planned.designNotes).toContain(WIREFRAME_NOTES);
     check(planned.tokens);
     for (const background of ["#ffffff", "#000000", "#777777", "#ff0000", "rgb(40 48 60)", "transparent", "invalid", "rgba(0,0,0,0.1)"]) {
       const repaired = repairSiteTokens({ ...broken, background, foreground: background });
@@ -272,7 +321,7 @@ describe("whole-site rebuild", () => {
     }
     const css = siteStylesheet(broken);
     expect(css.slice(css.lastIndexOf(":root"))).not.toContain("--muted:#f4f4f5");
-    expect(css).toContain(".rb-section--muted,.rb-cta-band{color:var(--foreground)}");
+    expect(css).toBe(siteStylesheet({ ...broken, primary: "#ff0000", fontSans: "Brand Font" }));
   });
   it("bounds planner facts while keeping the complete page facts for implementation", async () => {
     const exp = fixture(1);
@@ -299,7 +348,7 @@ describe("whole-site rebuild", () => {
       const site = await planSite(exp, fake(output));
       expect(site).toMatchObject({ plannerSource: "template", plannerError: "parse error: invalid planner JSON" });
     }
-    expect((await planSite(exp, fake("{}"))).plannerError).toBe("Planner tokens are unusable");
+    expect((await planSite(exp, fake("{}"))).plannerError).toBe("Planner pages are unusable");
     const llm: LlmClient = { name: "fake", complete: async () => { throw new Error("Provider failed".repeat(100)); } };
     expect((await planSite(exp, llm)).plannerError).toHaveLength(320);
     const empty = await planSite(fixture(0), fake(JSON.stringify(deterministicPlan(fixture(0)))));
@@ -393,8 +442,9 @@ describe("whole-site rebuild", () => {
     const built = await buildPage(exp, site, site.pages[0], llm);
     expect(llm.complete).toHaveBeenCalledTimes(2);
     expect(built.html).not.toMatch(/<style|style=|<script|evil.test/);
-    expect(built.html).toContain('/experiments/exp_site/rb/docs#part');
-    expect(built.issues).toContain("eyebrow label");
+    expect(built.source).toBe("template");
+    expect(built.html).not.toContain("STORY");
+    expect(built.issues).toEqual([]);
     for (const output of ["", "{bad json}", "x".repeat(40000)]) {
       const fallback = await buildPage(exp, site, site.pages[0], fake(output));
       expect(fallback.source).toBe("template"); expect(fallback.html).toContain("Page 0");

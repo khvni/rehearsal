@@ -1,13 +1,15 @@
 name: design-check
 
-# Impeccable anti-pattern scan for Rehearsal's own dashboard UI (src/app).
-# It never runs against, or feeds into, the sites Rehearsal audits. See docs/design-check.md.
+# Impeccable scans our dashboard and generated wireframes, never audited sites.
 
 on:
   pull_request:
     paths:
       - "src/app/**"
       - "src/components/**"
+      - "src/lib/rebuild/**"
+      - "scripts/check-rebuild-design.ts"
+      - "package.json"
       - "PRODUCT.md"
       - ".impeccable/**"
       - ".devin/skills/impeccable/**"
@@ -51,6 +53,8 @@ jobs:
         run: sudo sysctl -w kernel.apparmor_restrict_unprivileged_userns=0
       - name: Use Playwright's Chromium for the detector
         run: echo "IMPECCABLE_BROWSER=$(node -p "require('playwright').chromium.executablePath()")" >> "$GITHUB_ENV"
+      - name: Scan generated wireframes at desktop and mobile sizes
+        run: npm run design:check:rebuild -- --rendered
       - run: npm run build
       - name: Start fixture server and dashboard
         run: |

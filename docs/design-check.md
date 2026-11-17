@@ -1,11 +1,11 @@
 # Design check (Impeccable)
 
 The design check runs [Impeccable](https://impeccable.style/docs)'s deterministic anti-pattern
-detector against **Rehearsal's own dashboard** (`src/app/`). It catches generic, AI-generated
-design tells in our UI before they merge.
+detector against **Rehearsal's dashboard** (`src/app/`) and **generated wireframes** (`/rb/`).
+It catches generic, AI-generated design patterns in the interfaces we produce.
 
-**Scope.** This guards the dashboard we build. It is not part of Rehearsal's pipeline: it never
-scans the sites Rehearsal audits, and nothing it reports becomes a Rehearsal finding or appears in
+**Scope.** This guards our own output. It never scans original audited sites, and nothing it
+reports becomes a visitor-usability finding or appears in
 `spec.md`. Rehearsal's own output is about visitor journeys and is graded against
 `docs/krug-principles.md` (the internal rubric canon).
 
@@ -15,6 +15,8 @@ scans the sites Rehearsal audits, and nothing it reports becomes a Rehearsal fin
 | --- | --- | --- | --- |
 | Static | `src/app/**` source (`.tsx`, `.ts`, `.css`) | pattern rules that read source: side-stripe borders, gradient text, overused fonts, bounce easing, and similar | yes |
 | Rendered | `/` and a fixture-run `/experiments/<id>` | everything above plus rules that need layout: contrast, text below 12px, line length, heading order, nested cards, repeated labels | yes |
+| Generated wireframes | Synthetic directory, comparison/disclosure, reading page and deterministic fallback | Actual Impeccable CLI, static or rendered at desktop and mobile sizes | yes |
+| Every generated page | Rebuild agent prompts + Worker-safe HTML guard | Eyebrows, gradient text, nested cards, repeated CTA bands, missing/duplicate h1, fake controls, excessive link dumps and rebuild containment | retry once, then deterministic wireframe fallback |
 
 `npx impeccable detect --list-rules` prints the full rule catalog. `PRODUCT.md` at the repo root
 records the dashboard's users, purpose, and design commitments; Impeccable's skill reads it as
@@ -27,6 +29,8 @@ Exit codes: `0` clean, `2` findings, `1` the target could not be scanned. Adviso
 
 ```sh
 npm run design:check            # static scan of src/app; fails on findings
+npm run design:check:rebuild    # generate synthetic wireframes and scan their HTML/CSS
+npm run design:check:rebuild -- --rendered # actual output at 1280px and 390px
 ```
 
 Rendered scan, with the dashboard running:
@@ -58,7 +62,7 @@ it against `scripts/engine-checksums.txt`. Set `IMPECCABLE_BIN` to use a preinst
 ## CI
 
 `.github/workflows/design-check.yml` runs on pull requests that touch `src/app/**`,
-`src/components/**`, `PRODUCT.md`, or the Impeccable config.
+`src/components/**`, `src/lib/rebuild/**`, the wireframe check script, `PRODUCT.md`, or the Impeccable config.
 
 - **static**: `detect --github src/app`, which prints findings as PR annotations. Blocking.
 - **rendered**: builds and starts the app, scans `/`, then serves the fixture on loopback, runs a
@@ -66,6 +70,24 @@ it against `scripts/engine-checksums.txt`. Set `IMPECCABLE_BIN` to use a preinst
   blocking. If the fixture experiment itself fails to complete, the experiment-page scan is skipped
   with a `::notice` instead of failing: pipeline health is `ci.yml`'s job, and a broken pipeline
   should not show up as a design failure.
+- The rendered job first builds four synthetic wireframe documents through the real rebuild
+  builder and shell, then runs Impeccable over each at desktop and mobile sizes. This requires
+  no server, paid model, Browserbase session or external site. Failure to scan is a failure.
+
+## Rebuild agent default
+
+The planner and implementer both receive Impeccable's slop checklist by default, alongside
+Krug, emil-design-eng, make-interfaces-feel-better and shadcn semantics. The theme is fixed in
+code, not chosen by the model. Before a generated page is saved, a Worker-safe structural check
+retries flagged output once, then falls back instead of publishing the least-bad attempt.
+
+The Impeccable binary cannot execute inside a Cloudflare Worker. The runtime guard is a focused,
+deterministic subset, not a claim to run the full CLI per live generation. CI and local review
+use the actual CLI on generated output; rendered checks cover the shared CSS and representative
+layouts, not every possible future LLM response. For a particular live proposal, pass its
+`/experiments/<id>/rb/` URL to the launcher for a full rendered review.
+
+See [Wireframe system](rebuild-wireframes.md) for the output language and its boundaries.
 
 ## Fixing a finding
 

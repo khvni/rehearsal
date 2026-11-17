@@ -1,6 +1,23 @@
 import type { RebuildSite } from "../contracts";
 import { contrastRatio, luminance, parseColor } from "./brand";
 
+/** Rebuilds test information architecture, not a replacement brand identity. */
+export const WIREFRAME_TOKENS: Readonly<RebuildSite["tokens"]> = Object.freeze({
+  background: "#ffffff",
+  foreground: "#202020",
+  primary: "#202020",
+  primaryForeground: "#ffffff",
+  muted: "#f5f5f5",
+  mutedForeground: "#595959",
+  border: "#b4b4b4",
+  ring: "#202020",
+  card: "#ffffff",
+  radius: "0.25rem",
+  fontSans: "system-ui, sans-serif",
+});
+
+export const WIREFRAME_NOTES = "Use Rehearsal's shared black-and-white wireframe system. Show real content, navigation, grouping and a clear next action. Typography, spacing, borders and underlined links explain hierarchy; no brand styling, decorative imagery or ornamental sections. Layout follows the visitor goal and spec, not a universal marketing template. This is a proposed UX layout, not a verified improvement or a finished visual design.";
+
 function opaque(value: string, fallback: string): string {
   const color = parseColor(
     ({ black: "#000000", white: "#ffffff" } as Record<string, string>)[value] ??
