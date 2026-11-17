@@ -19,6 +19,7 @@ import { AgentActivity } from "@/components/agent-activity";
 import { StaleRefreshWarning } from "@/components/stale-refresh-warning";
 import { displayFindings, failureMessage, hasBrowserEvidence, hasUsablePreview } from "@/lib/presentation";
 import { HeatLegend, StateGraph, visitCounts } from "./state-graph";
+import { WhereStuck } from "./stuck";
 
 const REQUIRED_STAGES = ["discover", "simulate", "verify", "analyze", "compare", "spec"] as const;
 const STAGES = [...REQUIRED_STAGES, "rebuild"] as const;
@@ -31,12 +32,13 @@ const STATUS_STAGE: Partial<Record<Experiment["status"], (typeof STAGES)[number]
   comparing: "compare",
   rebuilding: "rebuild",
 };
-type Section = "graph" | "evidence" | "findings" | "comparisons" | "spec";
+type Section = "graph" | "journeys" | "evidence" | "findings" | "comparisons" | "spec";
 
 const RUNNING_STATUSES = ["queued", "discovering", "simulating", "verifying", "analyzing", "comparing", "rebuilding"];
 
 const SECTION_STAGES: Record<Section, { stages: Stage[]; statuses: string[] }> = {
   graph: { stages: ["discover", "simulate"], statuses: ["discovering", "simulating"] },
+  journeys: { stages: ["simulate"], statuses: ["simulating"] },
   evidence: { stages: ["verify"], statuses: ["verifying"] },
   findings: { stages: ["analyze"], statuses: ["analyzing"] },
   comparisons: { stages: ["compare"], statuses: ["comparing"] },
@@ -479,6 +481,19 @@ export default function ExperimentPage() {
           <div className="graph-foot">
             {exp.simulations.length > 0 ? <HeatLegend max={maxVisits} /> : <span>Run simulate to shade the busy states.</span>}
           </div>
+        </Panel>
+
+        <Panel
+          title="Where visitors got stuck"
+          className="span-2"
+          meta={exp.simulations.length > 0 && <span className="tabular">{exp.simulations.length.toLocaleString()} journeys · {exp.simulations.filter((s) => s.outcome === "goal-reached").length.toLocaleString()} reached</span>}
+          busy={busy("journeys")}
+          loadingPreview={<SkeletonRows />}
+          emptyAction={stageDone.discover ? runButton("simulate") : undefined}
+          state={panelState("journeys", exp.simulations.length > 0, "Walking journeys…", "Run simulate to walk the journeys.")}
+        >
+          <WhereStuck graph={exp.graph} simulations={exp.simulations} />
+          <p className="card-meta">Simulated journeys predict where visitors stall; they are not recordings of real users.</p>
         </Panel>
 
         {exp.swarm && (
