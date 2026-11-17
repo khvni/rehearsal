@@ -62,14 +62,17 @@ it against `scripts/engine-checksums.txt`. Set `IMPECCABLE_BIN` to use a preinst
 ## CI
 
 `.github/workflows/design-check.yml` runs on pull requests that touch `src/app/**`,
-`src/components/**`, `src/lib/rebuild/**`, the wireframe check script, `PRODUCT.md`, or the Impeccable config.
+`src/components/**`, `src/lib/rebuild/**`, the wireframe check script, `package.json`, `PRODUCT.md`,
+or the Impeccable config.
 
 - **static**: `detect --github src/app`, which prints findings as PR annotations. Blocking.
 - **rendered**: builds and starts the app, scans `/`, then serves the fixture on loopback, runs a
   full experiment through the API, and scans its page with Playwright's Chromium. Both scans are
   blocking. If the fixture experiment itself fails to complete, the experiment-page scan is skipped
   with a `::notice` instead of failing: pipeline health is `ci.yml`'s job, and a broken pipeline
-  should not show up as a design failure.
+  should not show up as a design failure. A `changes` job diffs the PR first and skips this
+  ~5-minute job entirely when the change only touched docs or config that the workflow-level
+  paths filter still matches.
 - The rendered job first builds four synthetic wireframe documents through the real rebuild
   builder and shell, then runs Impeccable over each at desktop and mobile sizes. This requires
   no server, paid model, Browserbase session or external site. Failure to scan is a failure.
@@ -77,8 +80,8 @@ it against `scripts/engine-checksums.txt`. Set `IMPECCABLE_BIN` to use a preinst
 ## Rebuild agent default
 
 The planner and implementer both receive Impeccable's slop checklist by default, alongside
-Krug, emil-design-eng, make-interfaces-feel-better and shadcn semantics. The theme is fixed in
-code, not chosen by the model. Before a generated page is saved, a Worker-safe structural check
+Krug, emil-design-eng, make-interfaces-feel-better, shadcn semantics and ux-copywriting.
+The theme is fixed in code, not chosen by the model. Before a generated page is saved, a Worker-safe structural check
 retries flagged output once, then falls back instead of publishing the least-bad attempt.
 
 The Impeccable binary cannot execute inside a Cloudflare Worker. The runtime guard is a focused,

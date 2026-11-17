@@ -17,8 +17,9 @@ properties; no component library or utility framework. React Flow renders the de
 ## Users
 
 Product engineers, designers, and growth or UX leads who own a public website and want to know
-where real visitors get stuck before they ship a change. They arrive with a URL and one goal
-("can someone still register?"), run the pipeline, and read the evidence. Sessions are short and
+where real visitors get stuck before they ship a change. They arrive with a URL and usually one
+goal ("can someone still register?"; left blank, Rehearsal suggests a goal from the page itself),
+run the pipeline, and read the evidence. Sessions are short and
 task-driven; they come back to an experiment to compare a variant or hand the spec to whoever
 builds the fix.
 
