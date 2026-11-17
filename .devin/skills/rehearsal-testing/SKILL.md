@@ -145,3 +145,24 @@ When a fetched gap already has a graph state (for example, outside the initial s
 - Every new eval file → list it here (filename must appear verbatim).
 - Determinism is a feature: never add wall-clock or network dependence to evals.
 - Findings must cite a usability principle key from docs/krug-principles.md.
+
+## Local workerd testing (wrangler dev --local)
+
+- Serve the built Worker locally (exercises service bindings + ctx.waitUntil run
+  steps that `npm run dev` doesn't have):
+  `npm run build && REHEARSAL_ALLOW_PRIVATE=1 npx wrangler dev --local --port 8799 --var REHEARSAL_ALLOW_PRIVATE:1`
+  `REHEARSAL_ALLOW_PRIVATE` makes assertPublicUrl accept localhost targets.
+- POST /api/experiments create limit is CREATE_PER_IP_PER_DAY=3, bucketed by
+  `clientIp` = cf-connecting-ip → else x-forwarded-for → else "anonymous". UI
+  submits from the browser and bare curl share the "anonymous" bucket, so the
+  limit is easy to exhaust in a test session. To create extra runs via the API,
+  send a distinct `cf-connecting-ip` header (e.g. `-H 'cf-connecting-ip:
+  203.0.113.77'`); wrangler dev honors it.
+- Site dedupe (normalizeSiteUrl) returns the existing experiment for an
+  already-rehearsed URL before spending create budget — a repeat submit
+  navigates to the old run instead of starting one. A query param
+  (`?test=1`) produces a new siteKey on the same origin.
+- Self-origin fetches (fetchPublic → WORKER_SELF_REFERENCE) match origins
+  recorded from incoming request URLs plus REHEARSAL_ORIGIN. Posting to a URL
+  whose origin the run should treat as "self" registers it — e.g. submit the
+  rehearsal form against the same custom domain the Worker serves.
