@@ -867,7 +867,7 @@ a:hover { text-decoration-color: currentColor; }
 .swarm-count { color: var(--muted); text-align: right; }
 
 /* Where visitors got stuck */
-.stuck { display: grid; gap: var(--s-4); }
+.stuck { display: grid; grid-template-columns: minmax(0, 1fr); gap: var(--s-4); }
 .stuck-headline { display: flex; align-items: baseline; gap: var(--s-3); }
 .stuck-big { font-size: var(--fs-28); font-weight: 600; color: var(--text); }
 .stuck-big-label { font-size: var(--fs-12); color: var(--muted); }
@@ -883,14 +883,17 @@ a:hover { text-decoration-color: currentColor; }
 .stuck-fill-blue { background: var(--flow-500); }
 .stuck-fill-gray { background: var(--border-strong); }
 .stuck-section { display: grid; gap: var(--s-2); }
-.stuck-stops, .stuck-loops, .stuck-paths { display: grid; gap: var(--s-2); margin: 0; padding: 0; list-style: none; }
+.stuck-stops, .stuck-loops, .stuck-paths { display: grid; grid-template-columns: minmax(0, 1fr); gap: var(--s-2); margin: 0; padding: 0; list-style: none; }
+.stuck-stops > *, .stuck-loops > *, .stuck-paths > * { min-width: 0; }
 .stuck-stop { display: grid; grid-template-columns: minmax(160px, 1fr) 2fr minmax(48px, auto); align-items: center; gap: var(--s-3); font-size: var(--fs-12); }
-.stuck-stop-name { display: grid; min-width: 0; }
+.stuck-stop-name { display: grid; grid-template-columns: minmax(0, 1fr); min-width: 0; }
 .stuck-stop-title { color: var(--text-2); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .stuck-stop-path { font-size: var(--fs-caption-compact, 11px); color: var(--muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .stuck-stop-outcomes { display: flex; flex-wrap: wrap; gap: var(--s-1); }
 .stuck-stop-count { color: var(--muted); text-align: right; }
 .stuck-loop { display: flex; justify-content: space-between; gap: var(--s-3); font-size: var(--fs-12); }
+.stuck-loop .stuck-stop-title { flex: 1 1 auto; min-width: 0; }
+.stuck-loop .swarm-count { flex-shrink: 0; white-space: nowrap; }
 .stuck-path { display: grid; grid-template-columns: minmax(40px, auto) 1fr auto; align-items: center; gap: var(--s-3); font-size: var(--fs-12); }
 .stuck-path-count { color: var(--muted); }
 .stuck-path-steps { display: flex; flex-wrap: wrap; align-items: center; gap: var(--s-1) var(--s-2); }
@@ -898,8 +901,10 @@ a:hover { text-decoration-color: currentColor; }
 .stuck-path-step > span:last-child { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 220px; }
 .stuck-path-action { color: var(--muted); font-size: var(--fs-caption-compact, 11px); }
 @media (max-width: 720px) {
-  .stuck-stop { grid-template-columns: 1fr; gap: var(--s-1); }
-  .stuck-stop-count { text-align: left; }
+  .stuck-stop { display: flex; flex-wrap: wrap; align-items: baseline; gap: var(--s-1) var(--s-2); }
+  .stuck-stop-name { flex: 1 1 auto; min-width: 0; }
+  .stuck-stop-count { order: 2; margin-left: auto; text-align: right; }
+  .stuck-stop-outcomes { order: 3; flex-basis: 100%; }
   .stuck-path { grid-template-columns: 1fr; gap: var(--s-1); }
 }
 
