@@ -31,7 +31,7 @@ jobs:
   changes:
     name: Detect rendered-relevant changes
     if: github.event.pull_request.draft == false
-    runs-on: ${{ (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository) && 'self-hosted' || 'ubuntu-latest' }}  # fork PRs stay on hosted (free on public repos, keeps untrusted code off the self-hosted Mac mini)
+    runs-on: ubuntu-latest
     outputs:
       rendered: ${{ steps.filter.outputs.rendered }}
     steps:
@@ -55,7 +55,7 @@ jobs:
   static:
     name: static scan (src/app)
     if: github.event.pull_request.draft == false
-    runs-on: ${{ (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository) && 'self-hosted' || 'ubuntu-latest' }}  # fork PRs stay on hosted (free on public repos, keeps untrusted code off the self-hosted Mac mini)
+    runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
       - name: Detect anti-patterns in source
@@ -65,7 +65,7 @@ jobs:
     name: rendered scan (/ and an experiment page)
     needs: changes
     if: needs.changes.outputs.rendered == 'true'
-    runs-on: ${{ (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository) && 'self-hosted' || 'ubuntu-latest' }}  # fork PRs stay on hosted (free on public repos, keeps untrusted code off the self-hosted Mac mini)
+    runs-on: ubuntu-latest
     env:
       REHEARSAL_ALLOW_PRIVATE: "1"
       NEXT_TELEMETRY_DISABLED: "1"

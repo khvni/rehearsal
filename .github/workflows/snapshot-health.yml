@@ -23,7 +23,7 @@ permissions:
 jobs:
   snapshot:
     name: snapshot
-    runs-on: ${{ (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository) && 'self-hosted' || 'ubuntu-latest' }}  # fork PRs stay on hosted (free on public repos, keeps untrusted code off the self-hosted Mac mini)
+    runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
       - uses: actions/checkout@v4
