@@ -4,12 +4,14 @@ name: design-check
 
 on:
   pull_request:
+    types: [opened, synchronize, reopened, ready_for_review]
     paths:
       - "src/app/**"
       - "src/components/**"
       - "src/lib/rebuild/**"
       - "scripts/check-rebuild-design.ts"
       - "package.json"
+      - "package-lock.json"
       - "PRODUCT.md"
       - ".impeccable/**"
       - ".devin/skills/impeccable/**"
@@ -28,6 +30,7 @@ env:
 jobs:
   changes:
     name: Detect rendered-relevant changes
+    if: github.event.pull_request.draft == false
     runs-on: ubuntu-latest
     outputs:
       rendered: ${{ steps.filter.outputs.rendered }}
@@ -51,6 +54,7 @@ jobs:
 
   static:
     name: static scan (src/app)
+    if: github.event.pull_request.draft == false
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
