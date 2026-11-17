@@ -93,7 +93,7 @@ jobs:
             if (failed) {
               const logUrl = job ? `${job.html_url}#step:${failed.number}:1` : runUrl;
               const body = [
-                `\`main\` failed the hourly hermetic rebuild (\`.github/workflows/snapshot-health.yml\`).`,
+                `\`main\` failed the daily hermetic rebuild (\`.github/workflows/snapshot-health.yml\`).`,
                 ``,
                 `- **Failing step:** ${failed.name}`,
                 `- **Commit:** ${context.sha}`,
