@@ -22,7 +22,7 @@ test.describe("landing onboarding", () => {
 
   test("starts empty, validates the URL, fills a goal and retains inputs after a failed request", async ({ page }) => {
     await page.goto(baseUrl);
-    const address = page.getByLabel("Your page URL");
+    const address = page.getByLabel("Website URL");
     await expect(address).toHaveValue("");
     await page.getByRole("button", { name: "Start rehearsal", exact: true }).click();
     await expect(page.locator("#url-error")).toContainText("Enter a public website address");
@@ -55,7 +55,7 @@ test.describe("landing onboarding", () => {
     });
     await page.route("**/api/experiments/landing-created", (route) => route.fulfill({ status: 404, json: { error: "fixture" } }));
     await page.goto(baseUrl);
-    await page.getByLabel("Your page URL").fill("example.com");
+    await page.getByLabel("Website URL").fill("example.com");
     await page.getByRole("button", { name: "Start rehearsal", exact: true }).click();
     await expect(page.getByRole("button", { name: "Starting rehearsal…", exact: true })).toBeDisabled();
     await page.locator("#start").evaluate((form: HTMLFormElement) => form.requestSubmit());
@@ -67,13 +67,14 @@ test.describe("landing onboarding", () => {
   test("switches the illustrative layout and fits narrow screens", async ({ page }) => {
     await page.setViewportSize({ width: 375, height: 812 });
     await page.goto(baseUrl);
-    await expect(page.getByText("This is an illustration", { exact: false })).toBeVisible();
-    await page.getByRole("button", { name: "Wireframe proposal", exact: true }).click();
-    await expect(page.getByRole("button", { name: "Wireframe proposal", exact: true })).toHaveAttribute("aria-pressed", "true");
+    await expect(page.getByText("Why black and white?", { exact: true })).toBeVisible();
+    await expect(page.locator("figcaption")).toContainText("not a tested result");
+    await page.getByRole("button", { name: "Proposed wireframe", exact: true }).click();
+    await expect(page.getByRole("button", { name: "Proposed wireframe", exact: true })).toHaveAttribute("aria-pressed", "true");
     await expect(page.getByText("$12 / month", { exact: true })).toBeVisible();
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
     await page.getByRole("button", { name: "Before", exact: true }).click();
-    await expect(page.getByText("A visitor wants a price.", { exact: false })).toBeVisible();
+    await expect(page.getByText("Visitors have to look elsewhere", { exact: false })).toBeVisible();
   });
 
   test("recovers the recent list and reveals older public runs", async ({ page }) => {
@@ -88,7 +89,7 @@ test.describe("landing onboarding", () => {
     await expect(page.locator(".recent-state[role='alert']")).toContainText("Could not load recent rehearsals");
     failed = false;
     await page.getByRole("button", { name: "Try again", exact: true }).click();
-    await expect(page.getByRole("link", { name: "Explore an example run" })).toHaveAttribute("href", "/experiments/landing-0");
+    await expect(page.getByRole("link", { name: "View an example rehearsal" })).toHaveAttribute("href", "/experiments/landing-0");
     await expect(page.locator(".recent-list li")).toHaveCount(4);
     await expect(page.locator(".recent-list li").first()).toContainText("site4.example.com");
     await expect(page.locator(".recent-list")).not.toContainText("site0.example.com");
