@@ -35,6 +35,10 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
   const goal = ExperimentGoal.optional().safeParse(body?.goal ?? undefined);
   if (!goal.success) return NextResponse.json({ error: "invalid goal" }, { status: 400 });
   const orch = orchestrator();
+  // Register this deployment's origin before rescan's signature probes: a
+  // Worker's fetch() to its own Custom Domain never reaches it, so
+  // self-origin probes must go through the self service binding.
+  const origin = requestOrigin(req);
   try {
     // A changed site or goal re-runs the pipeline, so rescans share the stage route's daily run budget.
     if (!presentsAccessToken(req)) {
@@ -45,7 +49,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
     }
     const { experiment, report } = await orch.rescan(id, { goal: goal.data });
     if (report.restarted) {
-      await orch.scheduleRun(id, { skipDiscover: !report.changed, origin: requestOrigin(req) });
+      await orch.scheduleRun(id, { skipDiscover: !report.changed, origin });
     }
     return NextResponse.json({ ...experiment, rescan: report }, { status: report.restarted ? 202 : 200 });
   } catch (e) {
