@@ -199,9 +199,10 @@ export function WhereStuck({
                   <span className="run-path stuck-path-steps">
                     {p.steps.map((step, si) => {
                       const st = stateById.get(step.stateId);
-                      // A step's actionId is the action taken on the previous page
-                      // that led to this one.
-                      const via = si > 0 ? actionById.get(p.steps[si - 1].actionId ?? "") : undefined;
+                      // simulateTrajectories stores the incoming action on the
+                      // destination step, so this step's own actionId is the
+                      // action that led to it.
+                      const via = si > 0 ? actionById.get(step.actionId ?? "") : undefined;
                       return (
                         <span key={si} className="stuck-path-step">
                           {si > 0 && <ArrowIcon size={12} className="arrow" />}
