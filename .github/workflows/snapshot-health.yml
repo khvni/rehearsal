@@ -1,10 +1,10 @@
 name: snapshot-health
 
-# Hourly hermetic rebuild of main from scratch. Red → one `first-responder` issue
+# Daily hermetic rebuild of main from scratch. Red → one `first-responder` issue
 # (a Devin Automation picks it up); green → that issue is closed. See docs/snapshot-health.md.
 on:
   schedule:
-    - cron: "7 * * * *"
+    - cron: "7 7 * * *"
   workflow_dispatch:
   pull_request:
     paths:
@@ -30,8 +30,14 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 22
+          cache: npm
       - name: npm ci
         run: npm ci
+      - uses: actions/cache@v4
+        id: playwright
+        with:
+          path: ~/.cache/ms-playwright
+          key: ${{ runner.os }}-playwright-${{ hashFiles('package-lock.json') }}
       - name: Install Chromium
         run: npx playwright install --with-deps chromium
       - name: Allow the Chromium sandbox (Ubuntu 24.04 restricts user namespaces)
