@@ -33,10 +33,10 @@ function LayoutExample() {
   return (
     <figure className="layout-example">
       <div className="example-toolbar">
-        <span>Illustrative example · pricing page</span>
+        <span>Example pricing page</span>
         <div className="example-switch" role="group" aria-label="Example layout">
           <button type="button" aria-pressed={!proposed} onClick={() => setProposed(false)}>Before</button>
-          <button type="button" aria-pressed={proposed} onClick={() => setProposed(true)}>Wireframe proposal</button>
+          <button type="button" aria-pressed={proposed} onClick={() => setProposed(true)}>Proposed wireframe</button>
         </div>
       </div>
       <div className={`example-canvas ${proposed ? "is-proposed" : ""}`}>
@@ -53,11 +53,10 @@ function LayoutExample() {
           </div>
         </div>
         <div className="example-annotation" role="status">
-          <span className="annotation-number">{proposed ? "02" : "01"}</span>
-          <p>{proposed ? "Put price and next action where the decision happens." : "A visitor wants a price. The page asks them to guess."}</p>
+          <p>{proposed ? "Visitors can compare prices and choose a plan in one place." : "Visitors have to look elsewhere to find prices or choose a plan."}</p>
         </div>
       </div>
-      <figcaption>Explore layout and interaction, without getting distracted by a new visual design. This is an illustration, not a measured result.</figcaption>
+      <figcaption><strong>Why black and white?</strong> A wireframe leaves out branding so you can review the layout, wording, and flow first. This fictional example illustrates a proposed fix, not a tested result.</figcaption>
     </figure>
   );
 }
@@ -144,28 +143,28 @@ export default function Home() {
         <main id="main-content">
           <section className="landing-intro" aria-labelledby="landing-title">
             <div className="intro-heading">
-              <h1 id="landing-title">A clearer path.<br /><span>Before you ship.</span></h1>
+              <h1 id="landing-title">Find where<br /><span>visitors get stuck.</span></h1>
               <div className="intro-copy">
-                <p>Find where visitors get stuck on your website.</p>
-                <p>Get usability findings and a fix plan, then explore a wireframe proposal. Start with a public page and a visitor&rsquo;s goal.</p>
-                <a href={example ? `/experiments/${example.id}` : "#how-it-works"}>{example ? "Explore an example run" : "See how it works"}<ArrowIcon size={16} /></a>
+                <p>Check your website against a visitor&rsquo;s goal.</p>
+                <p>Get a list of usability problems, the evidence behind them, and a plan for fixing them.</p>
+                <a href={example ? `/experiments/${example.id}` : "#how-it-works"}>{example ? "View an example rehearsal" : "See how it works"}<ArrowIcon size={16} /></a>
               </div>
             </div>
             <form id="start" className="rehearsal-form" onSubmit={start} aria-busy={busy} aria-labelledby="start-title" noValidate>
-              <div className="form-heading"><h2 id="start-title">Start a rehearsal</h2><span>01 / Give us a task</span></div>
+              <div className="form-heading"><h2 id="start-title">Start a rehearsal</h2><span>Public websites only</span></div>
               <fieldset disabled={busy}>
                 <legend className="sr-only">Website and visitor goal</legend>
                 <div className="form-fields">
                   <div className="landing-field">
-                    <label htmlFor="target-url">Your page URL</label>
+                    <label htmlFor="target-url">Website URL</label>
                     <Input ref={urlInput} id="target-url" name="targetUrl" type="text" inputMode="url" autoComplete="url" spellCheck={false} required placeholder="yourwebsite.com" value={url} onChange={(event) => { setUrl(event.target.value); setUrlError(""); }} aria-invalid={Boolean(urlError)} aria-describedby={urlError ? "url-error url-help" : "url-help"} />
-                    <p id="url-help" className="field-help">A public page. No login required to view it.</p>
+                    <p id="url-help" className="field-help">Choose a page visitors can view without logging in.</p>
                     {urlError && <p id="url-error" className="landing-error" role="alert">{urlError}</p>}
                   </div>
                   <div className="landing-field">
                     <label htmlFor="goal">What should a visitor do? <span>(optional)</span></label>
                     <Textarea id="goal" name="goal" rows={1} maxLength={500} placeholder="e.g. Find the right plan and sign up" value={goal} onChange={(event) => setGoal(event.target.value)} aria-describedby="goal-help" />
-                    <p id="goal-help" className="field-help">Leave blank and we&rsquo;ll infer a goal from the page.</p>
+                    <p id="goal-help" className="field-help">Leave blank to use a goal suggested from the page.</p>
                     <div className="goal-examples" aria-label="Visitor goal examples">
                       {GOALS.map((suggestion) => <button key={suggestion} type="button" aria-pressed={goal === suggestion} onClick={() => setGoal(suggestion)}>{suggestion}<ArrowIcon size={12} /></button>)}
                     </div>
@@ -180,19 +179,19 @@ export default function Home() {
             </form>
           </section>
           <section id="how-it-works" className="landing-method" aria-labelledby="method-title">
-            <div className="method-heading"><h2 id="method-title">From &ldquo;something feels off&rdquo;<br />to a fix you can explain.</h2><p>We focus on what people need to do,<br className="desktop-break" /> and what gets in their way.</p></div>
+            <div className="method-heading"><h2 id="method-title">How a rehearsal works</h2><p>Review the findings, then try a wireframe<br className="desktop-break" /> based on the suggested fixes.</p></div>
             <div className="method-body">
               <ol className="method-steps">
-                <li><span>01</span><div><h3>Rehearse a real task</h3><p>We map the public pages and simulate journeys toward your visitor&rsquo;s goal.</p></div></li>
-                <li><span>02</span><div><h3>See what needs attention</h3><p>Review ranked findings and a fix plan. Browser evidence, when available, is kept separate from hypotheses.</p></div></li>
-                <li><span>03</span><div><h3>Explore a clearer layout</h3><p>Build a wireframe proposal from the findings. Compare structure, copy, and interactions before committing to a visual design.</p></div></li>
+                <li><span>01</span><div><h3>Choose a visitor&rsquo;s task</h3><p>Start with a public page and a goal, such as choosing a plan. Rehearsal maps the pages and simulates ways to complete the task.</p></div></li>
+                <li><span>02</span><div><h3>Review the findings</h3><p>See suggested fixes in priority order. Each finding shows the available browser evidence or is labeled as a hypothesis.</p></div></li>
+                <li><span>03</span><div><h3>Try the proposed changes</h3><p>Create a wireframe from the findings to compare the layout, wording, and interactions. Your live site stays as it is.</p></div></li>
               </ol>
               <LayoutExample />
             </div>
-            <aside className="evidence-note"><strong>A useful starting point for UX decisions.</strong><p>Simulated visitors aren&rsquo;t your customers. Findings are labeled by evidence strength; use them to guide changes and real usability tests, not to predict conversion.</p></aside>
+            <aside className="evidence-note"><strong>Check the findings with real people.</strong><p>Simulated journeys can help you spot problems, but they can&rsquo;t tell you how your customers will behave. Use the findings to plan changes and usability tests.</p></aside>
           </section>
           <section id="recent" className="landing-recent" aria-labelledby="recent-title">
-            <div className="recent-heading"><div><h2 id="recent-title">Recent rehearsals</h2><p>Public runs from this shared workspace. Open one to explore the results.</p></div><Link href="/mockups">Browse mockups<ArrowIcon size={16} /></Link></div>
+            <div className="recent-heading"><div><h2 id="recent-title">Recent rehearsals</h2><p>Rehearsals in this shared demo are public. Open one to see its findings.</p></div><Link href="/mockups">Browse mockups<ArrowIcon size={16} /></Link></div>
             {experimentsLoadError ? <div className="recent-state" role="alert"><p>Could not load recent rehearsals.</p><button type="button" onClick={() => void loadExperiments()}>Try again<ArrowIcon size={16} /></button></div>
               : experiments === null ? <p className="recent-state" role="status">Loading recent rehearsals…</p>
                 : experiments.length === 0 ? <p className="recent-state">No rehearsals yet. Add your page above to start the first one.</p>
@@ -200,7 +199,7 @@ export default function Home() {
             {!experimentsLoadError && experiments && experiments.length > 4 && <button className="show-rehearsals" type="button" aria-expanded={showAll} onClick={() => setShowAll(!showAll)}>{showAll ? "Show fewer rehearsals" : `Show all ${experiments.length} rehearsals`}<ArrowIcon size={16} /></button>}
           </section>
         </main>
-        <footer className="landing-footer"><Link href="/" className="landing-brand">Rehearsal</Link><p>Better journeys start with better questions.</p><a href="#start">Rehearse your site<ArrowIcon size={16} /></a></footer>
+        <footer className="landing-footer"><Link href="/" className="landing-brand">Rehearsal</Link><a href="#start">Start a rehearsal<ArrowIcon size={16} /></a></footer>
       </div>
     </div>
   );

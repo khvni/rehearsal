@@ -113,7 +113,8 @@
     --selected: #D4D4D4;
     --destructive-light: #FEF2F2;
     --overlay: 0 0 0;
-    --fluid-accent: #111111;
+    --brand: #39503E;
+    --fluid-accent: var(--brand);
     --focus-ring: var(--fluid-accent);
     --tint: rgb(0 0 0 / 0.08);
     --tint-hover: rgb(0 0 0 / 0.065);
@@ -674,7 +675,7 @@
   --text-2: #404040;
   --muted: #6b6b6b;
 
-  --green: #111111;
+  --green: var(--brand);
   --sky: #2f6fb0;
   /* Decision-graph blues: sequential ramp (ColorBrewer-style), legible for
      common color-vision deficiencies — blue against neutral greys separates
