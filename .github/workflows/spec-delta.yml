@@ -7,6 +7,17 @@ name: spec-delta
 
 on:
   pull_request:
+    types: [opened, synchronize, reopened, ready_for_review]
+    paths:
+      - "src/**"
+      - "tests/**"
+      - "scripts/spec-delta.ts"
+      - "package.json"
+      - "package-lock.json"
+      - "components.json"
+      - "next.config.ts"
+      - ".devin/skills/**"
+      - ".github/workflows/spec-delta.yml"
   workflow_dispatch:
 
 concurrency:
@@ -19,6 +30,7 @@ permissions:
 
 jobs:
   spec-delta:
+    if: github.event_name != 'pull_request' || github.event.pull_request.draft == false
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
