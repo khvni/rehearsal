@@ -29,14 +29,14 @@ it.each(["http", "network"])("shows a distinct error for %s failure", async (fai
     ? vi.fn().mockRejectedValue(new Error("Offline"))
     : vi.fn().mockResolvedValue(new Response("{}", { status: 500 })));
   await act(async () => root.render(createElement(Home)));
-  expect(container.querySelector('[role="alert"]')?.textContent).toContain("Could not load experiments");
-  expect(container.textContent).not.toContain("No experiments yet");
+  expect(container.querySelector('[role="alert"]')?.textContent).toContain("Could not load recent rehearsals");
+  expect(container.textContent).not.toContain("No rehearsals yet");
 });
 
 it("shows the empty state only for a successful empty list", async () => {
   vi.stubGlobal("fetch", vi.fn().mockResolvedValue(Response.json([])));
   await act(async () => root.render(createElement(Home)));
-  expect(container.textContent).toContain("No experiments yet");
+  expect(container.textContent).toContain("No rehearsals yet");
   expect(container.querySelector('[role="alert"]')).toBeNull();
 });
 
