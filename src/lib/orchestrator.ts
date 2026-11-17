@@ -132,6 +132,16 @@ function pipelineFinished(exp: Experiment): boolean {
   return !!exp.spec && (exp.status === "complete" || exp.status === "rebuilding" || rebuildPending(exp));
 }
 
+/**
+ * Whether a poll should run the resume watchdog. False when nothing could be
+ * in flight — the resume path costs ~3 extra store reads per poll, so finished
+ * and never-started experiments skip it. A surviving checkpoint still triggers
+ * it (resume clears stale ones).
+ */
+export function runNeedsWatchdog(exp: Experiment): boolean {
+  return exp.runCheckpoint !== undefined || IN_FLIGHT_STATUSES.includes(exp.status) || rebuildPending(exp);
+}
+
 interface OrchestratorDeps {
   fetcher?: PageFetcher;
   /** Plain-HTTP probe fetcher for rescan/signature checks and the default discover crawl — must never be provider-quota-bound. Defaults to PlainFetcher. */
