@@ -1871,8 +1871,9 @@ Return ASSERTION_LIST as a JSON array of {kind, value, selector?}.`,
   async markFailed(id: string, err: unknown): Promise<void> {
     const exp = await this.store.get(id).catch(() => null);
     // A queued-stage drain can finish the run after the stage that threw —
-    // don't downgrade a terminal status it already reached.
-    if (!exp || pipelineFinished(exp)) return;
+    // don't downgrade a terminal status it already reached. "rebuilding"
+    // counts as finished for the pipeline but is still a live rebuild.
+    if (!exp || (pipelineFinished(exp) && exp.status !== "rebuilding")) return;
     const failure = toFailure(err, "run");
     const message = formatFailure(failure).slice(0, 500);
     await this.emit(id, "run", "error", `Run failed: ${message}`);
