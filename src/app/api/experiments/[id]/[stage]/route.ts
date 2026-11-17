@@ -98,10 +98,11 @@ export async function POST(
     return slot.value;
   } catch (e) {
     if (e instanceof StageInProgressError) {
-      // A stage click while a run is queued or in-flight joins the pipeline —
-      // the requested stage runs when the chain reaches it. Kick the resume
-      // watchdog so a stalled run restarts from its checkpoint, and never fail
-      // the record over a scheduling conflict.
+      // A stage click while a run is queued or in-flight joins the pipeline:
+      // record the requested stage so the chain runs it at the end, kick the
+      // resume watchdog so a stalled run restarts from its checkpoint, and
+      // never fail the record over a scheduling conflict.
+      if (stage !== "run") await orch.queueStage(id, stage, e.runningStage).catch(() => undefined);
       await runInBackground(async () => {
         await orch.resume(id, { origin: requestOrigin(req) }).catch(() => undefined);
       });

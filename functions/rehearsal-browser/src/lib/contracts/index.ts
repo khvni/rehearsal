@@ -789,6 +789,8 @@ export const Experiment = z.object({
   runOrigin: z.string().optional(),
   /** Persisted progress for a suspended background run — run-step continuations and stale-run resume pick up here. */
   runCheckpoint: RunCheckpoint.optional(),
+  /** Stage requested while a run was in flight — the chain runs it after the current stages. */
+  queuedStage: z.string().optional(),
   configuration: StoredExperimentConfig,
   assertions: z.array(Assertion).default([]),
   graph: StateGraph.optional(),
