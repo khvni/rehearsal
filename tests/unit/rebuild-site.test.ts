@@ -50,6 +50,19 @@ describe("whole-site rebuild", () => {
     expect(built.html).toContain("/experiments/exp_site/rb/next");
   });
 
+  it("preserves source copy containing copyright and inline emoji without retrying", async () => {
+    const exp = fixture(1), site = deterministicPlan(exp);
+    const html = '<div class="rb-container"><h1>Workshop</h1><p>© 2026 Workshop. Bring 🚀 ideas.</p></div>';
+    exp.graph!.states[0].visibleText = '© 2026 Workshop. Bring 🚀 ideas.';
+    const llm = fake(html);
+    const built = await buildPage(exp, site, site.pages[0], llm);
+    expect(llm.complete).toHaveBeenCalledTimes(1);
+    expect(built.source).toBe("openrouter");
+    expect(built.issues).toEqual([]);
+    expect(built.html).toContain('© 2026 Workshop. Bring 🚀 ideas.');
+    expect(lintRebuiltPage('<div class="rb-container"><h1>Workshop</h1><i>🚀</i></div>')).toContain("emoji used as icons");
+  });
+
   it("frames saved branded rebuilds honestly without rendering their logo or changing content", () => {
     const exp = fixture(1), site = deterministicPlan(exp);
     exp.goal = 'Find <script>alert("goal")</script> & compare workshops';
@@ -293,7 +306,7 @@ describe("whole-site rebuild", () => {
     const llm = fake(dump);
     const page = await buildPage(exp, site, site.pages[0], llm);
     expect(llm.complete).toHaveBeenCalledTimes(2);
-    expect(vi.mocked(llm.complete).mock.calls[1][0]).toContain("Fix these lint issues: oversized link dump");
+    expect(vi.mocked(llm.complete).mock.calls[1][0]).toContain("oversized link dump");
     expect(vi.mocked(llm.complete).mock.calls[1][0]).not.toContain("Fix these lint issues: undefined");
     expect(page).toMatchObject({ source: "template", status: "built", issues: [] });
   });

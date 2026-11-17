@@ -535,7 +535,12 @@ export function lintRebuiltPage(
   for (const hero of doc.querySelectorAll(".rb-hero, .rb-hero--split"))
     if (hero.querySelectorAll(".rb-btn--primary").length > 1)
       issues.add("multiple primary hero actions");
-  if (/\p{Extended_Pictographic}/u.test(doc.body.textContent ?? ""))
+  // Only flag standalone decorative icons, not copyright or symbols in copy.
+  if ([...doc.querySelectorAll("*")].some(el => {
+    const text = el.textContent?.trim() ?? "";
+    return !el.children.length && /\p{Extended_Pictographic}/u.test(text) &&
+      !/[\p{L}\p{N}©®™]/u.test(text);
+  }))
     issues.add("emoji used as icons");
   for (const a of doc.querySelectorAll("a[href]")) {
     try {
