@@ -11,7 +11,7 @@ import { cleanNavLabel, rollupBrand } from "./brand";
 import { escapeHtml as esc, sanitizeRebuildHtml } from "./sanitize";
 import { PLANNER_RULES, IMPLEMENTER_RULES } from "./design-rules";
 import { SITE_CSS, CLASS_VOCABULARY } from "./site-css";
-import { derivedSurfaces, repairSiteTokens } from "./site-tokens";
+import { WIREFRAME_TOKENS, WIREFRAME_NOTES } from "./site-tokens";
 import { parsePlannerDesign } from "./planner-parse";
 import { previewImageUrl, rebuildPreview } from "../link-preview";
 import {
@@ -133,17 +133,12 @@ function socialLinkRank(href: string) {
 
 export function deterministicPlan(exp: Experiment): RebuildSite {
   const brand = rollupBrand(exp.graph?.states ?? []);
-  const primary = /^#([\da-f]{3}|[\da-f]{6})$/i.test(brand.colors.accent ?? "")
-    ? brand.colors.accent!
-    : "#18181b";
   const pages = sitemapFromGraph(exp).map((page) => {
     const types: BlockType[] =
-      page.path === "/"
-        ? ["hero", "feature-split", "cta-band"]
-        : linksFor(exp, page).length >= 8
-          ? ["resource-index"]
+      linksFor(exp, page).length >= 8
+          ? ["hero", "resource-index"]
           : (stateFor(exp, page)?.visibleText.length ?? 0) > 1500
-            ? ["article-body"]
+            ? ["hero", "article-body"]
             : ["hero", "link-list"];
     return {
       ...page,
@@ -261,17 +256,8 @@ export function deterministicPlan(exp: Experiment): RebuildSite {
       }
     }
   return {
-    tokens: repairSiteTokens({
-      ...derivedSurfaces(brand.colors.surface),
-      foreground: brand.colors.ink,
-      primary,
-      primaryForeground: "#ffffff",
-      ring: primary,
-      radius: "0.875rem",
-      fontSans: brand.fonts.sans,
-    }),
-    designNotes:
-      "Refine the original identity with quiet surfaces, deliberate typography and generous separation.",
+    tokens: { ...WIREFRAME_TOKENS },
+    designNotes: WIREFRAME_NOTES,
     nav,
     footer: {
       note: brand.name,
@@ -305,7 +291,8 @@ export async function planSite(
   try {
     const brand = rollupBrand(exp.graph?.states ?? []);
     const input = {
-      brand: { name: brand.name, colors: brand.colors, fonts: brand.fonts },
+      siteName: brand.name,
+      visitorGoal: exp.goal,
       blocks: BlockType.options,
       sitemap: fallback.pages.map((p) => ({
         path: p.path,
@@ -502,6 +489,15 @@ export function lintRebuiltPage(
 ): string[] {
   const doc = fragment(html);
   const issues = new Set<string>();
+  // Worker-safe subset of the default Impeccable review. The full CLI also
+  // scans generated fixture documents in CI (it cannot execute in workerd).
+  if (doc.querySelector(".rb-card .rb-card")) issues.add("nested cards");
+  if (doc.querySelectorAll(".rb-cta-band").length > 1)
+    issues.add("repeated CTA bands");
+  if (doc.querySelector("form, input, select, textarea, button"))
+    issues.add("nonfunctional prototype control");
+  if (doc.querySelectorAll("h1").length !== 1)
+    issues.add("expected one page heading");
   if ([...doc.body.children].some(el => !el.matches(".rb-container") && !el.querySelector(".rb-container")) ||
       [...doc.body.childNodes].some(node => node.nodeType === 3 && node.textContent?.trim())) issues.add("missing main container");
   for (const group of [
@@ -539,7 +535,12 @@ export function lintRebuiltPage(
   for (const hero of doc.querySelectorAll(".rb-hero, .rb-hero--split"))
     if (hero.querySelectorAll(".rb-btn--primary").length > 1)
       issues.add("multiple primary hero actions");
-  if (/\p{Extended_Pictographic}/u.test(doc.body.textContent ?? ""))
+  // Only flag standalone decorative icons, not copyright or symbols in copy.
+  if ([...doc.querySelectorAll("*")].some(el => {
+    const text = el.textContent?.trim() ?? "";
+    return !el.children.length && /\p{Extended_Pictographic}/u.test(text) &&
+      !/[\p{L}\p{N}©®™]/u.test(text);
+  }))
     issues.add("emoji used as icons");
   for (const a of doc.querySelectorAll("a[href]")) {
     try {
@@ -760,28 +761,16 @@ export async function buildPage(
   llm: LlmClient,
 ): Promise<RebuildSitePage> {
   const opts = { origin: exp.targetUrl, base: baseFor(exp) };
-  let best: RebuildSitePage | undefined;
-  const brand = stateFor(exp, page)?.brand;
-  let images: { url: string; alt: string }[] = [];
-  if (brand?.logoUrl) {
-    try {
-      const url = new URL(brand.logoUrl, page.sourceUrl);
-      if (url.origin === new URL(exp.targetUrl).origin)
-        images = [{ url: url.href, alt: brand.logoAlt ?? "" }];
-    } catch {
-      /* No usable captured image. */
-    }
-  }
   const prompt = [
     IMPLEMENTER_RULES,
     `Return inner main HTML only. No CSS, scripts or inline styles. Allowed classes: ${CLASS_VOCABULARY}.`,
     JSON.stringify({
-      tokens: site.tokens,
+      tokens: WIREFRAME_TOKENS,
+      visitorGoal: exp.goal,
       designNotes: site.designNotes,
       page,
       text: stateFor(exp, page)?.visibleText,
       links: linksFor(exp, page),
-      ...(images.length ? { images } : {}),
       sitemap: site.pages.map((p) => p.path),
     }),
   ].join("\n");
@@ -796,14 +785,16 @@ export async function buildPage(
         { model: "rebuild", timeoutMs: 90000 },
       );
       const rawIssues = lintRebuiltPage(raw).filter(
-        (i) => i === "gradient text" || i === "eyebrow label",
+        (i) => i !== "missing main container",
       );
       const html = processHtml(raw, exp, page, site);
       const issues = [
         ...new Set([...rawIssues, ...lintRebuiltPage(html, opts)]),
       ];
       retryIssues = issues;
-      if (issues.includes("oversized link dump")) continue;
+      // Never publish the least-bad slop attempt. Retry once, then use the
+      // content-backed deterministic wireframe rather than flagged markup.
+      if (issues.length) continue;
       const built: RebuildSitePage = {
         ...page,
         status: "built",
@@ -812,13 +803,11 @@ export async function buildPage(
         issues,
         source: llm.name === "openrouter" ? "openrouter" : "gemini",
       };
-      if (!best || issues.length < (best.issues?.length ?? 0)) best = built;
-      if (!issues.length) break;
+      return built;
     } catch {
       break;
     }
   }
-  if (best) return best;
   for (const [textLimit, linkLimit] of [
     [6500, 30],
     [3000, 12],
@@ -859,31 +848,9 @@ export function rebuildPending(exp: Experiment): boolean {
 }
 
 export function siteStylesheet(tokens: RebuildSite["tokens"]): string {
-  tokens = repairSiteTokens(tokens);
-  const colors = new Set([
-    "background",
-    "foreground",
-    "primary",
-    "primaryForeground",
-    "muted",
-    "mutedForeground",
-    "border",
-    "ring",
-    "card",
-  ]);
-  const vars = Object.entries(tokens).flatMap(([key, value]) => {
-    const valid = colors.has(key)
-      ? /^(#(?:[\da-f]{3}|[\da-f]{4}|[\da-f]{6}|[\da-f]{8})|(?:rgb|hsl|oklch)a?\([\d.%\s,/+-]+\)|black|white|transparent)$/i.test(
-          value,
-        )
-      : key === "radius"
-        ? /^(?:0\.(?:75|875)|1)rem$/.test(value)
-        : /^[\w\s,'"-]{1,200}$/.test(value);
-    return valid
-      ? [`--${key.replace(/[A-Z]/g, (c) => `-${c.toLowerCase()}`)}:${value}`]
-      : [];
-  });
-  return SITE_CSS + `\n:root{${vars.join(";")}}`;
+  // Older saved plans also use the fixed wireframe theme, without a paid rerun.
+  void tokens;
+  return SITE_CSS;
 }
 
 /** Open Graph / Twitter tags so a shared /rb/ link unfurls with its preview card; `origin` makes the URLs absolute. */
@@ -939,12 +906,7 @@ export function renderSiteDocument(exp: Experiment, path = "/", share?: { origin
       ].join(""),
     { origin: exp.targetUrl, base, homePath },
   ));
-  const logo =
-    brand.logoUrl &&
-    new URL(brand.logoUrl, exp.targetUrl).origin ===
-      new URL(exp.targetUrl).origin
-      ? `<img src="${esc(brand.logoUrl)}" alt="${esc(brand.logoAlt ?? brand.name)}" width="120">`
-      : esc(brand.name);
+  const logo = esc(brand.name);
   const footer = rewriteSiteLinks(
     sanitizeRebuildHtml(
       site.footer.links
@@ -960,10 +922,15 @@ export function renderSiteDocument(exp: Experiment, path = "/", share?: { origin
     `<title>${esc(title)}</title>`,
     share ? shareMeta(exp, path, share.origin) : "",
     `<link rel="stylesheet" href="${esc(base)}/_assets/site.css"></head><body>`,
+    '<aside class="rb-notice" aria-label="About this wireframe"><div class="rb-container rb-cluster">',
+    '<strong>Rehearsal wireframe</strong><span>Layout and interactions to test. Not a finished design or a verified improvement.</span>',
+    '<details class="rb-study"><summary>Study goal</summary>',
+    `<p>${esc(exp.goal)}</p></details></div></aside>`,
+    '<a class="rb-skip" href="#rb-main">Skip to content</a>',
     '<header class="rb-header"><div class="rb-container rb-cluster">',
     `<a class="rb-brand" href="${esc(base)}/">${logo}</a><nav aria-label="Main">${nav}</nav>`,
     '<details class="rb-mobile-nav"><summary>Menu</summary>',
-    `<nav aria-label="Mobile">${nav}</nav></details></div></header><main>${body}</main>`,
+    `<nav aria-label="Mobile">${nav}</nav></details></div></header><main id="rb-main" tabindex="-1">${body}</main>`,
     `<footer class="rb-footer rb-container"><nav aria-label="Footer">${footer}</nav>`,
     `<p>${esc(site.footer.note ?? "")}</p>`,
     `<p class="rb-meta">Rebuilt by Rehearsal from ${esc(new URL(exp.targetUrl).host)} · `,

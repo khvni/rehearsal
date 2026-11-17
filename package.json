@@ -19,6 +19,7 @@
     "check:skill-sync": "tsx scripts/check-skill-sync.ts",
     "check:facts": "tsx scripts/verify-facts.ts",
     "design:check": "sh .devin/skills/impeccable/scripts/impeccable detect src/app",
+    "design:check:rebuild": "tsx scripts/check-rebuild-design.ts",
     "spec:delta": "tsx scripts/spec-delta.ts",
     "bench": "tsx scripts/bench.ts",
     "site": "tsx scripts/run-site.ts",

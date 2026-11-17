@@ -207,7 +207,7 @@ describe("Cloudflare email facts and rebuilt links", () => {
       lintRebuiltPage(`<a href="${base}/cdn-cgi/l/email-protection">Bad</a>`),
     ).toContain("cdn-cgi link inside rebuild");
     expect(
-      lintRebuiltPage('<div class="rb-container"><a href="https://example.com/guide.pdf">PDF</a></div>', opts),
+      lintRebuiltPage('<div class="rb-container"><h1>Downloads</h1><a href="https://example.com/guide.pdf">PDF</a></div>', opts),
     ).toEqual([]);
   });
   it("normalizes cached actions for planner/implementer facts, template fallback and the footer", async () => {
