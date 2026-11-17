@@ -32,7 +32,13 @@ function shortPath(url: string): string {
   }
 }
 
-type PathGroup = { steps: TrajectoryStep[]; count: number; outcomes: Map<TrajectoryOutcome, number> };
+type PathGroup = {
+  steps: TrajectoryStep[];
+  count: number;
+  outcomes: Map<TrajectoryOutcome, number>;
+  /** swarm journeys store the outgoing action on the source step, not the incoming one. */
+  outgoingActions: boolean;
+};
 
 /**
  * "Watch where visitors got stuck": aggregate the stored trajectories into
@@ -88,7 +94,8 @@ export function WhereStuck({
       if (looped) loopers += 1;
 
       const signature = t.steps.map((s) => `${s.stateId}:${s.actionId ?? ""}`).join(">");
-      const group = paths.get(signature) ?? { steps: t.steps, count: 0, outcomes: new Map() };
+      const group =
+        paths.get(signature) ?? { steps: t.steps, count: 0, outcomes: new Map(), outgoingActions: t.persona !== undefined };
       group.count += 1;
       group.outcomes.set(t.outcome, (group.outcomes.get(t.outcome) ?? 0) + 1);
       paths.set(signature, group);
@@ -200,9 +207,14 @@ export function WhereStuck({
                     {p.steps.map((step, si) => {
                       const st = stateById.get(step.stateId);
                       // simulateTrajectories stores the incoming action on the
-                      // destination step, so this step's own actionId is the
-                      // action that led to it.
-                      const via = si > 0 ? actionById.get(step.actionId ?? "") : undefined;
+                      // destination step; swarm journeys (persona set) store the
+                      // outgoing action on the source step.
+                      const via =
+                        si > 0
+                          ? actionById.get(
+                              (p.outgoingActions ? p.steps[si - 1] : step).actionId ?? "",
+                            )
+                          : undefined;
                       return (
                         <span key={si} className="stuck-path-step">
                           {si > 0 && <ArrowIcon size={12} className="arrow" />}
