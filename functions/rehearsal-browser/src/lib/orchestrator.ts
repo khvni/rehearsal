@@ -1870,7 +1870,9 @@ Return ASSERTION_LIST as a JSON array of {kind, value, selector?}.`,
   /** Records a stage failure so the dashboard stops showing a stuck "discovering…" state. */
   async markFailed(id: string, err: unknown): Promise<void> {
     const exp = await this.store.get(id).catch(() => null);
-    if (!exp) return;
+    // A queued-stage drain can finish the run after the stage that threw —
+    // don't downgrade a terminal status it already reached.
+    if (!exp || pipelineFinished(exp)) return;
     const failure = toFailure(err, "run");
     const message = formatFailure(failure).slice(0, 500);
     await this.emit(id, "run", "error", `Run failed: ${message}`);
