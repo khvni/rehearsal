@@ -17,7 +17,8 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          fetch-depth: 0
+          # Full history only on PRs (the diff gates tests/e2e); pushes fetch depth 1.
+          fetch-depth: ${{ github.event_name == 'pull_request' && 0 || 1 }}
       - uses: actions/setup-node@v4
         with:
           node-version: 22
