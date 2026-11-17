@@ -31,7 +31,13 @@ jobs:
         with:
           node-version: 22
           cache: npm
+      - uses: actions/cache@v4
+        id: deps
+        with:
+          path: node_modules
+          key: ${{ runner.os }}-node-modules-${{ hashFiles('package-lock.json') }}
       - name: npm ci
+        if: steps.deps.outputs.cache-hit != 'true'
         run: npm ci
       - uses: actions/cache@v4
         id: playwright

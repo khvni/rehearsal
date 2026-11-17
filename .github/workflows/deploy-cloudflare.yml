@@ -17,7 +17,13 @@ jobs:
         with:
           node-version: 22
           cache: npm
+      - uses: actions/cache@v4
+        id: deps
+        with:
+          path: node_modules
+          key: ${{ runner.os }}-node-modules-${{ hashFiles('package-lock.json') }}
       - run: npm ci
+        if: steps.deps.outputs.cache-hit != 'true'
       - run: npx opennextjs-cloudflare build
       - name: Deploy Worker
         # OPENROUTER_API_KEY rides along as a Worker secret when the Actions secret exists;
