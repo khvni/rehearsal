@@ -3,7 +3,8 @@
 Hackathon submission (AIE x MLH @ Code Summit): [docs/submission.md](docs/submission.md)
 
 Rehearsal tries your website the way visitors will, before they do. Give it a public
-URL and a goal. It maps the pages, simulates visitor journeys, replays the risky ones
+URL; a goal is optional — left blank, one is suggested from the page itself.
+It maps the pages, simulates visitor journeys, replays the risky ones
 in a real browser, and tests a fix on an isolated copy. Then it writes `spec.md`:
 ranked changes plus a rebuild plan, each citing a usability principle
 (`docs/krug-principles.md`).
@@ -38,7 +39,7 @@ npm run check               # lint + typecheck + unit + evals + skill-sync + fac
 npm run dev                 # http://localhost:3000
 ```
 
-Paste the URL and goal, click Rehearse, watch the stages run, then open `spec.md`.
+Paste the URL (and optionally a goal), click Rehearse, watch the stages run, then open `spec.md`.
 
 ## Pipeline
 

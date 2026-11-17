@@ -34,6 +34,10 @@ same-site page navigation inside `/rb/`, and show active navigation. External de
 external. The footer's explicitly labeled original-site and experiment links are provenance
 exits, not rebuilt-site navigation. No pretend search, working forms or checkout controls.
 
+Copy follows the ux-copywriting rules injected with the plan prompt: controls are verb-led and
+name what they do, one term per concept, plain words over jargon, and no filler ("simply",
+"seamless") or claims the study does not support.
+
 ## Proposal framing
 
 Every page has a quiet Rehearsal wireframe notice, a native **Study goal** disclosure, and a

@@ -34,10 +34,16 @@ telemetry: Sentry (SENTRY_DSN) + data/events/*.jsonl → /api/hooks/sentry → f
 
 1. **discover**: plain fetch → extract actions (a page that looks like a JS shell retries via
    Firecrawl `/v1/scrape`; a seed with few links gets one `/v1/map` expansion bounded by
-   `config.firecrawlMapLimit`) → `GraphBuilder` dedups by `stateHash` (normalized URL + viewport
-   + action signature + modal flag). Budget: 30 states / depth 3.
+   `config.firecrawlMapLimit`) → `GraphBuilder` dedups by `stateHash` (normalized URL — hash and
+   tracking params dropped, real query params kept sorted, so `?page=2` stays its own state —
+   + viewport + action signature + modal flag). Budget: 30 states / depth 3, split fairly across
+   viewport passes: each pass caps at `ceil((maxStates − states so far) / viewports remaining)`
+   (`passStart` is persisted so a resumed pass keeps its share).
 2. **simulate**: a bounded persona swarm (`maxAgents`/~200, `maxStepsPerAgent`, `maxConcurrentAgents`)
-   walks the live site — one `runPersonaJourney` browser invocation per agent. Each step is one
+   walks the live site — one `runPersonaJourney` browser invocation per agent. The landing page
+   is fetched once per run (`captureLandingPage`) and replayed into each agent's context along
+   with its redirect-hop cookies, so robots.txt + politeness are paid once per swarm, not per
+   agent; a failed capture falls back to per-agent fetches. Each step is one
    batched `jev.decide` scoring every candidate action plus a `__leave__` option; a seeded RNG
    samples the pick. Journeys are emergent and end `goal-reached` or `dropped-off` with a
    first-class reason; `PersonaSwarm` (journeys, drop-off distribution, state visits) persists on
@@ -120,11 +126,23 @@ https://api.firecrawl.dev/v1/scrape` / `/v1/map`, `Bearer FIRECRAWL_API_KEY`) is
 fallback for JS-shell pages and seed expansion; Browserbase Fetch (`browserbase.fetch`) remains
 available as a fetcher when keyed. `selectFetcher()` picks Firecrawl → Browserbase → plain.
 Every path runs `assertPublicUrl` + per-host politeness first. Plain fetches re-check every
-redirect hop. Local Chromium sends every request (redirects and subresources too) through a
+redirect hop. On Workers, a fetch to an origin this deployment serves goes through the
+`WORKER_SELF_REFERENCE` service binding instead — a Worker's `fetch` to its own Custom Domain
+never reaches it (the edge answers a generated text/plain stub); self origins are learned from
+each incoming request's URL plus `REHEARSAL_ORIGIN`. Local Chromium sends every request
+(redirects and subresources too) through a
 loopback egress proxy (`fetch/egress-proxy.ts`) that resolves each host, refuses non-public
 IP ranges (including all IPv6 link-local `fe80::/10`, multicast and reserved ranges), and
-connects to the IP it checked; IPv4-mapped IPv6 addresses are classified as IPv4. Runners also re-check
+connects to the IP it checked; IPv4-mapped IPv6 addresses are classified as IPv4, and
+IPv4-compatible literals (`::/96`, hex or dotted) are classified by their embedded IPv4 —
+`::7f00:1` (127.0.0.1) is refused, not treated as unicast. Runners also re-check
 `page.url()` after each navigation.
+
+Hosted browser runs keep the same contract caller-side: `BrowserbaseFunctionRunner` runs
+`robotsAllows` + `politeDelay` before each Function invocation (each invocation is its own
+process, so only the caller can space requests on one host apart), and `StagehandRunner`
+gates `openPage`/`runPersonaJourney` the same way unless the caller already did
+(`politenessHandledByCaller`).
 
 ## Environment variables
 
@@ -145,6 +163,7 @@ a variable that is missing here or in `.env.example`, or if `.env.example` lists
 | `JEV_API_KEY` | `decisions/jev.ts` | `FixtureJevClient` |
 | `JEV_BASE_URL` / `JEV_MODEL` | `decisions/jev.ts` | `https://api.typesafe.ai/v1/systemone` / `jev-latest` |
 | `FIRECRAWL_API_KEY` | `fetch/firecrawl.ts`, `orchestrator.ts` | Discovery is plain-fetch only (no hosted fallback, no `/v1/map` expansion) |
+| `FIRECRAWL_MIN_INTERVAL_MS` / `FIRECRAWL_429_RETRIES` / `FIRECRAWL_429_BACKOFF_MS` | `fetch/firecrawl.ts` | `5000` spacing between api.firecrawl.dev calls, shared across clients; a 429 retries `2` times honoring `Retry-After` (else `10000`ms base backoff, ≤20s total so a run slice still checkpoints), then the account no-ops for ~60s until the per-minute quota resets |
 | `BROWSERBASE_API_KEY` / `BROWSERBASE_PROJECT_ID` | `fetch/index.ts`, `browser/runner.ts` | Browserbase Fetch + Stagehand on Browserbase skipped |
 | `STAGEHAND_MODEL` / `STAGEHAND_MODEL_API_KEY` | `browser/stagehand.ts` | `google/$GEMINI_MODEL_FAST` with `GEMINI_API_KEY` |
 | `STAGEHAND_CHROME_PATH` | `browser/runner.ts` | Stagehand's default Chrome lookup (`stagehand-local` only) |

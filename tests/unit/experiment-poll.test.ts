@@ -3,12 +3,16 @@ import { Experiment } from "@/lib/contracts";
 
 const get = vi.fn();
 const resume = vi.fn(async () => undefined);
-vi.mock("@/lib/orchestrator", () => ({
-  Orchestrator: class {
-    get = get;
-    resume = resume;
-  },
-}));
+vi.mock("@/lib/orchestrator", async (importOriginal) => {
+  const original = await importOriginal<typeof import("@/lib/orchestrator")>();
+  return {
+    ...original,
+    Orchestrator: class {
+      get = get;
+      resume = resume;
+    },
+  };
+});
 vi.mock("@/lib/jobs", () => ({ runInBackground: async (work: () => Promise<void>) => work() }));
 
 const { GET } = await import("@/app/api/experiments/[id]/route");
@@ -63,6 +67,21 @@ describe("conditional experiment polling", () => {
       expect((await poll(value)).status).toBe(304);
     }
     expect((await poll('W/"old"')).status).toBe(200);
+  });
+
+  it("skips the resume watchdog for finished experiments", async () => {
+    get.mockResolvedValue(Experiment.parse({ ...experiment, status: "complete" }));
+    const res = await poll();
+    expect(res.status).toBe(200);
+    expect(resume).not.toHaveBeenCalled();
+  });
+
+  it("still runs the watchdog when a checkpoint survives on a finished record", async () => {
+    get.mockResolvedValue(
+      Experiment.parse({ ...experiment, status: "complete", runCheckpoint: { stage: "verify", attempt: 0 } }),
+    );
+    expect((await poll()).status).toBe(200);
+    expect(resume).toHaveBeenCalledWith(experiment.id, { origin: "http://localhost", inline: true });
   });
 
   it("keeps watchdog failures from breaking a conditional poll", async () => {

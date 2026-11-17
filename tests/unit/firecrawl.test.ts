@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it } from "vitest";
-import { FirecrawlClient, looksLikeJsShell, stripNoscript } from "@/lib/fetch/firecrawl";
+import { FirecrawlClient, looksLikeJsShell, resetFirecrawlRateLimit, stripNoscript } from "@/lib/fetch/firecrawl";
 import { FIRECRAWL_MAX_INTERACT_ACTIONS } from "@/lib/contracts";
 import { classifyError } from "@/lib/errors";
 import { extractPage } from "@/lib/browser/extract";
@@ -93,6 +93,7 @@ function okResponse(body: unknown, status = 200): Response {
 afterEach(() => {
   delete process.env.REHEARSAL_ALLOW_PRIVATE;
   delete process.env.REHEARSAL_BROWSER;
+  resetFirecrawlRateLimit(); // shared pacing/exhaustion state must not leak across tests
 });
 
 describe("looksLikeJsShell", () => {
@@ -210,9 +211,55 @@ describe("FirecrawlClient", () => {
   it("throws on HTTP errors and classifies 402/429 as PROVIDER_QUOTA", async () => {
     process.env.REHEARSAL_ALLOW_PRIVATE = "1";
     const client = new FirecrawlClient({ FIRECRAWL_API_KEY: "fc" }, async () => okResponse({ error: "Payment Required" }, 402));
-    await expect(client.scrape(URL)).rejects.toThrow(/402/);
     const quota = await client.scrape(URL).catch((e: unknown) => e);
     expect(classifyError(quota)).toBe("PROVIDER_QUOTA");
+  });
+
+  it("retries a 429 honoring Retry-After, then returns the scrape", async () => {
+    process.env.REHEARSAL_ALLOW_PRIVATE = "1";
+    let calls = 0;
+    const client = new FirecrawlClient({ FIRECRAWL_API_KEY: "fc", FIRECRAWL_429_BACKOFF_MS: "1" }, async () => {
+      calls++;
+      return calls === 1
+        ? new Response("rate limited", { status: 429, headers: { "retry-after": "0" } })
+        : okResponse({ success: true, data: { rawHtml: "<html/>" } });
+    });
+    const scraped = await client.scrape(URL);
+    expect(calls).toBe(2);
+    expect(scraped?.html).toBe("<html/>");
+  });
+
+  it("stops calling the API once the 429 retries are exhausted — later calls no-op", async () => {
+    process.env.REHEARSAL_ALLOW_PRIVATE = "1";
+    let calls = 0;
+    const client = new FirecrawlClient(
+      { FIRECRAWL_API_KEY: "fc", FIRECRAWL_429_RETRIES: "1", FIRECRAWL_429_BACKOFF_MS: "1" },
+      async () => {
+        calls++;
+        return okResponse({ error: "rate limited" }, 429);
+      },
+    );
+    await expect(client.scrape(URL)).rejects.toThrow(/429/);
+    expect(calls).toBe(2); // original + one retry
+    // Quota exhausted: the rest of the run falls back without spending more calls,
+    // and the exhaustion is account-wide — a second client no-ops too.
+    const other = new FirecrawlClient({ FIRECRAWL_API_KEY: "fc" }, async () => {
+      calls++;
+      return okResponse({ success: true, data: {} });
+    });
+    await expect(client.scrape(URL)).resolves.toBeNull();
+    await expect(client.mapLinks(URL, 5)).resolves.toEqual([]);
+    await expect(client.interact(URL, [{ type: "wait", milliseconds: 1 }])).resolves.toBeNull();
+    await expect(client.fetchHtml(URL)).resolves.toBe("");
+    await expect(other.scrape(URL)).resolves.toBeNull();
+    expect(calls).toBe(2);
+    // A different API key is a different account — its quota is untouched.
+    const otherAccount = new FirecrawlClient({ FIRECRAWL_API_KEY: "fc_other" }, async () => {
+      calls++;
+      return okResponse({ success: true, data: { rawHtml: "<html/>" } });
+    });
+    await expect(otherAccount.scrape(URL)).resolves.toMatchObject({ html: "<html/>" });
+    expect(calls).toBe(3);
   });
 
   it("throws when the API reports success:false", async () => {

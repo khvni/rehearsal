@@ -16,25 +16,72 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          # Full history only on PRs (the diff gates tests/e2e); pushes fetch depth 1.
+          fetch-depth: ${{ github.event_name == 'pull_request' && 0 || 1 }}
       - uses: actions/setup-node@v4
         with:
           node-version: 22
           cache: npm
       - run: npm ci
+      # Fastest gate first: oxlint is ~0.5s and fails on correctness errors.
+      # Warnings print but don't fail the job — eslint remains the source of truth.
+      - name: oxlint
+        run: npx --yes oxlint@latest src tests scripts
+      - name: Lint, typecheck and drift checks (parallel)
+        run: |
+          npm run lint &
+          npm run typecheck &
+          npm run check:skill-sync &
+          npm run check:function-lib &
+          npm run check:facts &
+          FAIL=0
+          for pid in $(jobs -p); do wait "$pid" || FAIL=1; done
+          exit $FAIL
+      # e2e (and the Chromium it needs) is skipped when the diff can't change
+      # what the browser exercises. Output is a count, never filenames.
+      - name: Changed files
+        id: diff
+        run: |
+          if [ "$GITHUB_EVENT_NAME" = "pull_request" ]; then
+            count=$(git diff --name-only "${{ github.event.pull_request.base.sha }}...${{ github.event.pull_request.head.sha }}" | grep -cv '^\(docs/\|terraform/\|factory/\|\.github/\|.*\.md$\)' || true)
+            echo "e2e-relevant=$count" >> "$GITHUB_OUTPUT"
+          else
+            echo 'e2e-relevant=1' >> "$GITHUB_OUTPUT"
+          fi
+      - uses: actions/cache@v4
+        if: github.event_name != 'pull_request' || steps.diff.outputs.e2e-relevant != '0'
+        id: playwright
+        with:
+          path: ~/.cache/ms-playwright
+          key: ${{ runner.os }}-playwright-${{ hashFiles('package-lock.json') }}
       - name: Install Chromium
+        if: github.event_name != 'pull_request' || steps.diff.outputs.e2e-relevant != '0'
         run: npx playwright install --with-deps chromium
       - name: Allow the Chromium sandbox (Ubuntu 24.04 restricts user namespaces)
+        if: github.event_name != 'pull_request' || steps.diff.outputs.e2e-relevant != '0'
         run: sudo sysctl -w kernel.apparmor_restrict_unprivileged_userns=0
-      - run: npm run lint
-      - run: npm run typecheck
-      - run: npm run test
-      - name: Evals gate
-        run: npm run eval
-      - run: npm run check:skill-sync
-      - name: Function lib (vendored src/lib drift)
-        run: npm run check:function-lib
-      - name: Facts (contract/env/catalog/API drift)
-        run: npm run check:facts
+      # Some unit tests and evals drive a real Chromium, so install happens above.
+      # On PRs, vitest related runs only what the diff can reach — but fixtures and
+      # golden files are read from disk, not imported, so any change under tests/
+      # runs the full gate.
+      - name: "Unit tests + evals (PRs: only tests the diff can reach)"
+        run: |
+          if [ "$GITHUB_EVENT_NAME" != "pull_request" ]; then
+            npm run test && npm run eval
+            exit
+          fi
+          mapfile -t changed < <(git diff --name-only "${{ github.event.pull_request.base.sha }}...${{ github.event.pull_request.head.sha }}")
+          if printf '%s\n' "${changed[@]}" | grep -q '^tests/'; then
+            npm run test && npm run eval
+            exit
+          fi
+          mapfile -t files < <(printf '%s\n' "${changed[@]}" | grep -E '\.(ts|tsx|mts|cts|mjs|cjs|js|json)$' || true)
+          if [ ${#files[@]} -eq 0 ]; then
+            echo 'No code files changed; skipping unit tests and evals.'
+            exit 0
+          fi
+          npx vitest related --passWithNoTests "${files[@]}"
       - name: E2E (hermetic fixtures)
+        if: github.event_name != 'pull_request' || steps.diff.outputs.e2e-relevant != '0'
         run: npm run test:e2e
-

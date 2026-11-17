@@ -1,7 +1,7 @@
 import { createHash } from "node:crypto";
 import { NextResponse } from "next/server";
 import { isExperimentId } from "@/lib/contracts";
-import { Orchestrator } from "@/lib/orchestrator";
+import { Orchestrator, runNeedsWatchdog } from "@/lib/orchestrator";
 import { requestOrigin } from "@/lib/fetch/guards";
 import { runInBackground } from "@/lib/jobs";
 
@@ -22,10 +22,14 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
   if (!experiment) return NextResponse.json({ error: "not found" }, { status: 404 });
   // Self-healing watchdog: a stalled background run resumes on the next poll.
   // On Workers a bare promise dies with the response, so it rides waitUntil.
-  const origin = requestOrigin(req);
-  await runInBackground(async () => {
-    await orch.resume(id, { origin, inline: true }).catch(() => undefined);
-  });
+  // Skipped for finished/idle experiments — resume would re-read the record
+  // and the lease store (~3 extra queries per poll) just to early-return.
+  if (runNeedsWatchdog(experiment)) {
+    const origin = requestOrigin(req);
+    await runInBackground(async () => {
+      await orch.resume(id, { origin, inline: true }).catch(() => undefined);
+    });
+  }
   const body = JSON.stringify(experiment);
   const tag = `"${createHash("sha256").update(body).digest("hex")}"`;
   const headers = { ETag: `W/${tag}`, "Cache-Control": "private, no-cache" };

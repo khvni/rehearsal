@@ -56,6 +56,17 @@ describe("fetchPublic self-origin routing on Workers", () => {
     expect(fetchMock).not.toHaveBeenCalled();
   });
 
+  it("matches the self origin by host even when the recorded scheme differs", async () => {
+    // OpenNext can hand route handlers a rewritten request URL whose scheme is
+    // `http` while the public URL is `https` — the recorded entry used to hold
+    // the full origin, so the mismatch disabled the binding and self fetches
+    // hit the edge stub (NON_HTML).
+    noteSelfOrigin("http://rehearsal.example.com");
+    const res = await fetchPublic("https://rehearsal.example.com/");
+    expect(selfFetch).toHaveBeenCalledWith("https://rehearsal.example.com/", expect.objectContaining({ redirect: "manual" }));
+    await expect(res.text()).resolves.toContain("self");
+  });
+
   it("uses plain fetch() for other origins — the binding always lands on this Worker", async () => {
     noteSelfOrigin("https://rehearsal.example.com");
     await fetchPublic("https://other.example.org/");
