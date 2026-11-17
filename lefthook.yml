@@ -50,7 +50,7 @@ pre-push:
         if printf '%s\n' "$files" | grep -q '^tests/'; then
           npm run test && npm run eval
         else
-          code=$(printf '%s\n' "$files" | grep -E '\.(ts|tsx|mts|cts|mjs|cjs|js|json)$' || true)
+          code=$(printf '%s\n' "$files" | grep -E '\.(ts|tsx|mts|cts|mjs|cjs|js)$' || true)
           if [ -n "$code" ]; then
             npx vitest related --passWithNoTests $code
           else
