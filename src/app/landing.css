@@ -54,7 +54,7 @@
 .landing-field label > span { color: var(--pencil); font-weight: 400; }
 .landing-field :is(input, textarea) { display: block; width: 100%; min-height: 50px; height: 50px; padding: 12px; border-radius: 2px; background: var(--sheet); color: var(--ink); border: 1px solid #aaa99e; font-size: 16px; line-height: 24px; }
 .landing-field textarea { resize: vertical; max-height: 160px; field-sizing: fixed; }
-.landing-field :is(input, textarea)::placeholder { color: #77776b; }
+.landing-field :is(input, textarea)::placeholder { color: var(--pencil); }
 .landing-field :is(input, textarea):focus { border-color: var(--ink); background: var(--sheet); }
 .field-help { color: var(--pencil); font-size: 13px; margin: 10px 0 0; }
 .goal-examples { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 14px; }
@@ -87,7 +87,7 @@
 .example-switch button[aria-pressed="true"] { background: var(--ink); color: var(--sheet); }
 .example-canvas { padding: 24px 24px 0; background: #e9e7de; border: 1px solid var(--rule); }
 .sample-page { background: var(--sheet); border: 1px solid var(--ink); }
-.sample-nav { display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 12px 16px; border-bottom: 1px solid var(--rule); font-size: 11px; }
+.sample-nav { display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 12px 16px; border-bottom: 1px solid var(--rule); font-size: 12px; }
 .sample-nav strong { font-size: 16px; letter-spacing: -.045em; }
 .sample-content { padding: 26px 20px; text-align: center; min-height: 265px; }
 .sample-heading { margin: 0; font-size: clamp(21px, 2vw, 27px); font-weight: 500; line-height: 1.2; letter-spacing: -.04em; }
@@ -95,7 +95,7 @@
 .sample-plans { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
 .sample-plans > div { display: flex; flex-direction: column; gap: 8px; padding: 14px 10px; border: 1px solid var(--rule); font-size: 12px; }
 .sample-plans strong { font-size: 14px; font-weight: 500; }
-.sample-cta { display: block; margin-top: 4px; padding: 6px 2px; background: var(--ink); color: var(--sheet); font-size: 11px; }
+.sample-cta { display: block; margin-top: 4px; padding: 6px 2px; background: var(--ink); color: var(--sheet); font-size: 12px; }
 .sample-vague-cta { display: inline-flex; align-items: center; gap: 8px; margin-top: 20px; color: var(--pencil); font-size: 12px; text-decoration: underline; text-decoration-style: wavy; text-decoration-color: var(--proof); text-underline-offset: 5px; }
 .example-annotation { display: flex; align-items: center; gap: 12px; min-height: 80px; padding: 14px 0; color: var(--proof); }
 .annotation-number { display: inline-flex; align-items: center; justify-content: center; width: 27px; height: 27px; flex-shrink: 0; border: 1px solid currentColor; border-radius: 50%; font-size: 12px; }
@@ -145,7 +145,7 @@
   .intro-copy p:first-child { font-size: 18px; }
   .intro-copy p { margin-bottom: 8px; font-size: 15px; }
   .form-heading { padding: 15px 18px; }
-  .form-heading > span { font-size: 11px; }
+  .form-heading > span { font-size: 12px; }
   .form-fields { grid-template-columns: 1fr; }
   .landing-field { padding: 20px 18px; }
   .landing-field + .landing-field { border-left: 0; border-top: 1px solid var(--rule); }
@@ -177,7 +177,7 @@
 }
 @media (max-width: 380px) {
   .landing-wrap { padding-inline: 16px; }
-  .landing-header nav { gap: 12px; font-size: 11px; }
+  .landing-header nav { gap: 12px; font-size: 12px; }
   .landing-brand { font-size: 21px; }
   .brand-mark { display: none; }
   .landing h1 { font-size: 42px; }
