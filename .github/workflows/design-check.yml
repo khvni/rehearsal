@@ -26,6 +26,29 @@ env:
   IMPECCABLE: sh .devin/skills/impeccable/scripts/impeccable
 
 jobs:
+  changes:
+    name: Detect rendered-relevant changes
+    runs-on: ubuntu-latest
+    outputs:
+      rendered: ${{ steps.filter.outputs.rendered }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - id: filter
+        run: |
+          # The rendered scan costs ~5 min (build + Playwright + fixture
+          # experiment); skip it when the PR only touched docs/config that
+          # the workflow-level paths filter still matches.
+          if git diff --quiet "${{ github.event.pull_request.base.sha }}...${{ github.event.pull_request.head.sha }}" -- \
+              src/app src/components src/lib/rebuild \
+              scripts/check-rebuild-design.ts package.json package-lock.json \
+              .impeccable .devin/skills/impeccable .github/workflows/design-check.yml; then
+            echo "rendered=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "rendered=true" >> "$GITHUB_OUTPUT"
+          fi
+
   static:
     name: static scan (src/app)
     runs-on: ubuntu-latest
@@ -36,6 +59,8 @@ jobs:
 
   rendered:
     name: rendered scan (/ and an experiment page)
+    needs: changes
+    if: needs.changes.outputs.rendered == 'true'
     runs-on: ubuntu-latest
     env:
       REHEARSAL_ALLOW_PRIVATE: "1"
@@ -47,6 +72,11 @@ jobs:
           node-version: 22
           cache: npm
       - run: npm ci
+      - uses: actions/cache@v4
+        id: playwright
+        with:
+          path: ~/.cache/ms-playwright
+          key: ${{ runner.os }}-playwright-${{ hashFiles('package-lock.json') }}
       - name: Install Chromium
         run: npx playwright install --with-deps chromium
       - name: Allow the Chromium sandbox (Ubuntu 24.04 restricts user namespaces)
