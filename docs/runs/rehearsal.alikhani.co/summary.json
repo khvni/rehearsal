@@ -1,0 +1,143 @@
+{
+  "site": "rehearsal.alikhani.co",
+  "url": "https://rehearsal.alikhani.co/",
+  "targetUrl": "https://rehearsal.alikhani.co/",
+  "goal": "Understand what Rehearsal produces and find an example result",
+  "status": "complete",
+  "runner": "local-playwright",
+  "config": {
+    "maxStates": 4,
+    "trajectories": 50,
+    "verifyCount": 2,
+    "maxDepth": 1,
+    "viewports": [
+      "desktop",
+      "mobile"
+    ],
+    "seed": 1337,
+    "maxAgents": 2,
+    "maxStepsPerAgent": 3,
+    "maxConcurrentAgents": 1
+  },
+  "preflight": {
+    "status": 200,
+    "finalUrl": "https://rehearsal.alikhani.co/",
+    "title": "Rehearsal",
+    "blocked": false
+  },
+  "robotsAllowsTarget": true,
+  "assertions": [
+    {
+      "kind": "url-matches",
+      "value": "result"
+    }
+  ],
+  "discover": {
+    "states": 4,
+    "edges": 2,
+    "pageFailures": 0,
+    "pageFailureSamples": [],
+    "urls": [
+      "https://rehearsal.alikhani.co/",
+      "https://rehearsal.alikhani.co/mockups",
+      "https://rehearsal.alikhani.co/",
+      "https://rehearsal.alikhani.co/mockups"
+    ]
+  },
+  "simulate": {
+    "trajectories": 2,
+    "goalReachPct": 0,
+    "outcomes": {
+      "dropped-off": 2
+    }
+  },
+  "verify": {
+    "runs": 3,
+    "passed": 0,
+    "failed": 3,
+    "assertionsPassed": 0,
+    "runsWithConsoleErrors": 0,
+    "runErrors": []
+  },
+  "compare": {
+    "goalCompleted": {
+      "baseline": false,
+      "variant": false
+    },
+    "interactionCount": {
+      "baseline": 3,
+      "variant": 3
+    },
+    "backtracks": {
+      "baseline": 0,
+      "variant": 0
+    },
+    "failedInteractions": {
+      "baseline": 0,
+      "variant": 0
+    },
+    "runtimeErrors": {
+      "baseline": 0,
+      "variant": 1
+    },
+    "findingReproduces": true
+  },
+  "endpoints": {
+    "intent": "information",
+    "total": 3,
+    "byClass": {
+      "schedule-event": {
+        "found": 1,
+        "reached": 1
+      },
+      "signup": {
+        "found": 2,
+        "reached": 2
+      }
+    }
+  },
+  "findings": {
+    "total": 18,
+    "bySeverity": {
+      "critical": 0,
+      "high": 10,
+      "medium": 5,
+      "low": 3
+    },
+    "byEvidence": {
+      "verified-failure": 1,
+      "reproducible-concern": 8,
+      "hypothesis": 9
+    },
+    "titles": [
+      "[high] Browser check failed: the URL \"result\" (3 of 3 runs)",
+      "[high] Desktop: a visitor landing here can't find site ID, primary navigation, search",
+      "[high] Desktop: a visitor landing here can't find site ID, primary navigation, search, you-are-here indicator",
+      "[high] Mobile: a visitor landing here can't find site ID, primary navigation, search",
+      "[high] Mobile: a visitor landing here can't find site ID, primary navigation, search, you-are-here indicator",
+      "[high] Visitors can't find an answer to \"What is this event?\"",
+      "[high] Visitors can't find an answer to \"What can I do here?\"",
+      "[high] Visitors can't find an answer to \"Where do I start?\"",
+      "[medium] Visitors can't find an answer to \"Why should I be here and not somewhere else?\"",
+      "[high] Visitors can't find an answer to \"When and where is it?\"",
+      "[medium] Visitors can't find an answer to \"Who is speaking?\"",
+      "[medium] Visitors can't find an answer to \"How much does it cost?\"",
+      "[medium] Visitors can't find an answer to \"Is it in person or online?\"",
+      "[medium] Visitors can't find an answer to \"Who is it for?\"",
+      "[low] Visitors can't find an answer to \"How do I contact the organizers?\"",
+      "[low] Visitors can't find an answer to \"Where are the answers to common questions?\"",
+      "[low] Visitors can't find an answer to \"How do I sponsor or partner?\"",
+      "[high] 12 of 15 expected visitor questions go unanswered"
+    ]
+  },
+  "durationsMs": {
+    "discover": 14137,
+    "simulate": 8285,
+    "verify": 11229,
+    "analyze": 15,
+    "compare": 1834,
+    "spec": 19,
+    "total": 40794
+  },
+  "ranAt": "2026-11-17T00:49:22.757Z"
+}

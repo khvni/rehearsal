@@ -15,6 +15,88 @@ test.beforeAll(async () => {
 
 test.afterAll(() => server?.kill());
 
+test.describe("landing onboarding", () => {
+  test.beforeEach(async ({ page }) => {
+    await page.route("**/api/experiments", (route) => route.fulfill({ json: [] }));
+  });
+
+  test("starts empty, validates the URL, fills a goal and retains inputs after a failed request", async ({ page }) => {
+    await page.goto(baseUrl);
+    const address = page.getByLabel("Your page URL");
+    await expect(address).toHaveValue("");
+    await page.getByRole("button", { name: "Start rehearsal", exact: true }).click();
+    await expect(page.locator("#url-error")).toContainText("Enter a public website address");
+    await expect(address).toBeFocused();
+    await address.fill("example.com:8080");
+    await page.getByRole("button", { name: "Book a demo", exact: true }).click();
+    let submitted: unknown;
+    await page.route("**/api/experiments", async (route) => {
+      submitted = route.request().postDataJSON();
+      await route.fulfill({ status: 429, json: { error: "rate limited" } });
+    });
+    await page.getByRole("button", { name: "Start rehearsal", exact: true }).click();
+    await expect(page.locator(".submit-error")).toContainText("Try again tomorrow");
+    expect(submitted).toEqual({ targetUrl: "https://example.com:8080/", goal: "Book a demo" });
+    await expect(address).toHaveValue("https://example.com:8080/");
+    await expect(page.getByLabel("What should a visitor do?")).toHaveValue("Book a demo");
+    await expect(page.getByRole("button", { name: "Start rehearsal", exact: true })).toBeEnabled();
+  });
+
+  test("submits an inferred goal once and opens the returned rehearsal", async ({ page }) => {
+    let requests = 0;
+    let release!: () => void;
+    const response = new Promise<void>((resolve) => { release = resolve; });
+    await page.route("**/api/experiments", async (route) => {
+      if (route.request().method() === "GET") return route.fulfill({ json: [] });
+      requests++;
+      expect(route.request().postDataJSON()).toEqual({ targetUrl: "https://example.com/" });
+      await response;
+      await route.fulfill({ json: { id: "landing-created" } });
+    });
+    await page.route("**/api/experiments/landing-created", (route) => route.fulfill({ status: 404, json: { error: "fixture" } }));
+    await page.goto(baseUrl);
+    await page.getByLabel("Your page URL").fill("example.com");
+    await page.getByRole("button", { name: "Start rehearsal", exact: true }).click();
+    await expect(page.getByRole("button", { name: "Starting rehearsal…", exact: true })).toBeDisabled();
+    await page.locator("#start").evaluate((form: HTMLFormElement) => form.requestSubmit());
+    release();
+    await expect(page).toHaveURL(`${baseUrl}/experiments/landing-created`, { timeout: 30000 });
+    expect(requests).toBe(1);
+  });
+
+  test("switches the illustrative layout and fits narrow screens", async ({ page }) => {
+    await page.setViewportSize({ width: 375, height: 812 });
+    await page.goto(baseUrl);
+    await expect(page.getByText("This is an illustration", { exact: false })).toBeVisible();
+    await page.getByRole("button", { name: "Wireframe proposal", exact: true }).click();
+    await expect(page.getByRole("button", { name: "Wireframe proposal", exact: true })).toHaveAttribute("aria-pressed", "true");
+    await expect(page.getByText("$12 / month", { exact: true })).toBeVisible();
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
+    await page.getByRole("button", { name: "Before", exact: true }).click();
+    await expect(page.getByText("A visitor wants a price.", { exact: false })).toBeVisible();
+  });
+
+  test("recovers the recent list and reveals older public runs", async ({ page }) => {
+    let failed = true;
+    const experiments = Array.from({ length: 5 }, (_, i) => ({
+      id: `landing-${i}`, targetUrl: `https://site${i}.example.com/`, goal: "Find pricing",
+      status: "complete", createdAt: `2026-06-0${i + 1}T12:00:00Z`, exampleEligible: i === 0,
+    }));
+    await page.route("**/api/experiments", (route) => route.fulfill(failed
+      ? { status: 503, json: { error: "offline" } } : { json: experiments }));
+    await page.goto(baseUrl);
+    await expect(page.locator(".recent-state[role='alert']")).toContainText("Could not load recent rehearsals");
+    failed = false;
+    await page.getByRole("button", { name: "Try again", exact: true }).click();
+    await expect(page.getByRole("link", { name: "Explore an example run" })).toHaveAttribute("href", "/experiments/landing-0");
+    await expect(page.locator(".recent-list li")).toHaveCount(4);
+    await expect(page.locator(".recent-list li").first()).toContainText("site4.example.com");
+    await expect(page.locator(".recent-list")).not.toContainText("site0.example.com");
+    await page.getByRole("button", { name: "Show all 5 rehearsals" }).click();
+    await expect(page.locator(".recent-list li")).toHaveCount(5);
+  });
+});
+
 for (const surface of ["detail", "rebuild"] as const) {
   const pathname = `/experiments/stale-refresh${surface === "rebuild" ? "/rebuild" : ""}`;
 

@@ -262,14 +262,15 @@ describe("same-origin checks parse URLs instead of prefix-matching", () => {
   });
 
   it("StagehandRunner.openPage rejects a redirect onto a private address", async () => {
-    const runner = new StagehandRunner({ env: "local", evidenceDir: tmpdir() });
+    const runner = new StagehandRunner({ env: "local", evidenceDir: tmpdir(), politenessHandledByCaller: true });
     const page = fakePage(`${PUBLIC}/`);
     page.goto = async (u: string) => {
       page.gotos.push(u);
       page.setUrl("http://127.0.0.1/admin");
       return null;
     };
-    Object.assign(runner, { withSession: async (_vp: unknown, _p: unknown, fn: (sh: unknown, p: unknown) => unknown) => fn({}, page) });
+    Object.assign(runner, { capturePage: async () => page });
     await expect(runner.openPage(`${PUBLIC}/`, { name: "desktop", width: 1280, height: 800 } as never)).rejects.toThrow(/off-origin/);
+    expect(page.gotos).toEqual([`${PUBLIC}/`]);
   });
 });
