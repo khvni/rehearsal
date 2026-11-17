@@ -1,0 +1,59 @@
+# Local gates so CI only runs what hooks can't catch (rendered scans, e2e).
+# npm postinstall runs `lefthook install`; skip all hooks with LEFTHOOK=0.
+
+pre-commit:
+  parallel: true
+  jobs:
+    - name: oxlint
+      glob: "*.{ts,tsx,mts,cts}"
+      run: npx oxlint {staged_files}
+      exclude:
+        - node_modules/**
+
+    - name: eslint
+      glob: "*.{ts,tsx,mts,cts}"
+      run: npx eslint --max-warnings 0 {staged_files}
+
+    # Static anti-pattern scan on staged dashboard files — the part of
+    # design-check.yml that does not need a browser. The rendered scan
+    # (build + Playwright) stays in CI.
+    - name: impeccable detect
+      glob: "src/app/**/*.{ts,tsx}"
+      run: sh .devin/skills/impeccable/scripts/impeccable detect {staged_files}
+
+    - name: terraform fmt
+      glob: "terraform/**/*.tf"
+      run: terraform fmt -check -recursive terraform/
+
+pre-push:
+  parallel: true
+  jobs:
+    # Full-file checks that staged-file globbing can't cover correctly:
+    # typecheck needs the whole graph, drift checks compare trees.
+    - name: typecheck
+      run: npx tsc --noEmit
+
+    - name: skill-sync
+      run: npx tsx scripts/check-skill-sync.ts
+
+    - name: function-lib drift
+      run: npx tsx scripts/sync-function-lib.ts --check
+
+    - name: facts
+      run: npx tsx scripts/verify-facts.ts
+
+    # Unit tests + evals the push can reach; fixtures/goldens read from
+    # disk (not imports) so tests/** changes run the full gate.
+    - name: vitest related
+      run: |
+        files=$(git diff --name-only @{upstream}...HEAD 2>/dev/null || git diff --name-only HEAD~1 2>/dev/null || git ls-files | head -1)
+        if printf '%s\n' "$files" | grep -q '^tests/'; then
+          npm run test && npm run eval
+        else
+          code=$(printf '%s\n' "$files" | grep -E '\.(ts|tsx|mts|cts|mjs|cjs|js|json)$' || true)
+          if [ -n "$code" ]; then
+            npx vitest related --passWithNoTests $code
+          else
+            echo 'No code files changed; skipping tests.'
+          fi
+        fi
