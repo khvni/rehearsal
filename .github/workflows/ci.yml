@@ -16,25 +16,63 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
       - uses: actions/setup-node@v4
         with:
           node-version: 22
           cache: npm
       - run: npm ci
+      # Fastest gate first: oxlint is ~0.5s and fails on correctness errors.
+      # Warnings print but don't fail the job — eslint remains the source of truth.
+      - name: oxlint
+        run: npx --yes oxlint@latest src tests scripts
+      - name: Lint, typecheck and drift checks (parallel)
+        run: |
+          npm run lint &
+          npm run typecheck &
+          npm run check:skill-sync &
+          npm run check:function-lib &
+          npm run check:facts &
+          FAIL=0
+          for pid in $(jobs -p); do wait "$pid" || FAIL=1; done
+          exit $FAIL
+      - name: Changed files
+        id: diff
+        run: |
+          if [ "$GITHUB_EVENT_NAME" = "pull_request" ]; then
+            mapfile -t files < <(git diff --name-only "${{ github.event.pull_request.base.sha }}...${{ github.event.pull_request.head.sha }}")
+            printf 'files=%s\n' "${files[*]}" >> "$GITHUB_OUTPUT"
+            # e2e is skipped when the diff can't change what the browser exercises.
+            printf 'e2e-relevant=%s\n' "$(printf '%s\n' "${files[@]}" | grep -cv '^\(docs/\|terraform/\|factory/\|\.github/\|.*\.md$\)' || true)" >> "$GITHUB_OUTPUT"
+          else
+            echo 'files=' >> "$GITHUB_OUTPUT"
+            echo 'e2e-relevant=1' >> "$GITHUB_OUTPUT"
+          fi
+      - name: "Unit tests + evals (PRs: only tests the diff can reach)"
+        run: |
+          if [ "$GITHUB_EVENT_NAME" != "pull_request" ]; then
+            npm run test && npm run eval
+            exit
+          fi
+          mapfile -t files < <(echo '${{ steps.diff.outputs.files }}' | tr ' ' '\n' | grep -E '\.(ts|tsx|mts|cts|mjs|cjs|js|json)$' || true)
+          if [ ${#files[@]} -eq 0 ]; then
+            echo 'No code files changed; skipping unit tests and evals.'
+            exit 0
+          fi
+          npx vitest related --passWithNoTests "${files[@]}"
+      - uses: actions/cache@v4
+        if: github.event_name != 'pull_request' || steps.diff.outputs.e2e-relevant != '0'
+        id: playwright
+        with:
+          path: ~/.cache/ms-playwright
+          key: ${{ runner.os }}-playwright-${{ hashFiles('package-lock.json') }}
       - name: Install Chromium
+        if: github.event_name != 'pull_request' || steps.diff.outputs.e2e-relevant != '0'
         run: npx playwright install --with-deps chromium
       - name: Allow the Chromium sandbox (Ubuntu 24.04 restricts user namespaces)
+        if: github.event_name != 'pull_request' || steps.diff.outputs.e2e-relevant != '0'
         run: sudo sysctl -w kernel.apparmor_restrict_unprivileged_userns=0
-      - run: npm run lint
-      - run: npm run typecheck
-      - run: npm run test
-      - name: Evals gate
-        run: npm run eval
-      - run: npm run check:skill-sync
-      - name: Function lib (vendored src/lib drift)
-        run: npm run check:function-lib
-      - name: Facts (contract/env/catalog/API drift)
-        run: npm run check:facts
       - name: E2E (hermetic fixtures)
+        if: github.event_name != 'pull_request' || steps.diff.outputs.e2e-relevant != '0'
         run: npm run test:e2e
-
