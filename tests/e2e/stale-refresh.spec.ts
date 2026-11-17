@@ -80,7 +80,7 @@ test.describe("landing onboarding", () => {
     let failed = true;
     const experiments = Array.from({ length: 5 }, (_, i) => ({
       id: `landing-${i}`, targetUrl: `https://site${i}.example.com/`, goal: "Find pricing",
-      status: "complete", createdAt: "2026-06-01T12:00:00Z", exampleEligible: i === 0,
+      status: "complete", createdAt: `2026-06-0${i + 1}T12:00:00Z`, exampleEligible: i === 0,
     }));
     await page.route("**/api/experiments", (route) => route.fulfill(failed
       ? { status: 503, json: { error: "offline" } } : { json: experiments }));
@@ -90,6 +90,8 @@ test.describe("landing onboarding", () => {
     await page.getByRole("button", { name: "Try again", exact: true }).click();
     await expect(page.getByRole("link", { name: "Explore an example run" })).toHaveAttribute("href", "/experiments/landing-0");
     await expect(page.locator(".recent-list li")).toHaveCount(4);
+    await expect(page.locator(".recent-list li").first()).toContainText("site4.example.com");
+    await expect(page.locator(".recent-list")).not.toContainText("site0.example.com");
     await page.getByRole("button", { name: "Show all 5 rehearsals" }).click();
     await expect(page.locator(".recent-list li")).toHaveCount(5);
   });

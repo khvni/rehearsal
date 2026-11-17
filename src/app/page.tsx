@@ -78,9 +78,9 @@ export default function Home() {
   const loadExperiments = useCallback(() => {
     return fetch("/api/experiments").then(async (response) => {
       if (!response.ok) throw new Error("Could not load rehearsals");
-      const data = await response.json();
+      const data: ExperimentSummary[] = await response.json();
       if (!Array.isArray(data)) throw new Error("Invalid rehearsal list");
-      setExperiments(data);
+      setExperiments(data.sort((a, b) => Date.parse(b.createdAt) - Date.parse(a.createdAt)));
       setExperimentsLoadError(false);
     }).catch(() => setExperimentsLoadError(true));
   }, []);
