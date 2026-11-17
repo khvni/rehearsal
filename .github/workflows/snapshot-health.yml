@@ -35,7 +35,7 @@ jobs:
         id: deps
         with:
           path: node_modules
-          key: ${{ runner.os }}-node-modules-${{ hashFiles('package-lock.json') }}
+          key: ${{ runner.os }}-node-modules-${{ hashFiles('package.json', 'package-lock.json') }}
       - name: npm ci
         if: steps.deps.outputs.cache-hit != 'true'
         run: npm ci
@@ -119,7 +119,9 @@ jobs:
               return;
             }
 
-            if (job && steps.every((s) => s.conclusion === "success")) {
+            // A conditionally-skipped step (e.g. npm ci on a node_modules cache
+            // hit) is a pass: its gate simply did not apply this run.
+            if (job && steps.every((s) => s.conclusion === "success" || s.conclusion === "skipped")) {
               for (const issue of open) {
                 await github.rest.issues.createComment({ owner, repo, issue_number: issue.number, body: `main is green again: ${runUrl}` });
                 await github.rest.issues.update({ owner, repo, issue_number: issue.number, state: "closed", state_reason: "completed" });

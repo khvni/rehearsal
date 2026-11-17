@@ -33,7 +33,7 @@ jobs:
         id: deps
         with:
           path: node_modules
-          key: ${{ runner.os }}-node-modules-${{ hashFiles('package-lock.json') }}
+          key: ${{ runner.os }}-node-modules-${{ hashFiles('package.json', 'package-lock.json') }}
       - run: npm ci
         if: steps.deps.outputs.cache-hit != 'true'
       # Read-only. On PRs drift is expected (the PR proposes the change), so it
