@@ -13,7 +13,7 @@ concurrency:
 jobs:
   check:
     if: github.event_name == 'push' || github.event.pull_request.draft == false
-    runs-on: ubuntu-latest
+    runs-on: ${{ (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository) && 'self-hosted' || 'ubuntu-latest' }}  # fork PRs stay on hosted (free on public repos, keeps untrusted code off the self-hosted Mac mini)
     steps:
       - uses: actions/checkout@v4
         with:
