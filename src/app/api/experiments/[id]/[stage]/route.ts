@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { isExperimentId } from "@/lib/contracts";
 import { Orchestrator, StageInProgressError } from "@/lib/orchestrator";
 import { specToMarkdown } from "@/lib/analysis/spec";
+import { requestOrigin } from "@/lib/fetch/guards";
 import { displaySpec } from "@/lib/presentation";
 import {
   maxConcurrentRuns,
@@ -82,7 +83,7 @@ export async function POST(
       }
     }
     const slot = await withRunSlot(() =>
-      runStage(orch, id, stage, new URL(req.url).origin, restart),
+      runStage(orch, id, stage, requestOrigin(req), restart),
       20_000
     );
     if (slot.busy) {

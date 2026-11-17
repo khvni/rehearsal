@@ -5,7 +5,7 @@
  * of which gets its own window. Elsewhere work runs as a detached promise in
  * this process (the Node dev/server process persists) and steps loop in-process.
  */
-import { assertPublicUrl } from "./fetch/guards";
+import { assertPublicUrl, selfService } from "./fetch/guards";
 
 export async function runInBackground(work: () => Promise<void>): Promise<void> {
   // navigator.userAgent is the cheapest Workers check — no import cost off-Workers.
@@ -57,7 +57,7 @@ export async function continueRun(id: string, opts: { origin?: string; token?: s
     // A Worker's fetch() to its own Custom Domain never reaches it, so the hop
     // goes through the self service binding when deployed; that always lands
     // on this Worker whatever the URL host, so the SSRF guard doesn't apply.
-    const self = await selfReference();
+    const self = await selfService();
     if (self) {
       await self.fetch(target, init);
       return;
@@ -71,15 +71,3 @@ export async function continueRun(id: string, opts: { origin?: string; token?: s
   }
 }
 
-type SelfService = { fetch(input: string, init?: RequestInit): Promise<Response> };
-
-/** The Worker's `WORKER_SELF_REFERENCE` service binding (wrangler.jsonc), when present. */
-async function selfReference(): Promise<SelfService | undefined> {
-  try {
-    const { getCloudflareContext } = await import("@opennextjs/cloudflare");
-    const { env } = await getCloudflareContext({ async: true });
-    return (env as { WORKER_SELF_REFERENCE?: SelfService }).WORKER_SELF_REFERENCE;
-  } catch {
-    return undefined;
-  }
-}

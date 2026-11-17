@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { ExperimentGoal, isExperimentId } from "@/lib/contracts";
 import { Orchestrator, StageInProgressError } from "@/lib/orchestrator";
+import { requestOrigin } from "@/lib/fetch/guards";
 import { presentsAccessToken } from "@/lib/access";
 import { underRunLimit } from "@/lib/ratelimit";
 
@@ -44,7 +45,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
     }
     const { experiment, report } = await orch.rescan(id, { goal: goal.data });
     if (report.restarted) {
-      await orch.scheduleRun(id, { skipDiscover: !report.changed, origin: new URL(req.url).origin });
+      await orch.scheduleRun(id, { skipDiscover: !report.changed, origin: requestOrigin(req) });
     }
     return NextResponse.json({ ...experiment, rescan: report }, { status: report.restarted ? 202 : 200 });
   } catch (e) {

@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { isExperimentId } from "@/lib/contracts";
 import { Orchestrator } from "@/lib/orchestrator";
+import { requestOrigin } from "@/lib/fetch/guards";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -19,6 +20,6 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
   const orch = orchestrator();
   const exp = await orch.get(id);
   if (!exp) return NextResponse.json({ error: "not found" }, { status: 404 });
-  const { resumed } = await orch.resume(id, { origin: new URL(req.url).origin });
+  const { resumed } = await orch.resume(id, { origin: requestOrigin(req) });
   return NextResponse.json({ resumed, status: exp.status });
 }

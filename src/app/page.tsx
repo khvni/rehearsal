@@ -80,7 +80,10 @@ export default function Home() {
       if (!response.ok) throw new Error("Could not load rehearsals");
       const data: ExperimentSummary[] = await response.json();
       if (!Array.isArray(data)) throw new Error("Invalid rehearsal list");
-      setExperiments(data.sort((a, b) => Date.parse(b.createdAt) - Date.parse(a.createdAt)));
+      setExperiments(
+        // A failed run has no results to explore — keep it out of the list.
+        data.filter((experiment) => experiment.status !== "failed").sort((a, b) => Date.parse(b.createdAt) - Date.parse(a.createdAt)),
+      );
       setExperimentsLoadError(false);
     }).catch(() => setExperimentsLoadError(true));
   }, []);
