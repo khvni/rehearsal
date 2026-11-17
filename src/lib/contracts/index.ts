@@ -761,6 +761,8 @@ export const RunCheckpoint = z.object({
   stage: z.string(),
   /** Slices consumed on `stage` — bounded by MAX_STAGE_SLICES so a stage that can't finish fails instead of looping. */
   attempt: z.number().int().nonnegative().default(0),
+  /** Errors retried on `stage` — bounded by MAX_STAGE_RETRIES before the run gives up. */
+  retries: z.number().int().nonnegative().optional(),
   discover: DiscoverCheckpoint.optional(),
 });
 export type RunCheckpoint = z.infer<typeof RunCheckpoint>;

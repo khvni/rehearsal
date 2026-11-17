@@ -98,6 +98,12 @@ function stallMs(): number {
 /** Slices a single stage may consume before it fails with STAGE_TIMEOUT — caps retry loops on stages that cannot finish in one step. */
 const MAX_STAGE_SLICES = 10;
 
+/** Retries a stage gets before the run gives up — transient provider/quota errors shouldn't kill the whole workflow. */
+const MAX_STAGE_RETRIES = 3;
+
+/** In-process delay between stage retries off-Workers; on Workers the retry rides the next run-step hop instead. */
+const STAGE_RETRY_BACKOFF_MS = 5_000;
+
 /**
  * Discover checkpoint cadence: the crawl state is saved after this many
  * crawled pages, or once this much time has passed since the last save,
@@ -539,14 +545,47 @@ export class Orchestrator {
           `Stage ${stage} did not finish within ${MAX_STAGE_SLICES} run steps — the runtime's step budget is too small for it`,
         );
       }
-      await persist({ stage, attempt, discover: carryDiscover });
-      const result = (await stageFns[stage](
-        deadline,
-        carryDiscover,
-        stage === "discover" ? attempt : undefined,
-      )) as { complete?: boolean } | undefined;
-      // A stage that suspended mid-flight owns the checkpoint — don't overwrite it.
-      if (result?.complete === false) return { suspended: true };
+      let retries = cp?.stage === stage ? cp.retries ?? 0 : 0;
+      await persist({ stage, attempt, retries, discover: carryDiscover });
+      // Durable retries: a stage error suspends the run (fresh window on Workers,
+      // backoff in-process elsewhere) instead of failing the whole workflow.
+      for (;;) {
+        try {
+          const result = (await stageFns[stage](
+            deadline,
+            carryDiscover,
+            stage === "discover" ? attempt : undefined,
+          )) as { complete?: boolean } | undefined;
+          // A stage that suspended mid-flight owns the checkpoint — don't overwrite it.
+          if (result?.complete === false) return { suspended: true };
+          break;
+        } catch (e) {
+          retries++;
+          const failure = toFailure(e, stage);
+          if (retries > MAX_STAGE_RETRIES) {
+            // Give up cleanly: clear the checkpoint so the watchdog stops re-entering.
+            const latest = await this.mustGet(id);
+            latest.runCheckpoint = undefined;
+            await this.store.save(Experiment.parse(latest));
+            await this.emit(
+              id,
+              "run",
+              "error",
+              `Stage ${stage} failed ${MAX_STAGE_RETRIES} times — run stopped (${formatFailure(failure).slice(0, 200)})`,
+            );
+            throw e;
+          }
+          await this.emit(
+            id,
+            "run",
+            "info",
+            `Stage ${stage} failed — retrying (${retries}/${MAX_STAGE_RETRIES}): ${formatFailure(failure).slice(0, 200)}`,
+          );
+          await persist({ stage, attempt, retries, discover: carryDiscover });
+          if (isWorkersRuntime()) return { suspended: true };
+          await new Promise((resolve) => setTimeout(resolve, STAGE_RETRY_BACKOFF_MS));
+        }
+      }
     }
     const done = await this.mustGet(id);
     done.runCheckpoint = undefined;

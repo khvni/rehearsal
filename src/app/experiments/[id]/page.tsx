@@ -96,7 +96,8 @@ export default function ExperimentPage() {
     void refresh();
   }, [refresh]);
 
-  const polling = pending !== null || (exp !== null && RUNNING_STATUSES.includes(exp.status));
+  // A surviving runCheckpoint means a background run may be suspended between hops — keep polling so the resume watchdog in GET keeps firing.
+  const polling = pending !== null || (exp !== null && (RUNNING_STATUSES.includes(exp.status) || exp.runCheckpoint !== undefined));
   useEffect(() => {
     if (!polling) return;
     const t = setInterval(() => void refresh(), 2000);
