@@ -97,7 +97,9 @@ export default function Home() {
     let targetUrl: URL;
     try {
       const value = url.trim();
-      targetUrl = new URL(/^[a-z][a-z\d+.-]*:/i.test(value) ? value : `https://${value}`);
+      const hasScheme = /^[a-z][a-z\d+.-]*:/i.test(value);
+      const hostWithPort = /^[^/?#:]+:\d+(?:[/?#]|$)/.test(value);
+      targetUrl = new URL(hasScheme && !hostWithPort ? value : `https://${value}`);
       if (!["http:", "https:"].includes(targetUrl.protocol) || !targetUrl.hostname.includes(".")) throw new Error("Invalid URL");
     } catch {
       setUrlError("Enter a public website address, like example.com.");

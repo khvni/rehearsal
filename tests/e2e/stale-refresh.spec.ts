@@ -27,7 +27,7 @@ test.describe("landing onboarding", () => {
     await page.getByRole("button", { name: "Start rehearsal", exact: true }).click();
     await expect(page.locator("#url-error")).toContainText("Enter a public website address");
     await expect(address).toBeFocused();
-    await address.fill("example.com");
+    await address.fill("example.com:8080");
     await page.getByRole("button", { name: "Book a demo", exact: true }).click();
     let submitted: unknown;
     await page.route("**/api/experiments", async (route) => {
@@ -36,8 +36,8 @@ test.describe("landing onboarding", () => {
     });
     await page.getByRole("button", { name: "Start rehearsal", exact: true }).click();
     await expect(page.locator(".submit-error")).toContainText("Try again tomorrow");
-    expect(submitted).toEqual({ targetUrl: "https://example.com/", goal: "Book a demo" });
-    await expect(address).toHaveValue("https://example.com/");
+    expect(submitted).toEqual({ targetUrl: "https://example.com:8080/", goal: "Book a demo" });
+    await expect(address).toHaveValue("https://example.com:8080/");
     await expect(page.getByLabel("What should a visitor do?")).toHaveValue("Book a demo");
     await expect(page.getByRole("button", { name: "Start rehearsal", exact: true })).toBeEnabled();
   });
