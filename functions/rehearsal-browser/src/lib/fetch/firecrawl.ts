@@ -12,6 +12,30 @@ const API_BASE = "https://api.firecrawl.dev/v1";
 /** Cap on a single hosted call; the runner's stage timeout still bounds the whole stage. */
 const REQUEST_TIMEOUT_MS = 30_000;
 const INTERACT_TIMEOUT_MS = 45_000;
+/** Minimum spacing between calls to api.firecrawl.dev: Firecrawl bills and rate-limits
+ *  per minute, so a crawl that rescues several JS-shell pages in a row otherwise bursts
+ *  into 429s. Distinct from politeDelay, which paces the *target* host. */
+const API_MIN_INTERVAL_MS = 5_000;
+/** 429 handling: retry honoring Retry-After (else exponential backoff), then mark the
+ *  client quota-exhausted so later calls fall back without spending another retry cycle. */
+const QUOTA_MAX_RETRIES = 2;
+const QUOTA_BACKOFF_BASE_MS = 10_000;
+const QUOTA_BACKOFF_MAX_MS = 45_000;
+
+/** Positive-int env override with a floor of 0 and a sane default (tests shrink the waits). */
+function intEnv(raw: string | undefined, fallback: number): number {
+  const n = raw === undefined ? NaN : Number(raw);
+  return Number.isFinite(n) && n >= 0 ? Math.floor(n) : fallback;
+}
+
+/** `Retry-After` in seconds or HTTP-date form; undefined when absent/unparseable. */
+function retryAfterMs(res: Response): number | undefined {
+  const raw = res.headers.get("retry-after")?.trim();
+  if (!raw) return undefined;
+  if (/^\d+$/.test(raw)) return Math.min(Number(raw) * 1000, QUOTA_BACKOFF_MAX_MS);
+  const at = Date.parse(raw);
+  return Number.isNaN(at) ? undefined : Math.min(Math.max(0, at - Date.now()), QUOTA_BACKOFF_MAX_MS);
+}
 
 // ── JS-shell heuristic ──────────────────────────────────────────────────────
 
@@ -87,10 +111,19 @@ export class FirecrawlClient implements FirecrawlClientPort {
   readonly name = "firecrawl";
   private readonly apiKey: string;
   private readonly fetchImpl: FetchImpl;
+  private apiSlotAt = 0;
+  /** Set after retries against 429s (or a 402) are exhausted: hosted calls become cheap no-ops for the rest of the run. */
+  private quotaExhausted = false;
+  private readonly quotaRetries: number;
+  private readonly quotaBackoffBaseMs: number;
+  private readonly apiMinIntervalMs: number;
 
   constructor(env: EnvVars = process.env, fetchImpl: FetchImpl = fetch) {
     this.apiKey = (env.FIRECRAWL_API_KEY ?? "").trim();
     this.fetchImpl = fetchImpl;
+    this.quotaRetries = intEnv(env.FIRECRAWL_429_RETRIES, QUOTA_MAX_RETRIES);
+    this.quotaBackoffBaseMs = intEnv(env.FIRECRAWL_429_BACKOFF_MS, QUOTA_BACKOFF_BASE_MS);
+    this.apiMinIntervalMs = intEnv(env.FIRECRAWL_MIN_INTERVAL_MS, API_MIN_INTERVAL_MS);
   }
 
   get available(): boolean {
@@ -99,14 +132,14 @@ export class FirecrawlClient implements FirecrawlClientPort {
 
   /** PageFetcher port — scrape and hand back the rendered html. `""` (no-op) without a key. */
   async fetchHtml(url: string, opts?: { signal?: AbortSignal }): Promise<string> {
-    if (!this.available) return "";
+    if (!this.available || this.quotaExhausted) return "";
     const scraped = await this.scrape(url, opts);
     if (!scraped?.html) throw new Error(`Firecrawl scrape returned no HTML for ${url}`);
     return scraped.html;
   }
 
   async scrape(url: string, opts?: { signal?: AbortSignal }): Promise<FirecrawlScrape | null> {
-    if (!this.available) return null;
+    if (!this.available || this.quotaExhausted) return null;
     const u = await assertPublicUrl(url); // every outbound call is egress-guarded
     await politeDelay(u);
     const json = await this.call(
@@ -118,7 +151,7 @@ export class FirecrawlClient implements FirecrawlClientPort {
   }
 
   async mapLinks(url: string, limit: number, opts?: { signal?: AbortSignal }): Promise<string[]> {
-    if (!this.available) return [];
+    if (!this.available || this.quotaExhausted) return [];
     const u = await assertPublicUrl(url);
     await politeDelay(u);
     const json = await this.call(
@@ -137,7 +170,7 @@ export class FirecrawlClient implements FirecrawlClientPort {
   }
 
   async interact(url: string, actions: FirecrawlAction[], opts?: { signal?: AbortSignal }): Promise<FirecrawlScrape | null> {
-    if (!this.available) return null;
+    if (!this.available || this.quotaExhausted) return null;
     const u = await assertPublicUrl(url);
     await politeDelay(u);
     const json = await this.call(
@@ -164,23 +197,46 @@ export class FirecrawlClient implements FirecrawlClientPort {
     };
   }
 
+  /** Serialize calls to api.firecrawl.dev at ~1 per apiMinIntervalMs — the per-minute
+   *  quota trips on bursts, not on the target host's politeness spacing. */
+  private async paceApi(): Promise<void> {
+    if (process.env.REHEARSAL_ALLOW_PRIVATE === "1") return; // hermetic tests
+    const now = Date.now();
+    const slot = Math.max(now, this.apiSlotAt);
+    this.apiSlotAt = slot + this.apiMinIntervalMs;
+    if (slot > now) await new Promise((r) => setTimeout(r, slot - now));
+  }
+
+  private sleep(ms: number): Promise<void> {
+    return ms > 0 ? new Promise((r) => setTimeout(r, ms)) : Promise.resolve();
+  }
+
   private async call(path: string, body: Record<string, unknown>, opts?: { signal?: AbortSignal }): Promise<Record<string, unknown>> {
-    const res = await this.fetchImpl(`${API_BASE}${path}`, {
-      method: "POST",
-      headers: { "content-type": "application/json", authorization: `Bearer ${this.apiKey}` },
-      body: JSON.stringify(body),
-      signal: AbortSignal.any([...(opts?.signal ? [opts.signal] : []), AbortSignal.timeout(REQUEST_TIMEOUT_MS)]),
-    });
-    if (!res.ok) {
-      const detail = await res.text().catch(() => "");
-      if (isQuotaStatus(res.status)) await reportProviderQuota("firecrawl", res.status, path);
-      const label = res.status === 402 ? " Payment Required" : res.status === 429 ? " Too Many Requests" : "";
-      throw new Error(`Firecrawl ${path} failed ${res.status}${label}${detail ? `: ${detail.slice(0, 200)}` : ""}`);
+    if (this.quotaExhausted) return {}; // callers treat "no data" as the clean fallback
+    for (let attempt = 0; ; attempt++) {
+      await this.paceApi();
+      const res = await this.fetchImpl(`${API_BASE}${path}`, {
+        method: "POST",
+        headers: { "content-type": "application/json", authorization: `Bearer ${this.apiKey}` },
+        body: JSON.stringify(body),
+        signal: AbortSignal.any([...(opts?.signal ? [opts.signal] : []), AbortSignal.timeout(REQUEST_TIMEOUT_MS)]),
+      });
+      if (!res.ok) {
+        const detail = await res.text().catch(() => "");
+        if (isQuotaStatus(res.status)) await reportProviderQuota("firecrawl", res.status, path);
+        if (res.status === 429 && attempt < this.quotaRetries) {
+          await this.sleep(retryAfterMs(res) ?? Math.min(this.quotaBackoffBaseMs * 2 ** attempt, QUOTA_BACKOFF_MAX_MS));
+          continue;
+        }
+        if (isQuotaStatus(res.status)) this.quotaExhausted = true;
+        const label = res.status === 402 ? " Payment Required" : res.status === 429 ? " Too Many Requests" : "";
+        throw new Error(`Firecrawl ${path} failed ${res.status}${label}${detail ? `: ${detail.slice(0, 200)}` : ""}`);
+      }
+      const json = (await res.json()) as Record<string, unknown>;
+      if (json.success === false) {
+        throw new Error(`Firecrawl ${path} failed: ${String(json.error ?? json.warning ?? "unknown error").slice(0, 200)}`);
+      }
+      return json;
     }
-    const json = (await res.json()) as Record<string, unknown>;
-    if (json.success === false) {
-      throw new Error(`Firecrawl ${path} failed: ${String(json.error ?? json.warning ?? "unknown error").slice(0, 200)}`);
-    }
-    return json;
   }
 }
