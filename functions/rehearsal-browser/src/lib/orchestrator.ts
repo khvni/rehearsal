@@ -425,7 +425,7 @@ export class Orchestrator {
       return { experiment: exp, resumed: false };
     }
     if (pendingRebuild && exp.runCheckpoint?.stage !== "rebuild") {
-      exp.runCheckpoint = { stage: "rebuild", attempt: 0 };
+      exp.runCheckpoint = { stage: "rebuild", attempt: 0, queued: exp.runCheckpoint?.queued };
       await this.store.save(Experiment.parse(exp));
     }
     // Runs queued before per-run tokens existed can't authorize their own
@@ -500,7 +500,9 @@ export class Orchestrator {
   ): Promise<{ suspended: boolean }> {
     const exp = await this.mustGet(id);
     const cp = exp.runCheckpoint;
-    if (pipelineFinished(exp) && cp && cp.stage !== "rebuild") {
+    // Stale checkpoints on finished runs are cleared — but a `queued`
+    // checkpoint resumes a stage requested mid-run, not stale chain state.
+    if (pipelineFinished(exp) && cp && cp.stage !== "rebuild" && !cp.queued) {
       exp.runCheckpoint = undefined;
       await this.store.save(Experiment.parse(exp));
       return { suspended: false };
@@ -524,10 +526,14 @@ export class Orchestrator {
       ? cp.stage
       : STATUS_STAGE[exp.status] ?? "discover";
     // Rebuild is opt-in (one more LLM call per goal set): a run stops at spec unless it is resuming a rebuild already asked for.
-    const order = pipelineFinished(exp) && cp === undefined
-      ? []
-      : PIPELINE_STAGES.slice(PIPELINE_STAGES.indexOf(startAt as (typeof PIPELINE_STAGES)[number]))
-        .filter((s) => s !== "rebuild" || startAt === "rebuild");
+    // A finished run resumes only a queued stage's checkpoint; a queued
+    // checkpoint resumes just that stage, never the chain around it.
+    const order = cp?.queued
+      ? [cp.stage]
+      : pipelineFinished(exp) && cp === undefined
+        ? []
+        : PIPELINE_STAGES.slice(PIPELINE_STAGES.indexOf(startAt as (typeof PIPELINE_STAGES)[number]))
+          .filter((s) => s !== "rebuild" || startAt === "rebuild");
     const now = opts?.now ?? Date.now;
     const deadline = opts?.deadlineMs !== undefined ? now() + opts.deadlineMs : undefined;
     const persist = async (checkpoint: RunCheckpoint) => {
@@ -539,11 +545,13 @@ export class Orchestrator {
     // stage saves can't clobber them) and run after the rest of the chain.
     const queue: string[] = [...order];
     for (;;) {
-      const stage = queue.shift() ?? (await this.nextQueued(id));
+      const head = queue.shift();
+      const queuedReq = head === undefined || cp?.queued === true;
+      const stage = head ?? (await this.nextQueued(id));
       if (stage === undefined) break;
       const carryDiscover = stage === "discover" && cp?.stage === "discover" ? cp.discover : undefined;
       if (deadline !== undefined && now() >= deadline) {
-        await persist({ stage, attempt: cp?.stage === stage ? cp.attempt : 0, discover: carryDiscover });
+        await persist({ stage, attempt: cp?.stage === stage ? cp.attempt : 0, queued: queuedReq || undefined, discover: carryDiscover });
         await this.emit(id, "run", "info", `Step budget reached — run continues in the background (next: ${stage})`);
         return { suspended: true };
       }
@@ -559,7 +567,7 @@ export class Orchestrator {
         );
       }
       let retries = cp?.stage === stage ? cp.retries ?? 0 : 0;
-      await persist({ stage, attempt, retries, discover: carryDiscover });
+      await persist({ stage, attempt, retries, queued: queuedReq || undefined, discover: carryDiscover });
       // Durable retries: a stage error suspends the run (fresh window on Workers,
       // backoff in-process elsewhere) instead of failing the whole workflow.
       for (;;) {
@@ -594,7 +602,7 @@ export class Orchestrator {
             "info",
             `Stage ${stage} failed — retrying (${retries}/${MAX_STAGE_RETRIES}): ${formatFailure(failure).slice(0, 200)}`,
           );
-          await persist({ stage, attempt, retries, discover: carryDiscover });
+          await persist({ stage, attempt, retries, queued: queuedReq || undefined, discover: carryDiscover });
           if (isWorkersRuntime()) return { suspended: true };
           await new Promise((resolve) => setTimeout(resolve, STAGE_RETRY_BACKOFF_MS));
         }
@@ -618,6 +626,14 @@ export class Orchestrator {
     const runningAt = order.indexOf(runningStage);
     if (runningAt >= 0 && order.indexOf(stage) > runningAt) return;
     await this.emit(id, "run", "queued", stage);
+    // When nothing is mid-flight (standalone stage finishing, or a finished
+    // run), leave a checkpoint breadcrumb so runNeedsWatchdog keeps polling
+    // and resume() schedules the drain.
+    const exp = await this.mustGet(id);
+    if (exp.runCheckpoint === undefined) {
+      exp.runCheckpoint = { stage, attempt: 0, queued: true };
+      await this.store.save(Experiment.parse(exp));
+    }
   }
 
   /** Pending stage requests: `queued` events not yet matched by a `queued-start`. */
@@ -788,28 +804,49 @@ export class Orchestrator {
     return this.exclusive(id, "discover", async () => {
       const cp = (await this.mustGet(id)).runCheckpoint;
       await this.runDiscover(id, cp?.stage === "discover" ? { resume: cp.discover, attempt: cp.attempt } : undefined);
+      if ((await this.queuedStages(id)).length > 0) await this.stepBody(id);
       return this.mustGet(id);
     });
   }
 
   async simulate(id: string): Promise<Experiment> {
-    return this.exclusive(id, "simulate", () => this.runSimulate(id));
+    return this.exclusive(id, "simulate", async () => {
+      await this.runSimulate(id);
+      if ((await this.queuedStages(id)).length > 0) await this.stepBody(id);
+      return this.mustGet(id);
+    });
   }
 
   async verify(id: string): Promise<Experiment> {
-    return this.exclusive(id, "verify", () => this.runVerify(id));
+    return this.exclusive(id, "verify", async () => {
+      await this.runVerify(id);
+      if ((await this.queuedStages(id)).length > 0) await this.stepBody(id);
+      return this.mustGet(id);
+    });
   }
 
   async analyze(id: string): Promise<Experiment> {
-    return this.exclusive(id, "analyze", () => this.runAnalyze(id));
+    return this.exclusive(id, "analyze", async () => {
+      await this.runAnalyze(id);
+      if ((await this.queuedStages(id)).length > 0) await this.stepBody(id);
+      return this.mustGet(id);
+    });
   }
 
   async compare(id: string): Promise<Experiment> {
-    return this.exclusive(id, "compare", () => this.runCompare(id));
+    return this.exclusive(id, "compare", async () => {
+      await this.runCompare(id);
+      if ((await this.queuedStages(id)).length > 0) await this.stepBody(id);
+      return this.mustGet(id);
+    });
   }
 
   async spec(id: string): Promise<Experiment> {
-    return this.exclusive(id, "spec", () => this.runSpec(id));
+    return this.exclusive(id, "spec", async () => {
+      await this.runSpec(id);
+      if ((await this.queuedStages(id)).length > 0) await this.stepBody(id);
+      return this.mustGet(id);
+    });
   }
 
   /** A standalone rebuild gets a fresh call budget: the per-run budget resets only at discover, so a finished run has spent it. */
@@ -828,7 +865,9 @@ export class Orchestrator {
           await this.store.save(Experiment.parse(exp));
         }
       }
-      return this.runRebuild(id, opts);
+      const result = await this.runRebuild(id, opts);
+      if ((await this.queuedStages(id)).length > 0) await this.stepBody(id);
+      return result;
     });
   }
 
@@ -863,7 +902,7 @@ export class Orchestrator {
       /** Write the crawl state so a suspended step or dropped hop resumes where it left off. */
       const persist = async (discover: DiscoverCheckpoint) => {
         const latest = await this.mustGet(id);
-        latest.runCheckpoint = { stage: "discover", attempt, retries: latest.runCheckpoint?.retries, discover };
+        latest.runCheckpoint = { stage: "discover", attempt, retries: latest.runCheckpoint?.retries, queued: latest.runCheckpoint?.queued, discover };
         await this.store.save(Experiment.parse(latest));
         pagesSinceSave = 0;
         lastSaveAt = now();
@@ -1556,7 +1595,7 @@ export class Orchestrator {
         };
       }
       exp.status = status;
-      if (status === "rebuilding") exp.runCheckpoint = { stage: "rebuild", attempt: 0, retries: exp.runCheckpoint?.retries };
+      if (status === "rebuilding") exp.runCheckpoint = { stage: "rebuild", attempt: 0, retries: exp.runCheckpoint?.retries, queued: exp.runCheckpoint?.queued };
       else if (exp.runCheckpoint?.stage === "rebuild") exp.runCheckpoint = undefined;
       await this.store.save(Experiment.parse(exp));
     };

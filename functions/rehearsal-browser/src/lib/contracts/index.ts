@@ -765,6 +765,8 @@ export const RunCheckpoint = z.object({
   attempt: z.number().int().nonnegative().default(0),
   /** Errors retried on `stage` — bounded by MAX_STAGE_RETRIES before the run gives up. */
   retries: z.number().int().nonnegative().optional(),
+  /** This checkpoint resumes a stage request queued mid-run — not the pipeline chain itself. */
+  queued: z.boolean().optional(),
   discover: DiscoverCheckpoint.optional(),
 });
 export type RunCheckpoint = z.infer<typeof RunCheckpoint>;
