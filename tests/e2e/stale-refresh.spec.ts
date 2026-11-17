@@ -67,14 +67,14 @@ test.describe("landing onboarding", () => {
   test("switches the illustrative layout and fits narrow screens", async ({ page }) => {
     await page.setViewportSize({ width: 375, height: 812 });
     await page.goto(baseUrl);
-    await expect(page.getByText("Why black and white?", { exact: true })).toBeVisible();
+    await expect(page.locator("figcaption")).toContainText("Black and white so you judge layout and wording, not branding.");
     await expect(page.locator("figcaption")).toContainText("not a tested result");
     await page.getByRole("button", { name: "Proposed wireframe", exact: true }).click();
     await expect(page.getByRole("button", { name: "Proposed wireframe", exact: true })).toHaveAttribute("aria-pressed", "true");
     await expect(page.getByText("$12 / month", { exact: true })).toBeVisible();
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
     await page.getByRole("button", { name: "Before", exact: true }).click();
-    await expect(page.getByText("Visitors have to look elsewhere", { exact: false })).toBeVisible();
+    await expect(page.getByText("No prices on the page.", { exact: true })).toBeVisible();
   });
 
   test("recovers the recent list and reveals older public runs", async ({ page }) => {
