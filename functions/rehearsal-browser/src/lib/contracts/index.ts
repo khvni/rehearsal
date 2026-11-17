@@ -516,6 +516,8 @@ export const ActivityKind = z.enum([
   "assert",
   "finding",
   "error",
+  "queued",
+  "queued-start",
 ]);
 export type ActivityKind = z.infer<typeof ActivityKind>;
 

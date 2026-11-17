@@ -1,5 +1,6 @@
 import { randomUUID } from "node:crypto";
 import {
+  ACTIVITY_EVENT_LIMIT,
   Experiment,
   ExperimentConfig,
   VIEWPORTS,
@@ -417,7 +418,8 @@ export class Orchestrator {
       await this.store.save(Experiment.parse(exp));
       return { experiment: exp, resumed: false };
     }
-    const inFlight = pendingRebuild || IN_FLIGHT_STATUSES.includes(exp.status) || exp.runCheckpoint !== undefined;
+    const queued = await this.queuedStages(id);
+    const inFlight = pendingRebuild || IN_FLIGHT_STATUSES.includes(exp.status) || exp.runCheckpoint !== undefined || queued.length > 0;
     if (!inFlight) return { experiment: exp, resumed: false };
     if (Date.now() - (await this.lastBeat(id, exp)) < stallMs()) {
       return { experiment: exp, resumed: false };
@@ -522,8 +524,10 @@ export class Orchestrator {
       ? cp.stage
       : STATUS_STAGE[exp.status] ?? "discover";
     // Rebuild is opt-in (one more LLM call per goal set): a run stops at spec unless it is resuming a rebuild already asked for.
-    const order = PIPELINE_STAGES.slice(PIPELINE_STAGES.indexOf(startAt as (typeof PIPELINE_STAGES)[number]))
-      .filter((s) => s !== "rebuild" || startAt === "rebuild");
+    const order = pipelineFinished(exp) && cp === undefined
+      ? []
+      : PIPELINE_STAGES.slice(PIPELINE_STAGES.indexOf(startAt as (typeof PIPELINE_STAGES)[number]))
+        .filter((s) => s !== "rebuild" || startAt === "rebuild");
     const now = opts?.now ?? Date.now;
     const deadline = opts?.deadlineMs !== undefined ? now() + opts.deadlineMs : undefined;
     const persist = async (checkpoint: RunCheckpoint) => {
@@ -531,7 +535,12 @@ export class Orchestrator {
       latest.runCheckpoint = checkpoint;
       await this.store.save(Experiment.parse(latest));
     };
-    for (const stage of order) {
+    // Stage requests made mid-run are recorded in the feed (append-only, so
+    // stage saves can't clobber them) and run after the rest of the chain.
+    const queue: string[] = [...order];
+    for (;;) {
+      const stage = queue.shift() ?? (await this.nextQueued(id));
+      if (stage === undefined) break;
       const carryDiscover = stage === "discover" && cp?.stage === "discover" ? cp.discover : undefined;
       if (deadline !== undefined && now() >= deadline) {
         await persist({ stage, attempt: cp?.stage === stage ? cp.attempt : 0, discover: carryDiscover });
@@ -598,33 +607,42 @@ export class Orchestrator {
   }
 
   /**
-   * Queue a stage request behind the in-flight run: `enqueueRun` waits for a
-   * pipeline slot, `exclusiveWhenFree` waits for the run's lock, then the stage
-   * runs through its normal entry. Stages the in-flight chain already reaches
-   * are ignored (no duplicate work); the rest — e.g. rebuild during a full run
-   * — run right after it finishes.
+   * Record a stage request made while another stage holds the lock, as a feed
+   * event — durable across Workers hops and never overwritten by stage saves.
+   * The run's sliceRun loop picks it up once the chain's remaining stages
+   * finish. Stages the in-flight chain already reaches are ignored.
    */
   async enqueueStage(id: string, stage: string, runningStage: string): Promise<void> {
     const order = PIPELINE_STAGES as readonly string[];
     if (!order.includes(stage)) return;
     const runningAt = order.indexOf(runningStage);
     if (runningAt >= 0 && order.indexOf(stage) > runningAt) return;
-    const work: Record<string, () => Promise<unknown>> = {
-      discover: () => this.runDiscover(id),
-      simulate: () => this.runSimulate(id),
-      verify: () => this.runVerify(id),
-      analyze: () => this.runAnalyze(id),
-      compare: () => this.runCompare(id),
-      spec: () => this.runSpec(id),
-      rebuild: () => this.runRebuild(id),
-    };
-    await enqueueRun(async () => {
-      await this.exclusiveWhenFree(id, stage, async () => {
-        await work[stage]();
-      }).catch(async (e) => {
-        await this.markFailed(id, e).catch(() => undefined);
-      });
-    });
+    await this.emit(id, "run", "queued", stage);
+  }
+
+  /** Pending stage requests: `queued` events not yet matched by a `queued-start`. */
+  private async queuedStages(id: string): Promise<string[]> {
+    try {
+      const feed = await this.store.activity(id, ACTIVITY_EVENT_LIMIT);
+      const pending: string[] = [];
+      for (const ev of feed) {
+        if (ev.kind === "queued") pending.push(ev.message);
+        else if (ev.kind === "queued-start") {
+          const i = pending.indexOf(ev.message);
+          if (i >= 0) pending.splice(i, 1);
+        }
+      }
+      return pending;
+    } catch {
+      return [];
+    }
+  }
+
+  /** Pop the oldest pending stage request, marking it consumed with a `queued-start` event. */
+  private async nextQueued(id: string): Promise<string | undefined> {
+    const stage = (await this.queuedStages(id))[0];
+    if (stage !== undefined) await this.emit(id, "run", "queued-start", stage);
+    return stage;
   }
 
   /** Timestamp of the most recent activity event — the run heartbeat. Falls back to createdAt. */
