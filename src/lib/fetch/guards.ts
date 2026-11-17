@@ -185,10 +185,14 @@ const MAX_REDIRECTS = 3;
  *  this Worker whatever the URL host — the same trick the run-step hop uses. */
 const selfOrigins = new Set<string>();
 
-/** Record an origin this deployment serves (called from each request's URL). */
+/** Record an origin this deployment serves (called from each request's URL).
+ *  Stores the host rather than the full origin: adapters may hand route
+ *  handlers a rewritten request URL whose scheme differs from the public one
+ *  (OpenNext can present `http://<host>` internally), and scheme mismatches
+ *  must not disable the self-binding. */
 export function noteSelfOrigin(origin: string): void {
   try {
-    selfOrigins.add(new URL(origin).origin);
+    selfOrigins.add(new URL(origin).host);
   } catch {
     /* malformed origin — nothing to record */
   }
@@ -202,7 +206,16 @@ export function requestOrigin(req: Request): string {
 }
 
 function isSelfOrigin(url: URL): boolean {
-  return selfOrigins.has(url.origin) || process.env.REHEARSAL_ORIGIN === url.origin;
+  const raw = process.env.REHEARSAL_ORIGIN;
+  let pinnedHost = "";
+  if (raw) {
+    try {
+      pinnedHost = new URL(raw).host;
+    } catch {
+      /* unpinned */
+    }
+  }
+  return selfOrigins.has(url.host) || pinnedHost === url.host;
 }
 
 function onWorkers(): boolean {
