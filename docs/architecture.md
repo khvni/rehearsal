@@ -163,7 +163,7 @@ a variable that is missing here or in `.env.example`, or if `.env.example` lists
 | `JEV_API_KEY` | `decisions/jev.ts` | `FixtureJevClient` |
 | `JEV_BASE_URL` / `JEV_MODEL` | `decisions/jev.ts` | `https://api.typesafe.ai/v1/systemone` / `jev-latest` |
 | `FIRECRAWL_API_KEY` | `fetch/firecrawl.ts`, `orchestrator.ts` | Discovery is plain-fetch only (no hosted fallback, no `/v1/map` expansion) |
-| `FIRECRAWL_MIN_INTERVAL_MS` / `FIRECRAWL_429_RETRIES` / `FIRECRAWL_429_BACKOFF_MS` | `fetch/firecrawl.ts` | `5000` spacing between api.firecrawl.dev calls; a 429 retries `2` times honoring `Retry-After` (else `10000`ms base backoff, capped 45s), then the client no-ops for the rest of the run |
+| `FIRECRAWL_MIN_INTERVAL_MS` / `FIRECRAWL_429_RETRIES` / `FIRECRAWL_429_BACKOFF_MS` | `fetch/firecrawl.ts` | `5000` spacing between api.firecrawl.dev calls, shared across clients; a 429 retries `2` times honoring `Retry-After` (else `10000`ms base backoff, ≤20s total so a run slice still checkpoints), then the account no-ops for ~60s until the per-minute quota resets |
 | `BROWSERBASE_API_KEY` / `BROWSERBASE_PROJECT_ID` | `fetch/index.ts`, `browser/runner.ts` | Browserbase Fetch + Stagehand on Browserbase skipped |
 | `STAGEHAND_MODEL` / `STAGEHAND_MODEL_API_KEY` | `browser/stagehand.ts` | `google/$GEMINI_MODEL_FAST` with `GEMINI_API_KEY` |
 | `STAGEHAND_CHROME_PATH` | `browser/runner.ts` | Stagehand's default Chrome lookup (`stagehand-local` only) |

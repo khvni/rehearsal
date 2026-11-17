@@ -17,10 +17,28 @@ const INTERACT_TIMEOUT_MS = 45_000;
  *  into 429s. Distinct from politeDelay, which paces the *target* host. */
 const API_MIN_INTERVAL_MS = 5_000;
 /** 429 handling: retry honoring Retry-After (else exponential backoff), then mark the
- *  client quota-exhausted so later calls fall back without spending another retry cycle. */
+ *  account quota-exhausted so later calls fall back without spending another retry cycle. */
 const QUOTA_MAX_RETRIES = 2;
 const QUOTA_BACKOFF_BASE_MS = 10_000;
 const QUOTA_BACKOFF_MAX_MS = 45_000;
+/** Total backoff a call may spend retrying 429s. Kept under a run step's ~20s slice so a
+ *  Worker run still checkpoints between pages; a Retry-After past this exhausts instead. */
+const QUOTA_RETRY_BUDGET_MS = 20_000;
+/** Quota windows are per-minute: exhaustion lifts after this long so a later run can
+ *  use hosted fallback again once Firecrawl resets the budget. */
+const QUOTA_COOLDOWN_MS = 60_000;
+
+// Quota and pacing apply to the API key (the account), not a client instance — module-level
+// so parallel crawls on this isolate share both instead of bursting together.
+let apiSlotAt = 0;
+let quotaExhaustedUntil = 0;
+const quotaExhausted = () => Date.now() < quotaExhaustedUntil;
+
+/** Test hook: forget the shared pacing slot and quota cooldown. */
+export function resetFirecrawlRateLimit(): void {
+  apiSlotAt = 0;
+  quotaExhaustedUntil = 0;
+}
 
 /** Positive-int env override with a floor of 0 and a sane default (tests shrink the waits). */
 function intEnv(raw: string | undefined, fallback: number): number {
@@ -111,9 +129,6 @@ export class FirecrawlClient implements FirecrawlClientPort {
   readonly name = "firecrawl";
   private readonly apiKey: string;
   private readonly fetchImpl: FetchImpl;
-  private apiSlotAt = 0;
-  /** Set after retries against 429s (or a 402) are exhausted: hosted calls become cheap no-ops for the rest of the run. */
-  private quotaExhausted = false;
   private readonly quotaRetries: number;
   private readonly quotaBackoffBaseMs: number;
   private readonly apiMinIntervalMs: number;
@@ -132,14 +147,14 @@ export class FirecrawlClient implements FirecrawlClientPort {
 
   /** PageFetcher port — scrape and hand back the rendered html. `""` (no-op) without a key. */
   async fetchHtml(url: string, opts?: { signal?: AbortSignal }): Promise<string> {
-    if (!this.available || this.quotaExhausted) return "";
+    if (!this.available || quotaExhausted()) return "";
     const scraped = await this.scrape(url, opts);
     if (!scraped?.html) throw new Error(`Firecrawl scrape returned no HTML for ${url}`);
     return scraped.html;
   }
 
   async scrape(url: string, opts?: { signal?: AbortSignal }): Promise<FirecrawlScrape | null> {
-    if (!this.available || this.quotaExhausted) return null;
+    if (!this.available || quotaExhausted()) return null;
     const u = await assertPublicUrl(url); // every outbound call is egress-guarded
     await politeDelay(u);
     const json = await this.call(
@@ -151,7 +166,7 @@ export class FirecrawlClient implements FirecrawlClientPort {
   }
 
   async mapLinks(url: string, limit: number, opts?: { signal?: AbortSignal }): Promise<string[]> {
-    if (!this.available || this.quotaExhausted) return [];
+    if (!this.available || quotaExhausted()) return [];
     const u = await assertPublicUrl(url);
     await politeDelay(u);
     const json = await this.call(
@@ -170,7 +185,7 @@ export class FirecrawlClient implements FirecrawlClientPort {
   }
 
   async interact(url: string, actions: FirecrawlAction[], opts?: { signal?: AbortSignal }): Promise<FirecrawlScrape | null> {
-    if (!this.available || this.quotaExhausted) return null;
+    if (!this.available || quotaExhausted()) return null;
     const u = await assertPublicUrl(url);
     await politeDelay(u);
     const json = await this.call(
@@ -202,8 +217,8 @@ export class FirecrawlClient implements FirecrawlClientPort {
   private async paceApi(): Promise<void> {
     if (process.env.REHEARSAL_ALLOW_PRIVATE === "1") return; // hermetic tests
     const now = Date.now();
-    const slot = Math.max(now, this.apiSlotAt);
-    this.apiSlotAt = slot + this.apiMinIntervalMs;
+    const slot = Math.max(now, apiSlotAt);
+    apiSlotAt = slot + this.apiMinIntervalMs;
     if (slot > now) await new Promise((r) => setTimeout(r, slot - now));
   }
 
@@ -212,7 +227,8 @@ export class FirecrawlClient implements FirecrawlClientPort {
   }
 
   private async call(path: string, body: Record<string, unknown>, opts?: { signal?: AbortSignal }): Promise<Record<string, unknown>> {
-    if (this.quotaExhausted) return {}; // callers treat "no data" as the clean fallback
+    if (quotaExhausted()) return {}; // callers treat "no data" as the clean fallback
+    let waitedMs = 0;
     for (let attempt = 0; ; attempt++) {
       await this.paceApi();
       const res = await this.fetchImpl(`${API_BASE}${path}`, {
@@ -225,10 +241,15 @@ export class FirecrawlClient implements FirecrawlClientPort {
         const detail = await res.text().catch(() => "");
         if (isQuotaStatus(res.status)) await reportProviderQuota("firecrawl", res.status, path);
         if (res.status === 429 && attempt < this.quotaRetries) {
-          await this.sleep(retryAfterMs(res) ?? Math.min(this.quotaBackoffBaseMs * 2 ** attempt, QUOTA_BACKOFF_MAX_MS));
-          continue;
+          const waitMs = retryAfterMs(res) ?? Math.min(this.quotaBackoffBaseMs * 2 ** attempt, QUOTA_BACKOFF_MAX_MS);
+          if (waitedMs + waitMs <= QUOTA_RETRY_BUDGET_MS) {
+            waitedMs += waitMs;
+            await this.sleep(waitMs);
+            continue;
+          }
+          // The wait would outlive the run slice — exhaust instead of stalling the crawl.
         }
-        if (isQuotaStatus(res.status)) this.quotaExhausted = true;
+        if (isQuotaStatus(res.status)) quotaExhaustedUntil = Date.now() + QUOTA_COOLDOWN_MS;
         const label = res.status === 402 ? " Payment Required" : res.status === 429 ? " Too Many Requests" : "";
         throw new Error(`Firecrawl ${path} failed ${res.status}${label}${detail ? `: ${detail.slice(0, 200)}` : ""}`);
       }
