@@ -1578,9 +1578,16 @@ export class Orchestrator {
         // reuse a stored mockup too, so a retry finishes instead of burning
         // another model call past the step budget. A deliberate spec rerun
         // (no resume checkpoint) regenerates it so the preview tracks the
-        // new spec.
-        if (!(retried && exp.mockup !== undefined)) exp.mockup = await generateMockup(exp, this.llm);
-        await this.emit(id, "spec", "info", `Mockup built: ${exp.mockup.pages.length} pages under /experiments/${id}/preview/`);
+        // new spec. The mockup call outlives a slice (~90s model timeout vs
+        // ~20s step budget), so once the spec is saved and several resumed
+        // slices still lack it, stop retrying and finish the stage.
+        const mockupExhausted = retried && exp.spec !== undefined && exp.mockup === undefined && exp.runCheckpoint!.attempt >= 4;
+        if (mockupExhausted) {
+          logEvent({ experimentId: id, stage: "spec", kind: "llm-fallback", data: { error: "mockup skipped: exceeded step budget across retries" } });
+        } else if (!(retried && exp.mockup !== undefined)) {
+          exp.mockup = await generateMockup(exp, this.llm);
+        }
+        if (exp.mockup !== undefined) await this.emit(id, "spec", "info", `Mockup built: ${exp.mockup.pages.length} pages under /experiments/${id}/preview/`);
       } catch (err) {
         logEvent({ experimentId: id, stage: "spec", kind: "llm-fallback", data: { error: `mockup skipped: ${String(err).slice(0, 160)}` } });
       }

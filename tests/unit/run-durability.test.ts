@@ -128,7 +128,7 @@ describe("chunked runs", () => {
     const exp = store.all.get(id)!;
     exp.spec = { targetUrl: URL, goal: "g", generatedAt: exp.createdAt, baselineRunIds: [], summary: "saved spec", changes: [], rebuildPhases: [] };
     exp.status = "comparing";
-    exp.runCheckpoint = { stage: "spec", attempt: 4 };
+    exp.runCheckpoint = { stage: "spec", attempt: 2 };
     exp.createdAt = "2020-01-01T00:00:00.000Z";
     const internal = orch as unknown as { runSpec: (id: string) => Promise<Experiment>; runCompare: () => Promise<void> };
     vi.spyOn(internal, "runCompare").mockResolvedValue();
