@@ -1,10 +1,11 @@
 name: snapshot-health
 
-# Daily hermetic rebuild of main from scratch. Red → one `first-responder` issue
-# (a Devin Automation picks it up); green → that issue is closed. See docs/snapshot-health.md.
+# Hermetic rebuild of main from scratch, twice a week. Red → one `first-responder`
+# issue (a Devin Automation picks it up); green → that issue is closed.
+# See docs/snapshot-health.md. Was daily; ~220s each run.
 on:
   schedule:
-    - cron: "7 7 * * *"
+    - cron: "7 7 * * 1,4"
   workflow_dispatch:
   pull_request:
     paths:
