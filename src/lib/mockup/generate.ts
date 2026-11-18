@@ -94,7 +94,10 @@ function proseLines(text: string, staleFix: boolean, refYear = 0): string[] {
   const lines = text
     .split(/\n+/)
     .map((l) => l.replace(/\s+/g, " ").trim())
-    .filter((l) => l.length >= 40 && l.split(" ").length >= 6);
+    // Nav blobs ("Skip to content About Community Sign in Menu…") pass the
+    // length filter — drop boilerplate and punctuation-free fragments.
+    .filter((l) => l.length >= 40 && l.split(" ").length >= 6)
+    .filter((l) => !/\bskip to content\b/i.test(l) && /[.,;:!?]/.test(l));
   if (!staleFix) return lines;
   const years = [...text.matchAll(/\b(19|20)\d{2}\b/g)].map((m) => Number(m[0]));
   const newest = Math.max(refYear, ...years);
@@ -269,7 +272,7 @@ function buildPagePrompt(
     "Rules: the page is a COMPLETE self-contained HTML document (<!doctype html>…</html>) with one inline <style> block and no external resources —",
     "no <script>, no <img>/<link> to any URL, no webfonts. Link to other pages with href=\"mockup:<slug>\"; use http(s) URLs only for exits off the mockup.",
     "Use ONLY facts in SITE_FACTS (never invent dates, prices, names or quotes). One dominant CTA per page. Apply each specChange visibly (e.g. drop stale dates, surface the goal's CTA).",
-    `Brand: ${JSON.stringify({ name: brand.name, tone: brand.tone, colors: brand.colors, fonts: brand.fonts })} — write CSS using these values (hex/ font stacks as given, e.g. --ink:${brand.colors.ink}).`,
+    `Site name: ${brand.name}. Render a GRAYSCALE wireframe — neutral gray palette only (no brand colors, no logo, no webfonts), generic sans-serif.`,
     'Return JSON: {"slug":string,"title":string,"summary":"one line on what changed","html":"<full document>"}',
     `SITE_FACTS: ${JSON.stringify(facts)}`,
   ].join("\n");

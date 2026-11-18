@@ -1,22 +1,11 @@
 import type { BrandProfile, RebuildPageContent, SiteState } from "../contracts";
-import { FALLBACK_SANS, contrastRatio, parseColor } from "../rebuild/brand";
+import { FALLBACK_SANS } from "../rebuild/brand";
 import { escapeHtml as esc } from "../rebuild/sanitize";
 
 const MAX_NAV = 6;
 const MAX_SECTIONS = 6;
 const MAX_BULLETS = 6;
 const MAX_LINKS = 8;
-
-function cssColor(value: string | undefined, fallback: string): string {
-  const v = (value ?? "").trim();
-  if (/^#[0-9a-f]{3,8}$/i.test(v) || /^(rgb|hsl)a?\([\d.,%\s/]+\)$/i.test(v)) return v.toLowerCase();
-  return fallback;
-}
-
-function cssFont(value: string | undefined, fallback: string): string {
-  const v = (value ?? "").replace(/[^\w\s,"'.-]/g, "").replace(/\s+/g, " ").trim();
-  return v.length > 0 && v.length <= 240 ? v : fallback;
-}
 
 /** Mockup links are either preview paths (same site, self-contained) or plain http(s) exits. */
 export function previewHref(url: string | undefined): string | undefined {
@@ -36,16 +25,8 @@ function link(label: string, url: string | undefined, cls = ""): string {
   return href ? `<a${c} href="${esc(href)}">${esc(label)}</a>` : `<span${c}>${esc(label)}</span>`;
 }
 
-function onColor(bg: string, ink: string, surface: string): string {
-  const b = parseColor(bg);
-  const i = parseColor(ink);
-  const s = parseColor(surface);
-  if (!b || !i || !s) return surface;
-  return contrastRatio(b, s) >= contrastRatio(b, i) ? surface : ink;
-}
-
 /**
- * Render one mockup page: branded self-contained HTML, no scripts, no external
+ * Render one mockup page: grayscale wireframe, self-contained HTML, no scripts, no external
  * assets at all (sanitizeRebuildHtml with imageOrigins: [] strips img/link tags).
  * `indexHref` points back at the preview index page; `applied` names the spec
  * changes this page carries.
@@ -57,16 +38,19 @@ export function renderMockupPage(input: {
   indexHref: string;
   applied: string[];
 }): string {
-  const { brand, state, content, indexHref, applied } = input;
-  const ink = cssColor(brand.colors.ink, "#111111");
-  const surface = cssColor(brand.colors.surface, "#ffffff");
-  const muted = cssColor(brand.colors.muted, "#6b6b6b");
-  const line = cssColor(brand.colors.line, "#ededed");
-  const accent = cssColor(brand.colors.accent, ink);
-  const linkColor = cssColor(brand.colors.link, ink);
-  const onAccent = onColor(accent, ink, surface);
-  const sans = cssFont(brand.fonts.sans, FALLBACK_SANS);
-  const mono = cssFont(brand.fonts.mono, "ui-monospace, SFMono-Regular, Menlo, monospace");
+  const { state, content, indexHref, applied } = input;
+  // Previews are grayscale wireframes with no source branding: fixed neutral
+  // palette and generic fonts, never the crawled site's colors or type.
+  const ink = "#1a1a1a";
+  const surface = "#ffffff";
+  const muted = "#666666";
+  const line = "#e5e5e5";
+  const accent = "#555555";
+  const linkColor = "#333333";
+  const onAccent = surface;
+  const sans = FALLBACK_SANS;
+  const mono = "ui-monospace, SFMono-Regular, Menlo, monospace";
+  const brand = input.brand;
 
   const mark = `<span class="name">${esc(brand.name)}</span>`;
   const brandLink = `<a class="brand" href="${esc(indexHref)}">${mark}</a>`;

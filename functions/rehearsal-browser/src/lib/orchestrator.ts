@@ -586,6 +586,14 @@ export class Orchestrator {
           )) as { complete?: boolean } | undefined;
           // A stage that suspended mid-flight owns the checkpoint — don't overwrite it.
           if (result?.complete === false) return { suspended: true };
+          // Success: drop stale run-level errors naming this stage — a finished
+          // stage makes earlier timeouts noise. Stage-owned failures the stage
+          // just recorded (e.g. verify's browser-unavailable marker) must stay.
+          const finished = await this.mustGet(id);
+          finished.failures = finished.failures.filter(
+            (f) => f.stage !== "run" || !new RegExp(`\\bStage ${stage}\\b`, "i").test(f.message),
+          );
+          await this.store.save(Experiment.parse(finished));
           break;
         } catch (e) {
           retries++;
@@ -695,7 +703,7 @@ export class Orchestrator {
    * changed the derived artifacts reset and the caller kicks a full re-run; a
    * new `goal` regenerates them on the kept graph (discover skipped).
    */
-  async rescan(id: string, opts?: { goal?: string }): Promise<{ experiment: Experiment; report: RescanReport }> {
+  async rescan(id: string, opts?: { goal?: string; reinferGoal?: boolean }): Promise<{ experiment: Experiment; report: RescanReport }> {
     return this.exclusive(id, "rescan", async () => {
       const exp = await this.mustGet(id);
       if (exp.runCheckpoint !== undefined) {
@@ -705,7 +713,14 @@ export class Orchestrator {
         // Stale run: the continuation died with no watchdog catch — let rescan proceed and scheduleRun restart it.
       }
       const goal = opts?.goal?.trim() || undefined;
-      const goalChanged = Boolean(goal && goal !== exp.goal);
+      // `reinferGoal` re-runs the creation-time probe so the goal matches what
+      // the pipeline would infer today — goalSource back to inferred/default.
+      const probed = opts?.reinferGoal ? await this.probe(exp.targetUrl) : undefined;
+      // A failed probe falls back to a hostname goal — don't clobber a real goal with it.
+      const inferred = probed && probed.source !== "default" ? probed : undefined;
+      const goalChanged = Boolean(
+        (goal && goal !== exp.goal) || (inferred && (inferred.goal !== exp.goal || exp.goalSource === "user")),
+      );
       const stored = new Map((exp.siteSignatures ?? []).map((s) => [s.url, s]));
       const probes = [exp.targetUrl, ...[...stored.values()].map((s) => s.url)].filter(
         (u, i, a) => a.indexOf(u) === i,
@@ -747,9 +762,9 @@ export class Orchestrator {
         };
       }
       if (goalChanged) {
-        exp.goal = goal!;
-        exp.goalSource = "user";
-        exp.personas = [];
+        exp.goal = inferred?.goal ?? goal!;
+        exp.goalSource = inferred?.source ?? "user";
+        exp.personas = inferred?.personas ?? [];
       }
       if (changed) {
         exp.graph = undefined;
@@ -781,7 +796,7 @@ export class Orchestrator {
         "info",
         changed
           ? `Rescan: ${mismatches.length}/${checked} probed page(s) changed — re-running the pipeline`
-          : `Goal updated to "${exp.goal}" — regenerating results (site unchanged)`,
+          : `Goal updated to "${exp.goal}"${inferred ? " (re-inferred)" : ""} — regenerating results (site unchanged)`,
       );
       return {
         experiment: exp,

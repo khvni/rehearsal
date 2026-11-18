@@ -25,7 +25,7 @@ function orchestrator(): Orchestrator {
 export async function POST(req: Request, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
   if (!isExperimentId(id)) return NextResponse.json({ error: "not found" }, { status: 404 });
-  let body: { goal?: unknown };
+  let body: { goal?: unknown; reinferGoal?: unknown };
   try {
     const raw = await req.text();
     body = raw ? JSON.parse(raw) : {};
@@ -34,6 +34,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
   }
   const goal = ExperimentGoal.optional().safeParse(body?.goal ?? undefined);
   if (!goal.success) return NextResponse.json({ error: "invalid goal" }, { status: 400 });
+  const reinferGoal = body?.reinferGoal === true;
   const orch = orchestrator();
   // Register this deployment's origin before rescan's signature probes: a
   // Worker's fetch() to its own Custom Domain never reaches it, so
@@ -47,7 +48,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
         return NextResponse.json({ error: "daily run limit reached" }, { status: 429 });
       }
     }
-    const { experiment, report } = await orch.rescan(id, { goal: goal.data });
+    const { experiment, report } = await orch.rescan(id, { goal: goal.data, ...(reinferGoal ? { reinferGoal } : {}) });
     if (report.restarted) {
       await orch.scheduleRun(id, { skipDiscover: !report.changed, origin });
     }

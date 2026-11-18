@@ -18,8 +18,10 @@ export function hasBrowserEvidence(finding: Finding, exp: Experiment): boolean {
 }
 
 export function hasUsablePreview(exp: Experiment): boolean {
+  // The deterministic template renders full pages now — "template" pages are
+  // usable. Only stubs (near-empty HTML or a URL for a heading) are not.
   const page = exp.mockup?.pages[0];
-  if (!page || page.source === "template") return false;
+  if (!page || page.html.length < 500) return false;
   const heading = /<h1\b[^>]*>([\s\S]*?)<\/h1>/i.exec(page.html)?.[1].replace(/<[^>]*>/g, "").trim();
   return Boolean(heading && !/^https?:\/\//i.test(heading) && heading !== exp.targetUrl);
 }

@@ -121,9 +121,12 @@ describe("honest result presentation", () => {
     expect(hasUsablePreview(exp)).toBe(false);
     exp.mockup = { generatedAt: exp.createdAt, brand: { name: "Example", colors: { ink: "#111", surface: "#fff", muted: "#666", line: "#eee" }, fonts: { sans: "system-ui" }, cssVars: {}, navItems: [], ctaLabels: [], tone: "minimal", voiceNotes: [] }, llm: "gemini", pages: [{ slug: "form", sourceUrl: exp.targetUrl, title: "Example form", summary: "Form preview", html: "<h1>Example form</h1><p>Fill in your details</p>", source: "template", bytes: 70 }] };
     expect(hasUsablePreview(exp)).toBe(false);
+    // Template-rendered pages count — the gate withholds stubs, not template output.
+    exp.mockup.pages[0].html = `<h1>Example form</h1>${"<p>Fill in your details</p>".repeat(40)}`;
+    expect(hasUsablePreview(exp)).toBe(true);
     exp.mockup.pages[0].source = "gemini";
     expect(hasUsablePreview(exp)).toBe(true);
-    exp.mockup.pages[0].html = "<h1>Example application form</h1><label>Name <input name='name'></label><button>Continue</button>";
+    exp.mockup.pages[0].html = `<h1>Example application form</h1><label>Name <input name='name'></label><button>Continue</button>${"<p>x</p>".repeat(100)}`;
     expect(hasUsablePreview(exp)).toBe(true);
     exp.mockup.pages[0].html = `<h1>${exp.targetUrl}</h1><button>Continue</button>`;
     expect(hasUsablePreview(exp)).toBe(false);
