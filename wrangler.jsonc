@@ -15,6 +15,7 @@
   "observability": { "enabled": true },
   "vars": {
     "BROWSERBASE_FUNCTION_ID": "eb8a2fde-7dd4-4c0a-91e7-aa87117732ff",
-    "REHEARSAL_ORIGIN": "https://rehearsal.alikhani.co"
+    "REHEARSAL_ORIGIN": "https://rehearsal.alikhani.co",
+    "REHEARSAL_STEP_BUDGET_MS": "28000"
   }
 }
