@@ -673,6 +673,8 @@ export const MockupResult = z.object({
   pages: z.array(MockupPage),
   /** LLM adapter name actually used ("gemini", "openrouter", "gemini-fixture"…). */
   llm: z.string(),
+  /** True while generation is mid-flight across slices — pages holds only the finished prefix. */
+  partial: z.boolean().optional(),
 });
 export type MockupResult = z.infer<typeof MockupResult>;
 
