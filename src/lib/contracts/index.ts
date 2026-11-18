@@ -516,6 +516,8 @@ export const ActivityKind = z.enum([
   "assert",
   "finding",
   "error",
+  "queued",
+  "queued-start",
 ]);
 export type ActivityKind = z.infer<typeof ActivityKind>;
 
@@ -761,6 +763,10 @@ export const RunCheckpoint = z.object({
   stage: z.string(),
   /** Slices consumed on `stage` — bounded by MAX_STAGE_SLICES so a stage that can't finish fails instead of looping. */
   attempt: z.number().int().nonnegative().default(0),
+  /** Errors retried on `stage` — bounded by MAX_STAGE_RETRIES before the run gives up. */
+  retries: z.number().int().nonnegative().optional(),
+  /** This checkpoint resumes a stage request queued mid-run — not the pipeline chain itself. */
+  queued: z.boolean().optional(),
   discover: DiscoverCheckpoint.optional(),
 });
 export type RunCheckpoint = z.infer<typeof RunCheckpoint>;

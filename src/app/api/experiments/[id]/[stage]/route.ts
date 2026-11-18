@@ -11,6 +11,7 @@ import {
 } from "@/lib/access";
 import { underRunLimit } from "@/lib/ratelimit";
 import { rebuildPending } from "@/lib/rebuild/site";
+import { runInBackground } from "@/lib/jobs";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -97,9 +98,18 @@ export async function POST(
     return slot.value;
   } catch (e) {
     if (e instanceof StageInProgressError) {
+      // A stage click while a run is queued or in-flight joins the pipeline:
+      // enqueue the requested stage behind the run's lock, kick the resume
+      // watchdog so a stalled run restarts from its checkpoint, and never fail
+      // the record over a scheduling conflict.
+      if (stage !== "run") await runInBackground(() => orch.enqueueStage(id, stage, e.runningStage));
+      await runInBackground(async () => {
+        await orch.resume(id, { origin: requestOrigin(req) }).catch(() => undefined);
+      });
+      const experiment = await orch.get(id);
       return NextResponse.json(
-        { error: e.message, runningStage: e.runningStage },
-        { status: 409 }
+        { status: experiment?.status, queued: true, runningStage: e.runningStage },
+        { status: 202 }
       );
     }
     if (e instanceof Error && e.message.startsWith("Unknown experiment")) {

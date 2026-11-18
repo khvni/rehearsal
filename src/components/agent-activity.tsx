@@ -16,6 +16,8 @@ const KIND_LABEL: Record<ActivityEvent["kind"], string> = {
   assert: "Assert",
   finding: "Finding",
   error: "Error",
+  queued: "Queued",
+  "queued-start": "Queued",
 };
 
 function clock(ts: string): string {

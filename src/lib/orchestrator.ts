@@ -1,5 +1,6 @@
 import { randomUUID } from "node:crypto";
 import {
+  ACTIVITY_EVENT_LIMIT,
   Experiment,
   ExperimentConfig,
   VIEWPORTS,
@@ -97,6 +98,12 @@ function stallMs(): number {
 
 /** Slices a single stage may consume before it fails with STAGE_TIMEOUT — caps retry loops on stages that cannot finish in one step. */
 const MAX_STAGE_SLICES = 10;
+
+/** Retries a stage gets before the run gives up — transient provider/quota errors shouldn't kill the whole workflow. */
+const MAX_STAGE_RETRIES = 3;
+
+/** In-process delay between stage retries off-Workers; on Workers the retry rides the next run-step hop instead. */
+const STAGE_RETRY_BACKOFF_MS = 5_000;
 
 /**
  * Discover checkpoint cadence: the crawl state is saved after this many
@@ -411,13 +418,14 @@ export class Orchestrator {
       await this.store.save(Experiment.parse(exp));
       return { experiment: exp, resumed: false };
     }
-    const inFlight = pendingRebuild || IN_FLIGHT_STATUSES.includes(exp.status) || exp.runCheckpoint !== undefined;
+    const queued = await this.queuedStages(id);
+    const inFlight = pendingRebuild || IN_FLIGHT_STATUSES.includes(exp.status) || exp.runCheckpoint !== undefined || queued.length > 0;
     if (!inFlight) return { experiment: exp, resumed: false };
     if (Date.now() - (await this.lastBeat(id, exp)) < stallMs()) {
       return { experiment: exp, resumed: false };
     }
     if (pendingRebuild && exp.runCheckpoint?.stage !== "rebuild") {
-      exp.runCheckpoint = { stage: "rebuild", attempt: 0 };
+      exp.runCheckpoint = { stage: "rebuild", attempt: 0, queued: exp.runCheckpoint?.queued };
       await this.store.save(Experiment.parse(exp));
     }
     // Runs queued before per-run tokens existed can't authorize their own
@@ -466,7 +474,7 @@ export class Orchestrator {
   }
 
   /** Runs slices to completion: in-process loop on Node; one slice per run-step hop on Workers. Callers hold the lock. */
-  private async stepBody(id: string, opts?: { origin?: string }): Promise<void> {
+  private async stepBody(id: string, opts?: { origin?: string; queuedOnly?: boolean }): Promise<void> {
     const deadlineMs = isWorkersRuntime() ? stepBudgetMs() : undefined;
     for (;;) {
       const { suspended } = await this.sliceRun(id, { ...opts, deadlineMs });
@@ -488,11 +496,13 @@ export class Orchestrator {
    */
   private async sliceRun(
     id: string,
-    opts?: { deadlineMs?: number; origin?: string; now?: () => number },
+    opts?: { deadlineMs?: number; origin?: string; now?: () => number; queuedOnly?: boolean },
   ): Promise<{ suspended: boolean }> {
     const exp = await this.mustGet(id);
     const cp = exp.runCheckpoint;
-    if (pipelineFinished(exp) && cp && cp.stage !== "rebuild") {
+    // Stale checkpoints on finished runs are cleared — but a `queued`
+    // checkpoint resumes a stage requested mid-run, not stale chain state.
+    if (pipelineFinished(exp) && cp && cp.stage !== "rebuild" && !cp.queued) {
       exp.runCheckpoint = undefined;
       await this.store.save(Experiment.parse(exp));
       return { suspended: false };
@@ -516,8 +526,14 @@ export class Orchestrator {
       ? cp.stage
       : STATUS_STAGE[exp.status] ?? "discover";
     // Rebuild is opt-in (one more LLM call per goal set): a run stops at spec unless it is resuming a rebuild already asked for.
-    const order = PIPELINE_STAGES.slice(PIPELINE_STAGES.indexOf(startAt as (typeof PIPELINE_STAGES)[number]))
-      .filter((s) => s !== "rebuild" || startAt === "rebuild");
+    // A finished run resumes only a queued stage's checkpoint; a queued
+    // checkpoint resumes just that stage, never the chain around it.
+    const order = cp?.queued
+      ? [cp.stage]
+      : opts?.queuedOnly || (pipelineFinished(exp) && cp === undefined)
+        ? []
+        : PIPELINE_STAGES.slice(PIPELINE_STAGES.indexOf(startAt as (typeof PIPELINE_STAGES)[number]))
+          .filter((s) => s !== "rebuild" || startAt === "rebuild");
     const now = opts?.now ?? Date.now;
     const deadline = opts?.deadlineMs !== undefined ? now() + opts.deadlineMs : undefined;
     const persist = async (checkpoint: RunCheckpoint) => {
@@ -525,33 +541,137 @@ export class Orchestrator {
       latest.runCheckpoint = checkpoint;
       await this.store.save(Experiment.parse(latest));
     };
-    for (const stage of order) {
+    // Stage requests made mid-run are recorded in the feed (append-only, so
+    // stage saves can't clobber them) and run after the rest of the chain.
+    const queue: string[] = [...order];
+    for (;;) {
+      const head = queue.shift();
+      const queuedReq = head === undefined || cp?.queued === true;
+      const stage = head ?? (await this.nextQueued(id));
+      if (stage === undefined) break;
+      // A queued checkpoint resumes a request whose feed event was never
+      // consumed — mark it so the same request isn't pulled again below.
+      if (head !== undefined && cp?.queued === true && stage === cp.stage) {
+        await this.emit(id, "run", "queued-start", stage);
+      }
       const carryDiscover = stage === "discover" && cp?.stage === "discover" ? cp.discover : undefined;
       if (deadline !== undefined && now() >= deadline) {
-        await persist({ stage, attempt: cp?.stage === stage ? cp.attempt : 0, discover: carryDiscover });
+        await persist({ stage, attempt: cp?.stage === stage ? cp.attempt : 0, queued: queuedReq || undefined, discover: carryDiscover });
         await this.emit(id, "run", "info", `Step budget reached — run continues in the background (next: ${stage})`);
         return { suspended: true };
       }
       const attempt = (cp?.stage === stage ? cp.attempt : 0) + 1;
       if (attempt > MAX_STAGE_SLICES) {
+        // Give up cleanly: clear the checkpoint so the watchdog stops re-entering.
+        const latest = await this.mustGet(id);
+        latest.runCheckpoint = undefined;
+        await this.store.save(Experiment.parse(latest));
         throw new RehearsalError(
           "STAGE_TIMEOUT",
           `Stage ${stage} did not finish within ${MAX_STAGE_SLICES} run steps — the runtime's step budget is too small for it`,
         );
       }
-      await persist({ stage, attempt, discover: carryDiscover });
-      const result = (await stageFns[stage](
-        deadline,
-        carryDiscover,
-        stage === "discover" ? attempt : undefined,
-      )) as { complete?: boolean } | undefined;
-      // A stage that suspended mid-flight owns the checkpoint — don't overwrite it.
-      if (result?.complete === false) return { suspended: true };
+      let retries = cp?.stage === stage ? cp.retries ?? 0 : 0;
+      await persist({ stage, attempt, retries, queued: queuedReq || undefined, discover: carryDiscover });
+      // Durable retries: a stage error suspends the run (fresh window on Workers,
+      // backoff in-process elsewhere) instead of failing the whole workflow.
+      for (;;) {
+        try {
+          const result = (await stageFns[stage](
+            deadline,
+            carryDiscover,
+            stage === "discover" ? attempt : undefined,
+          )) as { complete?: boolean } | undefined;
+          // A stage that suspended mid-flight owns the checkpoint — don't overwrite it.
+          if (result?.complete === false) return { suspended: true };
+          break;
+        } catch (e) {
+          retries++;
+          const failure = toFailure(e, stage);
+          if (retries > MAX_STAGE_RETRIES) {
+            // Give up cleanly: clear the checkpoint so the watchdog stops re-entering.
+            const latest = await this.mustGet(id);
+            latest.runCheckpoint = undefined;
+            await this.store.save(Experiment.parse(latest));
+            await this.emit(
+              id,
+              "run",
+              "error",
+              `Stage ${stage} failed ${MAX_STAGE_RETRIES} times — run stopped (${formatFailure(failure).slice(0, 200)})`,
+            );
+            throw e;
+          }
+          await this.emit(
+            id,
+            "run",
+            "info",
+            `Stage ${stage} failed — retrying (${retries}/${MAX_STAGE_RETRIES}): ${formatFailure(failure).slice(0, 200)}`,
+          );
+          await persist({ stage, attempt, retries, queued: queuedReq || undefined, discover: carryDiscover });
+          if (isWorkersRuntime()) return { suspended: true };
+          await new Promise((resolve) => setTimeout(resolve, STAGE_RETRY_BACKOFF_MS));
+        }
+      }
     }
     const done = await this.mustGet(id);
     done.runCheckpoint = undefined;
     await this.store.save(Experiment.parse(done));
     return { suspended: false };
+  }
+
+  /**
+   * Record a stage request made while another stage holds the lock, as a feed
+   * event — durable across Workers hops and never overwritten by stage saves.
+   * The run's sliceRun loop picks it up once the chain's remaining stages
+   * finish. Stages the in-flight chain already reaches are ignored.
+   */
+  async enqueueStage(id: string, stage: string, runningStage: string): Promise<void> {
+    const order = PIPELINE_STAGES as readonly string[];
+    if (!order.includes(stage)) return;
+    const runningAt = order.indexOf(runningStage);
+    if (runningAt >= 0 && order.indexOf(stage) > runningAt) return;
+    await this.emit(id, "run", "queued", stage);
+    // When nothing is mid-flight (standalone stage finishing, or a finished
+    // run), leave a checkpoint breadcrumb so runNeedsWatchdog keeps polling
+    // and resume() schedules the drain.
+    // When nothing is mid-flight (standalone stage finishing, or a finished
+    // run), leave a checkpoint breadcrumb so runNeedsWatchdog keeps polling
+    // and resume() schedules the drain. Best-effort: an in-flight stage's
+    // concurrent save may race this, so keep the window small.
+    try {
+      const exp = await this.mustGet(id);
+      if (exp.runCheckpoint === undefined && !IN_FLIGHT_STATUSES.includes(exp.status)) {
+        exp.runCheckpoint = { stage, attempt: 0, queued: true };
+        await this.store.save(Experiment.parse(exp));
+      }
+    } catch {
+      /* the feed event is the durable record; the breadcrumb only accelerates the watchdog */
+    }
+  }
+
+  /** Pending stage requests: `queued` events not yet matched by a `queued-start`. */
+  private async queuedStages(id: string): Promise<string[]> {
+    try {
+      const feed = await this.store.activity(id, ACTIVITY_EVENT_LIMIT);
+      const pending: string[] = [];
+      for (const ev of feed) {
+        if (ev.kind === "queued") pending.push(ev.message);
+        else if (ev.kind === "queued-start") {
+          const i = pending.indexOf(ev.message);
+          if (i >= 0) pending.splice(i, 1);
+        }
+      }
+      return pending;
+    } catch {
+      return [];
+    }
+  }
+
+  /** Pop the oldest pending stage request, marking it consumed with a `queued-start` event. */
+  private async nextQueued(id: string): Promise<string | undefined> {
+    const stage = (await this.queuedStages(id))[0];
+    if (stage !== undefined) await this.emit(id, "run", "queued-start", stage);
+    return stage;
   }
 
   /** Timestamp of the most recent activity event — the run heartbeat. Falls back to createdAt. */
@@ -696,29 +816,68 @@ export class Orchestrator {
   async discover(id: string): Promise<Experiment> {
     return this.exclusive(id, "discover", async () => {
       const cp = (await this.mustGet(id)).runCheckpoint;
-      await this.runDiscover(id, cp?.stage === "discover" ? { resume: cp.discover, attempt: cp.attempt } : undefined);
+      try {
+        await this.runDiscover(id, cp?.stage === "discover" ? { resume: cp.discover, attempt: cp.attempt } : undefined);
+      } finally {
+        if ((await this.queuedStages(id)).length > 0) await this.stepBody(id, { queuedOnly: true });
+      }
       return this.mustGet(id);
     });
   }
 
   async simulate(id: string): Promise<Experiment> {
-    return this.exclusive(id, "simulate", () => this.runSimulate(id));
+    return this.exclusive(id, "simulate", async () => {
+      try {
+        await this.runSimulate(id);
+      } finally {
+        if ((await this.queuedStages(id)).length > 0) await this.stepBody(id, { queuedOnly: true });
+      }
+      return this.mustGet(id);
+    });
   }
 
   async verify(id: string): Promise<Experiment> {
-    return this.exclusive(id, "verify", () => this.runVerify(id));
+    return this.exclusive(id, "verify", async () => {
+      try {
+        await this.runVerify(id);
+      } finally {
+        if ((await this.queuedStages(id)).length > 0) await this.stepBody(id, { queuedOnly: true });
+      }
+      return this.mustGet(id);
+    });
   }
 
   async analyze(id: string): Promise<Experiment> {
-    return this.exclusive(id, "analyze", () => this.runAnalyze(id));
+    return this.exclusive(id, "analyze", async () => {
+      try {
+        await this.runAnalyze(id);
+      } finally {
+        if ((await this.queuedStages(id)).length > 0) await this.stepBody(id, { queuedOnly: true });
+      }
+      return this.mustGet(id);
+    });
   }
 
   async compare(id: string): Promise<Experiment> {
-    return this.exclusive(id, "compare", () => this.runCompare(id));
+    return this.exclusive(id, "compare", async () => {
+      try {
+        await this.runCompare(id);
+      } finally {
+        if ((await this.queuedStages(id)).length > 0) await this.stepBody(id, { queuedOnly: true });
+      }
+      return this.mustGet(id);
+    });
   }
 
   async spec(id: string): Promise<Experiment> {
-    return this.exclusive(id, "spec", () => this.runSpec(id));
+    return this.exclusive(id, "spec", async () => {
+      try {
+        await this.runSpec(id);
+      } finally {
+        if ((await this.queuedStages(id)).length > 0) await this.stepBody(id, { queuedOnly: true });
+      }
+      return this.mustGet(id);
+    });
   }
 
   /** A standalone rebuild gets a fresh call budget: the per-run budget resets only at discover, so a finished run has spent it. */
@@ -737,7 +896,13 @@ export class Orchestrator {
           await this.store.save(Experiment.parse(exp));
         }
       }
-      return this.runRebuild(id, opts);
+      let result: Experiment;
+      try {
+        result = await this.runRebuild(id, opts);
+      } finally {
+        if ((await this.queuedStages(id)).length > 0) await this.stepBody(id, { queuedOnly: true });
+      }
+      return result;
     });
   }
 
@@ -772,7 +937,7 @@ export class Orchestrator {
       /** Write the crawl state so a suspended step or dropped hop resumes where it left off. */
       const persist = async (discover: DiscoverCheckpoint) => {
         const latest = await this.mustGet(id);
-        latest.runCheckpoint = { stage: "discover", attempt, discover };
+        latest.runCheckpoint = { stage: "discover", attempt, retries: latest.runCheckpoint?.retries, queued: latest.runCheckpoint?.queued, discover };
         await this.store.save(Experiment.parse(latest));
         pagesSinceSave = 0;
         lastSaveAt = now();
@@ -1477,7 +1642,7 @@ export class Orchestrator {
         };
       }
       exp.status = status;
-      if (status === "rebuilding") exp.runCheckpoint = { stage: "rebuild", attempt: 0 };
+      if (status === "rebuilding") exp.runCheckpoint = { stage: "rebuild", attempt: 0, retries: exp.runCheckpoint?.retries, queued: exp.runCheckpoint?.queued };
       else if (exp.runCheckpoint?.stage === "rebuild") exp.runCheckpoint = undefined;
       await this.store.save(Experiment.parse(exp));
     };
@@ -1717,7 +1882,10 @@ Return ASSERTION_LIST as a JSON array of {kind, value, selector?}.`,
   /** Records a stage failure so the dashboard stops showing a stuck "discovering…" state. */
   async markFailed(id: string, err: unknown): Promise<void> {
     const exp = await this.store.get(id).catch(() => null);
-    if (!exp) return;
+    // A queued-stage drain can finish the run after the stage that threw —
+    // don't downgrade a terminal status it already reached. "rebuilding"
+    // counts as finished for the pipeline but is still a live rebuild.
+    if (!exp || (pipelineFinished(exp) && exp.status !== "rebuilding")) return;
     const failure = toFailure(err, "run");
     const message = formatFailure(failure).slice(0, 500);
     await this.emit(id, "run", "error", `Run failed: ${message}`);
