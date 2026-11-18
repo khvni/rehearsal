@@ -770,6 +770,13 @@ export const RunCheckpoint = z.object({
   /** This checkpoint resumes a stage request queued mid-run — not the pipeline chain itself. */
   queued: z.boolean().optional(),
   discover: DiscoverCheckpoint.optional(),
+  /** Suspended analyze's finished sub-steps: LLM findings and endpoint findings already generated (questions persist on the experiment itself). */
+  analyze: z
+    .object({
+      llmFindings: z.array(Finding).optional(),
+      endpointFindings: z.array(Finding).optional(),
+    })
+    .optional(),
 });
 export type RunCheckpoint = z.infer<typeof RunCheckpoint>;
 

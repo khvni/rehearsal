@@ -405,6 +405,37 @@ describe("chunked runs", () => {
     await expect(orch.runStep(id)).rejects.toMatchObject({ code: "STAGE_TIMEOUT" });
   });
 
+  it("suspends analyze at the step budget and resumes finished sub-steps without re-calling the model", async () => {
+    process.env.REHEARSAL_ALLOW_PRIVATE = "1";
+    const pages = { [URL]: HOME };
+    const store = memoryStore();
+    const orch = new Orchestrator({ store, fetcher: fetcher(pages), runner: runner(pages) });
+    const { id } = await seededRun(orch);
+    const exp = store.all.get(id)!;
+    exp.failures = [{ code: "BROWSER_UNAVAILABLE", stage: "verify", message: "skip" }];
+    exp.runCheckpoint = { stage: "analyze", attempt: 0 };
+    // The LLM call outlives the slice: llmFindings finishes, then the budget is out.
+    let t = 0;
+    const now = () => t;
+    const llm = (orch as unknown as { llm: { complete: (p: string, o?: unknown) => Promise<string> } }).llm;
+    const llmSpy = vi.spyOn(llm, "complete").mockImplementation(async () => {
+      t += 200;
+      return "{}";
+    });
+    await orch.runStep(id, { deadlineMs: 100, now });
+    const cp = store.all.get(id)!.runCheckpoint;
+    expect(cp?.stage).toBe("analyze");
+    expect(cp?.analyze?.llmFindings).toEqual([]);
+    expect(cp?.analyze?.endpointFindings).toBeUndefined();
+    // Resumed slice reuses the persisted findings — no further model calls.
+    llmSpy.mockRestore();
+    const llmSpy2 = vi.spyOn(llm, "complete");
+    const done = await orch.analyze(id);
+    expect(llmSpy2).not.toHaveBeenCalled();
+    expect(done.status).toBe("created");
+    expect(done.findings).toBeDefined();
+  });
+
   it("resume() re-kicks a stalled in-flight run and ignores live or finished ones", async () => {
     process.env.REHEARSAL_ALLOW_PRIVATE = "1";
     const pages = { [URL]: HOME };
