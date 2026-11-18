@@ -245,55 +245,72 @@ const LlmMockupPage = z.object({
 });
 type LlmMockupPage = z.infer<typeof LlmMockupPage>;
 
-function buildPrompt(
+function buildPagePrompt(
   exp: Experiment,
   brand: BrandProfile,
-  plan: { state: SiteState; slug: string; changes: SpecChange[] }[],
+  item: { state: SiteState; slug: string; changes: SpecChange[] },
 ): string {
-  const facts = plan.map(({ state, slug, changes }) => ({
-    slug,
-    url: state.url,
-    title: state.pageTitle,
-    text: state.visibleText.slice(0, 1500),
-    nav: (state.brand?.navItems ?? []).slice(0, 8).map((n) => n.label),
+  const facts = {
+    slug: item.slug,
+    url: item.state.url,
+    title: item.state.pageTitle,
+    text: item.state.visibleText.slice(0, 1500),
+    nav: (item.state.brand?.navItems ?? []).slice(0, 8).map((n) => n.label),
     // Full edit detail — the change and its concrete steps, not just a title.
-    specChanges: changes.map((c) => ({
+    specChanges: item.changes.map((c) => ({
       title: c.title,
       change: clip(c.change, 220),
       steps: c.steps.slice(0, 6).map((s) => clip(s, 140)),
     })),
-  }));
+  };
   return [
     "MOCKUP_PAGES_JSON",
-    "You rebuild a website into an interactive mockup applying a UX spec — one page per crawled URL.",
-    "Rules: each page is a COMPLETE self-contained HTML document (<!doctype html>…</html>) with one inline <style> block and no external resources —",
+    "You rebuild ONE page of a website into an interactive mockup applying a UX spec.",
+    "Rules: the page is a COMPLETE self-contained HTML document (<!doctype html>…</html>) with one inline <style> block and no external resources —",
     "no <script>, no <img>/<link> to any URL, no webfonts. Link to other pages with href=\"mockup:<slug>\"; use http(s) URLs only for exits off the mockup.",
-    "Use ONLY facts in SITE_FACTS (never invent dates, prices, names or quotes). One dominant CTA per page. Apply each page's specChanges visibly (e.g. drop stale dates, surface the goal's CTA).",
+    "Use ONLY facts in SITE_FACTS (never invent dates, prices, names or quotes). One dominant CTA per page. Apply each specChange visibly (e.g. drop stale dates, surface the goal's CTA).",
     `Brand: ${JSON.stringify({ name: brand.name, tone: brand.tone, colors: brand.colors, fonts: brand.fonts })} — write CSS using these values (hex/ font stacks as given, e.g. --ink:${brand.colors.ink}).`,
-    'Return JSON: {"pages":[{"slug":string,"title":string,"summary":"one line on what changed","html":"<full document>"}]}',
+    'Return JSON: {"slug":string,"title":string,"summary":"one line on what changed","html":"<full document>"}',
     `SITE_FACTS: ${JSON.stringify(facts)}`,
   ].join("\n");
 }
 
-function parsePages(raw: string): Map<string, LlmMockupPage> {
-  const out = new Map<string, LlmMockupPage>();
+function parsePage(raw: string, slug: string): LlmMockupPage | undefined {
   const body = raw.trim().replace(/^```(?:json)?\s*/i, "").replace(/```\s*$/, "");
   const data: unknown = JSON.parse(body);
-  const pages = Array.isArray(data) ? data : (data as { pages?: unknown })?.pages;
-  if (!Array.isArray(pages)) throw new Error("mockup LLM response has no pages array");
-  for (const p of pages) {
-    const parsed = LlmMockupPage.safeParse(p);
-    if (parsed.success && !out.has(parsed.data.slug)) out.set(parsed.data.slug, parsed.data);
-  }
-  return out;
+  const wrapped = (data as { pages?: unknown[] })?.pages?.[0];
+  const page = (typeof wrapped === "object" && wrapped !== null ? wrapped : data) as Partial<LlmMockupPage>;
+  const parsed = LlmMockupPage.safeParse({ ...page, slug: page.slug ?? slug });
+  return parsed.success ? parsed.data : undefined;
 }
+
+/** One page per call — sized to fit a ~20s Workers step slice. */
+const PAGE_TIMEOUT_MS = 15_000;
 
 /**
  * Spec-stage mockup: one self-contained page per crawled URL, served under
  * /experiments/{id}/preview/. Gemini (model slot "mockup") writes the pages;
  * the deterministic template covers whatever the LLM misses.
+ *
+ * Generation is resumable across run slices: pages are produced one model call
+ * at a time and appended in plan order, `onPage` fires after each append so the
+ * partial result is persisted, and `partial: true` on the result tells the
+ * caller the slice budget ran out — resume with `startIndex: pages.length`.
+ * Only pages that a spec change touches get a model call; the rest go straight
+ * to the template.
  */
-export async function generateMockup(exp: Experiment, llm: LlmClient): Promise<MockupResult> {
+export async function generateMockup(
+  exp: Experiment,
+  llm: LlmClient,
+  opts?: {
+    /** True when the run slice's budget is spent — finish the current page and return partial. */
+    deadline?: () => boolean;
+    /** Number of already-generated pages to resume from. */
+    startIndex?: number;
+    /** Called with the partial result after each page so it can be persisted. */
+    onPage?: (result: MockupResult) => Promise<void>;
+  },
+): Promise<MockupResult> {
   const states = dedupeStates(exp.graph?.states ?? []);
   const brand = rollupBrand(states);
   const previewBase = `/experiments/${exp.id}/preview`;
@@ -313,25 +330,25 @@ export async function generateMockup(exp: Experiment, llm: LlmClient): Promise<M
   const indexSlug = urlToSlug.get(normUrl(exp.targetUrl) ?? "") ?? plan[0]?.slug ?? "index";
   const indexHref = `${previewBase}/${indexSlug}`;
 
-  let llmPages = new Map<string, LlmMockupPage>();
-  if (llm.name !== "gemini-fixture" && plan.length > 0) {
-    try {
-      llmPages = parsePages(await llm.complete(buildPrompt(exp, brand, plan), { deep: true, json: true, model: "mockup" }));
-    } catch (err) {
-      llmPages = new Map();
-      logEvent({ experimentId: exp.id, stage: "spec", kind: "llm-fallback", data: { llm: llm.name, error: String(err).slice(0, 160) } });
-    }
-  }
+  const pages: MockupPage[] = exp.mockup?.pages?.slice(0, opts?.startIndex ?? 0) ?? [];
+  const useLlm = llm.name !== "gemini-fixture";
 
-  const pages: MockupPage[] = plan.map(({ state, slug, changes }) => {
+  for (let i = pages.length; i < plan.length; i++) {
+    if (opts?.deadline?.()) return { generatedAt: new Date().toISOString(), brand, pages, llm: llm.name, partial: true };
+    const { state, slug, changes } = plan[i];
+    let draft: LlmMockupPage | undefined;
+    // Spend the model only where the spec changes something — unchanged pages
+    // come out identical from the deterministic template anyway.
+    if (useLlm && changes.length > 0) {
+      try {
+        draft = parsePage(await llm.complete(buildPagePrompt(exp, brand, plan[i]), { json: true, model: "mockup", timeoutMs: PAGE_TIMEOUT_MS }), slug);
+      } catch (err) {
+        logEvent({ experimentId: exp.id, stage: "spec", kind: "llm-fallback", data: { llm: llm.name, slug, error: String(err).slice(0, 160) } });
+      }
+    }
     const applied = changes.map((c) => c.title).slice(0, 4);
-    const draft = llmPages.get(slug);
     let html = draft?.html ?? renderMockupPage({ brand, state, content: mockupContent(exp, state, urlToSlug, previewBase, applied), indexHref, applied });
-    // Belt: no script, no off-origin resource may survive into the stored page.
     html = sanitizeRebuildHtml(html, { imageOrigins: [] });
-    // Media/graphics/forms can still carry a remote src the href-rewriter
-    // never sees — the CSP on the route is the guarantee; dropping them keeps
-    // the stored artifact honest.
     html = html
       .replace(/<(video|audio|picture|svg|math|form|canvas|select|textarea)\b[\s\S]*?<\/\1\s*>/gi, "")
       .replace(/<\/?(video|audio|source|track|picture|svg|math|form|canvas|input|select|textarea)\b[^>]*>/gi, "");
@@ -340,8 +357,9 @@ export async function generateMockup(exp: Experiment, llm: LlmClient): Promise<M
     const summary =
       draft?.summary ??
       (applied.length ? `Applies ${applied.length} spec change${applied.length === 1 ? "" : "s"}: ${applied.join("; ")}` : "No spec changes on this page");
-    return { slug, sourceUrl: state.url, title, summary, html, source: draft ? llmPageSource(llm) : ("template" as const), bytes: new TextEncoder().encode(html).length };
-  });
+    pages.push({ slug, sourceUrl: state.url, title, summary, html, source: draft ? llmPageSource(llm) : ("template" as const), bytes: new TextEncoder().encode(html).length });
+    await opts?.onPage?.({ generatedAt: new Date().toISOString(), brand, pages: [...pages], llm: llm.name, partial: true });
+  }
 
   return { generatedAt: new Date().toISOString(), brand, pages, llm: llm.name };
 }

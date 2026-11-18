@@ -513,7 +513,7 @@ export class Orchestrator {
       verify: () => this.runVerify(id),
       analyze: () => this.runAnalyze(id),
       compare: () => this.runCompare(id),
-      spec: () => this.runSpec(id),
+      spec: (d) => this.runSpec(id, { deadline: d }),
       rebuild: async (deadline) => {
         do {
           await this.runRebuild(id);
@@ -1551,7 +1551,7 @@ export class Orchestrator {
   }
 
   /** Stage 6 — the deliverable: spec.md of all changes + rebuild plan. */
-  private async runSpec(id: string): Promise<Experiment> {
+  private async runSpec(id: string, opts?: { deadline?: number }): Promise<Experiment | { complete: false }> {
     const e = await this.mustGet(id);
     if (e.comparisons.length === 0 && e.variants.length === 0) await this.runCompare(id);
     const exp = (await this.mustGet(id))!;
@@ -1575,17 +1575,37 @@ export class Orchestrator {
       // Mockup is a bonus deliverable: a spec failure can't lose it, and vice versa.
       try {
         // A suspended spec slice re-enters with the spec already saved —
-        // reuse a stored mockup too, so a retry finishes instead of burning
-        // another model call past the step budget. A deliberate spec rerun
-        // (no resume checkpoint) regenerates it so the preview tracks the
-        // new spec. The mockup call outlives a slice (~90s model timeout vs
-        // ~20s step budget), so once the spec is saved and several resumed
-        // slices still lack it, stop retrying and finish the stage.
-        const mockupExhausted = retried && exp.spec !== undefined && exp.mockup === undefined && exp.runCheckpoint!.attempt >= 4;
+        // a stored complete mockup is reused so a retry finishes instead of
+        // burning more calls, and a partial one resumes where it stopped. A
+        // deliberate spec rerun (no resume checkpoint) regenerates it so the
+        // preview tracks the new spec.
+        const mockupDone = retried && exp.mockup !== undefined && !exp.mockup.partial;
+        // Page calls are bounded to fit a slice, but a run that still has no
+        // finished pages after several resumed slices stops retrying — the
+        // stage completes with whatever was generated.
+        const mockupExhausted = retried && (exp.mockup === undefined || exp.mockup.partial === true) && exp.runCheckpoint!.attempt >= 4;
         if (mockupExhausted) {
-          logEvent({ experimentId: id, stage: "spec", kind: "llm-fallback", data: { error: "mockup skipped: exceeded step budget across retries" } });
-        } else if (!(retried && exp.mockup !== undefined)) {
-          exp.mockup = await generateMockup(exp, this.llm);
+          if (exp.mockup?.partial) {
+            exp.mockup.partial = undefined;
+            await this.store.save(Experiment.parse(exp));
+          }
+          logEvent({ experimentId: id, stage: "spec", kind: "llm-fallback", data: { error: "mockup generation stopped: exceeded step budget across retries" } });
+        } else if (!mockupDone) {
+          const startIndex = retried && exp.mockup?.partial ? exp.mockup.pages.length : 0;
+          const mockup = await generateMockup(exp, this.llm, {
+            deadline: opts?.deadline !== undefined ? () => Date.now() >= opts.deadline! - 3_000 : undefined,
+            startIndex,
+            // Persist after every page so a killed slice resumes from the
+            // finished prefix instead of restarting the whole mockup.
+            onPage: async (result) => {
+              const latest = await this.mustGet(id);
+              latest.mockup = result;
+              await this.store.save(Experiment.parse(latest));
+            },
+          });
+          exp.mockup = mockup;
+          await this.store.save(Experiment.parse(exp));
+          if (mockup.partial === true) return { complete: false };
         }
         if (exp.mockup !== undefined) await this.emit(id, "spec", "info", `Mockup built: ${exp.mockup.pages.length} pages under /experiments/${id}/preview/`);
       } catch (err) {

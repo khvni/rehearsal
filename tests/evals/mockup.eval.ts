@@ -77,6 +77,17 @@ function fixtureExperiment(): Experiment {
     configuration: { viewports: ["desktop"] },
     graph,
     findings: fixtureFindings(graph),
+    // A spec change on the home page marks it for an LLM mockup page; pages
+    // with no spec change render from the deterministic template instead.
+    spec: {
+      targetUrl: AIE_URL, goal: GOAL, generatedAt: "2026-11-01T00:00:00.000Z", baselineRunIds: [],
+      summary: "Fix stale dates and crowded nav",
+      changes: [
+        { rank: 1, title: "Drop stale dates", change: "Remove past event dates", steps: ["Remove past event dates"], rationale: "r", effort: "S", findingId: "f_stale" },
+        { rank: 2, title: "Cut the nav", change: "Trim nav to six items", steps: ["Trim nav to six items"], rationale: "r", effort: "S", findingId: "f_nav" },
+      ],
+      rebuildPhases: [{ name: "p", goal: "g", items: ["i"] }],
+    },
   });
 }
 
