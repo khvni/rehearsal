@@ -1411,8 +1411,10 @@ export class Orchestrator {
       try {
         // A suspended spec slice re-enters with the spec already saved —
         // reuse a stored mockup too, so a retry finishes instead of burning
-        // another model call past the step budget.
-        if (exp.mockup === undefined) exp.mockup = await generateMockup(exp, this.llm);
+        // another model call past the step budget. A deliberate spec rerun
+        // (no resume checkpoint) regenerates it so the preview tracks the
+        // new spec.
+        if (!(retried && exp.mockup !== undefined)) exp.mockup = await generateMockup(exp, this.llm);
         await this.emit(id, "spec", "info", `Mockup built: ${exp.mockup.pages.length} pages under /experiments/${id}/preview/`);
       } catch (err) {
         logEvent({ experimentId: id, stage: "spec", kind: "llm-fallback", data: { error: `mockup skipped: ${String(err).slice(0, 160)}` } });
