@@ -203,7 +203,8 @@ export class TigerDataStore implements ExperimentStore {
     );
     await c.query(
       `DELETE FROM experiment_activity WHERE id=$1
-         AND seq <= (SELECT seq FROM experiment_activity WHERE id=$1 ORDER BY seq DESC LIMIT 1 OFFSET $2)`,
+         AND seq <= (SELECT seq FROM experiment_activity WHERE id=$1 ORDER BY seq DESC LIMIT 1 OFFSET $2)
+         AND seq > (SELECT MIN(seq) FROM experiment_activity WHERE id=$1)`,
       [id, ACTIVITY_EVENT_LIMIT],
     );
   }
@@ -339,7 +340,8 @@ export class D1Store implements ExperimentStore {
     await db
       .prepare(
         `DELETE FROM experiment_activity WHERE id=?
-           AND seq <= (SELECT seq FROM experiment_activity WHERE id=? ORDER BY seq DESC LIMIT 1 OFFSET ?)`,
+           AND seq <= (SELECT seq FROM experiment_activity WHERE id=? ORDER BY seq DESC LIMIT 1 OFFSET ?)
+           AND seq > (SELECT MIN(seq) FROM experiment_activity WHERE id=?)`,
       )
       .bind(id, id, ACTIVITY_EVENT_LIMIT)
       .run();
