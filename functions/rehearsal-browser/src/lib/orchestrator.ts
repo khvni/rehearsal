@@ -1439,6 +1439,11 @@ export class Orchestrator {
       /** Persist finished sub-steps so the next slice resumes instead of redoing LLM calls. */
       const suspend = async (analyze: { llmFindings?: Finding[]; endpointFindings?: Finding[] }) => {
         const latest = await this.mustGet(id);
+        // Carry in-memory byproducts of finished sub-steps (journeys, endpoints,
+        // questions) so a suspended slice doesn't lose work its resume path skips.
+        latest.journeys = exp.journeys;
+        latest.endpoints = exp.endpoints;
+        latest.questions = exp.questions;
         latest.runCheckpoint = { stage: "analyze", attempt: opts?.attempt ?? 0, retries: latest.runCheckpoint?.retries, queued: latest.runCheckpoint?.queued, analyze };
         await this.store.save(Experiment.parse(latest));
         return { complete: false } as const;
@@ -1448,9 +1453,11 @@ export class Orchestrator {
       const endpoints = saved.endpointFindings ?? await this.endpointAnalysis(exp);
       if (out()) return suspend({ llmFindings: llm, endpointFindings: endpoints });
       const graph = exp.graph?.states.length ? exp.graph : undefined;
-      if (graph && exp.questions === undefined) {
+      // A resumed slice keeps the questions already persisted; a fresh analyze
+      // (e.g. after rediscovery) regenerates them against the new graph.
+      const resumed = saved.llmFindings !== undefined || saved.endpointFindings !== undefined;
+      if (graph && !(resumed && exp.questions !== undefined)) {
         exp.questions = await visitorQuestions(graph, exp.endpoints ?? [], detectSiteType(graph), this.llm);
-        await this.store.save(Experiment.parse(exp));
       }
       if (out()) return suspend({ llmFindings: llm, endpointFindings: endpoints });
       exp.findings = collapseFindings([
