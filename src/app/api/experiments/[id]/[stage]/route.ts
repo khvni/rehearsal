@@ -63,7 +63,9 @@ export async function POST(
       if (!experiment)
         return NextResponse.json({ error: "not found" }, { status: 404 });
       // Continuations share the planning step's run allowance.
-      if (experiment.status === "complete" && stage !== "rebuild") {
+      // Spec re-runs on a complete experiment only rewrite the spec/preview (runSpec
+      // preserves findings), so they're allowed; other stages still require a rescan.
+      if (experiment.status === "complete" && stage !== "rebuild" && stage !== "spec") {
         return NextResponse.json(
           {
             error:

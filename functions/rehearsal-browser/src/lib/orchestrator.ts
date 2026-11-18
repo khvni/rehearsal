@@ -17,6 +17,7 @@ import {
   type PageFetcher,
   type RescanReport,
   type DiscoverCheckpoint,
+  type Finding,
   type RunCheckpoint,
   type RunFailure,
   type RunLeaseStore,
@@ -511,7 +512,7 @@ export class Orchestrator {
       discover: (d, r, a) => this.runDiscover(id, { deadline: d, now: opts?.now, resume: r, attempt: a }),
       simulate: () => this.runSimulate(id),
       verify: () => this.runVerify(id),
-      analyze: () => this.runAnalyze(id),
+      analyze: (d, _r, a) => this.runAnalyze(id, { deadline: d, now: opts?.now, attempt: a }),
       compare: () => this.runCompare(id),
       spec: () => this.runSpec(id),
       rebuild: async (deadline) => {
@@ -555,8 +556,9 @@ export class Orchestrator {
         await this.emit(id, "run", "queued-start", stage);
       }
       const carryDiscover = stage === "discover" && cp?.stage === "discover" ? cp.discover : undefined;
+      const carryAnalyze = stage === "analyze" && cp?.stage === "analyze" ? cp.analyze : undefined;
       if (deadline !== undefined && now() >= deadline) {
-        await persist({ stage, attempt: cp?.stage === stage ? cp.attempt : 0, queued: queuedReq || undefined, discover: carryDiscover });
+        await persist({ stage, attempt: cp?.stage === stage ? cp.attempt : 0, queued: queuedReq || undefined, discover: carryDiscover, analyze: carryAnalyze });
         await this.emit(id, "run", "info", `Step budget reached — run continues in the background (next: ${stage})`);
         return { suspended: true };
       }
@@ -572,7 +574,7 @@ export class Orchestrator {
         );
       }
       let retries = cp?.stage === stage ? cp.retries ?? 0 : 0;
-      await persist({ stage, attempt, retries, queued: queuedReq || undefined, discover: carryDiscover });
+      await persist({ stage, attempt, retries, queued: queuedReq || undefined, discover: carryDiscover, analyze: carryAnalyze });
       // Durable retries: a stage error suspends the run (fresh window on Workers,
       // backoff in-process elsewhere) instead of failing the whole workflow.
       for (;;) {
@@ -580,7 +582,7 @@ export class Orchestrator {
           const result = (await stageFns[stage](
             deadline,
             carryDiscover,
-            stage === "discover" ? attempt : undefined,
+            stage === "discover" || stage === "analyze" ? attempt : undefined,
           )) as { complete?: boolean } | undefined;
           // A stage that suspended mid-flight owns the checkpoint — don't overwrite it.
           if (result?.complete === false) return { suspended: true };
@@ -607,7 +609,7 @@ export class Orchestrator {
             "info",
             `Stage ${stage} failed — retrying (${retries}/${MAX_STAGE_RETRIES}): ${formatFailure(failure).slice(0, 200)}`,
           );
-          await persist({ stage, attempt, retries, queued: queuedReq || undefined, discover: carryDiscover });
+          await persist({ stage, attempt, retries, queued: queuedReq || undefined, discover: carryDiscover, analyze: carryAnalyze });
           if (isWorkersRuntime()) return { suspended: true };
           await new Promise((resolve) => setTimeout(resolve, STAGE_RETRY_BACKOFF_MS));
         }
@@ -1422,7 +1424,7 @@ export class Orchestrator {
   }
 
   /** Stage 4 — rule + LLM findings. */
-  private async runAnalyze(id: string): Promise<Experiment> {
+  private async runAnalyze(id: string, opts?: { deadline?: number; now?: () => number; attempt?: number }): Promise<Experiment | { complete: false }> {
     const e = await this.mustGet(id);
     if (e.browserTests.length === 0 && !browserSkipped(e)) await this.runVerify(id);
     const exp = (await this.mustGet(id))!;
@@ -1432,10 +1434,25 @@ export class Orchestrator {
       // Findings describe the live site: a re-run after compare skips the patched variant runs.
       const runs = exp.browserTests.filter((r) => !r.variantId);
       const rules = ruleFindings({ states, runs, assertions: exp.assertions });
-      const llm = await llmFindings({ llm: this.llm, states, runs, goal: exp.goal });
-      const endpoints = await this.endpointAnalysis(exp);
+      const out = () => opts?.deadline !== undefined && (opts?.now ?? Date.now)() >= opts.deadline;
+      const saved = exp.runCheckpoint?.stage === "analyze" ? exp.runCheckpoint.analyze ?? {} : {};
+      /** Persist finished sub-steps so the next slice resumes instead of redoing LLM calls. */
+      const suspend = async (analyze: { llmFindings?: Finding[]; endpointFindings?: Finding[] }) => {
+        const latest = await this.mustGet(id);
+        latest.runCheckpoint = { stage: "analyze", attempt: opts?.attempt ?? 0, retries: latest.runCheckpoint?.retries, queued: latest.runCheckpoint?.queued, analyze };
+        await this.store.save(Experiment.parse(latest));
+        return { complete: false } as const;
+      };
+      const llm = saved.llmFindings ?? await llmFindings({ llm: this.llm, states, runs, goal: exp.goal });
+      if (out()) return suspend({ llmFindings: llm });
+      const endpoints = saved.endpointFindings ?? await this.endpointAnalysis(exp);
+      if (out()) return suspend({ llmFindings: llm, endpointFindings: endpoints });
       const graph = exp.graph?.states.length ? exp.graph : undefined;
-      if (graph) exp.questions = await visitorQuestions(graph, exp.endpoints ?? [], detectSiteType(graph), this.llm);
+      if (graph && exp.questions === undefined) {
+        exp.questions = await visitorQuestions(graph, exp.endpoints ?? [], detectSiteType(graph), this.llm);
+        await this.store.save(Experiment.parse(exp));
+      }
+      if (out()) return suspend({ llmFindings: llm, endpointFindings: endpoints });
       exp.findings = collapseFindings([
         ...rules,
         ...endpoints,

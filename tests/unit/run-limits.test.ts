@@ -31,6 +31,7 @@ vi.mock("@opennextjs/cloudflare", () => ({ getCloudflareContext: async () => ({ 
 const experiments = new Map<string, Partial<Experiment>>();
 const runAll = vi.fn(async (id: string) => ({ id }));
 const rebuild = vi.fn(async (id: string) => ({ id }));
+const spec = vi.fn(async (id: string) => ({ id }));
 const rescan = vi.fn(async (id: string) => ({
   experiment: { id },
   report: { changed: false, checked: 1, mismatches: [], goalChanged: false, restarted: false },
@@ -41,6 +42,7 @@ vi.mock("@/lib/orchestrator", () => ({
     get = async (id: string) => experiments.get(id) ?? null;
     runAll = runAll;
     rebuild = rebuild;
+    spec = spec;
     rescan = rescan;
     scheduleRun = vi.fn();
     markFailed = vi.fn(async () => undefined);
@@ -148,7 +150,9 @@ describe("POST /api/experiments/:id/:stage daily run budget", () => {
     experiments.set(expId(4), { id: expId(4), status: "complete", rebuild: {} as Experiment["rebuild"] });
     expect((await run(expId(4), undefined, {}, "rebuild")).status).toBe(200);
     expect(rebuild).toHaveBeenCalledTimes(2);
-    expect((await run(expId(4), undefined, {}, "spec")).status).toBe(403);
+    // Spec re-runs on a complete experiment only rewrite the spec/preview — allowed within the run limit.
+    expect((await run(expId(4), undefined, {}, "spec")).status).toBe(200);
+    expect(spec).toHaveBeenCalledTimes(1);
   });
 
   it("404s unknown experiments before spending budget", async () => {
