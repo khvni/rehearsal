@@ -586,11 +586,12 @@ export class Orchestrator {
           )) as { complete?: boolean } | undefined;
           // A stage that suspended mid-flight owns the checkpoint — don't overwrite it.
           if (result?.complete === false) return { suspended: true };
-          // Success: drop stale errors for this stage — a finished stage makes
-          // earlier timeouts/retries noise (run-level timeouts name the stage).
+          // Success: drop stale run-level errors naming this stage — a finished
+          // stage makes earlier timeouts noise. Stage-owned failures the stage
+          // just recorded (e.g. verify's browser-unavailable marker) must stay.
           const finished = await this.mustGet(id);
           finished.failures = finished.failures.filter(
-            (f) => f.stage !== stage && !new RegExp(`\\bStage ${stage}\\b`, "i").test(f.message),
+            (f) => f.stage !== "run" || !new RegExp(`\\bStage ${stage}\\b`, "i").test(f.message),
           );
           await this.store.save(Experiment.parse(finished));
           break;
