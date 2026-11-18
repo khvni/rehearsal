@@ -343,7 +343,7 @@ export class D1Store implements ExperimentStore {
            AND seq <= (SELECT seq FROM experiment_activity WHERE id=? ORDER BY seq DESC LIMIT 1 OFFSET ?)
            AND seq > (SELECT MIN(seq) FROM experiment_activity WHERE id=?)`,
       )
-      .bind(id, id, ACTIVITY_EVENT_LIMIT)
+      .bind(id, id, ACTIVITY_EVENT_LIMIT, id)
       .run();
   }
 
