@@ -357,6 +357,7 @@ export async function refineQuestionsWithLlm(
   questions: VisitorQuestion[],
   graph: StateGraph,
   llm?: LlmClient,
+  timeoutMs?: number,
 ): Promise<VisitorQuestion[]> {
   const start = graph.states[0];
   if (!llm || llm.name === "gemini-fixture" || !start) return questions;
@@ -367,7 +368,7 @@ ${questions.map((q) => `- ${q.question}`).join("\n")}
 PAGE TITLE: ${start.pageTitle}
 PAGE TEXT (truncated): ${start.visibleText.slice(0, 3000)}
 Return VISITOR_QUESTIONS as JSON {"questions": [{"question": string, "intent": "information"|"quotation"|"proposal", "keywords": string[] (words an answer would contain), "importance": number 0-1}]}.`,
-      { json: true },
+      { json: true, timeoutMs },
     );
     const parsed = JSON.parse(raw.replace(/```json|```/g, "").trim()) as {
       questions?: { question?: unknown; intent?: unknown; keywords?: unknown; importance?: unknown }[];
@@ -404,8 +405,9 @@ export async function visitorQuestions(
   endpoints: Endpoint[],
   siteType: SiteType,
   llm?: LlmClient,
+  timeoutMs?: number,
 ): Promise<VisitorQuestion[]> {
   const generated = generateQuestions(graph, endpoints, siteType);
-  const refined = await refineQuestionsWithLlm(generated, graph, llm);
+  const refined = await refineQuestionsWithLlm(generated, graph, llm, timeoutMs);
   return answerQuestions(refined, graph, endpoints);
 }

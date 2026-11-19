@@ -268,6 +268,31 @@ describe("rescan", () => {
     expect(experiment.status).toBe("queued");
   });
 
+  it("keeps the previous findings, spec and mockup until the new run succeeds", async () => {
+    process.env.REHEARSAL_ALLOW_PRIVATE = "1";
+    const { orch, exp } = await discovered({ [URL]: HTML_V1 });
+    const stored = await orch.get(exp.id);
+    stored!.findings = [{
+      findingId: "f1", title: "old", category: "hierarchy", severity: "medium",
+      evidenceType: "hypothesis", description: "d", affectedStates: ["s1"],
+      affectedActions: [], evidencePaths: [],
+      recommendation: "r", verificationStatus: "unverified",
+      principle: "people-scan-they-dont-read",
+    }];
+    stored!.spec = { targetUrl: URL, goal: "g", generatedAt: stored!.createdAt, baselineRunIds: [], summary: "old spec", changes: [], rebuildPhases: [] };
+    stored!.mockup = {
+      generatedAt: stored!.createdAt, llm: "gemini",
+      brand: { name: "Site", colors: { ink: "#111", surface: "#fff", muted: "#666", line: "#eee" }, fonts: { sans: "system-ui" }, cssVars: {}, navItems: [], ctaLabels: [], tone: "minimal", voiceNotes: [] },
+      pages: [{ slug: "home", sourceUrl: URL, title: "Home", summary: "s", html: "<html></html>", source: "template", bytes: 13 }],
+    };
+    await orch.rescan(exp.id, { goal: "find pricing" });
+    const after = await orch.get(exp.id);
+    expect(after!.status).toBe("queued");
+    expect(after!.findings).toHaveLength(1);
+    expect(after!.spec?.summary).toBe("old spec");
+    expect(after!.mockup?.pages).toHaveLength(1);
+  });
+
   it("regenerates on a new goal while keeping the graph (skipDiscover)", async () => {
     process.env.REHEARSAL_ALLOW_PRIVATE = "1";
     const { orch, exp } = await discovered({ [URL]: HTML_V1 });

@@ -96,7 +96,7 @@ describe("LLM output is validated against the contracts before it is stored", ()
   });
 
   it("llmFindings drops findings that don't fit the Finding contract", async () => {
-    const findings = await llmFindings({
+    const { findings } = await llmFindings({
       llm: stubLlm({
         FINDINGS_JSON: JSON.stringify({
           findings: [
@@ -118,7 +118,7 @@ describe("LLM output is validated against the contracts before it is stored", ()
     ["hypothesis", "hypothesis"],
     ["invalid", "hypothesis"],
   ])("llmFindings caps %s evidence at %s without browser verification", async (evidenceType, expected) => {
-    const findings = await llmFindings({
+    const { findings } = await llmFindings({
       llm: stubLlm({
         FINDINGS_JSON: JSON.stringify({
           findings: [{ title: "Checkout crashes", description: "Checkout crashes on submit", evidenceType }],
@@ -133,9 +133,9 @@ describe("LLM output is validated against the contracts before it is stored", ()
   });
 
   it.each(["{\"findings\":[]}", "not json"])("llmFindings returns no findings for empty or malformed replies: %s", async (reply) => {
-    expect(await llmFindings({
+    expect((await llmFindings({
       llm: stubLlm({ FINDINGS_JSON: reply }), states: [], runs: [], goal: "complete checkout",
-    })).toEqual([]);
+    })).findings).toEqual([]);
   });
 
   it("generateSpec ignores malformed LLM spec fields", async () => {

@@ -414,26 +414,84 @@ describe("chunked runs", () => {
     const exp = store.all.get(id)!;
     exp.failures = [{ code: "BROWSER_UNAVAILABLE", stage: "verify", message: "skip" }];
     exp.runCheckpoint = { stage: "analyze", attempt: 0 };
-    // The LLM call outlives the slice: llmFindings finishes, then the budget is out.
+    // The slice is too small for even one batch call — nothing launches, the
+    // slice suspends cleanly instead of dying mid-await.
     let t = 0;
     const now = () => t;
     const llm = (orch as unknown as { llm: { complete: (p: string, o?: unknown) => Promise<string> } }).llm;
-    const llmSpy = vi.spyOn(llm, "complete").mockImplementation(async () => {
+    const budgets: (number | undefined)[] = [];
+    const llmSpy = vi.spyOn(llm, "complete").mockImplementation(async (_p, o) => {
+      if (String(_p).startsWith("You are a UX auditor"))
+        budgets.push((o as { timeoutMs?: number } | undefined)?.timeoutMs);
       t += 200;
       return "{}";
     });
     await orch.runStep(id, { deadlineMs: 100, now });
+    expect(llmSpy).not.toHaveBeenCalled();
     const cp = store.all.get(id)!.runCheckpoint;
     expect(cp?.stage).toBe("analyze");
     expect(cp?.analyze?.llmFindings).toEqual([]);
+    expect(cp?.analyze?.llmFindingsBatches).toBe(0);
     expect(cp?.analyze?.endpointFindings).toBeUndefined();
-    // Resumed slice reuses the persisted findings — no further model calls.
-    llmSpy.mockRestore();
-    const llmSpy2 = vi.spyOn(llm, "complete");
-    const done = await orch.analyze(id);
-    expect(llmSpy2).not.toHaveBeenCalled();
+    // A wider slice runs the batch, bounded to what it has left (minus the save
+    // margin). Calls from stages re-entered without a deadline (e.g. compare's
+    // internal analyze) carry no bound — every bounded call fits the slice.
+    t = 0;
+    const res = await orch.runStep(id, { deadlineMs: 10_000, now });
+    const bounded = budgets.filter((b): b is number => b !== undefined);
+    expect(bounded.length).toBeGreaterThan(0);
+    for (const b of bounded) expect(b).toBeLessThan(10_000);
+    expect(res.status === "created" || res.status === "complete").toBe(true);
+    expect(res.findings).toBeDefined();
+  });
+
+  it("accumulates llmFindings per page batch across slices — an mtc.so-sized graph finishes within the slice cap", async () => {
+    process.env.REHEARSAL_ALLOW_PRIVATE = "1";
+    const pages = { [URL]: HOME };
+    const store = memoryStore();
+    const orch = new Orchestrator({ store, fetcher: fetcher(pages), runner: runner(pages) });
+    const { id } = await seededRun(orch);
+    const exp = store.all.get(id)!;
+    exp.failures = [{ code: "BROWSER_UNAVAILABLE", stage: "verify", message: "skip" }];
+    exp.runCheckpoint = { stage: "analyze", attempt: 0 };
+    // A multi-page graph like mtc.so's crawl: 12 states → 3 batches of 5.
+    const { makeState } = await import("@/lib/graph");
+    const vp = { name: "desktop" as const, width: 1440, height: 900 };
+    exp.graph = {
+      states: Array.from({ length: 12 }, (_, i) =>
+        makeState({
+          url: `${URL}p${i}`,
+          viewport: vp,
+          title: `Page ${i}`,
+          visibleText: `Page ${i} content with some text to audit.`,
+          actions: [{ label: `Go ${i}`, role: "link", href: `${URL}p${i}`, type: "click" as const, enabled: true, safeToExecute: true }],
+        }),
+      ),
+      edges: [],
+    };
+    await store.save(exp);
+    // Each model call consumes nearly the whole slice: one batch per slice.
+    let t = 0;
+    const now = () => t;
+    const llm = (orch as unknown as { llm: { complete: (p: string, o?: unknown) => Promise<string> } }).llm;
+    let calls = 0;
+    vi.spyOn(llm, "complete").mockImplementation(async (_p) => {
+      if (String(_p).startsWith("You are a UX auditor")) calls++;
+      t += 8_000;
+      return JSON.stringify({ findings: [{ title: `Issue batch ${calls}`, category: "clarity", severity: "medium", evidenceType: "hypothesis", description: "d", recommendation: "r", principle: "dont-make-users-think" }] });
+    });
+    let slices = 0;
+    for (;;) {
+      slices++;
+      const res = await orch.runStep(id, { deadlineMs: 10_000, now });
+      if (res.status === "created" || res.status === "complete") break;
+      expect(slices).toBeLessThanOrEqual(10);
+    }
+    const done = store.all.get(id)!;
     expect(done.status).toBe("created");
-    expect(done.findings).toBeDefined();
+    // Three batches → three accumulated real findings, plus deterministic rule findings.
+    expect(done.findings.filter((f) => f.title.startsWith("Issue batch")).length).toBe(3);
+    expect(calls).toBe(3);
   });
 
   it("resume() re-kicks a stalled in-flight run and ignores live or finished ones", async () => {
