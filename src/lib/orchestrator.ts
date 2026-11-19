@@ -780,13 +780,8 @@ export class Orchestrator {
       exp.simulations = [];
       exp.swarm = undefined;
       exp.browserTests = [];
-      exp.findings = [];
-      exp.variants = [];
-      exp.comparisons = [];
-      exp.spec = undefined;
-      exp.mockup = undefined;
-      exp.rebuild = undefined;
-      exp.usage = undefined;
+      // Results (findings, spec, preview, comparisons, rebuild) are kept until the
+      // new run overwrites them — a rerun that dies mid-way must not wipe them.
       exp.errors = [];
       exp.failures = [];
       await this.update(exp, "queued");
@@ -1450,6 +1445,12 @@ export class Orchestrator {
       const runs = exp.browserTests.filter((r) => !r.variantId);
       const rules = ruleFindings({ states, runs, assertions: exp.assertions });
       const out = () => opts?.deadline !== undefined && (opts?.now ?? Date.now)() >= opts.deadline;
+      /** Time left in this slice minus a margin for the checkpoint write; bounds each
+       * LLM call so it resolves (or degrades) before the invocation ends mid-await. */
+      const llmBudget = () => {
+        if (opts?.deadline === undefined) return undefined;
+        return Math.max(opts.deadline - (opts?.now ?? Date.now)() - 2_000, 1);
+      };
       const saved = exp.runCheckpoint?.stage === "analyze" ? exp.runCheckpoint.analyze ?? {} : {};
       /** Persist finished sub-steps so the next slice resumes instead of redoing LLM calls. */
       const suspend = async (analyze: { llmFindings?: Finding[]; endpointFindings?: Finding[] }) => {
@@ -1463,16 +1464,16 @@ export class Orchestrator {
         await this.store.save(Experiment.parse(latest));
         return { complete: false } as const;
       };
-      const llm = saved.llmFindings ?? await llmFindings({ llm: this.llm, states, runs, goal: exp.goal });
+      const llm = saved.llmFindings ?? await llmFindings({ llm: this.llm, states, runs, goal: exp.goal, timeoutMs: llmBudget() });
       if (out()) return suspend({ llmFindings: llm });
-      const endpoints = saved.endpointFindings ?? await this.endpointAnalysis(exp);
+      const endpoints = saved.endpointFindings ?? await this.endpointAnalysis(exp, llmBudget());
       if (out()) return suspend({ llmFindings: llm, endpointFindings: endpoints });
       const graph = exp.graph?.states.length ? exp.graph : undefined;
       // A resumed slice keeps the questions already persisted; a fresh analyze
       // (e.g. after rediscovery) regenerates them against the new graph.
       const resumed = saved.llmFindings !== undefined || saved.endpointFindings !== undefined;
       if (graph && !(resumed && exp.questions !== undefined)) {
-        exp.questions = await visitorQuestions(graph, exp.endpoints ?? [], detectSiteType(graph), this.llm);
+        exp.questions = await visitorQuestions(graph, exp.endpoints ?? [], detectSiteType(graph), this.llm, llmBudget());
       }
       if (out()) return suspend({ llmFindings: llm, endpointFindings: endpoints });
       exp.findings = collapseFindings([
@@ -1827,10 +1828,10 @@ export class Orchestrator {
   }
 
   /** Classify the goal (RFX intent), add one default goal per category, discover + weight endpoints. */
-  private async mapIntents(exp: Experiment): Promise<void> {
+  private async mapIntents(exp: Experiment, timeoutMs?: number): Promise<void> {
     const graph = exp.graph;
     if (!graph || graph.states.length === 0) return;
-    const goalIntent = intentForGoal(exp.goal, await classifyGoalWithLlm(exp.goal, this.llm));
+    const goalIntent = intentForGoal(exp.goal, await classifyGoalWithLlm(exp.goal, this.llm, timeoutMs));
     exp.intents = [goalIntent, ...defaultIntentsForSite(graph)];
     exp.endpoints = discoverEndpoints(graph, { intents: [goalIntent] });
     logEvent({
@@ -1842,10 +1843,10 @@ export class Orchestrator {
   }
 
   /** Seeded endpoint journeys + reachability findings (unreachable / deep / missing class). */
-  private async endpointAnalysis(exp: Experiment): Promise<Experiment["findings"]> {
+  private async endpointAnalysis(exp: Experiment, timeoutMs?: number): Promise<Experiment["findings"]> {
     const graph = exp.graph;
     if (!graph || graph.states.length === 0) return [];
-    if (!exp.endpoints) await this.mapIntents(exp);
+    if (!exp.endpoints) await this.mapIntents(exp, timeoutMs);
     const endpoints = exp.endpoints ?? [];
     exp.journeys = endpointJourneys(graph, endpoints, {
       seed: exp.configuration.seed,

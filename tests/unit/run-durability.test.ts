@@ -418,11 +418,18 @@ describe("chunked runs", () => {
     let t = 0;
     const now = () => t;
     const llm = (orch as unknown as { llm: { complete: (p: string, o?: unknown) => Promise<string> } }).llm;
-    const llmSpy = vi.spyOn(llm, "complete").mockImplementation(async () => {
+    const budgets: (number | undefined)[] = [];
+    const llmSpy = vi.spyOn(llm, "complete").mockImplementation(async (_p, o) => {
+      budgets.push((o as { timeoutMs?: number } | undefined)?.timeoutMs);
       t += 200;
       return "{}";
     });
     await orch.runStep(id, { deadlineMs: 100, now });
+    // Every model call is bounded to what the slice has left (minus the save
+    // margin), so the call lands instead of dying mid-await with the invocation.
+    expect(budgets.length).toBeGreaterThan(0);
+    for (const b of budgets) expect(b).toBeDefined();
+    for (const b of budgets) expect(b!).toBeLessThan(100);
     const cp = store.all.get(id)!.runCheckpoint;
     expect(cp?.stage).toBe("analyze");
     expect(cp?.analyze?.llmFindings).toEqual([]);

@@ -46,7 +46,7 @@ export function goalTargetClasses(goal: string): EndpointClass[] {
  * Optional LLM refinement (fast model). Any failure, or the keyless fixture
  * client, falls back to the deterministic classifier.
  */
-export async function classifyGoalWithLlm(goal: string, llm?: LlmClient): Promise<IntentCategory> {
+export async function classifyGoalWithLlm(goal: string, llm?: LlmClient, timeoutMs?: number): Promise<IntentCategory> {
   const fallback = classifyGoal(goal);
   if (!llm || llm.name === "gemini-fixture") return fallback;
   try {
@@ -56,7 +56,7 @@ information = wants to learn/understand/find answers; quotation = wants prices, 
 proposal = wants to commit: sign up, apply, register, buy, contact sales.
 GOAL: ${goal}
 Return INTENT_CATEGORY as JSON {"category": "information"|"quotation"|"proposal"}.`,
-      { json: true },
+      { json: true, timeoutMs },
     );
     const parsed = JSON.parse(raw.replace(/```json|```/g, "").trim()) as { category?: string };
     if (parsed.category === "information" || parsed.category === "quotation" || parsed.category === "proposal") {

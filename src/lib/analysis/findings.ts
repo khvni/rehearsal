@@ -300,8 +300,10 @@ export async function llmFindings(args: {
   states: SiteState[];
   runs: BrowserRun[];
   goal: string;
+  /** Hard wall-clock bound so the call lands before a run-step slice ends; expiry degrades to rule findings. */
+  timeoutMs?: number;
 }): Promise<Finding[]> {
-  const { llm, states, runs, goal } = args;
+  const { llm, states, runs, goal, timeoutMs } = args;
   const evidence = {
     goal,
     // One state per URL: viewport twins of a page carry near-identical evidence text.
@@ -326,7 +328,7 @@ GOAL: ${goal}
 EVIDENCE:\n${JSON.stringify(evidence)}\n
 Return FINDINGS_JSON: {"findings": [{"title","category"(rubric key),"severity","evidenceType","description","recommendation","principle"}]} — only issues supported by the evidence; label unverified ones "hypothesis". Write titles and descriptions in plain language a site owner can act on.`;
   try {
-    const raw = await llm.complete(prompt, { deep: true, json: true });
+    const raw = await llm.complete(prompt, { deep: true, json: true, timeoutMs });
     const parsed = JSON.parse(stripFences(raw)) as {
       findings?: Partial<Finding>[];
     };
