@@ -293,75 +293,100 @@ export function extractPastDates(text: string, now: Date): string[] {
 
 /**
  * LLM-augmented findings (gemini-4-argon): sends compact evidence + rubric,
- * expects FINDINGS_JSON. Failures degrade to rule findings only.
+ * expects FINDINGS_JSON. The states evidence is split into batches of
+ * LLM_FINDINGS_BATCH pages so each call fits a run-step slice; `startBatch`
+ * resumes mid-list and `budgetMs` bounds every call to what the slice has
+ * left — a slice that ends mid-list returns `{ done: false }` with the
+ * finished prefix, which the caller persists and resumes. Failures degrade
+ * that batch to no findings rather than the whole stage.
  */
+export const LLM_FINDINGS_BATCH = 5;
+
+/** A batch call is only launched when the slice has at least this much budget left. */
+export const LLM_CALL_FLOOR_MS = 5_000;
+
 export async function llmFindings(args: {
   llm: LlmClient;
   states: SiteState[];
   runs: BrowserRun[];
   goal: string;
-  /** Hard wall-clock bound so the call lands before a run-step slice ends; expiry degrades to rule findings. */
-  timeoutMs?: number;
-}): Promise<Finding[]> {
-  const { llm, states, runs, goal, timeoutMs } = args;
-  const evidence = {
-    goal,
-    // One state per URL: viewport twins of a page carry near-identical evidence text.
-    states: uniqueStatesByUrl(states).slice(0, 15).map((s) => ({
-      url: s.url,
-      title: s.pageTitle,
-      text: s.visibleText.slice(0, 900),
-      actions: s.actions.slice(0, 20).map((a) => ({ label: a.label, role: a.role, href: a.href })),
-    })),
-    runs: runs.map((r) => ({
-      viewport: r.viewport.name,
-      success: r.success,
-      failedAssertions: failedGoalAssertions(r).map((a) => a.assertion),
-      consoleErrorCount: r.consoleErrorCount,
-      errors: r.errors.slice(0, 10),
-    })),
-  };
-  const prompt = `You are a UX auditor. Grade the evidence against these usability dimensions:
+  /** Batches already persisted — the loop starts here. */
+  startBatch?: number;
+  /** Recomputed before each call: ms the slice still has. Below the floor the batch isn't launched. */
+  budgetMs?: () => number | undefined;
+}): Promise<{ findings: Finding[]; batchesDone: number; done: boolean }> {
+  const { llm, states, runs, goal, startBatch = 0, budgetMs } = args;
+  const pages = uniqueStatesByUrl(states).slice(0, 15);
+  const batches = Math.ceil(pages.length / LLM_FINDINGS_BATCH) || 1;
+  const runsEvidence = runs.map((r) => ({
+    viewport: r.viewport.name,
+    success: r.success,
+    failedAssertions: failedGoalAssertions(r).map((a) => a.assertion),
+    consoleErrorCount: r.consoleErrorCount,
+    errors: r.errors.slice(0, 10),
+  }));
+  const findings: Finding[] = [];
+  let b = startBatch;
+  for (; b < batches; b++) {
+    // Don't launch a call the slice provably can't finish.
+    const budget = budgetMs?.();
+    if (budget !== undefined && budget < LLM_CALL_FLOOR_MS) break;
+    const slice = pages.slice(b * LLM_FINDINGS_BATCH, (b + 1) * LLM_FINDINGS_BATCH);
+    const evidence = {
+      goal,
+      states: slice.map((s) => ({
+        url: s.url,
+        title: s.pageTitle,
+        text: s.visibleText.slice(0, 900),
+        actions: s.actions.slice(0, 20).map((a) => ({ label: a.label, role: a.role, href: a.href })),
+      })),
+      runs: runsEvidence,
+    };
+    const prompt = `You are a UX auditor. Grade the evidence against these usability dimensions:
 ${rubricPromptSection()}
 
 GOAL: ${goal}
 EVIDENCE:\n${JSON.stringify(evidence)}\n
 Return FINDINGS_JSON: {"findings": [{"title","category"(rubric key),"severity","evidenceType","description","recommendation","principle"}]} — only issues supported by the evidence; label unverified ones "hypothesis". Write titles and descriptions in plain language a site owner can act on.`;
-  try {
-    const raw = await llm.complete(prompt, { deep: true, json: true, timeoutMs });
-    const parsed = JSON.parse(stripFences(raw)) as {
-      findings?: Partial<Finding>[];
-    };
-    return (parsed.findings ?? [])
-      .filter((f) => typeof f.title === "string" && f.title && typeof f.description === "string" && f.description)
-      .map((f) => ({
-        findingId: fid(),
-        title: String(f.title),
-        category: pick(RubricDimension, f.category, "clarity"),
-        severity: pick(Severity, f.severity, "medium"),
-        evidenceType: f.evidenceType === "verified-failure"
-          ? "reproducible-concern"
-          : pick(EvidenceType, f.evidenceType, "hypothesis"),
-        description: String(f.description),
-        affectedStates: states.slice(0, 3).map((s) => s.stateId),
-        affectedActions: [],
-        evidencePaths: [],
-        recommendation: typeof f.recommendation === "string" ? f.recommendation : "",
-        verificationStatus: "unverified",
-        principle: pick(
-          UsabilityPrinciple,
-          typeof f.principle === "string" ? (LEGACY_PRINCIPLES[f.principle] ?? f.principle) : f.principle,
-          "dont-make-users-think",
-        ),
-      }))
-      .flatMap((f) => {
-        const r = Finding.safeParse(f);
-        return r.success ? [r.data] : [];
-      });
-  } catch (err) {
-    logEvent({ stage: "analyze", kind: "llm-findings-failed", data: { llm: llm.name, error: String(err).slice(0, 160) } });
-    return [];
+    try {
+      const raw = await llm.complete(prompt, { deep: true, json: true, timeoutMs: budget });
+      const parsed = JSON.parse(stripFences(raw)) as {
+        findings?: Partial<Finding>[];
+      };
+      findings.push(
+        ...(parsed.findings ?? [])
+          .filter((f) => typeof f.title === "string" && f.title && typeof f.description === "string" && f.description)
+          .map((f) => ({
+            findingId: fid(),
+            title: String(f.title),
+            category: pick(RubricDimension, f.category, "clarity"),
+            severity: pick(Severity, f.severity, "medium"),
+            evidenceType: f.evidenceType === "verified-failure"
+              ? "reproducible-concern"
+              : pick(EvidenceType, f.evidenceType, "hypothesis"),
+            description: String(f.description),
+            affectedStates: slice.map((s) => s.stateId),
+            affectedActions: [],
+            evidencePaths: [],
+            recommendation: typeof f.recommendation === "string" ? f.recommendation : "",
+            verificationStatus: "unverified",
+            principle: pick(
+              UsabilityPrinciple,
+              typeof f.principle === "string" ? (LEGACY_PRINCIPLES[f.principle] ?? f.principle) : f.principle,
+              "dont-make-users-think",
+            ),
+          }))
+          .flatMap((f) => {
+            const r = Finding.safeParse(f);
+            return r.success ? [r.data] : [];
+          }),
+      );
+    } catch (err) {
+      // A timed-out batch is skipped, not retried forever — its pages keep rule findings.
+      logEvent({ stage: "analyze", kind: "llm-findings-failed", data: { llm: llm.name, batch: b, error: String(err).slice(0, 160) } });
+    }
   }
+  return { findings, batchesDone: b, done: b >= batches };
 }
 
 export function stripFences(s: string): string {

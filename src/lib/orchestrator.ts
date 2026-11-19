@@ -137,7 +137,8 @@ const STATUS_STAGE: Record<string, string> = {
 };
 
 function pipelineFinished(exp: Experiment): boolean {
-  return !!exp.spec && (exp.status === "complete" || exp.status === "rebuilding" || rebuildPending(exp));
+  return !!exp.spec && exp.status !== "queued" &&
+    (exp.status === "complete" || exp.status === "rebuilding" || rebuildPending(exp));
 }
 
 /**
@@ -780,8 +781,12 @@ export class Orchestrator {
       exp.simulations = [];
       exp.swarm = undefined;
       exp.browserTests = [];
-      // Results (findings, spec, preview, comparisons, rebuild) are kept until the
-      // new run overwrites them — a rerun that dies mid-way must not wipe them.
+      // Results (findings, spec, preview, comparisons) are kept until the new run
+      // overwrites them — a rerun that dies mid-way must not wipe them. The rebuild
+      // derives from the outgoing spec, so it is dropped; rescannedAt marks the
+      // rest as pre-rescan leftovers so stage reuse checks regenerate them.
+      exp.rebuild = undefined;
+      exp.rescannedAt = new Date().toISOString();
       exp.errors = [];
       exp.failures = [];
       await this.update(exp, "queued");
@@ -1453,7 +1458,7 @@ export class Orchestrator {
       };
       const saved = exp.runCheckpoint?.stage === "analyze" ? exp.runCheckpoint.analyze ?? {} : {};
       /** Persist finished sub-steps so the next slice resumes instead of redoing LLM calls. */
-      const suspend = async (analyze: { llmFindings?: Finding[]; endpointFindings?: Finding[] }) => {
+      const suspend = async (analyze: { llmFindings?: Finding[]; llmFindingsBatches?: number; endpointFindings?: Finding[] }) => {
         const latest = await this.mustGet(id);
         // Carry in-memory byproducts of finished sub-steps (journeys, endpoints,
         // questions) so a suspended slice doesn't lose work its resume path skips.
@@ -1464,10 +1469,21 @@ export class Orchestrator {
         await this.store.save(Experiment.parse(latest));
         return { complete: false } as const;
       };
-      const llm = saved.llmFindings ?? await llmFindings({ llm: this.llm, states, runs, goal: exp.goal, timeoutMs: llmBudget() });
-      if (out()) return suspend({ llmFindings: llm });
+      // llmFindings runs in page batches small enough to fit a slice; finished
+      // batches persist in the checkpoint so a suspended slice resumes mid-list.
+      const llmBatch = await llmFindings({
+        llm: this.llm, states, runs, goal: exp.goal,
+        startBatch: saved.llmFindingsBatches ?? 0,
+        budgetMs: llmBudget,
+      });
+      // Persisted findings only resume when the batch counter exists — a
+      // pre-batch checkpoint's lone array is recomputed rather than doubled.
+      const llm = [...(saved.llmFindingsBatches !== undefined ? saved.llmFindings ?? [] : []), ...llmBatch.findings];
+      if (!llmBatch.done || out()) {
+        return suspend({ llmFindings: llm, llmFindingsBatches: llmBatch.batchesDone });
+      }
       const endpoints = saved.endpointFindings ?? await this.endpointAnalysis(exp, llmBudget());
-      if (out()) return suspend({ llmFindings: llm, endpointFindings: endpoints });
+      if (out()) return suspend({ llmFindings: llm, llmFindingsBatches: llmBatch.batchesDone, endpointFindings: endpoints });
       const graph = exp.graph?.states.length ? exp.graph : undefined;
       // A resumed slice keeps the questions already persisted; a fresh analyze
       // (e.g. after rediscovery) regenerates them against the new graph.
@@ -1475,7 +1491,7 @@ export class Orchestrator {
       if (graph && !(resumed && exp.questions !== undefined)) {
         exp.questions = await visitorQuestions(graph, exp.endpoints ?? [], detectSiteType(graph), this.llm, llmBudget());
       }
-      if (out()) return suspend({ llmFindings: llm, endpointFindings: endpoints });
+      if (out()) return suspend({ llmFindings: llm, llmFindingsBatches: llmBatch.batchesDone, endpointFindings: endpoints });
       exp.findings = collapseFindings([
         ...rules,
         ...endpoints,
@@ -1599,7 +1615,11 @@ export class Orchestrator {
       // Spec + mockup are two model calls that can outlast one Workers slice: the
       // spec is saved as soon as it exists, and a re-entered slice reuses it.
       const retried = exp.runCheckpoint?.stage === "spec" && exp.runCheckpoint.attempt > 1;
-      if (!(retried && exp.spec)) {
+      // A rescan keeps the previous deliverables for display, but a resumed spec
+      // slice must regenerate them — leftovers from before rescannedAt are stale.
+      const stale = (generatedAt: string | undefined) =>
+        exp.rescannedAt !== undefined && (generatedAt === undefined || generatedAt < exp.rescannedAt);
+      if (!(retried && exp.spec && !stale(exp.spec.generatedAt))) {
         exp.spec = await generateSpec(exp, this.llm);
         await this.emit(id, "spec", "info", `Spec written: ${exp.spec.changes.length} changes across ${exp.spec.rebuildPhases.length} phases`);
         const usage = this.collectUsage();
@@ -1619,7 +1639,7 @@ export class Orchestrator {
         // burning more calls, and a partial one resumes where it stopped. A
         // deliberate spec rerun (no resume checkpoint) regenerates it so the
         // preview tracks the new spec.
-        const mockupDone = retried && exp.mockup !== undefined && !exp.mockup.partial;
+        const mockupDone = retried && exp.mockup !== undefined && !exp.mockup.partial && !stale(exp.mockup.generatedAt);
         // Page calls are bounded to fit a slice, but a run that still has no
         // finished pages after several resumed slices stops retrying — the
         // stage completes with whatever was generated.

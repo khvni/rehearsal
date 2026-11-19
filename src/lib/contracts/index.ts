@@ -774,6 +774,8 @@ export const RunCheckpoint = z.object({
   analyze: z
     .object({
       llmFindings: z.array(Finding).optional(),
+      /** State batches llmFindings has finished — resume starts at this batch, so per-batch findings are never recomputed. */
+      llmFindingsBatches: z.number().int().nonnegative().optional(),
       endpointFindings: z.array(Finding).optional(),
     })
     .optional(),
@@ -820,6 +822,8 @@ export const Experiment = z.object({
   rebuild: RebuildResult.optional(),
   usage: UsageReport.optional(),
   mockup: MockupResult.optional(),
+  /** Set when a rescan queued a fresh run; deliverables older than this are pre-rescan leftovers, not this run's output. */
+  rescannedAt: z.string().optional(),
   errors: z.array(z.string()).default([]),
   /** Structured, coded form of each failure (page loads, stage errors); `errors` keeps the readable lines. */
   failures: z.array(RunFailure).default([]),
