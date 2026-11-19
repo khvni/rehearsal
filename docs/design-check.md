@@ -65,7 +65,7 @@ it against `scripts/engine-checksums.txt`. Set `IMPECCABLE_BIN` to use a preinst
 `src/components/**`, `src/lib/rebuild/**`, the wireframe check script, `package.json`, `PRODUCT.md`,
 or the Impeccable config.
 
-- **static**: `detect --github src/app`, which prints findings as PR annotations. Blocking.
+- **static**: `detect` on staged `src/app/**` files, run by the Lefthook pre-commit hook (installed via npm `postinstall`; `LEFTHOOK=0` skips hooks). Blocking locally, so the same findings never reach CI.
 - **rendered**: builds and starts the app, scans `/`, then serves the fixture on loopback, runs a
   full experiment through the API, and scans its page with Playwright's Chromium. Both scans are
   blocking. If the fixture experiment itself fails to complete, the experiment-page scan is skipped

@@ -71,6 +71,10 @@ Environment variables: [docs/architecture.md#environment-variables](docs/archite
 - **Skill sync.** `npm run check:skill-sync` fails if a stage or eval file lands
   without a testing-skill update.
 - **Contracts.** Every module boundary is a zod schema in `src/lib/contracts`.
+- **Hooks.** Lefthook runs the static gates locally — oxlint + eslint + Impeccable detect +
+  `terraform fmt` pre-commit, typecheck + skill-sync + function-lib + facts + diff-scoped vitest
+  pre-push (`npm postinstall` installs them; `LEFTHOOK=0` skips). Hooks are bypassable, so CI's
+  `check` job runs the same gates as the guaranteed pre-merge gate.
 - **Facts.** `npm run check:facts` flags contracts, env vars, principle ids and API docs
   that drift from the code ([docs/verification.md](docs/verification.md)).
 - **Determinism.** Seeded RNG (mulberry32). The same seed gives the same journeys.

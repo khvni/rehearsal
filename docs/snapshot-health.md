@@ -1,11 +1,11 @@
-# Snapshot health: daily hermetic rebuild + agent first responder
+# Snapshot health: twice-weekly hermetic rebuild + agent first responder
 
-Every day, `main` is rebuilt from scratch on a clean runner. If it breaks, a Devin
+Twice a week (Monday and Thursday UTC), `main` is rebuilt from scratch on a clean runner. If it breaks, a Devin
 Automation picks up the failure, fixes it on a branch, and opens a PR.
 
-## What runs daily
+## What runs twice a week
 
-Workflow: `.github/workflows/snapshot-health.yml`, cron `7 7 * * *` (UTC), fresh `ubuntu-latest`,
+Workflow: `.github/workflows/snapshot-health.yml`, cron `7 7 * * 1,4` (UTC — Monday and Thursday), fresh `ubuntu-latest`,
 npm and Playwright browser caches.
 
 | Step | Command |
@@ -54,7 +54,7 @@ Automation **"Rehearsal snapshot-health first responder"** in the Devin org (run
   `devin/<ts>-snapshot-fix` without weakening tests, run the full gate, open a PR with
   `Fixes #<issue>`, and link it on the issue. Never merge.
 
-Re-arming: if the first responder's PR is still open and `main` stays red, the daily run just
+Re-arming: if the first responder's PR is still open and `main` stays red, the next scheduled run just
 comments on the same issue. To re-trigger the agent, remove and re-add the `first-responder` label.
 
 ## Run it manually
