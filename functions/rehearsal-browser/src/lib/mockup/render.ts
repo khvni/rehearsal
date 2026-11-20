@@ -209,14 +209,21 @@ function hex2(n: number): string {
   return Math.round(Math.max(0, Math.min(255, n))).toString(16).padStart(2, "0");
 }
 
-/** Map any concrete color to the gray of its WCAG luminance; alpha survives. */
+/**
+ * Map any concrete color to the gray of its WCAG luminance; alpha survives —
+ * fully transparent stays transparent rather than falling back to an opaque
+ * gray. Must be idempotent: restyleCss re-passes declaration bodies until a
+ * fixpoint, so an already-neutral gray maps to itself (otherwise every pass
+ * darkens it and mid tones decay to black).
+ */
 function grayOf(token: string): string | undefined {
   const c = parseColor(token);
   if (!c) return undefined;
-  const g = luminance(c) * 255;
+  let g = Math.round(luminance(c) * 255);
+  if (c.r === c.g && c.g === c.b) g = Math.round(c.r);
+  if (c.a <= 0) return `rgba(${g},${g},${g},0)`;
   if (c.a >= 0.999) return `#${hex2(g)}${hex2(g)}${hex2(g)}`;
-  if (c.a <= 0) return undefined;
-  return `rgba(${Math.round(g)},${Math.round(g)},${Math.round(g)},${Math.round(c.a * 100) / 100})`;
+  return `rgba(${g},${g},${g},${Math.round(c.a * 100) / 100})`;
 }
 
 // Drop quotes entirely: an unquoted family list is valid CSS, and quoting would
