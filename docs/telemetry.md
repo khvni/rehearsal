@@ -36,7 +36,7 @@ validation, returned as 400 before an experiment exists). The SDK is initialized
 ## The KPI the agent owns
 
 1. **Zero unhandled stage exceptions per 24h** on the corpus sweep (the nightly corpus audit and
-   the daily snapshot-health pipeline smoke). Measured in Sentry as error-level events with a
+   the twice-weekly snapshot-health pipeline smoke). Measured in Sentry as error-level events with a
    `stage` tag.
 2. **Sweep p95 stage duration** stays within budget: Sentry Insights → Traces, filter
    `span.op:rehearsal.stage`, group by `stage`, p95(`span.duration`). The same numbers are in

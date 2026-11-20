@@ -1,10 +1,12 @@
 name: ci
 
-# Static gates (oxlint, eslint, tsc, skill-sync, function-lib, facts) run in the
-# lefthook pre-push hook, so they are checked before code ever reaches CI. This
-# workflow keeps only what hooks cannot cover: tests that need a real Chromium,
-# and diff-scoped vitest on PRs. The daily snapshot-health rebuild still runs the
-# full `npm run check` on main as a backstop for pushed-without-hooks commits.
+# Static gates (oxlint, eslint, tsc, skill-sync, function-lib, facts) also run in
+# the lefthook pre-push hook, so they are checked before code ever reaches CI —
+# but hooks are bypassable, so the check job below re-runs them as the only
+# guaranteed pre-merge gate. This workflow additionally covers what hooks cannot:
+# tests that need a real Chromium, and diff-scoped vitest on PRs. The
+# twice-weekly snapshot-health rebuild still runs the full `npm run check` on
+# main as a backstop for pushed-without-hooks commits.
 
 on:
   push:

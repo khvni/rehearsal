@@ -49,8 +49,10 @@ evidence. Long pipeline stages run in the background while the user stays on the
 - Experiments run against public URLs only; loopback targets require `REHEARSAL_ALLOW_PRIVATE=1`.
 - Every vendor adapter falls back to a fixture or plain implementation when its key is missing,
   so the dashboard must render complete, honest states from fixture-backed runs.
-- Data is dense: a decision graph with dozens of states, a browser-run list, a dozen or more
-  findings, a variant comparison, and a long markdown spec on one page.
+- Data is dense: a decision graph with dozens of states, a "Where visitors got stuck" replay of
+  stored journeys (outcome shares, stop points, loops, common paths), a browser-run list, a dozen
+  or more findings, a variant comparison, a grayscale spec mockup preview, and a long markdown
+  spec on one page.
 - Progress counts the six required stages; Rebuild is optional. Completed experiments offer
   **Rescan site** and a separate **Build site** (or **View rebuilt site** when output exists),
   rather than a run-all action. Created/failed experiments retain **Run all steps**.
