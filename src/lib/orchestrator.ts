@@ -558,8 +558,9 @@ export class Orchestrator {
       }
       const carryDiscover = stage === "discover" && cp?.stage === "discover" ? cp.discover : undefined;
       const carryAnalyze = stage === "analyze" && cp?.stage === "analyze" ? cp.analyze : undefined;
+      const carrySpecRegenerated = stage === "spec" && cp?.stage === "spec" ? cp.specRegenerated : undefined;
       if (deadline !== undefined && now() >= deadline) {
-        await persist({ stage, attempt: cp?.stage === stage ? cp.attempt : 0, queued: queuedReq || undefined, discover: carryDiscover, analyze: carryAnalyze });
+        await persist({ stage, attempt: cp?.stage === stage ? cp.attempt : 0, queued: queuedReq || undefined, discover: carryDiscover, analyze: carryAnalyze, specRegenerated: carrySpecRegenerated });
         await this.emit(id, "run", "info", `Step budget reached — run continues in the background (next: ${stage})`);
         return { suspended: true };
       }
@@ -575,7 +576,7 @@ export class Orchestrator {
         );
       }
       let retries = cp?.stage === stage ? cp.retries ?? 0 : 0;
-      await persist({ stage, attempt, retries, queued: queuedReq || undefined, discover: carryDiscover, analyze: carryAnalyze });
+      await persist({ stage, attempt, retries, queued: queuedReq || undefined, discover: carryDiscover, analyze: carryAnalyze, specRegenerated: carrySpecRegenerated });
       // Durable retries: a stage error suspends the run (fresh window on Workers,
       // backoff in-process elsewhere) instead of failing the whole workflow.
       for (;;) {
@@ -620,7 +621,7 @@ export class Orchestrator {
             "info",
             `Stage ${stage} failed — retrying (${retries}/${MAX_STAGE_RETRIES}): ${formatFailure(failure).slice(0, 200)}`,
           );
-          await persist({ stage, attempt, retries, queued: queuedReq || undefined, discover: carryDiscover, analyze: carryAnalyze });
+          await persist({ stage, attempt, retries, queued: queuedReq || undefined, discover: carryDiscover, analyze: carryAnalyze, specRegenerated: carrySpecRegenerated });
           if (isWorkersRuntime()) return { suspended: true };
           await new Promise((resolve) => setTimeout(resolve, STAGE_RETRY_BACKOFF_MS));
         }
@@ -1626,10 +1627,14 @@ export class Orchestrator {
        * can suspend with the checkpoint intact. */
       const llmBudget = () =>
         opts?.deadline === undefined ? undefined : Math.max(opts.deadline - (opts?.now ?? Date.now)() - 2_000, 1);
-      if (!(retried && exp.spec && !stale(exp.spec.generatedAt))) {
+      // A resumed slice reuses the spec only when this checkpoint's slices
+      // wrote it — a rerun suspended before regenerating must not fall back to
+      // the previous run's spec.
+      if (!(retried && exp.runCheckpoint?.specRegenerated === true && exp.spec && !stale(exp.spec.generatedAt))) {
         const budget = llmBudget();
         if (budget !== undefined && budget < LLM_CALL_FLOOR_MS) return { complete: false };
         exp.spec = await generateSpec(exp, this.llm, { timeoutMs: budget });
+        if (exp.runCheckpoint) exp.runCheckpoint.specRegenerated = true;
         await this.emit(id, "spec", "info", `Spec written: ${exp.spec.changes.length} changes across ${exp.spec.rebuildPhases.length} phases`);
         const usage = this.collectUsage();
         if (usage) {
@@ -1648,7 +1653,7 @@ export class Orchestrator {
         // burning more calls, and a partial one resumes where it stopped. A
         // deliberate spec rerun (no resume checkpoint) regenerates it so the
         // preview tracks the new spec.
-        const mockupDone = retried && exp.mockup !== undefined && !exp.mockup.partial && !stale(exp.mockup.generatedAt);
+        const mockupDone = retried && exp.mockup !== undefined && !exp.mockup.partial && !stale(exp.mockup.generatedAt) && exp.mockup.generatedAt >= spec.generatedAt;
         // Page calls are bounded to fit a slice, but a run that still has no
         // finished pages after several resumed slices stops retrying — the
         // stage completes with whatever was generated.
@@ -1660,7 +1665,7 @@ export class Orchestrator {
           }
           logEvent({ experimentId: id, stage: "spec", kind: "llm-fallback", data: { error: "mockup generation stopped: exceeded step budget across retries" } });
         } else if (!mockupDone) {
-          const startIndex = retried && exp.mockup?.partial ? exp.mockup.pages.length : 0;
+          const startIndex = retried && exp.mockup?.partial && exp.mockup.generatedAt >= spec.generatedAt ? exp.mockup.pages.length : 0;
           const mockup = await generateMockup(exp, this.llm, {
             deadline: opts?.deadline !== undefined ? () => (opts?.now ?? Date.now)() >= opts.deadline! - 3_000 : undefined,
             startIndex,
