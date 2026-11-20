@@ -73,6 +73,14 @@ describe("enforceMockupWireframe", () => {
     expect(out).toContain(`href="/preview/acme"`);
   });
 
+  it("keeps link targets safe when an earlier attribute contains a >", () => {
+    const out = enforceMockupWireframe(
+      `<a title="a > b" href="/preview/acme-products">acme</a>`,
+      "acme",
+    );
+    expect(out).toContain(`href="/preview/acme-products"`);
+  });
+
   it("collapses fonts in single-quoted styles without breaking the attribute", () => {
     const out = enforceMockupWireframe(`<div style='font-family: Inter; display:none'>x</div>`);
     expect(out).toMatch(/style='[^']*display:none[^']*'/);

@@ -260,7 +260,8 @@ export function enforceMockupWireframe(html: string, brandName?: string): string
   if (brandName) {
     const re = new RegExp(escapeRe(brandName), "g");
     out = out
-      .split(/(<[^>]*>)/g)
+      // A `>` inside a quoted attribute value is not the tag boundary.
+      .split(/(<(?:[^>"']|"[^"]*"|'[^']*')*>)/g)
       .map((seg) => {
         if (!seg.startsWith("<")) return seg.replace(re, "Preview");
         // Inside a tag, skip matches inside link-bearing attribute values so
