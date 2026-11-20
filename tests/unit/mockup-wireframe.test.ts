@@ -46,4 +46,28 @@ describe("enforceMockupWireframe", () => {
     expect(hex[1]).toBe(hex[2]);
     expect(hex[2]).toBe(hex[3]);
   });
+
+  it("never rewrites the brand name inside link targets", () => {
+    const out = enforceMockupWireframe(
+      `<a href="/preview/acme-products">acme products</a><a href='https://acme.example/x'>x</a>`,
+      "acme",
+    );
+    expect(out).toContain(`href="/preview/acme-products"`);
+    expect(out).toContain(`href='https://acme.example/x'`);
+    expect(out).toContain(">Preview products<");
+  });
+
+  it("collapses inline fonts without breaking the style attribute", () => {
+    const out = enforceMockupWireframe(`<div style="font-family: Inter, Arial; display:none">x</div>`);
+    expect(out).toMatch(/style="[^"]*display:none[^"]*"/);
+    expect(out).not.toContain("Inter");
+  });
+
+  it("restyles only declarations — selectors are not colors", () => {
+    const out = enforceMockupWireframe(
+      `<style>.blue-button { display:none; color:#008a2e } #abc { background: red }</style>`,
+    );
+    expect(out).toContain(".blue-button");
+    expect(out).toContain("#abc");
+  });
 });

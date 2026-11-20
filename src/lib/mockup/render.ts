@@ -219,12 +219,24 @@ function grayOf(token: string): string | undefined {
   return `rgba(${Math.round(g)},${Math.round(g)},${Math.round(g)},${Math.round(c.a * 100) / 100})`;
 }
 
-/** Colors → luminance gray, fonts → generic sans, inside a CSS declaration block. */
-function restyleCss(css: string): string {
-  return css
+const FALLBACK_SANS_SAFE = FALLBACK_SANS.replace(/"/g, "'");
+
+/** Colors → luminance gray, fonts → generic sans, inside a declaration list. */
+function restyleDecls(decls: string): string {
+  return decls
     .replace(CSS_COLOR_RE, (t) => grayOf(t) ?? "#888888")
     .replace(NAMED_COLOR_RE, "#888888")
-    .replace(/font-family\s*:[^;{}]+/gi, `font-family:${FALLBACK_SANS}`);
+    .replace(/font-family\s*:[^;{}]+/gi, `font-family:${FALLBACK_SANS_SAFE}`);
+}
+
+/** Restyle only declaration bodies — selectors like `.blue-button` or `#abc` are not colors. */
+function restyleCss(css: string): string {
+  let prev = "";
+  while (prev !== css) {
+    prev = css;
+    css = css.replace(/\{([^{}]*)\}/g, (_m, decls: string) => `{${restyleDecls(decls)}}`);
+  }
+  return css;
 }
 
 function escapeRe(s: string): string {
@@ -240,9 +252,20 @@ function escapeRe(s: string): string {
 export function enforceMockupWireframe(html: string, brandName?: string): string {
   let out = html
     .replace(/(<style\b[^>]*>)([\s\S]*?)(<\/style>)/gi, (_m, open: string, css: string, close: string) => `${open}${restyleCss(css)}${close}`)
-    .replace(/style\s*=\s*"([^"]*)"/gi, (_m, css: string) => `style="${restyleCss(css)}"`)
-    .replace(/style\s*=\s*'([^']*)'/gi, (_m, css: string) => `style='${restyleCss(css)}'`)
+    .replace(/style\s*=\s*"([^"]*)"/gi, (_m, css: string) => `style="${restyleDecls(css)}"`)
+    .replace(/style\s*=\s*'([^']*)'/gi, (_m, css: string) => `style='${restyleDecls(css)}'`)
     .replace(/(\s(?:color|bgcolor|bordercolor)\s*=\s*")([^"]*)(")/gi, (_m, pre: string, v: string, post: string) => `${pre}${grayOf(v) ?? "#888888"}${post}`);
-  if (brandName) out = out.replace(new RegExp(escapeRe(brandName), "g"), "Preview");
+  if (brandName) {
+    // Mask link-bearing attribute values so the brand string can't corrupt
+    // preview URLs (e.g. brand "acme" inside "/preview/acme-products").
+    const saved: string[] = [];
+    out = out
+      .replace(/(\s(?:href|src|srcset|action|formaction)\s*=\s*)("[^"]*"|'[^']*'|[^\s>]+)/gi, (m) => {
+        saved.push(m);
+        return `${saved.length - 1}`;
+      })
+      .replace(new RegExp(escapeRe(brandName), "g"), "Preview")
+      .replace(/(\d+)/g, (_m, i: string) => saved[Number(i)]);
+  }
   return out;
 }
