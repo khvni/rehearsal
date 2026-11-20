@@ -94,7 +94,7 @@ describe("spec stage re-entry", () => {
     const { experiment } = await orch.startExperiment(URL, "find pricing");
     const first = await orch.spec(experiment.id);
     const marker = { ...first.spec!, changes: first.spec!.changes.slice(0, 1) };
-    await store.save({ ...first, spec: marker, mockup: undefined, status: "created", runCheckpoint: { stage: "spec", attempt: 2 } });
+    await store.save({ ...first, spec: marker, mockup: undefined, status: "created", runCheckpoint: { stage: "spec", attempt: 2, specRegenerated: true } });
     const again = await orch.spec(experiment.id);
     expect(again.status).toBe("complete");
     expect(again.spec?.changes).toEqual(marker.changes);

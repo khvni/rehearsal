@@ -34,7 +34,7 @@ import { selectJev, scoreActions } from "./decisions/jev";
 import { simulateTrajectories, selectTrajectories } from "./simulation";
 import { journeysToTrajectories, runPersonaSwarm, selectJourneys } from "./simulation/swarm";
 import { selectLlm } from "./analysis/gemini";
-import { endpointFindings, llmFindings, ruleFindings } from "./analysis/findings";
+import { endpointFindings, LLM_CALL_FLOOR_MS, llmFindings, ruleFindings } from "./analysis/findings";
 import { collapseFindings } from "./analysis/dedupe";
 import { questionFindings } from "./analysis/question-findings";
 import {
@@ -515,7 +515,7 @@ export class Orchestrator {
       verify: () => this.runVerify(id),
       analyze: (d, _r, a) => this.runAnalyze(id, { deadline: d, now: opts?.now, attempt: a }),
       compare: () => this.runCompare(id),
-      spec: (d) => this.runSpec(id, { deadline: d }),
+      spec: (d) => this.runSpec(id, { deadline: d, now: opts?.now }),
       rebuild: async (deadline) => {
         do {
           await this.runRebuild(id);
@@ -558,8 +558,9 @@ export class Orchestrator {
       }
       const carryDiscover = stage === "discover" && cp?.stage === "discover" ? cp.discover : undefined;
       const carryAnalyze = stage === "analyze" && cp?.stage === "analyze" ? cp.analyze : undefined;
+      const carrySpecRegenerated = stage === "spec" && cp?.stage === "spec" ? cp.specRegenerated : undefined;
       if (deadline !== undefined && now() >= deadline) {
-        await persist({ stage, attempt: cp?.stage === stage ? cp.attempt : 0, queued: queuedReq || undefined, discover: carryDiscover, analyze: carryAnalyze });
+        await persist({ stage, attempt: cp?.stage === stage ? cp.attempt : 0, queued: queuedReq || undefined, discover: carryDiscover, analyze: carryAnalyze, specRegenerated: carrySpecRegenerated });
         await this.emit(id, "run", "info", `Step budget reached — run continues in the background (next: ${stage})`);
         return { suspended: true };
       }
@@ -575,7 +576,7 @@ export class Orchestrator {
         );
       }
       let retries = cp?.stage === stage ? cp.retries ?? 0 : 0;
-      await persist({ stage, attempt, retries, queued: queuedReq || undefined, discover: carryDiscover, analyze: carryAnalyze });
+      await persist({ stage, attempt, retries, queued: queuedReq || undefined, discover: carryDiscover, analyze: carryAnalyze, specRegenerated: carrySpecRegenerated });
       // Durable retries: a stage error suspends the run (fresh window on Workers,
       // backoff in-process elsewhere) instead of failing the whole workflow.
       for (;;) {
@@ -591,9 +592,11 @@ export class Orchestrator {
           // stage makes earlier timeouts noise. Stage-owned failures the stage
           // just recorded (e.g. verify's browser-unavailable marker) must stay.
           const finished = await this.mustGet(id);
+          const staleStage = new RegExp(`\\bStage ${stage}\\b`, "i");
           finished.failures = finished.failures.filter(
-            (f) => f.stage !== "run" || !new RegExp(`\\bStage ${stage}\\b`, "i").test(f.message),
+            (f) => f.stage !== "run" || !staleStage.test(f.message),
           );
+          finished.errors = finished.errors.filter((m) => !staleStage.test(m));
           await this.store.save(Experiment.parse(finished));
           break;
         } catch (e) {
@@ -618,7 +621,7 @@ export class Orchestrator {
             "info",
             `Stage ${stage} failed — retrying (${retries}/${MAX_STAGE_RETRIES}): ${formatFailure(failure).slice(0, 200)}`,
           );
-          await persist({ stage, attempt, retries, queued: queuedReq || undefined, discover: carryDiscover, analyze: carryAnalyze });
+          await persist({ stage, attempt, retries, queued: queuedReq || undefined, discover: carryDiscover, analyze: carryAnalyze, specRegenerated: carrySpecRegenerated });
           if (isWorkersRuntime()) return { suspended: true };
           await new Promise((resolve) => setTimeout(resolve, STAGE_RETRY_BACKOFF_MS));
         }
@@ -1607,7 +1610,7 @@ export class Orchestrator {
   }
 
   /** Stage 6 — the deliverable: spec.md of all changes + rebuild plan. */
-  private async runSpec(id: string, opts?: { deadline?: number }): Promise<Experiment | { complete: false }> {
+  private async runSpec(id: string, opts?: { deadline?: number; now?: () => number }): Promise<Experiment | { complete: false }> {
     const e = await this.mustGet(id);
     if (e.comparisons.length === 0 && e.variants.length === 0) await this.runCompare(id);
     const exp = (await this.mustGet(id))!;
@@ -1619,8 +1622,19 @@ export class Orchestrator {
       // slice must regenerate them — leftovers from before rescannedAt are stale.
       const stale = (generatedAt: string | undefined) =>
         exp.rescannedAt !== undefined && (generatedAt === undefined || generatedAt < exp.rescannedAt);
-      if (!(retried && exp.spec && !stale(exp.spec.generatedAt))) {
-        exp.spec = await generateSpec(exp, this.llm);
+      /** Time left in this slice minus a margin for the checkpoint write; bounds the
+       * spec call so it resolves before the invocation dies mid-await and the slice
+       * can suspend with the checkpoint intact. */
+      const llmBudget = () =>
+        opts?.deadline === undefined ? undefined : Math.max(opts.deadline - (opts?.now ?? Date.now)() - 2_000, 1);
+      // A resumed slice reuses the spec only when this checkpoint's slices
+      // wrote it — a rerun suspended before regenerating must not fall back to
+      // the previous run's spec.
+      if (!(retried && exp.runCheckpoint?.specRegenerated === true && exp.spec && !stale(exp.spec.generatedAt))) {
+        const budget = llmBudget();
+        if (budget !== undefined && budget < LLM_CALL_FLOOR_MS) return { complete: false };
+        exp.spec = await generateSpec(exp, this.llm, { timeoutMs: budget });
+        if (exp.runCheckpoint) exp.runCheckpoint.specRegenerated = true;
         await this.emit(id, "spec", "info", `Spec written: ${exp.spec.changes.length} changes across ${exp.spec.rebuildPhases.length} phases`);
         const usage = this.collectUsage();
         if (usage) {
@@ -1639,11 +1653,11 @@ export class Orchestrator {
         // burning more calls, and a partial one resumes where it stopped. A
         // deliberate spec rerun (no resume checkpoint) regenerates it so the
         // preview tracks the new spec.
-        const mockupDone = retried && exp.mockup !== undefined && !exp.mockup.partial && !stale(exp.mockup.generatedAt);
+        const mockupDone = retried && exp.mockup !== undefined && !exp.mockup.partial && !stale(exp.mockup.generatedAt) && exp.mockup.generatedAt >= spec.generatedAt;
         // Page calls are bounded to fit a slice, but a run that still has no
         // finished pages after several resumed slices stops retrying — the
         // stage completes with whatever was generated.
-        const mockupExhausted = retried && (exp.mockup === undefined || exp.mockup.partial === true) && exp.runCheckpoint!.attempt >= 4;
+        const mockupExhausted = retried && (exp.mockup === undefined || exp.mockup.partial === true) && exp.runCheckpoint!.attempt >= MAX_STAGE_SLICES - 1;
         if (mockupExhausted) {
           if (exp.mockup?.partial) {
             exp.mockup.partial = undefined;
@@ -1651,9 +1665,9 @@ export class Orchestrator {
           }
           logEvent({ experimentId: id, stage: "spec", kind: "llm-fallback", data: { error: "mockup generation stopped: exceeded step budget across retries" } });
         } else if (!mockupDone) {
-          const startIndex = retried && exp.mockup?.partial ? exp.mockup.pages.length : 0;
+          const startIndex = retried && exp.mockup?.partial && exp.mockup.generatedAt >= spec.generatedAt ? exp.mockup.pages.length : 0;
           const mockup = await generateMockup(exp, this.llm, {
-            deadline: opts?.deadline !== undefined ? () => Date.now() >= opts.deadline! - 3_000 : undefined,
+            deadline: opts?.deadline !== undefined ? () => (opts?.now ?? Date.now)() >= opts.deadline! - 3_000 : undefined,
             startIndex,
             // Persist after every page so a killed slice resumes from the
             // finished prefix instead of restarting the whole mockup.

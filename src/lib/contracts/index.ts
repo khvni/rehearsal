@@ -769,6 +769,8 @@ export const RunCheckpoint = z.object({
   retries: z.number().int().nonnegative().optional(),
   /** This checkpoint resumes a stage request queued mid-run — not the pipeline chain itself. */
   queued: z.boolean().optional(),
+  /** Spec was regenerated during this checkpoint's slices — distinguishes the spec just written from a pre-run leftover a resumed rerun would otherwise reuse. */
+  specRegenerated: z.boolean().optional(),
   discover: DiscoverCheckpoint.optional(),
   /** Suspended analyze's finished sub-steps: LLM findings and endpoint findings already generated (questions persist on the experiment itself). */
   analyze: z

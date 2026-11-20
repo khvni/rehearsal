@@ -128,7 +128,7 @@ describe("chunked runs", () => {
     const exp = store.all.get(id)!;
     exp.spec = { targetUrl: URL, goal: "g", generatedAt: exp.createdAt, baselineRunIds: [], summary: "saved spec", changes: [], rebuildPhases: [] };
     exp.status = "comparing";
-    exp.runCheckpoint = { stage: "spec", attempt: 2 };
+    exp.runCheckpoint = { stage: "spec", attempt: 2, specRegenerated: true };
     exp.createdAt = "2020-01-01T00:00:00.000Z";
     const internal = orch as unknown as { runSpec: (id: string) => Promise<Experiment>; runCompare: () => Promise<void> };
     vi.spyOn(internal, "runCompare").mockResolvedValue();
@@ -492,6 +492,75 @@ describe("chunked runs", () => {
     // Three batches → three accumulated real findings, plus deterministic rule findings.
     expect(done.findings.filter((f) => f.title.startsWith("Issue batch")).length).toBe(3);
     expect(calls).toBe(3);
+  });
+
+  it("builds the spec mockup across slices — a slice-filling spec call can't starve page generation into early exhaustion", async () => {
+    process.env.REHEARSAL_ALLOW_PRIVATE = "1";
+    const pages = { [URL]: HOME };
+    const store = memoryStore();
+    const orch = new Orchestrator({ store, fetcher: fetcher(pages), runner: runner(pages) });
+    const { id } = await seededRun(orch);
+    const exp = store.all.get(id)!;
+    exp.runCheckpoint = { stage: "spec", attempt: 0 };
+    exp.errors = ["[STAGE_TIMEOUT] Stage spec did not finish within 10 run steps — the runtime's step budget is too small for it"];
+    exp.findings = [{
+      findingId: "f1", title: "Cut needless words", category: "copy-economy",
+      severity: "medium", evidenceType: "hypothesis", description: "d",
+      affectedStates: ["st_1"], affectedActions: [], evidencePaths: [],
+      recommendation: "r", verificationStatus: "unverified",
+      principle: "cut-needless-words",
+    }];
+    exp.comparisons = [{
+      baselineRunId: "b1", variantRunId: "v1",
+      deltas: {
+        goalCompleted: { baseline: true, variant: true },
+        interactionCount: { baseline: 1, variant: 1 },
+        backtracks: { baseline: 0, variant: 0 },
+        failedInteractions: { baseline: 0, variant: 0 },
+        runtimeErrors: { baseline: 0, variant: 0 },
+        findingReproduces: true,
+      },
+    }];
+    const { makeState } = await import("@/lib/graph");
+    const vp = { name: "desktop" as const, width: 1440, height: 900 };
+    exp.graph = {
+      states: Array.from({ length: 6 }, (_, i) =>
+        makeState({
+          url: `${URL}p${i}`,
+          viewport: vp,
+          title: `Page ${i}`,
+          visibleText: `Page ${i} content with some text to audit.`,
+          actions: [{ label: `Go ${i}`, role: "link", href: `${URL}p${i}`, type: "click" as const, enabled: true, safeToExecute: true }],
+        }),
+      ),
+      edges: [],
+    };
+    await store.save(exp);
+    // Every model call fills most of a slice: spec writes once (bounded), then
+    // each mockup page lands one-per-slice without early exhaustion wiping it.
+    let t = 0;
+    const now = () => t;
+    const llm = (orch as unknown as { llm: { complete: (p: string, o?: unknown) => Promise<string> } }).llm;
+    const llmSpy = vi.spyOn(llm, "complete").mockImplementation(async (p, o) => {
+      if (String(p).startsWith("You are writing a rebuild spec"))
+        expect((o as { timeoutMs?: number } | undefined)?.timeoutMs).toBeLessThan(10_000);
+      t += 8_000;
+      return JSON.stringify({ html: "<html><body>page</body></html>", title: "t" });
+    });
+    let slices = 0;
+    for (;;) {
+      slices++;
+      const res = await orch.runStep(id, { deadlineMs: 10_000, now });
+      if (res.status === "complete") break;
+      expect(slices).toBeLessThanOrEqual(10);
+    }
+    const done = store.all.get(id)!;
+    expect(done.status).toBe("complete");
+    expect(done.spec).toBeDefined();
+    expect(done.mockup?.pages.length).toBeGreaterThan(0);
+    // A finished stage clears stale errors naming it.
+    expect(done.errors.filter((m) => /Stage spec\b/.test(m))).toEqual([]);
+    expect(llmSpy).toHaveBeenCalled();
   });
 
   it("resume() re-kicks a stalled in-flight run and ignores live or finished ones", async () => {
