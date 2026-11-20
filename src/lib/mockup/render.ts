@@ -219,7 +219,9 @@ function grayOf(token: string): string | undefined {
   return `rgba(${Math.round(g)},${Math.round(g)},${Math.round(g)},${Math.round(c.a * 100) / 100})`;
 }
 
-const FALLBACK_SANS_SAFE = FALLBACK_SANS.replace(/"/g, "'");
+// Drop quotes entirely: an unquoted family list is valid CSS, and quoting would
+// terminate whichever kind of style attribute the page used.
+const FALLBACK_SANS_SAFE = FALLBACK_SANS.replace(/["']/g, "");
 
 /** Colors → luminance gray, fonts → generic sans, inside a declaration list. */
 function restyleDecls(decls: string): string {
@@ -256,16 +258,20 @@ export function enforceMockupWireframe(html: string, brandName?: string): string
     .replace(/style\s*=\s*'([^']*)'/gi, (_m, css: string) => `style='${restyleDecls(css)}'`)
     .replace(/(\s(?:color|bgcolor|bordercolor)\s*=\s*")([^"]*)(")/gi, (_m, pre: string, v: string, post: string) => `${pre}${grayOf(v) ?? "#888888"}${post}`);
   if (brandName) {
-    // Mask link-bearing attribute values so the brand string can't corrupt
-    // preview URLs (e.g. brand "acme" inside "/preview/acme-products").
-    const saved: string[] = [];
+    const re = new RegExp(escapeRe(brandName), "g");
     out = out
-      .replace(/(\s(?:href|src|srcset|action|formaction)\s*=\s*)("[^"]*"|'[^']*'|[^\s>]+)/gi, (m) => {
-        saved.push(m);
-        return `${saved.length - 1}`;
+      .split(/(<[^>]*>)/g)
+      .map((seg) => {
+        if (!seg.startsWith("<")) return seg.replace(re, "Preview");
+        // Inside a tag, skip matches inside link-bearing attribute values so
+        // preview URLs containing the brand string survive.
+        return seg.replace(re, (m, offset: number) =>
+          /(?:href|src|srcset|action|formaction)\s*=\s*("[^"]*|'[^']*|[^\s>]*)$/i.test(seg.slice(0, offset))
+            ? m
+            : "Preview",
+        );
       })
-      .replace(new RegExp(escapeRe(brandName), "g"), "Preview")
-      .replace(/(\d+)/g, (_m, i: string) => saved[Number(i)]);
+      .join("");
   }
   return out;
 }

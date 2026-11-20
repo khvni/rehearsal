@@ -63,6 +63,27 @@ describe("enforceMockupWireframe", () => {
     expect(out).not.toContain("Inter");
   });
 
+  it("leaves ordinary digits in markup and styles untouched", () => {
+    const out = enforceMockupWireframe(
+      `<h2>Event 2026</h2><p style="width: 240px">x</p><a href="/preview/acme">acme</a>`,
+      "acme",
+    );
+    expect(out).toContain("Event 2026");
+    expect(out).toContain("width: 240px");
+    expect(out).toContain(`href="/preview/acme"`);
+  });
+
+  it("collapses fonts in single-quoted styles without breaking the attribute", () => {
+    const out = enforceMockupWireframe(`<div style='font-family: Inter; display:none'>x</div>`);
+    expect(out).toMatch(/style='[^']*display:none[^']*'/);
+  });
+
+  it("keeps grayscale stable — a second pass does not darken", () => {
+    const once = enforceMockupWireframe(`<style>a{color:#00aa88}</style>`);
+    const twice = enforceMockupWireframe(once);
+    expect(twice).toBe(once);
+  });
+
   it("restyles only declarations — selectors are not colors", () => {
     const out = enforceMockupWireframe(
       `<style>.blue-button { display:none; color:#008a2e } #abc { background: red }</style>`,
