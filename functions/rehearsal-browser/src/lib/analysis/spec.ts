@@ -9,7 +9,11 @@ import { RUBRIC } from "./rubric";
  * Every finding produces at least one change, and every change carries an
  * ordered `steps` list of concrete edits (the control or page it lands on).
  */
-export async function generateSpec(experiment: Experiment, llm: LlmClient): Promise<SpecReport> {
+export async function generateSpec(
+  experiment: Experiment,
+  llm: LlmClient,
+  opts?: { timeoutMs?: number },
+): Promise<SpecReport> {
   const base: SpecReport = {
     targetUrl: experiment.targetUrl,
     goal: experiment.goal,
@@ -37,7 +41,7 @@ export async function generateSpec(experiment: Experiment, llm: LlmClient): Prom
   }));
 
   const llmSpec: unknown = await llm
-    .complete(specPrompt(experiment, changes), { deep: true, json: true })
+    .complete(specPrompt(experiment, changes), { deep: true, json: true, timeoutMs: opts?.timeoutMs })
     .then((raw) => JSON.parse(stripFences(raw)))
     .catch(() => null);
   // LLM output is untrusted: keep only the parts that parse against the contract.

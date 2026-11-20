@@ -34,7 +34,7 @@ import { selectJev, scoreActions } from "./decisions/jev";
 import { simulateTrajectories, selectTrajectories } from "./simulation";
 import { journeysToTrajectories, runPersonaSwarm, selectJourneys } from "./simulation/swarm";
 import { selectLlm } from "./analysis/gemini";
-import { endpointFindings, llmFindings, ruleFindings } from "./analysis/findings";
+import { endpointFindings, LLM_CALL_FLOOR_MS, llmFindings, ruleFindings } from "./analysis/findings";
 import { collapseFindings } from "./analysis/dedupe";
 import { questionFindings } from "./analysis/question-findings";
 import {
@@ -515,7 +515,7 @@ export class Orchestrator {
       verify: () => this.runVerify(id),
       analyze: (d, _r, a) => this.runAnalyze(id, { deadline: d, now: opts?.now, attempt: a }),
       compare: () => this.runCompare(id),
-      spec: (d) => this.runSpec(id, { deadline: d }),
+      spec: (d) => this.runSpec(id, { deadline: d, now: opts?.now }),
       rebuild: async (deadline) => {
         do {
           await this.runRebuild(id);
@@ -591,9 +591,11 @@ export class Orchestrator {
           // stage makes earlier timeouts noise. Stage-owned failures the stage
           // just recorded (e.g. verify's browser-unavailable marker) must stay.
           const finished = await this.mustGet(id);
+          const staleStage = new RegExp(`\\bStage ${stage}\\b`, "i");
           finished.failures = finished.failures.filter(
-            (f) => f.stage !== "run" || !new RegExp(`\\bStage ${stage}\\b`, "i").test(f.message),
+            (f) => f.stage !== "run" || !staleStage.test(f.message),
           );
+          finished.errors = finished.errors.filter((m) => !staleStage.test(m));
           await this.store.save(Experiment.parse(finished));
           break;
         } catch (e) {
@@ -1607,7 +1609,7 @@ export class Orchestrator {
   }
 
   /** Stage 6 — the deliverable: spec.md of all changes + rebuild plan. */
-  private async runSpec(id: string, opts?: { deadline?: number }): Promise<Experiment | { complete: false }> {
+  private async runSpec(id: string, opts?: { deadline?: number; now?: () => number }): Promise<Experiment | { complete: false }> {
     const e = await this.mustGet(id);
     if (e.comparisons.length === 0 && e.variants.length === 0) await this.runCompare(id);
     const exp = (await this.mustGet(id))!;
@@ -1619,8 +1621,15 @@ export class Orchestrator {
       // slice must regenerate them — leftovers from before rescannedAt are stale.
       const stale = (generatedAt: string | undefined) =>
         exp.rescannedAt !== undefined && (generatedAt === undefined || generatedAt < exp.rescannedAt);
+      /** Time left in this slice minus a margin for the checkpoint write; bounds the
+       * spec call so it resolves before the invocation dies mid-await and the slice
+       * can suspend with the checkpoint intact. */
+      const llmBudget = () =>
+        opts?.deadline === undefined ? undefined : Math.max(opts.deadline - (opts?.now ?? Date.now)() - 2_000, 1);
       if (!(retried && exp.spec && !stale(exp.spec.generatedAt))) {
-        exp.spec = await generateSpec(exp, this.llm);
+        const budget = llmBudget();
+        if (budget !== undefined && budget < LLM_CALL_FLOOR_MS) return { complete: false };
+        exp.spec = await generateSpec(exp, this.llm, { timeoutMs: budget });
         await this.emit(id, "spec", "info", `Spec written: ${exp.spec.changes.length} changes across ${exp.spec.rebuildPhases.length} phases`);
         const usage = this.collectUsage();
         if (usage) {
@@ -1643,7 +1652,7 @@ export class Orchestrator {
         // Page calls are bounded to fit a slice, but a run that still has no
         // finished pages after several resumed slices stops retrying — the
         // stage completes with whatever was generated.
-        const mockupExhausted = retried && (exp.mockup === undefined || exp.mockup.partial === true) && exp.runCheckpoint!.attempt >= 4;
+        const mockupExhausted = retried && (exp.mockup === undefined || exp.mockup.partial === true) && exp.runCheckpoint!.attempt >= MAX_STAGE_SLICES - 1;
         if (mockupExhausted) {
           if (exp.mockup?.partial) {
             exp.mockup.partial = undefined;
@@ -1653,7 +1662,7 @@ export class Orchestrator {
         } else if (!mockupDone) {
           const startIndex = retried && exp.mockup?.partial ? exp.mockup.pages.length : 0;
           const mockup = await generateMockup(exp, this.llm, {
-            deadline: opts?.deadline !== undefined ? () => Date.now() >= opts.deadline! - 3_000 : undefined,
+            deadline: opts?.deadline !== undefined ? () => (opts?.now ?? Date.now)() >= opts.deadline! - 3_000 : undefined,
             startIndex,
             // Persist after every page so a killed slice resumes from the
             // finished prefix instead of restarting the whole mockup.
