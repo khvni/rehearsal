@@ -1,5 +1,5 @@
 import type { BrandProfile, RebuildPageContent, SiteState } from "../contracts";
-import { FALLBACK_SANS } from "../rebuild/brand";
+import { FALLBACK_SANS, luminance, parseColor } from "../rebuild/brand";
 import { escapeHtml as esc } from "../rebuild/sanitize";
 
 const MAX_NAV = 6;
@@ -52,7 +52,8 @@ export function renderMockupPage(input: {
   const mono = "ui-monospace, SFMono-Regular, Menlo, monospace";
   const brand = input.brand;
 
-  const mark = `<span class="name">${esc(brand.name)}</span>`;
+  // No source branding: the wireframe's brand mark is a neutral label, never the site's name.
+  const mark = `<span class="name">Preview</span>`;
   const brandLink = `<a class="brand" href="${esc(indexHref)}">${mark}</a>`;
 
   const nav = content.nav
@@ -195,4 +196,83 @@ export function rewriteLinks(
     // HTML-escaped query strings (&amp;) must parse as the real URL, then re-escape on emit.
     return `${prefix}${q}${resolve(inner.replace(/&amp;/gi, "&")).replace(/&/g, "&amp;")}${q}`;
   });
+}
+
+// ── wireframe enforcement ──────────────────────────────────────────────────
+
+const CSS_COLOR_RE = /#[0-9a-f]{3,8}\b|rgba?\([^)]*\)|hsla?\([^)]*\)/gi;
+/** CSS named colors that aren't already neutral → a mid gray. */
+const NAMED_COLOR_RE =
+  /\b(red|crimson|salmon|coral|orange|gold|yellow|khaki|olive|green|lime|teal|cyan|turquoise|aqua|blue|navy|indigo|violet|purple|plum|magenta|fuchsia|pink|brown|maroon|beige|lavender|tomato|orchid|sienna|chocolate|peru|tan|wheat)\b/gi;
+
+function hex2(n: number): string {
+  return Math.round(Math.max(0, Math.min(255, n))).toString(16).padStart(2, "0");
+}
+
+/** Map any concrete color to the gray of its WCAG luminance; alpha survives. */
+function grayOf(token: string): string | undefined {
+  const c = parseColor(token);
+  if (!c) return undefined;
+  const g = luminance(c) * 255;
+  if (c.a >= 0.999) return `#${hex2(g)}${hex2(g)}${hex2(g)}`;
+  if (c.a <= 0) return undefined;
+  return `rgba(${Math.round(g)},${Math.round(g)},${Math.round(g)},${Math.round(c.a * 100) / 100})`;
+}
+
+// Drop quotes entirely: an unquoted family list is valid CSS, and quoting would
+// terminate whichever kind of style attribute the page used.
+const FALLBACK_SANS_SAFE = FALLBACK_SANS.replace(/["']/g, "");
+
+/** Colors → luminance gray, fonts → generic sans, inside a declaration list. */
+function restyleDecls(decls: string): string {
+  return decls
+    .replace(CSS_COLOR_RE, (t) => grayOf(t) ?? "#888888")
+    .replace(NAMED_COLOR_RE, "#888888")
+    .replace(/font-family\s*:[^;{}]+/gi, `font-family:${FALLBACK_SANS_SAFE}`);
+}
+
+/** Restyle only declaration bodies — selectors like `.blue-button` or `#abc` are not colors. */
+function restyleCss(css: string): string {
+  let prev = "";
+  while (prev !== css) {
+    prev = css;
+    css = css.replace(/\{([^{}]*)\}/g, (_m, decls: string) => `{${restyleDecls(decls)}}`);
+  }
+  return css;
+}
+
+function escapeRe(s: string): string {
+  return s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
+/**
+ * Guaranteed-neutral wireframe, enforced in code — a generated page can't leak
+ * the source site's palette, fonts, or name no matter what the model wrote:
+ * every CSS color becomes its luminance gray, font-family collapses to the
+ * generic sans stack, and the site's name is replaced with "Preview".
+ */
+export function enforceMockupWireframe(html: string, brandName?: string): string {
+  let out = html
+    .replace(/(<style\b[^>]*>)([\s\S]*?)(<\/style>)/gi, (_m, open: string, css: string, close: string) => `${open}${restyleCss(css)}${close}`)
+    .replace(/style\s*=\s*"([^"]*)"/gi, (_m, css: string) => `style="${restyleDecls(css)}"`)
+    .replace(/style\s*=\s*'([^']*)'/gi, (_m, css: string) => `style='${restyleDecls(css)}'`)
+    .replace(/(\s(?:color|bgcolor|bordercolor)\s*=\s*")([^"]*)(")/gi, (_m, pre: string, v: string, post: string) => `${pre}${grayOf(v) ?? "#888888"}${post}`);
+  if (brandName) {
+    const re = new RegExp(escapeRe(brandName), "g");
+    out = out
+      // A `>` inside a quoted attribute value is not the tag boundary.
+      .split(/(<(?:[^>"']|"[^"]*"|'[^']*')*>)/g)
+      .map((seg) => {
+        if (!seg.startsWith("<")) return seg.replace(re, "Preview");
+        // Inside a tag, skip matches inside link-bearing attribute values so
+        // preview URLs containing the brand string survive.
+        return seg.replace(re, (m, offset: number) =>
+          /(?:href|src|srcset|action|formaction)\s*=\s*("[^"]*|'[^']*|[^\s>]*)$/i.test(seg.slice(0, offset))
+            ? m
+            : "Preview",
+        );
+      })
+      .join("");
+  }
+  return out;
 }

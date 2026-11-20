@@ -13,7 +13,7 @@ import { CTA_VERB_RE, rollupBrand } from "../rebuild/brand";
 import { sanitizeRebuildHtml } from "../rebuild/sanitize";
 import { llmPageSource } from "../analysis/openrouter";
 import { logEvent } from "../telemetry";
-import { renderMockupPage, rewriteLinks } from "./render";
+import { enforceMockupWireframe, renderMockupPage, rewriteLinks } from "./render";
 
 const MAX_NAV = 6;
 const MAX_PAGES = 24;
@@ -272,7 +272,7 @@ function buildPagePrompt(
     "Rules: the page is a COMPLETE self-contained HTML document (<!doctype html>…</html>) with one inline <style> block and no external resources —",
     "no <script>, no <img>/<link> to any URL, no webfonts. Link to other pages with href=\"mockup:<slug>\"; use http(s) URLs only for exits off the mockup.",
     "Use ONLY facts in SITE_FACTS (never invent dates, prices, names or quotes). One dominant CTA per page. Apply each specChange visibly (e.g. drop stale dates, surface the goal's CTA).",
-    `Site name: ${brand.name}. Render a GRAYSCALE wireframe — neutral gray palette only (no brand colors, no logo, no webfonts), generic sans-serif.`,
+    "Render a GRAYSCALE wireframe — neutral gray palette only (no brand colors, no logo, no webfonts), generic sans-serif. Do not use the site's name or branding; the preview is anonymous.",
     'Return JSON: {"slug":string,"title":string,"summary":"one line on what changed","html":"<full document>"}',
     `SITE_FACTS: ${JSON.stringify(facts)}`,
   ].join("\n");
@@ -356,10 +356,14 @@ export async function generateMockup(
       .replace(/<(video|audio|picture|svg|math|form|canvas|select|textarea)\b[\s\S]*?<\/\1\s*>/gi, "")
       .replace(/<\/?(video|audio|source|track|picture|svg|math|form|canvas|input|select|textarea)\b[^>]*>/gi, "");
     html = rewriteLinks(html, { previewBase, sourceUrl: state.url, urlToSlug, slugs, targetOrigin: originOf(exp.targetUrl) });
-    const title = draft?.title ?? `${firstSegment(state.pageTitle) || brand.name} · mockup`;
-    const summary =
+    // Enforced in code, not the prompt: grayscale palette, generic sans, no source branding.
+    html = enforceMockupWireframe(html, brand.name);
+    const unbrand = (s: string) => (brand.name ? s.split(brand.name).join("Preview") : s);
+    const title = unbrand(draft?.title ?? `${firstSegment(state.pageTitle) || brand.name} · mockup`);
+    const summary = unbrand(
       draft?.summary ??
-      (applied.length ? `Applies ${applied.length} spec change${applied.length === 1 ? "" : "s"}: ${applied.join("; ")}` : "No spec changes on this page");
+        (applied.length ? `Applies ${applied.length} spec change${applied.length === 1 ? "" : "s"}: ${applied.join("; ")}` : "No spec changes on this page"),
+    );
     pages.push({ slug, sourceUrl: state.url, title, summary, html, source: draft ? llmPageSource(llm) : ("template" as const), bytes: new TextEncoder().encode(html).length });
     await opts?.onPage?.({ generatedAt: new Date().toISOString(), brand, pages: [...pages], llm: llm.name, partial: true });
   }

@@ -545,7 +545,12 @@ describe("chunked runs", () => {
       if (String(p).startsWith("You are writing a rebuild spec"))
         expect((o as { timeoutMs?: number } | undefined)?.timeoutMs).toBeLessThan(10_000);
       t += 8_000;
-      return JSON.stringify({ html: "<html><body>page</body></html>", title: "t" });
+      // Mockup pages arrive with source branding and brand colors — the
+      // wireframe pass must strip both regardless of what the model wrote.
+      return JSON.stringify({
+        html: '<html><head><style>body{color:#008a2e;font-family:"Brand Sans"}</style></head><body style="background:#ff0000"><header>site.test</header><main>page</main></body></html>',
+        title: "site.test page",
+      });
     });
     let slices = 0;
     for (;;) {
@@ -558,6 +563,16 @@ describe("chunked runs", () => {
     expect(done.status).toBe("complete");
     expect(done.spec).toBeDefined();
     expect(done.mockup?.pages.length).toBeGreaterThan(0);
+    // Every page is a grayscale wireframe with no source branding.
+    for (const page of done.mockup?.pages ?? []) {
+      for (const token of page.html.match(/#[0-9a-f]{6}\b|\b(red|green|blue|purple|orange|yellow|pink|teal|cyan|magenta|brown)\b/gi) ?? []) {
+        const m = token.match(/^#([0-9a-f]{2})([0-9a-f]{2})([0-9a-f]{2})$/i);
+        expect(m, `non-gray color ${token} in ${page.slug}`).not.toBeNull();
+        expect(m![1]).toBe(m![2]);
+        expect(m![2]).toBe(m![3]);
+      }
+      expect(page.html).not.toContain("Brand Sans");
+    }
     // A finished stage clears stale errors naming it.
     expect(done.errors.filter((m) => /Stage spec\b/.test(m))).toEqual([]);
     expect(llmSpy).toHaveBeenCalled();
