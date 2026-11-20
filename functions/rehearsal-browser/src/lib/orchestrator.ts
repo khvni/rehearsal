@@ -415,7 +415,7 @@ export class Orchestrator {
     const exp = await this.mustGet(id);
     if (this.activeRun(id) || await this.leases.activeLock(id, Date.now())) return { experiment: exp, resumed: false };
     const pendingRebuild = exp.status === "rebuilding" || rebuildPending(exp);
-    if (!pendingRebuild && pipelineFinished(exp) && exp.runCheckpoint && exp.runCheckpoint.stage !== "rebuild") {
+    if (!pendingRebuild && pipelineFinished(exp) && exp.runCheckpoint && exp.runCheckpoint.stage !== "rebuild" && !exp.runCheckpoint.queued) {
       exp.runCheckpoint = undefined;
       await this.store.save(Experiment.parse(exp));
       return { experiment: exp, resumed: false };

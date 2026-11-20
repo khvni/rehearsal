@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { runSlotTtlMs, withRunSlot } from "@/lib/access";
-import { Experiment, type BrowserRunner, type ExperimentStore, type PageFetcher } from "@/lib/contracts";
+import { Experiment, type ActivityEvent, type BrowserRunner, type ExperimentStore, type PageFetcher } from "@/lib/contracts";
 import { DISCOVER_CHECKPOINT_MS, DISCOVER_CHECKPOINT_PAGES, Orchestrator } from "@/lib/orchestrator";
 
 const URL = "https://site.test/";
@@ -550,5 +550,32 @@ describe("chunked runs", () => {
     const after = (await store.get(id))!;
     expect(after.runToken).toEqual(expect.any(String));
     expect(after.runOrigin).toBe("https://rehearsal.example.com");
+  });
+
+  it("resume() drains a queued-stage checkpoint on a finished run instead of discarding it", async () => {
+    process.env.REHEARSAL_ALLOW_PRIVATE = "1";
+    const pages = { [URL]: HOME };
+    const store = memoryStore();
+    const orch = new Orchestrator({ store, fetcher: fetcher(pages), runner: runner(pages) });
+    const { id } = await seededRun(orch);
+    const exp = store.all.get(id)!;
+    exp.spec = { targetUrl: URL, goal: "g", generatedAt: exp.createdAt, baselineRunIds: [], summary: "", changes: [], rebuildPhases: [] };
+    exp.status = "complete";
+    exp.createdAt = "2020-01-01T00:00:00.000Z";
+    exp.failures = [{ code: "BROWSER_UNAVAILABLE", stage: "verify", message: "skip" }];
+    // enqueueStage's breadcrumb: a stage click on an idle/finished run leaves a
+    // queued checkpoint so the watchdog drains the recorded request.
+    exp.runCheckpoint = { stage: "analyze", attempt: 1, queued: true };
+    const feed: ActivityEvent[] = [
+      { ts: exp.createdAt, stage: "run", kind: "queued", message: "analyze" },
+    ];
+    vi.spyOn(store, "appendActivity").mockImplementation(async (_id, e) => { feed.push(e); });
+    vi.spyOn(store, "activity").mockImplementation(async () => feed);
+    const work = vi.spyOn(orch as unknown as { stepBody: () => Promise<void> }, "stepBody");
+    expect((await orch.resume(id, { inline: true })).resumed).toBe(true);
+    expect(work).toHaveBeenCalledOnce();
+    expect(feed.some((e) => e.kind === "queued-start" && e.message === "analyze")).toBe(true);
+    const stored = (await store.get(id))!;
+    expect(stored.runCheckpoint?.queued).toBeUndefined();
   });
 });
