@@ -582,6 +582,81 @@ describe("chunked runs", () => {
     expect(llmSpy).toHaveBeenCalled();
   });
 
+  it("spec rerun on a complete experiment slices like a stage — stale errors clear and the mockup regenerates", async () => {
+    process.env.REHEARSAL_ALLOW_PRIVATE = "1";
+    const pages = { [URL]: HOME };
+    const store = memoryStore();
+    const orch = new Orchestrator({ store, fetcher: fetcher(pages), runner: runner(pages) });
+    const { id } = await seededRun(orch);
+    const exp = store.all.get(id)!;
+    exp.status = "complete";
+    exp.runCheckpoint = undefined;
+    exp.errors = [
+      "[STAGE_TIMEOUT] Stage analyze did not finish within 10 run steps — the runtime's step budget is too small for it",
+    ];
+    exp.spec = { targetUrl: URL, goal: "g", generatedAt: exp.createdAt, baselineRunIds: [], summary: "old", changes: [], rebuildPhases: [] };
+    exp.mockup = {
+      generatedAt: exp.createdAt,
+      brand: {
+        name: "Test Site", tone: "professional",
+        colors: { ink: "#000", surface: "#fff", muted: "#888", line: "#eee", accent: "#008a2e" },
+        fonts: { sans: "ui-sans-serif, system-ui, sans-serif" },
+        cssVars: {}, navItems: [], ctaLabels: [], voiceNotes: [],
+      },
+      pages: [{ slug: "index", sourceUrl: URL, title: "old", summary: "old", html: "<html><body>old</body></html>", source: "template", bytes: 10 }], llm: "fixture" };
+    exp.findings = [{
+      findingId: "f1", title: "Cut needless words", category: "copy-economy",
+      severity: "medium", evidenceType: "hypothesis", description: "d",
+      affectedStates: ["st_1"], affectedActions: [], evidencePaths: [],
+      recommendation: "r", verificationStatus: "unverified",
+      principle: "cut-needless-words",
+    }];
+    exp.comparisons = [{
+      baselineRunId: "b1", variantRunId: "v1",
+      deltas: {
+        goalCompleted: { baseline: true, variant: true },
+        interactionCount: { baseline: 1, variant: 1 },
+        backtracks: { baseline: 0, variant: 0 },
+        failedInteractions: { baseline: 0, variant: 0 },
+        runtimeErrors: { baseline: 0, variant: 0 },
+        findingReproduces: true,
+      },
+    }];
+    const { makeState } = await import("@/lib/graph");
+    const vp = { name: "desktop" as const, width: 1440, height: 900 };
+    exp.graph = {
+      states: Array.from({ length: 4 }, (_, i) =>
+        makeState({
+          url: `${URL}p${i}`,
+          viewport: vp,
+          title: `Page ${i}`,
+          visibleText: `Page ${i} content with some text to audit.`,
+          actions: [{ label: `Go ${i}`, role: "link", href: `${URL}p${i}`, type: "click" as const, enabled: true, safeToExecute: true }],
+        }),
+      ),
+      edges: [],
+    };
+    await store.save(exp);
+    const llm = (orch as unknown as { llm: { complete: (p: string, o?: unknown) => Promise<string> } }).llm;
+    const llmSpy = vi.spyOn(llm, "complete").mockImplementation(async () =>
+      JSON.stringify({
+        html: '<html><body style="color:#008a2e"><header>Test Site</header><nav>Join TST</nav></body></html>',
+        title: "Test Site page",
+      }),
+    );
+    // A direct rerun must not die mid-mockup holding the request: it enters the
+    // checkpointed stage path, so a suspended slice would resume — and a
+    // completed stage clears stale errors from earlier stages.
+    const done = await orch.spec(id);
+    expect(done.status).toBe("complete");
+    expect(done.spec?.summary).not.toBe("old");
+    expect(done.mockup?.pages.length).toBeGreaterThan(0);
+    expect(done.mockup?.generatedAt).not.toBe(exp.createdAt);
+    expect(done.errors.filter((m) => /STAGE_TIMEOUT/.test(m))).toEqual([]);
+    expect(done.runCheckpoint).toBeUndefined();
+    expect(llmSpy).toHaveBeenCalled();
+  });
+
   it("resume() re-kicks a stalled in-flight run and ignores live or finished ones", async () => {
     process.env.REHEARSAL_ALLOW_PRIVATE = "1";
     const pages = { [URL]: HOME };

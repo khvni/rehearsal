@@ -357,8 +357,20 @@ export async function generateMockup(
       .replace(/<\/?(video|audio|source|track|picture|svg|math|form|canvas|input|select|textarea)\b[^>]*>/gi, "");
     html = rewriteLinks(html, { previewBase, sourceUrl: state.url, urlToSlug, slugs, targetOrigin: originOf(exp.targetUrl) });
     // Enforced in code, not the prompt: grayscale palette, generic sans, no source branding.
-    html = enforceMockupWireframe(html, brand.name);
-    const unbrand = (s: string) => (brand.name ? s.split(brand.name).join("Preview") : s);
+    // brand.name alone misses its acronym ("MTC" in "Join MTC" nav labels and
+    // spec change titles); derive it from the name's initials and logoAlt.
+    const acronym = brand.name
+      .split(/\s+/)
+      .map((w) => w[0])
+      .join("");
+    const brandTerms = [acronym.length >= 2 ? acronym : undefined, brand.logoAlt]
+      .filter((t): t is string => !!t && /^[A-Z0-9]{2,}$/.test(t) && t !== brand.name);
+    html = enforceMockupWireframe(html, brand.name, brandTerms);
+    const unbrand = (s: string) =>
+      [brand.name, ...brandTerms].reduce(
+        (acc, t) => (t ? acc.split(t).join("Preview") : acc),
+        s,
+      );
     const title = unbrand(draft?.title ?? `${firstSegment(state.pageTitle) || brand.name} · mockup`);
     const summary = unbrand(
       draft?.summary ??

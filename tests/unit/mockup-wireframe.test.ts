@@ -40,6 +40,20 @@ describe("enforceMockupWireframe", () => {
     expect(out).toContain("Preview");
   });
 
+  it("strips the brand acronym too — 'Join MTC' has no full name in it", () => {
+    const out = enforceMockupWireframe(
+      `<nav><a href="/experiments/e1/preview/join">Join MTC ↗</a></nav><p>Explain MTC&#39;s unique value.</p>`,
+      "Muslim Tech Collaborative",
+      ["MTC"],
+    );
+    expect(out).toContain("Join Preview");
+    expect(out).toContain("Explain Preview&#39;s unique value.");
+    expect(out).not.toContain("MTC");
+    // Case-sensitive: a lowercase 'mtc' inside a path is not the acronym.
+    const kebab = enforceMockupWireframe(`<p>mtc-tools</p>`, "Muslim Tech Collaborative", ["MTC"]);
+    expect(kebab).toContain("mtc-tools");
+  });
+
   it("keeps legacy color attributes grayscale too", () => {
     const out = enforceMockupWireframe(`<td bgcolor="#008a2e">x</td>`);
     const hex = out.match(/#([0-9a-f]{2})([0-9a-f]{2})([0-9a-f]{2})/i)!;
