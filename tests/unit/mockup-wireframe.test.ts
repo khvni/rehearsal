@@ -99,4 +99,28 @@ describe("enforceMockupWireframe", () => {
     expect(out).toContain(".blue-button");
     expect(out).toContain("#abc");
   });
+
+  it("keeps fully transparent colors transparent — alpha 0 is not an opaque gray", () => {
+    const out = enforceMockupWireframe(
+      `<style>.a { color: rgba(0,0,0,0) } .b { color: hsla(200,50%,50%,0) } .c { border-color: #11223300 } .d { background: linear-gradient(to right, rgba(255,255,255,0), #fff) }</style>` +
+        `<div style="background: rgba(0,0,0,0)">x</div>`,
+    );
+    expect(out).toContain("rgba(0,0,0,0)");
+    expect(out).toContain("rgba(255,255,255,0)");
+    expect(out).toContain("rgba(67,67,67,0)"); // hsla → gray at alpha 0
+    expect(out).toContain("rgba(4,4,4,0)"); // #11223300 → gray at alpha 0
+    expect(out).not.toMatch(/color:\s*#[0-9a-f]{6}/i);
+  });
+
+  it("maps mid-tone colors to a stable luminance gray — they don't decay to black", () => {
+    // restyleCss re-passes declarations until a fixpoint, so the gray must be
+    // idempotent: before the fix every color darkened on each pass until it
+    // converged to #000000.
+    const out = enforceMockupWireframe(
+      `<style>.x { color: #1a73e8 } .y { background: #d97706 } .z { color: #888888 }</style>`,
+    );
+    expect(out).toContain("#2f2f2f");
+    expect(out).toContain("#474747");
+    expect(out).toContain("#888888");
+  });
 });
