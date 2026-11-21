@@ -258,28 +258,35 @@ function escapeRe(s: string): string {
  * every CSS color becomes its luminance gray, font-family collapses to the
  * generic sans stack, and the site's name is replaced with "Preview".
  */
-export function enforceMockupWireframe(html: string, brandName?: string): string {
+export function enforceMockupWireframe(html: string, brandName?: string, brandTerms: string[] = []): string {
   let out = html
     .replace(/(<style\b[^>]*>)([\s\S]*?)(<\/style>)/gi, (_m, open: string, css: string, close: string) => `${open}${restyleCss(css)}${close}`)
     .replace(/style\s*=\s*"([^"]*)"/gi, (_m, css: string) => `style="${restyleDecls(css)}"`)
     .replace(/style\s*=\s*'([^']*)'/gi, (_m, css: string) => `style='${restyleDecls(css)}'`)
     .replace(/(\s(?:color|bgcolor|bordercolor)\s*=\s*")([^"]*)(")/gi, (_m, pre: string, v: string, post: string) => `${pre}${grayOf(v) ?? "#888888"}${post}`);
-  if (brandName) {
-    const re = new RegExp(escapeRe(brandName), "g");
-    out = out
-      // A `>` inside a quoted attribute value is not the tag boundary.
-      .split(/(<(?:[^>"']|"[^"]*"|'[^']*')*>)/g)
-      .map((seg) => {
-        if (!seg.startsWith("<")) return seg.replace(re, "Preview");
-        // Inside a tag, skip matches inside link-bearing attribute values so
-        // preview URLs containing the brand string survive.
-        return seg.replace(re, (m, offset: number) =>
-          /(?:href|src|srcset|action|formaction)\s*=\s*("[^"]*|'[^']*|[^\s>]*)$/i.test(seg.slice(0, offset))
-            ? m
-            : "Preview",
-        );
-      })
-      .join("");
-  }
+  const terms = [brandName, ...brandTerms].filter((t): t is string => !!t);
+  if (terms.length === 0) return out;
+  // Longest first so a multi-word name wins over a shared prefix; terms match
+  // only beside non-alphanumeric boundaries so acronyms can't corrupt longer
+  // words or URLs. Explicit lookarounds instead of \b: brand names ending or
+  // starting with non-ASCII-word chars (Yahoo!, Café, 日本) have no \b edge.
+  const re = new RegExp(
+    `(?<![A-Za-z0-9])(?:${terms.map(escapeRe).sort((a, b) => b.length - a.length).join("|")})(?![A-Za-z0-9])`,
+    "g",
+  );
+  out = out
+    // A `>` inside a quoted attribute value is not the tag boundary.
+    .split(/(<(?:[^>"']|"[^"]*"|'[^']*')*>)/g)
+    .map((seg) => {
+      if (!seg.startsWith("<")) return seg.replace(re, "Preview");
+      // Inside a tag, skip matches inside link-bearing attribute values so
+      // preview URLs containing the brand string survive.
+      return seg.replace(re, (m, offset: number) =>
+        /(?:href|src|srcset|action|formaction)\s*=\s*("[^"]*|'[^']*|[^\s>]*)$/i.test(seg.slice(0, offset))
+          ? m
+          : "Preview",
+      );
+    })
+    .join("");
   return out;
 }

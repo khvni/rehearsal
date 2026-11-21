@@ -896,7 +896,17 @@ export class Orchestrator {
   async spec(id: string): Promise<Experiment> {
     return this.exclusive(id, "spec", async () => {
       try {
-        await this.runSpec(id);
+        // A spec rerun must slice like a pipeline stage: a direct runSpec call
+        // holds the request with no checkpoint, so a Workers kill mid-mockup
+        // leaves a partial preview nothing resumes and never clears stale
+        // stage errors. A queued spec checkpoint runs it through stepBody —
+        // an in-flight spec slice keeps its checkpoint (re-entered, not restarted).
+        const exp0 = await this.mustGet(id);
+        exp0.runCheckpoint = exp0.runCheckpoint?.stage === "spec"
+          ? { ...exp0.runCheckpoint, queued: true }
+          : { stage: "spec", attempt: 0, queued: true };
+        await this.store.save(Experiment.parse(exp0));
+        await this.stepBody(id, {});
       } finally {
         if ((await this.queuedStages(id)).length > 0) await this.stepBody(id, { queuedOnly: true });
       }
