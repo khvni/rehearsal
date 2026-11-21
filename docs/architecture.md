@@ -76,8 +76,12 @@ telemetry: Sentry (SENTRY_DSN) + data/events/*.jsonl → /api/hooks/sentry → f
    The spec call is bounded to the slice's remaining budget, and `runCheckpoint.specRegenerated`
    marks a spec written during this run's slices so a resumed rerun never reuses a pre-rescan
    leftover (deliverables older than `rescannedAt` are stale). The spec-applied mockup is then
-   built page by page; each page is forced through `enforceMockupWireframe` — grayscale palette,
-   generic sans stack, site name rendered as "Preview" — whatever the model wrote.
+   built page by page; each page is forced through `enforceMockupWireframe` — grayscale palette
+   (idempotent grays, transparency preserved), generic sans stack, site name and all-caps brand
+   terms (acronym, logoAlt) rendered as "Preview" on alphanumeric boundaries — whatever the
+   model wrote. A spec rerun on a finished experiment arms a `queued` spec checkpoint and
+   slices through `stepBody` like a stage, so stale stage errors clear and a mid-slice kill
+   resumes instead of leaving a 1-page partial.
    The dashboard and download preserve stored fix steps, order and rationale for surviving
    findings even without browser runs or after question filtering; only findings without a
    stored change get a recommendation-based fallback. Displayed ranks are renumbered.
