@@ -502,7 +502,10 @@ describe("chunked runs", () => {
     const { id } = await seededRun(orch);
     const exp = store.all.get(id)!;
     exp.runCheckpoint = { stage: "spec", attempt: 0 };
-    exp.errors = ["[STAGE_TIMEOUT] Stage spec did not finish within 10 run steps — the runtime's step budget is too small for it"];
+    exp.errors = [
+      "[STAGE_TIMEOUT] Stage analyze did not finish within 10 run steps — the runtime's step budget is too small for it",
+      "[STAGE_TIMEOUT] Stage spec did not finish within 10 run steps — the runtime's step budget is too small for it",
+    ];
     exp.findings = [{
       findingId: "f1", title: "Cut needless words", category: "copy-economy",
       severity: "medium", evidenceType: "hypothesis", description: "d",
@@ -573,8 +576,9 @@ describe("chunked runs", () => {
       }
       expect(page.html).not.toContain("Brand Sans");
     }
-    // A finished stage clears stale errors naming it.
-    expect(done.errors.filter((m) => /Stage spec\b/.test(m))).toEqual([]);
+    // A finished stage clears stale errors naming it and earlier stages —
+    // the stale analyze timeout is noise once the run progressed past it.
+    expect(done.errors.filter((m) => /STAGE_TIMEOUT/.test(m))).toEqual([]);
     expect(llmSpy).toHaveBeenCalled();
   });
 
