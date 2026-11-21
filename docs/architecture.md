@@ -63,11 +63,21 @@ telemetry: Sentry (SENTRY_DSN) + data/events/*.jsonl → /api/hooks/sentry → f
    reaching an endpoint suppresses findings for the waived compiled-assertion mismatches.
 4. **analyze**: `ruleFindings` (always-on: stale dates + apply CTA, vague labels, nav density,
    missing identity, failed assertions) + `llmFindings` (gemini-4-argon, rubric-grounded JSON).
+   `llmFindings` splits the deduped pages into `LLM_FINDINGS_BATCH`-sized batches (5), each call
+   bounded to the slice's remaining budget (`LLM_CALL_FLOOR_MS` floor, 5s) so a suspension lands
+   its checkpoint instead of dying mid-await; finished batches persist as
+   `runCheckpoint.analyze.llmFindingsBatches` and the next slice resumes mid-list. The same
+   bounded `timeoutMs` covers goal classification and question refinement.
    LLM-only findings are always `unverified`, capped at `reproducible-concern`; a model reply
    cannot establish a `verified-failure`.
 5. **compare**: variant (DomPatch set) applied via `addInitScript` in a fresh context;
    same assertions re-run; deltas recorded.
 6. **spec**: `generateSpec` merges findings → ordered changes + rebuild phases → `spec.md`.
+   The spec call is bounded to the slice's remaining budget, and `runCheckpoint.specRegenerated`
+   marks a spec written during this run's slices so a resumed rerun never reuses a pre-rescan
+   leftover (deliverables older than `rescannedAt` are stale). The spec-applied mockup is then
+   built page by page; each page is forced through `enforceMockupWireframe` — grayscale palette,
+   generic sans stack, site name rendered as "Preview" — whatever the model wrote.
    The dashboard and download preserve stored fix steps, order and rationale for surviving
    findings even without browser runs or after question filtering; only findings without a
    stored change get a recommendation-based fallback. Displayed ranks are renumbered.
@@ -159,7 +169,7 @@ a variable that is missing here or in `.env.example`, or if `.env.example` lists
 | `OPENROUTER_MODEL_REBUILD_PLANNER` | `analysis/openrouter.ts` | `anthropic/claude-opus-5.5`; one whole-site planning call with a 180s timeout; page implementation uses the rebuild model with 90s |
 | `REHEARSAL_REBUILD_MAX_PAGES` | `rebuild/site.ts` | `40`; home-first unique crawled paths, with durable batches of six and a 700KiB total HTML cap |
 | `REHEARSAL_REBUILD_GAP_MAX_PAGES` | `rebuild/gaps.ts` | `12` (0–100) successful additions total across at most four rounds; missing same-origin HTML pages are fetched two per step within 10 seconds, then built with the existing plan before recollection; failed/attempted paths are not retried, and over-cap links retain the not-rebuilt response |
-| `REHEARSAL_GEMINI_MAX_CALLS` | `analysis/gemini.ts`, `analysis/openrouter.ts` | `10` LLM calls per run (reset at discover and at a standalone rebuild), first come first served; a run makes up to 7 plus one mockup call per spec-touched page (assertions, goal intent, visitor questions, findings, spec, mockup × touched pages, rebuild), and calls past the cap use the deterministic fallback |
+| `REHEARSAL_GEMINI_MAX_CALLS` | `analysis/gemini.ts`, `analysis/openrouter.ts` | `10` LLM calls per run (reset at discover and at a standalone rebuild), first come first served; a run makes up to 6 plus one findings call per 5-page batch and one mockup call per spec-touched page (assertions, goal intent, visitor questions, findings × batches, spec, mockup × touched pages, rebuild), and calls past the cap use the deterministic fallback |
 | `JEV_API_KEY` | `decisions/jev.ts` | `FixtureJevClient` |
 | `JEV_BASE_URL` / `JEV_MODEL` | `decisions/jev.ts` | `https://api.typesafe.ai/v1/systemone` / `jev-latest` |
 | `FIRECRAWL_API_KEY` | `fetch/firecrawl.ts`, `orchestrator.ts` | Discovery is plain-fetch only (no hosted fallback, no `/v1/map` expansion) |
