@@ -266,12 +266,12 @@ export function enforceMockupWireframe(html: string, brandName?: string, brandTe
     .replace(/(\s(?:color|bgcolor|bordercolor)\s*=\s*")([^"]*)(")/gi, (_m, pre: string, v: string, post: string) => `${pre}${grayOf(v) ?? "#888888"}${post}`);
   const terms = [brandName, ...brandTerms].filter((t): t is string => !!t);
   if (terms.length === 0) return out;
-  // Longest first so a multi-word name wins over a shared prefix; acronyms
-  // match on word boundaries so they can't corrupt longer words or URLs.
+  // Longest first so a multi-word name wins over a shared prefix; terms match
+  // only beside non-alphanumeric boundaries so acronyms can't corrupt longer
+  // words or URLs. Explicit lookarounds instead of \b: brand names ending or
+  // starting with non-ASCII-word chars (Yahoo!, Café, 日本) have no \b edge.
   const re = new RegExp(
-    terms.map(escapeRe).sort((a, b) => b.length - a.length)
-      .map((t) => (/\s/.test(t) ? t : `\\b${t}\\b`))
-      .join("|"),
+    `(?<![A-Za-z0-9])(?:${terms.map(escapeRe).sort((a, b) => b.length - a.length).join("|")})(?![A-Za-z0-9])`,
     "g",
   );
   out = out

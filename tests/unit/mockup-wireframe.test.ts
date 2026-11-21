@@ -54,6 +54,18 @@ describe("enforceMockupWireframe", () => {
     expect(kebab).toContain("mtc-tools");
   });
 
+  it("strips punctuated and non-ASCII brand names — they have no \\b edge", () => {
+    const out = enforceMockupWireframe(
+      `<h1>Welcome to Yahoo!</h1><p>Café hours</p><p>日本</p><p>aYahoo!b</p>`,
+      undefined,
+      ["Yahoo!", "Café", "日本"],
+    );
+    expect(out).toContain("<h1>Welcome to Preview</h1>");
+    expect(out).toContain("Preview hours");
+    expect(out).toContain(">Preview<");
+    expect(out).toContain("aYahoo!b");
+  });
+
   it("keeps legacy color attributes grayscale too", () => {
     const out = enforceMockupWireframe(`<td bgcolor="#008a2e">x</td>`);
     const hex = out.match(/#([0-9a-f]{2})([0-9a-f]{2})([0-9a-f]{2})/i)!;
