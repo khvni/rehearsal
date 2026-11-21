@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { runSlotTtlMs, withRunSlot } from "@/lib/access";
-import { Experiment, type ActivityEvent, type BrowserRunner, type ExperimentStore, type PageFetcher } from "@/lib/contracts";
+import { Experiment, type ActivityEvent, type BrowserRunner, type ExperimentStore, type Finding, type PageFetcher } from "@/lib/contracts";
 import { DISCOVER_CHECKPOINT_MS, DISCOVER_CHECKPOINT_PAGES, Orchestrator } from "@/lib/orchestrator";
 
 const URL = "https://site.test/";
@@ -655,6 +655,52 @@ describe("chunked runs", () => {
     expect(done.errors.filter((m) => /STAGE_TIMEOUT/.test(m))).toEqual([]);
     expect(done.runCheckpoint).toBeUndefined();
     expect(llmSpy).toHaveBeenCalled();
+  });
+
+  it("spec() on a suspended mid-run experiment keeps the suspended stage's checkpoint — the chain resumes, not restarts", async () => {
+    process.env.REHEARSAL_ALLOW_PRIVATE = "1";
+    const pages = { [URL]: HOME };
+    const store = memoryStore();
+    const orch = new Orchestrator({ store, fetcher: fetcher(pages), runner: runner(pages) });
+    const { id } = await seededRun(orch);
+    const exp = store.all.get(id)!;
+    // A Workers-style suspended run: analyze suspended with its first LLM
+    // batch already persisted in the checkpoint. A spec rerun must not stomp
+    // that resume state.
+    exp.status = "analyzing";
+    exp.failures = [{ code: "BROWSER_UNAVAILABLE", stage: "verify", message: "skip" }];
+    const marker: Finding = {
+      findingId: "f_saved", title: "Persisted batch marker", category: "clarity",
+      severity: "medium", evidenceType: "hypothesis", description: "d",
+      affectedStates: [], affectedActions: [], evidencePaths: [],
+      recommendation: "r", verificationStatus: "unverified", principle: "dont-make-users-think",
+    };
+    exp.runCheckpoint = { stage: "analyze", attempt: 2, analyze: { llmFindings: [marker], llmFindingsBatches: 1 } };
+    const { makeState } = await import("@/lib/graph");
+    const vp = { name: "desktop" as const, width: 1440, height: 900 };
+    exp.graph = {
+      states: Array.from({ length: 4 }, (_, i) =>
+        makeState({
+          url: `${URL}p${i}`,
+          viewport: vp,
+          title: `Page ${i}`,
+          visibleText: `Page ${i} content with some text to audit.`,
+          actions: [{ label: `Go ${i}`, role: "link", href: `${URL}p${i}`, type: "click" as const, enabled: true, safeToExecute: true }],
+        }),
+      ),
+      edges: [],
+    };
+    await store.save(exp);
+    const llm = (orch as unknown as { llm: { complete: (p: string, o?: unknown) => Promise<string> } }).llm;
+    vi.spyOn(llm, "complete").mockImplementation(async () =>
+      JSON.stringify({ html: "<html><body>x</body></html>", title: "x" }),
+    );
+    const done = await orch.spec(id);
+    // The suspended analyze slice resumed with its persisted batch — the
+    // checkpoint was kept, not stomped — and the run completed through spec.
+    expect(done.status).toBe("complete");
+    expect(done.spec).toBeDefined();
+    expect(done.findings.some((f) => f.findingId === "f_saved")).toBe(true);
   });
 
   it("resume() re-kicks a stalled in-flight run and ignores live or finished ones", async () => {
