@@ -902,10 +902,23 @@ export class Orchestrator {
         // stage errors. A queued spec checkpoint runs it through stepBody —
         // an in-flight spec slice keeps its checkpoint (re-entered, not restarted).
         const exp0 = await this.mustGet(id);
-        exp0.runCheckpoint = exp0.runCheckpoint?.stage === "spec"
-          ? { ...exp0.runCheckpoint, queued: true }
-          : { stage: "spec", attempt: 0, queued: true };
-        await this.store.save(Experiment.parse(exp0));
+        const cp = exp0.runCheckpoint;
+        if (cp?.queued === true && cp.stage !== "spec") {
+          // A queued breadcrumb for another stage owns the checkpoint — record
+          // the spec request in the feed so the drain runs it after that stage.
+          await this.emit(id, "run", "queued", "spec");
+        } else if (cp !== undefined && cp.stage !== "spec" && !pipelineFinished(exp0)) {
+          // A suspended chain slice's checkpoint is live resume state —
+          // stomping it would destroy the suspended stage's persisted progress
+          // (e.g. analyze's finished LLM batches). The chain itself reaches
+          // spec, so leave it; a rebuild hop queues the spec request in the feed.
+          if (cp.stage === "rebuild") await this.emit(id, "run", "queued", "spec");
+        } else {
+          exp0.runCheckpoint = cp?.stage === "spec"
+            ? { ...cp, queued: true }
+            : { stage: "spec", attempt: 0, queued: true };
+          await this.store.save(Experiment.parse(exp0));
+        }
         await this.stepBody(id, {});
       } finally {
         if ((await this.queuedStages(id)).length > 0) await this.stepBody(id, { queuedOnly: true });
