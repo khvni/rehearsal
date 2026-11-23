@@ -1076,9 +1076,20 @@ export class Orchestrator {
               `${this.probeFetcher.name} ${plainFailure}; ${this.firecrawl.name} ${scraped?.html ? "still saw a JS shell" : "returned nothing"}`,
             );
           };
+          // Degraded pages keep the shell rescue but never drop the fetched page:
+          // with no hosted fallback left, a thin static page misclassified as a
+          // shell still maps rather than failing the crawl.
+          const degradedPage = async (url: string) => {
+            try {
+              return await plainPage(url);
+            } catch (e) {
+              if (!this.firecrawl.available) return { html: await probeHtml(url) };
+              throw e;
+            }
+          };
           const openPage = async (url: string, depth: number) => {
             if (browserCrawl) {
-              if (providerQuotaHit || remoteTimedOut || browserUnavailable) return plainPage(url);
+              if (providerQuotaHit || remoteTimedOut || browserUnavailable) return degradedPage(url);
               try {
                 return await this.runner.openPage(url, viewport, {
                   shotName: `${id}_${vpName}_d${depth}`,
@@ -1101,7 +1112,7 @@ export class Orchestrator {
                   "info",
                   `${this.runner.name} ${reason} — continuing with ${this.probeFetcher.name} (no screenshots)`,
                 );
-                return plainPage(url);
+                return degradedPage(url);
               }
             }
             return plainPage(url);
