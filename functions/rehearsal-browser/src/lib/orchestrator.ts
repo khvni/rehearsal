@@ -1027,6 +1027,9 @@ export class Orchestrator {
       // screenshots/metrics but still map.
       let providerQuotaHit = resumeData?.providerQuotaHit ?? false;
       let remoteTimedOut = resumeData?.remoteTimedOut ?? false;
+      // No persisted flag: a missing-browser condition is deterministic, so the
+      // first openPage of a resumed slice re-detects it and emits once per slice.
+      let browserUnavailable = false;
       // Firecrawl /v1/map runs once per run, on the seed, when it exposes few links.
       let mapExpanded = resumeData?.mapExpanded ?? false;
       const seedExtras: string[] = resumeData?.seedExtras ? [...resumeData.seedExtras] : [];
@@ -1048,17 +1051,23 @@ export class Orchestrator {
           const viewport = VIEWPORTS[vpName];
           const openPage = async (url: string, depth: number) => {
             if (browserCrawl) {
-              if (providerQuotaHit || remoteTimedOut) return { html: await probeHtml(url) };
+              if (providerQuotaHit || remoteTimedOut || browserUnavailable) return { html: await probeHtml(url) };
               try {
                 return await this.runner.openPage(url, viewport, {
                   shotName: `${id}_${vpName}_d${depth}`,
                   scope: id,
                 });
               } catch (e) {
-                if (classifyError(e) === "PROVIDER_QUOTA") providerQuotaHit = true;
+                const code = classifyError(e);
+                if (code === "PROVIDER_QUOTA") providerQuotaHit = true;
                 else if (e instanceof RemoteTimeoutError) remoteTimedOut = true;
+                else if (code === "BROWSER_UNAVAILABLE") browserUnavailable = true;
                 else throw e;
-                const reason = providerQuotaHit ? "is out of provider quota" : `timed out (${errorText(e, 120)})`;
+                const reason = browserUnavailable
+                  ? "can't run here"
+                  : providerQuotaHit
+                    ? "is out of provider quota"
+                    : `timed out (${errorText(e, 120)})`;
                 await this.emit(
                   id,
                   "discover",
