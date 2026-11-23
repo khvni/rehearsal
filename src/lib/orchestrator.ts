@@ -14,6 +14,7 @@ import {
   type JevClient,
   type JevScoreCache,
   type LlmClient,
+  type OpenPageResult,
   type PageFetcher,
   type RescanReport,
   type DiscoverCheckpoint,
@@ -1051,7 +1052,7 @@ export class Orchestrator {
           const viewport = VIEWPORTS[vpName];
           // Default crawl: plain fetch; Firecrawl rescues pages that need a renderer.
           // Degraded browser crawls take the same path — a JS shell is not a page.
-          const plainPage = async (url: string) => {
+          const plainPage = async (url: string): Promise<OpenPageResult> => {
             const isShell = (html: string) => looksLikeJsShell(html, extractPage(html, url));
             let plainFailure: string;
             try {
