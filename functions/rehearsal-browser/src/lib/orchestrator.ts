@@ -14,6 +14,7 @@ import {
   type JevClient,
   type JevScoreCache,
   type LlmClient,
+  type OpenPageResult,
   type PageFetcher,
   type RescanReport,
   type DiscoverCheckpoint,
@@ -1027,6 +1028,9 @@ export class Orchestrator {
       // screenshots/metrics but still map.
       let providerQuotaHit = resumeData?.providerQuotaHit ?? false;
       let remoteTimedOut = resumeData?.remoteTimedOut ?? false;
+      // No persisted flag: a missing-browser condition is deterministic, so the
+      // first openPage of a resumed slice re-detects it and emits once per slice.
+      let browserUnavailable = false;
       // Firecrawl /v1/map runs once per run, on the seed, when it exposes few links.
       let mapExpanded = resumeData?.mapExpanded ?? false;
       const seedExtras: string[] = resumeData?.seedExtras ? [...resumeData.seedExtras] : [];
@@ -1046,29 +1050,9 @@ export class Orchestrator {
         for (let vi = resumeData?.vpIndex ?? 0; vi < config.viewports.length; vi++) {
           const vpName = config.viewports[vi];
           const viewport = VIEWPORTS[vpName];
-          const openPage = async (url: string, depth: number) => {
-            if (browserCrawl) {
-              if (providerQuotaHit || remoteTimedOut) return { html: await probeHtml(url) };
-              try {
-                return await this.runner.openPage(url, viewport, {
-                  shotName: `${id}_${vpName}_d${depth}`,
-                  scope: id,
-                });
-              } catch (e) {
-                if (classifyError(e) === "PROVIDER_QUOTA") providerQuotaHit = true;
-                else if (e instanceof RemoteTimeoutError) remoteTimedOut = true;
-                else throw e;
-                const reason = providerQuotaHit ? "is out of provider quota" : `timed out (${errorText(e, 120)})`;
-                await this.emit(
-                  id,
-                  "discover",
-                  "info",
-                  `${this.runner.name} ${reason} — continuing with ${this.probeFetcher.name} (no screenshots)`,
-                );
-                return { html: await probeHtml(url) };
-              }
-            }
-            // Default crawl: plain fetch; Firecrawl rescues pages that need a renderer.
+          // Default crawl: plain fetch; Firecrawl rescues pages that need a renderer.
+          // Degraded browser crawls take the same path — a JS shell is not a page.
+          const plainPage = async (url: string): Promise<OpenPageResult> => {
             const isShell = (html: string) => looksLikeJsShell(html, extractPage(html, url));
             let plainFailure: string;
             try {
@@ -1091,6 +1075,47 @@ export class Orchestrator {
             throw new Error(
               `${this.probeFetcher.name} ${plainFailure}; ${this.firecrawl.name} ${scraped?.html ? "still saw a JS shell" : "returned nothing"}`,
             );
+          };
+          // Degraded pages keep the shell rescue but never drop the fetched page:
+          // with no hosted fallback left, a thin static page misclassified as a
+          // shell still maps rather than failing the crawl.
+          const degradedPage = async (url: string) => {
+            try {
+              return await plainPage(url);
+            } catch (e) {
+              if (!this.firecrawl.available) return { html: await probeHtml(url) };
+              throw e;
+            }
+          };
+          const openPage = async (url: string, depth: number) => {
+            if (browserCrawl) {
+              if (providerQuotaHit || remoteTimedOut || browserUnavailable) return degradedPage(url);
+              try {
+                return await this.runner.openPage(url, viewport, {
+                  shotName: `${id}_${vpName}_d${depth}`,
+                  scope: id,
+                });
+              } catch (e) {
+                const code = classifyError(e);
+                if (code === "PROVIDER_QUOTA") providerQuotaHit = true;
+                else if (e instanceof RemoteTimeoutError) remoteTimedOut = true;
+                else if (code === "BROWSER_UNAVAILABLE") browserUnavailable = true;
+                else throw e;
+                const reason = browserUnavailable
+                  ? "can't run here"
+                  : providerQuotaHit
+                    ? "is out of provider quota"
+                    : `timed out (${errorText(e, 120)})`;
+                await this.emit(
+                  id,
+                  "discover",
+                  "info",
+                  `${this.runner.name} ${reason} — continuing with ${this.probeFetcher.name} (no screenshots)`,
+                );
+                return degradedPage(url);
+              }
+            }
+            return plainPage(url);
           };
           const resumingVp = vi === resumeData?.vpIndex;
           // Reserve a fair share of the remaining page budget for each later

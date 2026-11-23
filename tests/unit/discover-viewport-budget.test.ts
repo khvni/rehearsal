@@ -89,4 +89,14 @@ describe("discover viewport budget", () => {
     expect(done.graph?.states.length).toBe(4);
     expect(done.graph?.states.every((s) => s.viewport.name === "desktop")).toBe(true);
   });
+
+  it("degrades a browser crawl to plain fetch when the runner is unavailable", async () => {
+    process.env.REHEARSAL_BROWSER = "browserbase-function";
+    try {
+      const done = await runDiscover({ maxStates: 3, viewports: ["desktop"] });
+      expect(done.graph?.states.length).toBe(3);
+    } finally {
+      delete process.env.REHEARSAL_BROWSER;
+    }
+  });
 });

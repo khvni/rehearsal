@@ -4,6 +4,7 @@ import { FIRECRAWL_MAX_INTERACT_ACTIONS } from "@/lib/contracts";
 import { classifyError } from "@/lib/errors";
 import { extractPage } from "@/lib/browser/extract";
 import { Orchestrator } from "@/lib/orchestrator";
+import { UnavailableRunner } from "@/lib/browser/function-runner";
 import { FixtureJevClient } from "@/lib/decisions/jev";
 import { FixtureLlmClient } from "@/lib/analysis/gemini";
 import type { BrowserRunner, Experiment, ExperimentStore, FirecrawlScrape, PageFetcher } from "@/lib/contracts";
@@ -321,6 +322,40 @@ describe("discover fetch-first + firecrawl fallback", () => {
     expect(fc.calls.scrape).toBeGreaterThanOrEqual(1);
     expect(done.graph?.states.length).toBeGreaterThan(0);
     expect(done.graph?.states[0].actions.some((a) => a.label === "Pricing")).toBe(true);
+  });
+
+  it("rescues a JS shell via firecrawl even when the browser runner is unavailable", async () => {
+    process.env.REHEARSAL_ALLOW_PRIVATE = "1";
+    process.env.REHEARSAL_BROWSER = "browserbase-function";
+    const fc = firecrawlStub({ scrape: async () => ({ html: RENDERED, links: [] }) });
+    const orch = new Orchestrator({
+      store: memoryStore(),
+      probeFetcher: fetcher({ [URL]: SHELL }),
+      firecrawl: fc.stub,
+      runner: new UnavailableRunner("no browser"),
+      jev: new FixtureJevClient(),
+      llm: new FixtureLlmClient(),
+    });
+    const exp = await orch.createExperiment(URL, "g", { viewports: ["desktop"], maxStates: 3, maxDepth: 1 });
+    const done = await orch.discover(exp.id);
+    expect(fc.calls.scrape).toBeGreaterThanOrEqual(1);
+    expect(done.graph?.states[0].actions.some((a) => a.label === "Pricing")).toBe(true);
+  });
+
+  it("still maps a shell-like page on a degraded crawl with no hosted fallback", async () => {
+    process.env.REHEARSAL_ALLOW_PRIVATE = "1";
+    process.env.REHEARSAL_BROWSER = "browserbase-function";
+    const orch = new Orchestrator({
+      store: memoryStore(),
+      probeFetcher: fetcher({ [URL]: SHELL }),
+      firecrawl: new FirecrawlClient({}),
+      runner: new UnavailableRunner("no browser"),
+      jev: new FixtureJevClient(),
+      llm: new FixtureLlmClient(),
+    });
+    const exp = await orch.createExperiment(URL, "g", { viewports: ["desktop"], maxStates: 3 });
+    const done = await orch.discover(exp.id);
+    expect(done.graph?.states.length).toBe(1);
   });
 
   it("records a readable failure when the firecrawl retry still yields a shell", async () => {
