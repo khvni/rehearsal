@@ -32,8 +32,11 @@ pre-push:
     # typecheck needs the whole graph, drift checks compare trees.
     # tsgo (TypeScript native port) as the fast early gate; `npm run typecheck`
     # still runs tsc, which remains the authoritative check in CI.
+    # The tsc fallback keeps the gate working for a checkout that pulled this
+    # change without reinstalling deps (npx can't resolve the `tsgo` bin, since
+    # it only exists inside @typescript/native-preview).
     - name: typecheck
-      run: npx tsgo --noEmit
+      run: npx tsgo --noEmit || npx tsc --noEmit
 
     - name: skill-sync
       run: npx tsx scripts/check-skill-sync.ts
