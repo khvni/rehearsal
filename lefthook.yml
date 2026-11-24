@@ -30,8 +30,15 @@ pre-push:
   jobs:
     # Full-file checks that staged-file globbing can't cover correctly:
     # typecheck needs the whole graph, drift checks compare trees.
+    # tsgo (TypeScript native port) as the fast early gate; `npm run typecheck`
+    # still runs tsc, which remains the authoritative check in CI.
+    # The tsc fallback keeps the gate working for a checkout that pulled this
+    # change without reinstalling deps (`tsgo` only exists as a bin inside
+    # @typescript/native-preview). Fallback is on the bin's presence only:
+    # when tsgo runs, its verdict is final — `||` would mask a tsgo-only error
+    # whenever tsc passed.
     - name: typecheck
-      run: npx tsc --noEmit
+      run: if [ -x node_modules/.bin/tsgo ]; then node_modules/.bin/tsgo --noEmit; else npx tsc --noEmit; fi
 
     - name: skill-sync
       run: npx tsx scripts/check-skill-sync.ts
