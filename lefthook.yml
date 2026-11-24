@@ -30,8 +30,10 @@ pre-push:
   jobs:
     # Full-file checks that staged-file globbing can't cover correctly:
     # typecheck needs the whole graph, drift checks compare trees.
+    # tsgo (TypeScript native port) as the fast early gate; `npm run typecheck`
+    # still runs tsc, which remains the authoritative check in CI.
     - name: typecheck
-      run: npx tsc --noEmit
+      run: npx tsgo --noEmit
 
     - name: skill-sync
       run: npx tsx scripts/check-skill-sync.ts
